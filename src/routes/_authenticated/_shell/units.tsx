@@ -6,7 +6,7 @@ import { PageHeader, Loading, UnitStatusBadge } from "@/components/erp/common";
 import { UNIT_STATUS, UNIT_TYPE_LABEL, inr, num, type UnitStatus } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/_shell/units")({
-  head: () => ({ meta: [{ title: "Unit Inventory — KK Group ERP" }, { name: "description", content: "Unit inventory grid." }, { property: "og:title", content: "Unit Inventory — KK Group ERP" }, { property: "og:description", content: "Unit inventory grid." }] }),
+  head: () => ({ meta: [{ title: "Project Units — KK Group ERP" }, { name: "description", content: "Project unit locations for future material consumption." }, { property: "og:title", content: "Project Units — KK Group ERP" }, { property: "og:description", content: "Project unit locations for future material consumption." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Units,
 });
 

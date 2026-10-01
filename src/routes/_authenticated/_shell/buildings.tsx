@@ -5,7 +5,7 @@ import { PageHeader, Loading, Progress, Pill } from "@/components/erp/common";
 import { WORK_STATUS_LABEL, inrShort } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/_shell/buildings")({
-  head: () => ({ meta: [{ title: "Buildings — KK Group ERP" }, { name: "description", content: "Buildings and wings." }, { property: "og:title", content: "Buildings — KK Group ERP" }, { property: "og:description", content: "Buildings and wings." }] }),
+  head: () => ({ meta: [{ title: "Buildings — KK Group ERP" }, { name: "description", content: "Project buildings and wings." }, { property: "og:title", content: "Buildings — KK Group ERP" }, { property: "og:description", content: "Project buildings and wings." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Buildings,
 });
 

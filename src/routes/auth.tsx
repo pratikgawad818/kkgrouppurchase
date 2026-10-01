@@ -74,7 +74,7 @@ function AuthPage() {
           <span className="font-semibold text-sidebar-accent-foreground">KK Group ERP</span>
         </div>
         <blockquote className="max-w-md text-2xl font-medium leading-snug text-sidebar-accent-foreground">
-          “Every unit, every rupee, every floor slab — accounted for.”
+          “Every material and every rupee — traceable from requirement to final use.”
         </blockquote>
         <div className="font-mono text-xs text-sidebar-foreground/60">KK Infra Developers Pvt Ltd · Pune</div>
       </div>

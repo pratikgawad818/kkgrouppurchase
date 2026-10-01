@@ -1,25 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { PageHeader, Loading, Field } from "@/components/erp/common";
-
-export const Route = createFileRoute("/_authenticated/_shell/settings/company")({
-  head: () => ({ meta: [{ title: "Company Settings — KK Group ERP" }, { name: "description", content: "Company profile." }, { property: "og:title", content: "Company Settings" }, { property: "og:description", content: "Company profile." }] }),
-  component: Company,
-});
-
-function Company() {
-  const q = useQuery({ queryKey: ["company"], queryFn: async () => { const r = await supabase.from("companies").select("*").limit(1).single(); if (r.error) throw r.error; return r.data; } });
-  if (q.isLoading) return <Loading />;
-  const c = q.data!;
-  return (
-    <>
-      <PageHeader title={c.name} subtitle={c.legal_name} />
-      <div className="grid gap-4 rounded-md border bg-card p-5 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="PAN">{c.pan}</Field><Field label="TAN">{c.tan}</Field><Field label="GSTIN">{c.gstin}</Field>
-        <Field label="CIN">{c.cin}</Field><Field label="RERA">{c.rera_promoter_id}</Field><Field label="Phone">{c.phone}</Field>
-        <Field label="Email">{c.email}</Field><Field label="Registered address">{c.registered_address}</Field><Field label="Office address">{c.office_address}</Field>
-      </div>
-    </>
-  );
-}
+import{createFileRoute}from"@tanstack/react-router";import{useMutation,useQuery,useQueryClient}from"@tanstack/react-query";import{useState}from"react";import{Pencil}from"lucide-react";import{toast}from"sonner";import{supabase}from"@/integrations/supabase/client";import{PageHeader,Loading,Field}from"@/components/erp/common";import{Button}from"@/components/ui/button";import{Input}from"@/components/ui/input";import{Label}from"@/components/ui/label";import{Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle}from"@/components/ui/dialog";import{useCan}from"@/lib/session";
+export const Route=createFileRoute("/_authenticated/_shell/settings/company")({head:()=>({meta:[{title:"Company Settings — KK Group ERP"},{name:"description",content:"KK Group company and tax profile."},{property:"og:title",content:"Company Settings — KK Group ERP"},{property:"og:description",content:"KK Group company and tax profile."},{property:"og:type",content:"website"},{name:"twitter:card",content:"summary"}]}),component:Company});
+function Company(){const can=useCan(),qc=useQueryClient();const[open,setOpen]=useState(false);const[form,setForm]=useState({name:"",legal_name:"",phone:"",email:"",pan:"",tan:"",gstin:"",cin:"",registered_address:"",office_address:""});const q=useQuery({queryKey:["company"],queryFn:async()=>{const r=await supabase.from("companies").select("*").limit(1).single();if(r.error)throw r.error;return r.data}});const save=useMutation({mutationFn:async()=>{if(!q.data)throw new Error("Company is unavailable.");const r=await supabase.from("companies").update(form).eq("id",q.data.id);if(r.error)throw r.error},onSuccess:()=>{qc.invalidateQueries({queryKey:["company"]});setOpen(false);toast.success("Company settings updated")},onError:e=>toast.error(e.message)});function edit(){const c=q.data;if(!c)return;setForm({name:c.name,legal_name:c.legal_name??"",phone:c.phone??"",email:c.email??"",pan:c.pan??"",tan:c.tan??"",gstin:c.gstin??"",cin:c.cin??"",registered_address:c.registered_address??"",office_address:c.office_address??""});setOpen(true)}if(q.isLoading)return<Loading/>;const c=q.data;if(!c)return null;return<><PageHeader title={c.name} subtitle={c.legal_name} actions={can("company.manage")&&<Button size="sm" onClick={edit}><Pencil className="h-4 w-4"/>Edit company</Button>}/><div className="grid gap-4 border-y bg-card py-5 sm:grid-cols-2 lg:grid-cols-3"><Field label="PAN">{c.pan}</Field><Field label="TAN">{c.tan}</Field><Field label="GSTIN">{c.gstin}</Field><Field label="CIN">{c.cin}</Field><Field label="RERA promoter">{c.rera_promoter_id}</Field><Field label="Phone">{c.phone}</Field><Field label="Email">{c.email}</Field><Field label="Registered address">{c.registered_address}</Field><Field label="Office address">{c.office_address}</Field></div><Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Edit company</DialogTitle><DialogDescription>Legal, tax, and contact details used across ERP documents.</DialogDescription></DialogHeader><form className="grid gap-3 sm:grid-cols-2" onSubmit={e=>{e.preventDefault();save.mutate()}}>{([['name','Display name'],['legal_name','Legal name'],['phone','Phone'],['email','Email'],['pan','PAN'],['tan','TAN'],['gstin','GSTIN'],['cin','CIN'],['registered_address','Registered address'],['office_address','Office address']]as const).map(([key,label])=><div key={key} className={key.includes('address')?'sm:col-span-2':''}><Label>{label}</Label><Input required={key==='name'} value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/></div>)}<DialogFooter className="sm:col-span-2"><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancel</Button><Button type="submit" disabled={save.isPending}>Save company</Button></DialogFooter></form></DialogContent></Dialog></>}

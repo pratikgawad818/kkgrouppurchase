@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, Layers, LayoutGrid, ShieldCheck } from "lucide-react";
+import { Building2, Package, Store, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "KK Group ERP — Projects, Inventory & Sales" },
-      { name: "description", content: "Internal ERP for KK Group: projects, buildings, floors and unit inventory with role-based access." },
+      { title: "KK Group ERP — Procurement & Operations" },
+      { name: "description", content: "Internal ERP for KK Group projects, vendors, materials, warehouses and controlled operations." },
       { property: "og:title", content: "KK Group ERP" },
       { property: "og:description", content: "Internal ERP for KK Group real estate development." },
       { property: "og:type", content: "website" },
@@ -18,10 +18,10 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const items = [
-    { icon: Building2, t: "Projects & RERA", d: "Project master with approvals, consultants and RERA validity." },
-    { icon: Layers, t: "Buildings & floors", d: "Wing-wise structure, budgets and construction status." },
-    { icon: LayoutGrid, t: "Unit inventory", d: "Every flat, shop and office priced and tracked by status." },
-    { icon: ShieldCheck, t: "Role-based access", d: "Nine roles, granular permissions, full audit trail." },
+    { icon: Building2, t: "Projects", d: "Project locations, budgets, teams and construction hierarchy." },
+    { icon: Store, t: "Vendors", d: "Approved supplier identities, categories, tax details and terms." },
+    { icon: Package, t: "Materials & stores", d: "Controlled material masters, units, thresholds and locations." },
+    { icon: ShieldCheck, t: "Role-based access", d: "Operational roles, granular permissions and audit history." },
   ];
   return (
     <div className="min-h-screen bg-sidebar text-sidebar-foreground">
@@ -36,12 +36,12 @@ function Index() {
           </Button>
         </header>
         <main className="flex flex-1 flex-col justify-center py-16">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-sidebar-primary">Real estate development ERP</p>
+           <p className="font-mono text-xs uppercase tracking-[0.2em] text-sidebar-primary">Internal construction operations</p>
           <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-sidebar-accent-foreground md:text-5xl">
-            From land parcel to possession — one system of record.
+             Every material and every rupee, traceable end to end.
           </h1>
           <p className="mt-5 max-w-xl text-base text-sidebar-foreground/80">
-            Projects, wings, floors and every unit's price and status, governed by roles and audited end to end.
+             A controlled foundation for projects, vendors, materials, stores, procurement and project costing.
           </p>
           <div className="mt-8">
             <Button asChild size="lg" className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">
