@@ -344,6 +344,159 @@ export type Database = {
           },
         ]
       }
+      item_categories: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_demo: boolean
+          name: string
+          parent_id: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_demo?: boolean
+          name: string
+          parent_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_demo?: boolean
+          name?: string
+          parent_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "item_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          category_id: string
+          code: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          hsn_sac: string | null
+          id: string
+          is_demo: boolean
+          maximum_stock: number | null
+          minimum_stock: number
+          name: string
+          preferred_vendor_id: string | null
+          reorder_level: number
+          specification: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          code: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          hsn_sac?: string | null
+          id?: string
+          is_demo?: boolean
+          maximum_stock?: number | null
+          minimum_stock?: number
+          name: string
+          preferred_vendor_id?: string | null
+          reorder_level?: number
+          specification?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          code?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          hsn_sac?: string | null
+          id?: string
+          is_demo?: boolean
+          maximum_stock?: number | null
+          minimum_stock?: number
+          name?: string
+          preferred_vendor_id?: string | null
+          reorder_level?: number
+          specification?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "item_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_preferred_vendor_id_fkey"
+            columns: ["preferred_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           code: string
@@ -409,11 +562,72 @@ export type Database = {
           },
         ]
       }
+      project_sites: {
+        Row: {
+          address: string | null
+          code: string
+          company_id: string
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_demo: boolean
+          name: string
+          project_id: string
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          company_id: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_demo?: boolean
+          name: string
+          project_id: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          company_id?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_demo?: boolean
+          name?: string
+          project_id?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_sites_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_sites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           actual_completion_date: string | null
           address: string | null
           architect: string | null
+          budget: number
           city: string | null
           code: string
           company_id: string
@@ -422,17 +636,22 @@ export type Database = {
           description: string | null
           developer_details: string | null
           development_area_sqft: number | null
+          estimated_cost: number
           expected_completion_date: string | null
           id: string
+          is_demo: boolean
           land_area_sqm: number | null
           location: string | null
           name: string
+          notes: string | null
           pincode: string | null
           project_manager_id: string | null
+          project_type: string | null
           record_status: Database["public"]["Enums"]["record_status"]
           rera_number: string | null
           rera_registration_date: string | null
           rera_valid_until: string | null
+          site_engineer_id: string | null
           start_date: string | null
           state: string | null
           status: Database["public"]["Enums"]["project_status"]
@@ -443,6 +662,7 @@ export type Database = {
           actual_completion_date?: string | null
           address?: string | null
           architect?: string | null
+          budget?: number
           city?: string | null
           code: string
           company_id: string
@@ -451,17 +671,22 @@ export type Database = {
           description?: string | null
           developer_details?: string | null
           development_area_sqft?: number | null
+          estimated_cost?: number
           expected_completion_date?: string | null
           id?: string
+          is_demo?: boolean
           land_area_sqm?: number | null
           location?: string | null
           name: string
+          notes?: string | null
           pincode?: string | null
           project_manager_id?: string | null
+          project_type?: string | null
           record_status?: Database["public"]["Enums"]["record_status"]
           rera_number?: string | null
           rera_registration_date?: string | null
           rera_valid_until?: string | null
+          site_engineer_id?: string | null
           start_date?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -472,6 +697,7 @@ export type Database = {
           actual_completion_date?: string | null
           address?: string | null
           architect?: string | null
+          budget?: number
           city?: string | null
           code?: string
           company_id?: string
@@ -480,17 +706,22 @@ export type Database = {
           description?: string | null
           developer_details?: string | null
           development_area_sqft?: number | null
+          estimated_cost?: number
           expected_completion_date?: string | null
           id?: string
+          is_demo?: boolean
           land_area_sqm?: number | null
           location?: string | null
           name?: string
+          notes?: string | null
           pincode?: string | null
           project_manager_id?: string | null
+          project_type?: string | null
           record_status?: Database["public"]["Enums"]["record_status"]
           rera_number?: string | null
           rera_registration_date?: string | null
           rera_valid_until?: string | null
+          site_engineer_id?: string | null
           start_date?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["project_status"]
@@ -515,6 +746,13 @@ export type Database = {
           {
             foreignKeyName: "projects_project_manager_id_fkey"
             columns: ["project_manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_site_engineer_id_fkey"
+            columns: ["site_engineer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -716,6 +954,50 @@ export type Database = {
           },
         ]
       }
+      units_of_measure: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          decimal_places: number
+          id: string
+          is_demo: boolean
+          name: string
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          decimal_places?: number
+          id?: string
+          is_demo?: boolean
+          name: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          decimal_places?: number
+          id?: string
+          is_demo?: boolean
+          name?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "units_of_measure_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_project_assignments: {
         Row: {
           created_at: string
@@ -774,6 +1056,265 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_categories: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_demo: boolean
+          name: string
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_demo?: boolean
+          name: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_demo?: boolean
+          name?: string
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_category_links: {
+        Row: {
+          category_id: string
+          created_at: string
+          vendor_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          vendor_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_category_links_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_category_links_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendors: {
+        Row: {
+          address: string | null
+          approval_status: string
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          city: string | null
+          code: string
+          company_id: string
+          company_name: string
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          ifsc: string | null
+          is_demo: boolean
+          mobile: string | null
+          notes: string | null
+          pan: string | null
+          payment_terms_days: number
+          pincode: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          approval_status?: string
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
+          code: string
+          company_id: string
+          company_name: string
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          ifsc?: string | null
+          is_demo?: boolean
+          mobile?: string | null
+          notes?: string | null
+          pan?: string | null
+          payment_terms_days?: number
+          pincode?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          approval_status?: string
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
+          code?: string
+          company_id?: string
+          company_name?: string
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          ifsc?: string | null
+          is_demo?: boolean
+          mobile?: string | null
+          notes?: string | null
+          pan?: string | null
+          payment_terms_days?: number
+          pincode?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendors_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendors_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouses: {
+        Row: {
+          address: string | null
+          code: string
+          company_id: string
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_demo: boolean
+          name: string
+          notes: string | null
+          project_id: string | null
+          responsible_user_id: string | null
+          site_id: string | null
+          status: Database["public"]["Enums"]["record_status"]
+          updated_at: string
+          warehouse_type: string
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          company_id: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_demo?: boolean
+          name: string
+          notes?: string | null
+          project_id?: string | null
+          responsible_user_id?: string | null
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+          warehouse_type: string
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          company_id?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_demo?: boolean
+          name?: string
+          notes?: string | null
+          project_id?: string | null
+          responsible_user_id?: string | null
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["record_status"]
+          updated_at?: string
+          warehouse_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouses_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouses_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "project_sites"
             referencedColumns: ["id"]
           },
         ]
