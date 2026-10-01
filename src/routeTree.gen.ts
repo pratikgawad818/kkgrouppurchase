@@ -10,33 +10,154 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/_shell'
+import { Route as AuthenticatedShellAuditRouteImport } from './routes/_authenticated/_shell/audit'
+import { Route as AuthenticatedShellBuildingsRouteImport } from './routes/_authenticated/_shell/buildings'
+import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
+import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authenticated/_shell/projects'
+import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
+import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
+import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedShellRoute = AuthenticatedShellRouteImport.update({
+  id: '/_shell',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedShellAuditRoute = AuthenticatedShellAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthenticatedShellRoute,
+} as any)
+const AuthenticatedShellBuildingsRoute =
+  AuthenticatedShellBuildingsRouteImport.update({
+    id: '/buildings',
+    path: '/buildings',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellDashboardRoute =
+  AuthenticatedShellDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProjectsRoute =
+  AuthenticatedShellProjectsRouteImport.update({
+    id: '/projects',
+    path: '/projects',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellUnitsRoute = AuthenticatedShellUnitsRouteImport.update({
+  id: '/units',
+  path: '/units',
+  getParentRoute: () => AuthenticatedShellRoute,
+} as any)
+const AuthenticatedShellSettingsCompanyRoute =
+  AuthenticatedShellSettingsCompanyRouteImport.update({
+    id: '/settings/company',
+    path: '/settings/company',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellSettingsUsersRoute =
+  AuthenticatedShellSettingsUsersRouteImport.update({
+    id: '/settings/users',
+    path: '/settings/users',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/audit': typeof AuthenticatedShellAuditRoute
+  '/buildings': typeof AuthenticatedShellBuildingsRoute
+  '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/projects': typeof AuthenticatedShellProjectsRoute
+  '/units': typeof AuthenticatedShellUnitsRoute
+  '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/audit': typeof AuthenticatedShellAuditRoute
+  '/buildings': typeof AuthenticatedShellBuildingsRoute
+  '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/projects': typeof AuthenticatedShellProjectsRoute
+  '/units': typeof AuthenticatedShellUnitsRoute
+  '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/_shell': typeof AuthenticatedShellRouteWithChildren
+  '/_authenticated/_shell/audit': typeof AuthenticatedShellAuditRoute
+  '/_authenticated/_shell/buildings': typeof AuthenticatedShellBuildingsRoute
+  '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/_authenticated/_shell/projects': typeof AuthenticatedShellProjectsRoute
+  '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
+  '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/audit'
+    | '/buildings'
+    | '/dashboard'
+    | '/projects'
+    | '/units'
+    | '/settings/company'
+    | '/settings/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/audit'
+    | '/buildings'
+    | '/dashboard'
+    | '/projects'
+    | '/units'
+    | '/settings/company'
+    | '/settings/users'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/_shell'
+    | '/_authenticated/_shell/audit'
+    | '/_authenticated/_shell/buildings'
+    | '/_authenticated/_shell/dashboard'
+    | '/_authenticated/_shell/projects'
+    | '/_authenticated/_shell/units'
+    | '/_authenticated/_shell/settings/company'
+    | '/_authenticated/_shell/settings/users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +169,118 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/_shell': {
+      id: '/_authenticated/_shell'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedShellRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/_shell/audit': {
+      id: '/_authenticated/_shell/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuthenticatedShellAuditRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/buildings': {
+      id: '/_authenticated/_shell/buildings'
+      path: '/buildings'
+      fullPath: '/buildings'
+      preLoaderRoute: typeof AuthenticatedShellBuildingsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/dashboard': {
+      id: '/_authenticated/_shell/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedShellDashboardRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/projects': {
+      id: '/_authenticated/_shell/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AuthenticatedShellProjectsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/units': {
+      id: '/_authenticated/_shell/units'
+      path: '/units'
+      fullPath: '/units'
+      preLoaderRoute: typeof AuthenticatedShellUnitsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/settings/company': {
+      id: '/_authenticated/_shell/settings/company'
+      path: '/settings/company'
+      fullPath: '/settings/company'
+      preLoaderRoute: typeof AuthenticatedShellSettingsCompanyRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/settings/users': {
+      id: '/_authenticated/_shell/settings/users'
+      path: '/settings/users'
+      fullPath: '/settings/users'
+      preLoaderRoute: typeof AuthenticatedShellSettingsUsersRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
   }
 }
 
+interface AuthenticatedShellRouteChildren {
+  AuthenticatedShellAuditRoute: typeof AuthenticatedShellAuditRoute
+  AuthenticatedShellBuildingsRoute: typeof AuthenticatedShellBuildingsRoute
+  AuthenticatedShellDashboardRoute: typeof AuthenticatedShellDashboardRoute
+  AuthenticatedShellProjectsRoute: typeof AuthenticatedShellProjectsRoute
+  AuthenticatedShellUnitsRoute: typeof AuthenticatedShellUnitsRoute
+  AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
+  AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
+}
+
+const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
+  AuthenticatedShellAuditRoute: AuthenticatedShellAuditRoute,
+  AuthenticatedShellBuildingsRoute: AuthenticatedShellBuildingsRoute,
+  AuthenticatedShellDashboardRoute: AuthenticatedShellDashboardRoute,
+  AuthenticatedShellProjectsRoute: AuthenticatedShellProjectsRoute,
+  AuthenticatedShellUnitsRoute: AuthenticatedShellUnitsRoute,
+  AuthenticatedShellSettingsCompanyRoute:
+    AuthenticatedShellSettingsCompanyRoute,
+  AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
+}
+
+const AuthenticatedShellRouteWithChildren =
+  AuthenticatedShellRoute._addFileChildren(AuthenticatedShellRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedShellRoute: typeof AuthenticatedShellRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedShellRoute: AuthenticatedShellRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
