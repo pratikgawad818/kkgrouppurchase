@@ -13,7 +13,8 @@ import { useCan } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/_shell/vendors")({ head: () => ({ meta: [{ title: "Vendors — KK Group ERP" }, { name: "description", content: "Approved vendor master for procurement." }, { property: "og:title", content: "Vendors — KK Group ERP" }, { property: "og:description", content: "Approved vendor master for procurement." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: Vendors });
 type Vendor = { id: string; code: string; company_name: string; contact_person: string | null; mobile: string | null; email: string | null; gstin: string | null; payment_terms_days: number; status: "active" | "inactive"; is_demo: boolean };
-const blank = { code: "", company_name: "", contact_person: "", mobile: "", email: "", gstin: "", payment_terms_days: "30", status: "active" as const };
+type VendorForm = { code:string; company_name:string; contact_person:string; mobile:string; email:string; gstin:string; payment_terms_days:string; status:"active"|"inactive" };
+const blank: VendorForm = { code: "", company_name: "", contact_person: "", mobile: "", email: "", gstin: "", payment_terms_days: "30", status: "active" };
 
 function Vendors() {
   const can = useCan(); const qc = useQueryClient(); const [search, setSearch] = useState(""); const [page, setPage] = useState(0); const [editing, setEditing] = useState<Vendor | null>(null); const [open, setOpen] = useState(false); const [form, setForm] = useState(blank);
