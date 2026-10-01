@@ -16,8 +16,11 @@ import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedShellAuditRouteImport } from './routes/_authenticated/_shell/audit'
 import { Route as AuthenticatedShellBuildingsRouteImport } from './routes/_authenticated/_shell/buildings'
 import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
+import { Route as AuthenticatedShellMaterialsRouteImport } from './routes/_authenticated/_shell/materials'
 import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authenticated/_shell/projects'
 import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
+import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authenticated/_shell/vendors'
+import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
 
@@ -56,6 +59,12 @@ const AuthenticatedShellDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellMaterialsRoute =
+  AuthenticatedShellMaterialsRouteImport.update({
+    id: '/materials',
+    path: '/materials',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellProjectsRoute =
   AuthenticatedShellProjectsRouteImport.update({
     id: '/projects',
@@ -67,6 +76,18 @@ const AuthenticatedShellUnitsRoute = AuthenticatedShellUnitsRouteImport.update({
   path: '/units',
   getParentRoute: () => AuthenticatedShellRoute,
 } as any)
+const AuthenticatedShellVendorsRoute =
+  AuthenticatedShellVendorsRouteImport.update({
+    id: '/vendors',
+    path: '/vendors',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellWarehousesRoute =
+  AuthenticatedShellWarehousesRouteImport.update({
+    id: '/warehouses',
+    path: '/warehouses',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellSettingsCompanyRoute =
   AuthenticatedShellSettingsCompanyRouteImport.update({
     id: '/settings/company',
@@ -86,8 +107,11 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AuthenticatedShellAuditRoute
   '/buildings': typeof AuthenticatedShellBuildingsRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/materials': typeof AuthenticatedShellMaterialsRoute
   '/projects': typeof AuthenticatedShellProjectsRoute
   '/units': typeof AuthenticatedShellUnitsRoute
+  '/vendors': typeof AuthenticatedShellVendorsRoute
+  '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
 }
@@ -97,8 +121,11 @@ export interface FileRoutesByTo {
   '/audit': typeof AuthenticatedShellAuditRoute
   '/buildings': typeof AuthenticatedShellBuildingsRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/materials': typeof AuthenticatedShellMaterialsRoute
   '/projects': typeof AuthenticatedShellProjectsRoute
   '/units': typeof AuthenticatedShellUnitsRoute
+  '/vendors': typeof AuthenticatedShellVendorsRoute
+  '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
 }
@@ -111,8 +138,11 @@ export interface FileRoutesById {
   '/_authenticated/_shell/audit': typeof AuthenticatedShellAuditRoute
   '/_authenticated/_shell/buildings': typeof AuthenticatedShellBuildingsRoute
   '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/_authenticated/_shell/materials': typeof AuthenticatedShellMaterialsRoute
   '/_authenticated/_shell/projects': typeof AuthenticatedShellProjectsRoute
   '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
+  '/_authenticated/_shell/vendors': typeof AuthenticatedShellVendorsRoute
+  '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
 }
@@ -124,8 +154,11 @@ export interface FileRouteTypes {
     | '/audit'
     | '/buildings'
     | '/dashboard'
+    | '/materials'
     | '/projects'
     | '/units'
+    | '/vendors'
+    | '/warehouses'
     | '/settings/company'
     | '/settings/users'
   fileRoutesByTo: FileRoutesByTo
@@ -135,8 +168,11 @@ export interface FileRouteTypes {
     | '/audit'
     | '/buildings'
     | '/dashboard'
+    | '/materials'
     | '/projects'
     | '/units'
+    | '/vendors'
+    | '/warehouses'
     | '/settings/company'
     | '/settings/users'
   id:
@@ -148,8 +184,11 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/audit'
     | '/_authenticated/_shell/buildings'
     | '/_authenticated/_shell/dashboard'
+    | '/_authenticated/_shell/materials'
     | '/_authenticated/_shell/projects'
     | '/_authenticated/_shell/units'
+    | '/_authenticated/_shell/vendors'
+    | '/_authenticated/_shell/warehouses'
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/users'
   fileRoutesById: FileRoutesById
@@ -211,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellDashboardRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/materials': {
+      id: '/_authenticated/_shell/materials'
+      path: '/materials'
+      fullPath: '/materials'
+      preLoaderRoute: typeof AuthenticatedShellMaterialsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/projects': {
       id: '/_authenticated/_shell/projects'
       path: '/projects'
@@ -223,6 +269,20 @@ declare module '@tanstack/react-router' {
       path: '/units'
       fullPath: '/units'
       preLoaderRoute: typeof AuthenticatedShellUnitsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/vendors': {
+      id: '/_authenticated/_shell/vendors'
+      path: '/vendors'
+      fullPath: '/vendors'
+      preLoaderRoute: typeof AuthenticatedShellVendorsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/warehouses': {
+      id: '/_authenticated/_shell/warehouses'
+      path: '/warehouses'
+      fullPath: '/warehouses'
+      preLoaderRoute: typeof AuthenticatedShellWarehousesRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/settings/company': {
@@ -246,8 +306,11 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellAuditRoute: typeof AuthenticatedShellAuditRoute
   AuthenticatedShellBuildingsRoute: typeof AuthenticatedShellBuildingsRoute
   AuthenticatedShellDashboardRoute: typeof AuthenticatedShellDashboardRoute
+  AuthenticatedShellMaterialsRoute: typeof AuthenticatedShellMaterialsRoute
   AuthenticatedShellProjectsRoute: typeof AuthenticatedShellProjectsRoute
   AuthenticatedShellUnitsRoute: typeof AuthenticatedShellUnitsRoute
+  AuthenticatedShellVendorsRoute: typeof AuthenticatedShellVendorsRoute
+  AuthenticatedShellWarehousesRoute: typeof AuthenticatedShellWarehousesRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
 }
@@ -256,8 +319,11 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellAuditRoute: AuthenticatedShellAuditRoute,
   AuthenticatedShellBuildingsRoute: AuthenticatedShellBuildingsRoute,
   AuthenticatedShellDashboardRoute: AuthenticatedShellDashboardRoute,
+  AuthenticatedShellMaterialsRoute: AuthenticatedShellMaterialsRoute,
   AuthenticatedShellProjectsRoute: AuthenticatedShellProjectsRoute,
   AuthenticatedShellUnitsRoute: AuthenticatedShellUnitsRoute,
+  AuthenticatedShellVendorsRoute: AuthenticatedShellVendorsRoute,
+  AuthenticatedShellWarehousesRoute: AuthenticatedShellWarehousesRoute,
   AuthenticatedShellSettingsCompanyRoute:
     AuthenticatedShellSettingsCompanyRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
