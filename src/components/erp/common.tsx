@@ -18,8 +18,8 @@ export function PageHeader({ title, subtitle, actions, crumbs }: { title: string
 export function UnitStatusBadge({ status, className }: { status: UnitStatus; className?: string }) {
   const s = UNIT_STATUS[status];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-0.5 text-[11px] font-medium", TONE_CLASSES[s.tone].badge, className)}>
-      <span className={cn("h-1.5 w-1.5 rounded-full", TONE_CLASSES[s.tone].dot)} />
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-0.5 text-[11px] font-medium", TONE_CLASSES[s.tone]?.badge, className)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", TONE_CLASSES[s.tone]?.dot)} />
       {s.label}
     </span>
   );
