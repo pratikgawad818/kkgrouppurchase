@@ -5,7 +5,7 @@ import { PageHeader, Loading } from "@/components/erp/common";
 import { fmtDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/_shell/audit")({
-  head: () => ({ meta: [{ title: "Audit Log — KK Group ERP" }, { name: "description", content: "Change history." }, { property: "og:title", content: "Audit Log" }, { property: "og:description", content: "Change history." }] }),
+  head: () => ({ meta: [{ title: "Audit Log — KK Group ERP" }, { name: "description", content: "Immutable ERP change history." }, { property: "og:title", content: "Audit Log — KK Group ERP" }, { property: "og:description", content: "Immutable ERP change history." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Audit,
 });
 
