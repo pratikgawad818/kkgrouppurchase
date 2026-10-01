@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { TONE_CLASSES, UNIT_STATUS, type UnitStatus } from "@/lib/format";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 export function PageHeader({ title, subtitle, actions, crumbs }: { title: string; subtitle?: ReactNode; actions?: ReactNode; crumbs?: ReactNode }) {
   return (
@@ -64,5 +66,13 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 export function Loading() {
-  return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  return <div className="space-y-2 p-2"><div className="h-10 animate-pulse rounded bg-muted" /><div className="h-36 animate-pulse rounded bg-muted" /></div>;
+}
+
+export function SearchBox({ value, onChange, placeholder = "Search" }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
+  return <div className="relative w-full max-w-sm"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></div>;
+}
+
+export function DemoBadge() {
+  return <span className="rounded-sm border border-primary/25 bg-primary/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">Demo</span>;
 }

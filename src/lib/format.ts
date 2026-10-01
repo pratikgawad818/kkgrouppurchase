@@ -75,9 +75,9 @@ export const WORK_STATUS_LABEL: Record<WorkStatus, string> = {
 };
 
 export const ROLE_LABEL: Record<AppRole, string> = {
-  super_admin: "Super Admin", director: "Director / Owner", sales_manager: "Sales Manager", sales_executive: "Sales Executive",
+  super_admin: "Super Admin", director: "Management", sales_manager: "Sales Manager", sales_executive: "Sales Executive",
   accounts_manager: "Accounts Manager", purchase_manager: "Purchase Manager", site_engineer: "Site Engineer",
-  project_manager: "Project Manager", accountant: "Accountant",
+  project_manager: "Project Manager", accountant: "Accounts", store_manager: "Store Manager", auditor: "Auditor",
 };
 
 export function errMsg(e: unknown) {
