@@ -883,6 +883,8 @@ export type Database = {
         | "site_engineer"
         | "project_manager"
         | "accountant"
+        | "store_manager"
+        | "auditor"
       project_status:
         | "planning"
         | "approval"
@@ -1041,6 +1043,8 @@ export const Constants = {
         "site_engineer",
         "project_manager",
         "accountant",
+        "store_manager",
+        "auditor",
       ],
       project_status: [
         "planning",
