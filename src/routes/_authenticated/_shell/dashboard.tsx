@@ -34,7 +34,7 @@ function Dashboard() {
   const q = useQuery({
     queryKey: ["dashboard", projectId, buildingId],
     queryFn: async () => {
-      let pq = supabase.from("projects").select("id,name,code,status,budget,estimated_cost").order("name");
+      const pq = supabase.from("projects").select("id,name,code,status,budget,estimated_cost").order("name");
       let bq = supabase.from("buildings").select("id,name,project_id,budget");
       if (projectId) bq = bq.eq("project_id", projectId);
       const [p, b, v, i, w, a] = await Promise.all([
@@ -101,7 +101,7 @@ function Dashboard() {
       <Section title="Projects">
         <Link to="/projects"><Stat label="Active projects" value={<span className="flex items-center justify-between">{active}<Building2 className="h-5 w-5 text-primary" /></span>} hint={`${scoped.length} total`} className="hover:border-primary/50" /></Link>
         <Stat label="Buildings" value={building ? 1 : d.buildings.length} hint={projectId ? "In selected project" : "All projects"} />
-        {can("financial.view") ? <Stat label="Budget" value={inr(budget)} hint={building ? building.name : "Sum of project budgets"} /> : <Pending label="Budget" phase={1} />}
+        {can("financial.view") ? <Stat label="Budget" value={inr(budget)} hint={building ? building.name : "Sum of project budgets"} /> : <div className="rounded-md border border-dashed bg-card p-4 text-xs text-muted-foreground">Budget hidden — no financial access</div>}
         <Pending label="Actual cost & variance" phase={6} />
       </Section>
       <section className="mt-6">
