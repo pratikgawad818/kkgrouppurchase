@@ -61,7 +61,7 @@ function Shell() {
   const nav = (
     <nav className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-3">
-         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Group" className="h-full w-full object-contain" /></div>
+         <div className="grid h-10 w-16 shrink-0 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Groups" className="h-full w-full object-contain" /></div>
         <div className={cn("leading-tight", collapsed && "lg:hidden")}>
           <div className="text-sm font-semibold text-sidebar-accent-foreground">KK Group</div>
           <div className="text-[11px] text-sidebar-foreground/60">Operations ERP</div>
