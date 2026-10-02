@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/erp/common";
 import { cn } from "@/lib/utils";
-import brandMark from "@/assets/kk-group-mark.png.asset.json";
+import brandMark from "@/assets/kk-groups-mark-clean.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/_shell")({
   component: Shell,
@@ -61,7 +61,7 @@ function Shell() {
   const nav = (
     <nav className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-3">
-         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-sm bg-card p-1"><img src={brandMark.url} alt="" className="h-full w-full object-contain" /></div>
+         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Group" className="h-full w-full object-contain" /></div>
         <div className={cn("leading-tight", collapsed && "lg:hidden")}>
           <div className="text-sm font-semibold text-sidebar-accent-foreground">KK Group</div>
           <div className="text-[11px] text-sidebar-foreground/60">Operations ERP</div>
