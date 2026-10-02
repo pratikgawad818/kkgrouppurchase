@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Bell, Boxes, Building2, ChevronsLeft, ChevronsRight, FileClock, LayoutDashboard, LogOut, Menu, Package, Search, Settings, Store, Users } from "lucide-react";
+import { ArrowLeftRight, Banknote, BarChart3, BookOpen, Boxes, Building, Building2, Calculator, ChevronsLeft, ChevronsRight, ClipboardList, FileClock, FileText, FolderOpen, Layers, LayoutDashboard, LogOut, Menu, Package, PackageMinus, Receipt, Settings, ShoppingCart, Store, Truck, Undo2, Users, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/format";
@@ -15,26 +15,53 @@ export const Route = createFileRoute("/_authenticated/_shell")({
   component: Shell,
 });
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; perm?: string };
+type NavItem = { to?: string; label: string; icon: typeof LayoutDashboard; perm?: string; phase?: number };
 const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Overview", items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
-  {
-    group: "Operations",
-    items: [
-      { to: "/projects", label: "Projects", icon: Building2 },
-      { to: "/vendors", label: "Vendors", icon: Store, perm: "vendors.view" },
-      { to: "/materials", label: "Materials", icon: Package, perm: "materials.view" },
-      { to: "/warehouses", label: "Warehouses", icon: Boxes, perm: "warehouses.view" },
-    ],
-  },
-  {
-    group: "Administration",
-    items: [
-      { to: "/settings/users", label: "Users & Permissions", icon: Users, perm: "users.manage" },
-      { to: "/audit", label: "Audit Log", icon: FileClock, perm: "audit.view" },
-      { to: "/settings/company", label: "Company Settings", icon: Settings },
-    ],
-  },
+  { group: "Procurement", items: [
+    { label: "Purchase Requests", icon: ClipboardList, phase: 2 },
+    { label: "RFQs", icon: FileText, phase: 3 },
+    { label: "Vendor Quotations", icon: FileText, phase: 3 },
+    { label: "Purchase Orders", icon: ShoppingCart, phase: 3 },
+    { label: "Goods Received", icon: Truck, phase: 4 },
+    { label: "Vendor Invoices", icon: Receipt, phase: 5 },
+  ] },
+  { group: "Inventory", items: [
+    { to: "/materials", label: "Materials", icon: Package, perm: "materials.view" },
+    { to: "/warehouses", label: "Warehouses", icon: Boxes, perm: "warehouses.view" },
+    { label: "Stock", icon: Layers, phase: 4 },
+    { label: "Stock Movements", icon: ArrowLeftRight, phase: 4 },
+    { label: "Material Issues", icon: PackageMinus, phase: 4 },
+    { label: "Transfers", icon: ArrowLeftRight, phase: 4 },
+    { label: "Returns", icon: Undo2, phase: 4 },
+  ] },
+  { group: "Vendors", items: [
+    { to: "/vendors", label: "Vendor Master", icon: Store, perm: "vendors.view" },
+    { label: "Vendor Ledger", icon: BookOpen, phase: 5 },
+    { label: "Payables", icon: Wallet, phase: 5 },
+    { label: "Payments", icon: Banknote, phase: 5 },
+  ] },
+  { group: "Projects", items: [
+    { to: "/projects", label: "Projects", icon: Building2 },
+    { to: "/buildings", label: "Buildings", icon: Building },
+    { label: "Project Costing", icon: Calculator, phase: 6 },
+    { label: "Building Costing", icon: Calculator, phase: 6 },
+  ] },
+  { group: "Finance & Accounting", items: [
+    { label: "Accounts Payable", icon: Wallet, phase: 5 },
+    { label: "Chart of Accounts", icon: BookOpen, phase: 6 },
+    { label: "Journal Entries", icon: BookOpen, phase: 6 },
+    { label: "Trial Balance", icon: BarChart3, phase: 6 },
+  ] },
+  { group: "Insights", items: [
+    { label: "Reports", icon: BarChart3, phase: 7 },
+    { label: "Documents", icon: FolderOpen, phase: 7 },
+  ] },
+  { group: "Administration", items: [
+    { to: "/settings/users", label: "Users & Permissions", icon: Users, perm: "users.manage" },
+    { to: "/settings/company", label: "Company Settings", icon: Settings },
+    { to: "/audit", label: "Audit Log", icon: FileClock, perm: "audit.view" },
+  ] },
 ];
 
 function Shell() {
