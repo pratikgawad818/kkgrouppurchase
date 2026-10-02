@@ -102,6 +102,15 @@ function Shell() {
             <div key={g.group} className="mb-4">
                <div className={cn("px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/50", collapsed && "lg:hidden")}>{g.group}</div>
               {items.map((i) => {
+                if (!i.to) {
+                  return (
+                    <div key={i.label} title={`Coming in Phase ${i.phase}`} className="flex cursor-default items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm text-sidebar-foreground/40">
+                      <i.icon className="h-4 w-4 shrink-0" />
+                      <span className={cn("flex-1 truncate", collapsed && "lg:hidden")}>{i.label}</span>
+                      <span className={cn("rounded-sm border border-sidebar-border px-1 text-[9px] font-semibold", collapsed && "lg:hidden")}>P{i.phase}</span>
+                    </div>
+                  );
+                }
                 const active = path === i.to || path.startsWith(i.to + "/");
                 return (
                   <Link
@@ -151,8 +160,7 @@ function Shell() {
          <div className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-card px-4">
            <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu" className="lg:hidden"><Menu className="h-5 w-5" /></Button>
            <Button variant="ghost" size="icon" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden lg:inline-flex">{collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}</Button>
-           <div className="relative max-w-xl flex-1"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><input className="h-9 w-full rounded-md border bg-background pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring" placeholder="Search Phase 1 records" /></div>
-           <Button variant="ghost" size="icon" aria-label="Notifications"><Bell className="h-4 w-4" /></Button>
+           <div className="flex-1 text-sm font-medium text-muted-foreground">KK GROUP ERP</div>
            <div className="hidden text-right sm:block"><div className="max-w-40 truncate text-xs font-medium">{profile.full_name ?? profile.email}</div><div className="max-w-40 truncate text-[10px] text-muted-foreground">{roles.map((r) => ROLE_LABEL[r]).join(", ")}</div></div>
         </div>
          <main className="mx-auto max-w-[1600px] p-4 md:p-5 lg:p-6">
