@@ -522,6 +522,7 @@ export type Database = {
         Row: {
           company_id: string | null
           created_at: string
+          department: string | null
           designation: string | null
           email: string | null
           full_name: string | null
@@ -533,6 +534,7 @@ export type Database = {
         Insert: {
           company_id?: string | null
           created_at?: string
+          department?: string | null
           designation?: string | null
           email?: string | null
           full_name?: string | null
@@ -544,6 +546,7 @@ export type Database = {
         Update: {
           company_id?: string | null
           created_at?: string
+          department?: string | null
           designation?: string | null
           email?: string | null
           full_name?: string | null
@@ -1356,6 +1359,7 @@ export type Database = {
         Returns: {
           company_id: string | null
           created_at: string
+          department: string | null
           designation: string | null
           email: string | null
           full_name: string | null
