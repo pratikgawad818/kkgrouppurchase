@@ -518,6 +518,21 @@ export type Database = {
         }
         Relationships: []
       }
+      pr_number_counters: {
+        Row: {
+          last_value: number
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          year: number
+        }
+        Update: {
+          last_value?: number
+          year?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           company_id: string | null
@@ -756,6 +771,256 @@ export type Database = {
           {
             foreignKeyName: "projects_site_engineer_id_fkey"
             columns: ["site_engineer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_request_approvals: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          action: Database["public"]["Enums"]["pr_action"]
+          comment: string | null
+          id: string
+          new_status: Database["public"]["Enums"]["pr_status"] | null
+          previous_status: Database["public"]["Enums"]["pr_status"] | null
+          purchase_request_id: string
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          action: Database["public"]["Enums"]["pr_action"]
+          comment?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["pr_status"] | null
+          previous_status?: Database["public"]["Enums"]["pr_status"] | null
+          purchase_request_id: string
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          action?: Database["public"]["Enums"]["pr_action"]
+          comment?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["pr_status"] | null
+          previous_status?: Database["public"]["Enums"]["pr_status"] | null
+          purchase_request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_request_approvals_acted_by_fkey"
+            columns: ["acted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_request_approvals_purchase_request_id_fkey"
+            columns: ["purchase_request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_request_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          estimated_amount: number
+          estimated_rate: number | null
+          id: string
+          line_no: number
+          material_id: string
+          notes: string | null
+          purchase_request_id: string
+          purpose: string | null
+          quantity: number
+          required_by: string | null
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          estimated_amount?: number
+          estimated_rate?: number | null
+          id?: string
+          line_no?: number
+          material_id: string
+          notes?: string | null
+          purchase_request_id: string
+          purpose?: string | null
+          quantity: number
+          required_by?: string | null
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          estimated_amount?: number
+          estimated_rate?: number | null
+          id?: string
+          line_no?: number
+          material_id?: string
+          notes?: string | null
+          purchase_request_id?: string
+          purpose?: string | null
+          quantity?: number
+          required_by?: string | null
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_request_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_request_items_purchase_request_id_fkey"
+            columns: ["purchase_request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_request_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          building_id: string | null
+          company_id: string
+          created_at: string
+          estimated_total: number
+          floor_id: string | null
+          id: string
+          pr_number: string
+          priority: Database["public"]["Enums"]["pr_priority"]
+          project_id: string
+          purpose: string | null
+          remarks: string | null
+          request_date: string
+          request_type: Database["public"]["Enums"]["pr_request_type"]
+          requested_by: string
+          required_by: string
+          status: Database["public"]["Enums"]["pr_status"]
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          building_id?: string | null
+          company_id: string
+          created_at?: string
+          estimated_total?: number
+          floor_id?: string | null
+          id?: string
+          pr_number: string
+          priority?: Database["public"]["Enums"]["pr_priority"]
+          project_id: string
+          purpose?: string | null
+          remarks?: string | null
+          request_date?: string
+          request_type?: Database["public"]["Enums"]["pr_request_type"]
+          requested_by: string
+          required_by: string
+          status?: Database["public"]["Enums"]["pr_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          building_id?: string | null
+          company_id?: string
+          created_at?: string
+          estimated_total?: number
+          floor_id?: string | null
+          id?: string
+          pr_number?: string
+          priority?: Database["public"]["Enums"]["pr_priority"]
+          project_id?: string
+          purpose?: string | null
+          remarks?: string | null
+          request_date?: string
+          request_type?: Database["public"]["Enums"]["pr_request_type"]
+          requested_by?: string
+          required_by?: string
+          status?: Database["public"]["Enums"]["pr_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_floor_id_fkey"
+            columns: ["floor_id"]
+            isOneToOne: false
+            referencedRelation: "floors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_submitted_by_fkey"
+            columns: ["submitted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1407,6 +1672,14 @@ export type Database = {
       }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
       my_permissions: { Args: never; Returns: string[] }
+      pr_transition: {
+        Args: {
+          _action: Database["public"]["Enums"]["pr_action"]
+          _comment?: string
+          _pr_id: string
+        }
+        Returns: Database["public"]["Enums"]["pr_status"]
+      }
       set_unit_status: {
         Args: {
           _hold_until?: string
@@ -1430,6 +1703,21 @@ export type Database = {
         | "accountant"
         | "store_manager"
         | "auditor"
+      pr_action:
+        | "created"
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "returned"
+        | "cancelled"
+      pr_priority: "low" | "normal" | "high" | "urgent"
+      pr_request_type: "material" | "equipment" | "service" | "other"
+      pr_status:
+        | "draft"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "cancelled"
       project_status:
         | "planning"
         | "approval"
@@ -1590,6 +1878,23 @@ export const Constants = {
         "accountant",
         "store_manager",
         "auditor",
+      ],
+      pr_action: [
+        "created",
+        "submitted",
+        "approved",
+        "rejected",
+        "returned",
+        "cancelled",
+      ],
+      pr_priority: ["low", "normal", "high", "urgent"],
+      pr_request_type: ["material", "equipment", "service", "other"],
+      pr_status: [
+        "draft",
+        "pending_approval",
+        "approved",
+        "rejected",
+        "cancelled",
       ],
       project_status: [
         "planning",
