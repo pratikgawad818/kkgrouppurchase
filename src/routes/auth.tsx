@@ -6,8 +6,8 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import brandMark from "@/assets/kk-group-mark.png.asset.json";
-import brandLogo from "@/assets/kk-group-logo.jpg.asset.json";
+import brandMark from "@/assets/kk-groups-mark-tight.png.asset.json";
+import brandLogo from "@/assets/kk-groups-logo-clean.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -72,7 +72,7 @@ function AuthPage() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-sidebar p-10 text-sidebar-foreground lg:flex">
         <div className="flex items-center gap-2.5">
-           <div className="grid h-10 w-10 place-items-center rounded-sm bg-card p-1"><img src={brandMark.url} alt="" className="h-full w-full object-contain" /></div>
+           <div className="grid h-10 w-10 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Group" className="h-full w-full object-contain" /></div>
            <span className="font-semibold text-sidebar-accent-foreground">KK GROUP ERP</span>
         </div>
         <blockquote className="max-w-md text-2xl font-medium leading-snug text-sidebar-accent-foreground">
@@ -82,7 +82,7 @@ function AuthPage() {
       </div>
       <div className="flex items-center justify-center p-6">
          <div className="w-full max-w-sm">
-           <img src={brandLogo.url} alt="KK GROUP" className="mb-8 h-24 w-auto max-w-full object-contain object-left lg:hidden" />
+            <img src={brandLogo.url} alt="KK Group" className="mb-8 h-24 w-auto max-w-full object-contain object-left lg:hidden" />
           <h1 className="text-2xl font-semibold tracking-tight">{mode === "in" ? "Sign in" : "Create staff account"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "in" ? "Use your company credentials." : "An administrator will assign your role after sign-up."}
