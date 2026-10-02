@@ -6,7 +6,7 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import brandMark from "@/assets/kk-groups-mark-clean.png.asset.json";
+import brandMark from "@/assets/kk-groups-mark-tight.png.asset.json";
 import brandLogo from "@/assets/kk-groups-logo-clean.png.asset.json";
 
 export const Route = createFileRoute("/auth")({

@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/erp/common";
 import { cn } from "@/lib/utils";
-import brandMark from "@/assets/kk-groups-mark-clean.png.asset.json";
+import brandMark from "@/assets/kk-groups-mark-tight.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/_shell")({
   component: Shell,
