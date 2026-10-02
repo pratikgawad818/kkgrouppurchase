@@ -6,8 +6,8 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import brandMark from "@/assets/kk-groups-mark-tight.png.asset.json";
-import brandLogo from "@/assets/kk-groups-logo-clean.png.asset.json";
+import brandMark from "@/assets/kk-groups-full.png.asset.json";
+import brandLogo from "@/assets/kk-groups-full.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -72,7 +72,7 @@ function AuthPage() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-sidebar p-10 text-sidebar-foreground lg:flex">
         <div className="flex items-center gap-2.5">
-           <div className="grid h-10 w-10 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Group" className="h-full w-full object-contain" /></div>
+           <div className="grid h-12 w-20 place-items-center rounded-sm bg-card p-1"><img src={brandMark.url} alt="KK Groups" className="h-full w-full object-contain" /></div>
            <span className="font-semibold text-sidebar-accent-foreground">KK GROUP ERP</span>
         </div>
         <blockquote className="max-w-md text-2xl font-medium leading-snug text-sidebar-accent-foreground">
