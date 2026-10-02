@@ -71,7 +71,7 @@ function UsersPage() {
     setStaff(s);
     setEdit({ role: s.roles.find((r) => r !== "super_admin") ?? "", active: s.is_active, phone: s.phone ?? "", department: s.department ?? "", designation: s.designation ?? "" });
   }
-  const isSuper = staff?.roles.includes("super_admin");
+  const isSuper = !!staff?.roles.includes("super_admin");
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <div className="text-sm text-destructive">{q.error.message}</div>;
