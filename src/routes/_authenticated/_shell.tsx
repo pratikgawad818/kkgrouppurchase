@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Bell, Boxes, Building2, ChevronsLeft, ChevronsRight, FileClock, LayoutDashboard, LogOut, Menu, Package, Search, Settings, Store, Users } from "lucide-react";
+import { ArrowLeftRight, Banknote, BarChart3, BookOpen, Boxes, Building, Building2, Calculator, ChevronsLeft, ChevronsRight, ClipboardList, FileClock, FileText, FolderOpen, Layers, LayoutDashboard, LogOut, Menu, Package, PackageMinus, Receipt, Settings, ShoppingCart, Store, Truck, Undo2, Users, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/format";
@@ -15,26 +15,53 @@ export const Route = createFileRoute("/_authenticated/_shell")({
   component: Shell,
 });
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; perm?: string };
+type NavItem = { to?: string; label: string; icon: typeof LayoutDashboard; perm?: string; phase?: number };
 const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Overview", items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
-  {
-    group: "Operations",
-    items: [
-      { to: "/projects", label: "Projects", icon: Building2 },
-      { to: "/vendors", label: "Vendors", icon: Store, perm: "vendors.view" },
-      { to: "/materials", label: "Materials", icon: Package, perm: "materials.view" },
-      { to: "/warehouses", label: "Warehouses", icon: Boxes, perm: "warehouses.view" },
-    ],
-  },
-  {
-    group: "Administration",
-    items: [
-      { to: "/settings/users", label: "Users & Permissions", icon: Users, perm: "users.manage" },
-      { to: "/audit", label: "Audit Log", icon: FileClock, perm: "audit.view" },
-      { to: "/settings/company", label: "Company Settings", icon: Settings },
-    ],
-  },
+  { group: "Procurement", items: [
+    { label: "Purchase Requests", icon: ClipboardList, phase: 2 },
+    { label: "RFQs", icon: FileText, phase: 3 },
+    { label: "Vendor Quotations", icon: FileText, phase: 3 },
+    { label: "Purchase Orders", icon: ShoppingCart, phase: 3 },
+    { label: "Goods Received", icon: Truck, phase: 4 },
+    { label: "Vendor Invoices", icon: Receipt, phase: 5 },
+  ] },
+  { group: "Inventory", items: [
+    { to: "/materials", label: "Materials", icon: Package, perm: "materials.view" },
+    { to: "/warehouses", label: "Warehouses", icon: Boxes, perm: "warehouses.view" },
+    { label: "Stock", icon: Layers, phase: 4 },
+    { label: "Stock Movements", icon: ArrowLeftRight, phase: 4 },
+    { label: "Material Issues", icon: PackageMinus, phase: 4 },
+    { label: "Transfers", icon: ArrowLeftRight, phase: 4 },
+    { label: "Returns", icon: Undo2, phase: 4 },
+  ] },
+  { group: "Vendors", items: [
+    { to: "/vendors", label: "Vendor Master", icon: Store, perm: "vendors.view" },
+    { label: "Vendor Ledger", icon: BookOpen, phase: 5 },
+    { label: "Payables", icon: Wallet, phase: 5 },
+    { label: "Payments", icon: Banknote, phase: 5 },
+  ] },
+  { group: "Projects", items: [
+    { to: "/projects", label: "Projects", icon: Building2 },
+    { to: "/buildings", label: "Buildings", icon: Building },
+    { label: "Project Costing", icon: Calculator, phase: 6 },
+    { label: "Building Costing", icon: Calculator, phase: 6 },
+  ] },
+  { group: "Finance & Accounting", items: [
+    { label: "Accounts Payable", icon: Wallet, phase: 5 },
+    { label: "Chart of Accounts", icon: BookOpen, phase: 6 },
+    { label: "Journal Entries", icon: BookOpen, phase: 6 },
+    { label: "Trial Balance", icon: BarChart3, phase: 6 },
+  ] },
+  { group: "Insights", items: [
+    { label: "Reports", icon: BarChart3, phase: 7 },
+    { label: "Documents", icon: FolderOpen, phase: 7 },
+  ] },
+  { group: "Administration", items: [
+    { to: "/settings/users", label: "Users & Permissions", icon: Users, perm: "users.manage" },
+    { to: "/settings/company", label: "Company Settings", icon: Settings },
+    { to: "/audit", label: "Audit Log", icon: FileClock, perm: "audit.view" },
+  ] },
 ];
 
 function Shell() {
@@ -63,8 +90,8 @@ function Shell() {
       <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-3">
          <div className="grid h-10 w-16 shrink-0 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Groups" className="h-full w-full object-contain" /></div>
         <div className={cn("leading-tight", collapsed && "lg:hidden")}>
-          <div className="text-sm font-semibold text-sidebar-accent-foreground">KK Group</div>
-          <div className="text-[11px] text-sidebar-foreground/60">Operations ERP</div>
+          <div className="text-sm font-semibold text-sidebar-accent-foreground">KK GROUP ERP</div>
+          <div className="text-[11px] text-sidebar-foreground/60">Procurement & Projects</div>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-3">
@@ -75,6 +102,15 @@ function Shell() {
             <div key={g.group} className="mb-4">
                <div className={cn("px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/50", collapsed && "lg:hidden")}>{g.group}</div>
               {items.map((i) => {
+                if (!i.to) {
+                  return (
+                    <div key={i.label} title={`Coming in Phase ${i.phase}`} className="flex cursor-default items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm text-sidebar-foreground/40">
+                      <i.icon className="h-4 w-4 shrink-0" />
+                      <span className={cn("flex-1 truncate", collapsed && "lg:hidden")}>{i.label}</span>
+                      <span className={cn("rounded-sm border border-sidebar-border px-1 text-[9px] font-semibold", collapsed && "lg:hidden")}>P{i.phase}</span>
+                    </div>
+                  );
+                }
                 const active = path === i.to || path.startsWith(i.to + "/");
                 return (
                   <Link
@@ -124,8 +160,7 @@ function Shell() {
          <div className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-card px-4">
            <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu" className="lg:hidden"><Menu className="h-5 w-5" /></Button>
            <Button variant="ghost" size="icon" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden lg:inline-flex">{collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}</Button>
-           <div className="relative max-w-xl flex-1"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><input className="h-9 w-full rounded-md border bg-background pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring" placeholder="Search Phase 1 records" /></div>
-           <Button variant="ghost" size="icon" aria-label="Notifications"><Bell className="h-4 w-4" /></Button>
+           <div className="flex-1 text-sm font-medium text-muted-foreground">KK GROUP ERP</div>
            <div className="hidden text-right sm:block"><div className="max-w-40 truncate text-xs font-medium">{profile.full_name ?? profile.email}</div><div className="max-w-40 truncate text-[10px] text-muted-foreground">{roles.map((r) => ROLE_LABEL[r]).join(", ")}</div></div>
         </div>
          <main className="mx-auto max-w-[1600px] p-4 md:p-5 lg:p-6">
