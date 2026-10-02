@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2, Package, Store, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import brandMark from "@/assets/kk-group-mark.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,8 +29,8 @@ function Index() {
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="grid h-8 w-8 place-items-center rounded-sm bg-sidebar-primary font-mono text-sm font-bold text-sidebar-primary-foreground">KK</div>
-            <span className="font-semibold tracking-tight text-sidebar-accent-foreground">KK Group ERP</span>
+             <div className="grid h-10 w-10 place-items-center rounded-sm bg-card p-1"><img src={brandMark.url} alt="" className="h-full w-full object-contain" /></div>
+             <span className="font-semibold tracking-tight text-sidebar-accent-foreground">KK GROUP ERP</span>
           </div>
           <Button asChild size="sm" className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">
             <Link to="/dashboard">Sign in</Link>
