@@ -90,8 +90,8 @@ function Shell() {
       <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-3">
          <div className="grid h-10 w-16 shrink-0 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Groups" className="h-full w-full object-contain" /></div>
         <div className={cn("leading-tight", collapsed && "lg:hidden")}>
-          <div className="text-sm font-semibold text-sidebar-accent-foreground">KK Group</div>
-          <div className="text-[11px] text-sidebar-foreground/60">Operations ERP</div>
+          <div className="text-sm font-semibold text-sidebar-accent-foreground">KK GROUP ERP</div>
+          <div className="text-[11px] text-sidebar-foreground/60">Procurement & Projects</div>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-3">
