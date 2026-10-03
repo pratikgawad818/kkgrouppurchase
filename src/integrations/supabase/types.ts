@@ -252,6 +252,24 @@ export type Database = {
           },
         ]
       }
+      doc_number_counters: {
+        Row: {
+          doc: string
+          last_value: number
+          year: number
+        }
+        Insert: {
+          doc: string
+          last_value?: number
+          year: number
+        }
+        Update: {
+          doc?: string
+          last_value?: number
+          year?: number
+        }
+        Relationships: []
+      }
       financial_periods: {
         Row: {
           company_id: string
@@ -341,6 +359,294 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_building_stats"
             referencedColumns: ["building_id"]
+          },
+        ]
+      }
+      goods_receipt_items: {
+        Row: {
+          accepted_quantity: number
+          damaged_quantity: number
+          grn_id: string
+          id: string
+          material_id: string
+          ordered_quantity: number
+          po_item_id: string
+          previously_received: number
+          received_quantity: number
+          remarks: string | null
+          unit_cost: number
+          unit_id: string
+        }
+        Insert: {
+          accepted_quantity: number
+          damaged_quantity?: number
+          grn_id: string
+          id?: string
+          material_id: string
+          ordered_quantity: number
+          po_item_id: string
+          previously_received: number
+          received_quantity: number
+          remarks?: string | null
+          unit_cost: number
+          unit_id: string
+        }
+        Update: {
+          accepted_quantity?: number
+          damaged_quantity?: number
+          grn_id?: string
+          id?: string
+          material_id?: string
+          ordered_quantity?: number
+          po_item_id?: string
+          previously_received?: number
+          received_quantity?: number
+          remarks?: string | null
+          unit_cost?: number
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_receipt_items_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipt_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_po_item_id_fkey"
+            columns: ["po_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goods_receipt_notes: {
+        Row: {
+          challan_number: string | null
+          company_id: string
+          created_at: string
+          grn_number: string
+          id: string
+          invoice_reference: string | null
+          po_id: string
+          project_id: string
+          received_by: string
+          received_date: string
+          remarks: string | null
+          vehicle_number: string | null
+          vendor_id: string
+          warehouse_id: string
+        }
+        Insert: {
+          challan_number?: string | null
+          company_id: string
+          created_at?: string
+          grn_number: string
+          id?: string
+          invoice_reference?: string | null
+          po_id: string
+          project_id: string
+          received_by: string
+          received_date?: string
+          remarks?: string | null
+          vehicle_number?: string | null
+          vendor_id: string
+          warehouse_id: string
+        }
+        Update: {
+          challan_number?: string | null
+          company_id?: string
+          created_at?: string
+          grn_number?: string
+          id?: string
+          invoice_reference?: string | null
+          po_id?: string
+          project_id?: string
+          received_by?: string
+          received_date?: string
+          remarks?: string | null
+          vehicle_number?: string | null
+          vendor_id?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_receipt_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_transactions: {
+        Row: {
+          balance_after: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          grn_id: string | null
+          grn_item_id: string | null
+          id: number
+          material_id: string
+          project_id: string | null
+          quantity_in: number
+          quantity_out: number
+          remarks: string | null
+          total_cost: number
+          transfer_id: string | null
+          tx_date: string
+          tx_type: Database["public"]["Enums"]["inventory_tx_type"]
+          unit_cost: number
+          warehouse_id: string
+        }
+        Insert: {
+          balance_after: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          grn_id?: string | null
+          grn_item_id?: string | null
+          id?: never
+          material_id: string
+          project_id?: string | null
+          quantity_in?: number
+          quantity_out?: number
+          remarks?: string | null
+          total_cost: number
+          transfer_id?: string | null
+          tx_date?: string
+          tx_type: Database["public"]["Enums"]["inventory_tx_type"]
+          unit_cost: number
+          warehouse_id: string
+        }
+        Update: {
+          balance_after?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          grn_id?: string | null
+          grn_item_id?: string | null
+          id?: never
+          material_id?: string
+          project_id?: string | null
+          quantity_in?: number
+          quantity_out?: number
+          remarks?: string | null
+          total_cost?: number
+          transfer_id?: string | null
+          tx_date?: string
+          tx_type?: Database["public"]["Enums"]["inventory_tx_type"]
+          unit_cost?: number
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipt_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipt_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -773,6 +1079,331 @@ export type Database = {
             columns: ["site_engineer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_order_approvals: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          action: Database["public"]["Enums"]["po_action"]
+          comment: string | null
+          id: string
+          new_status: Database["public"]["Enums"]["po_status"] | null
+          po_id: string
+          previous_status: Database["public"]["Enums"]["po_status"] | null
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          action: Database["public"]["Enums"]["po_action"]
+          comment?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["po_status"] | null
+          po_id: string
+          previous_status?: Database["public"]["Enums"]["po_status"] | null
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          action?: Database["public"]["Enums"]["po_action"]
+          comment?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["po_status"] | null
+          po_id?: string
+          previous_status?: Database["public"]["Enums"]["po_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_approvals_acted_by_fkey"
+            columns: ["acted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_approvals_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_order_items: {
+        Row: {
+          description: string | null
+          discount_amount: number
+          id: string
+          line_no: number
+          line_total: number
+          material_id: string
+          ordered_quantity: number
+          po_id: string
+          quotation_item_id: string
+          rate: number
+          received_quantity: number
+          rfq_item_id: string
+          tax_amount: number
+          tax_rate_percent: number
+          tax_type: string
+          taxable_amount: number
+          unit_id: string
+          vendor_selection_id: string
+        }
+        Insert: {
+          description?: string | null
+          discount_amount?: number
+          id?: string
+          line_no: number
+          line_total: number
+          material_id: string
+          ordered_quantity: number
+          po_id: string
+          quotation_item_id: string
+          rate: number
+          received_quantity?: number
+          rfq_item_id: string
+          tax_amount: number
+          tax_rate_percent: number
+          tax_type: string
+          taxable_amount: number
+          unit_id: string
+          vendor_selection_id: string
+        }
+        Update: {
+          description?: string | null
+          discount_amount?: number
+          id?: string
+          line_no?: number
+          line_total?: number
+          material_id?: string
+          ordered_quantity?: number
+          po_id?: string
+          quotation_item_id?: string
+          rate?: number
+          received_quantity?: number
+          rfq_item_id?: string
+          tax_amount?: number
+          tax_rate_percent?: number
+          tax_type?: string
+          taxable_amount?: number
+          unit_id?: string
+          vendor_selection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_quotation_item_id_fkey"
+            columns: ["quotation_item_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_quotation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_rfq_item_id_fkey"
+            columns: ["rfq_item_id"]
+            isOneToOne: false
+            referencedRelation: "rfq_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_vendor_selection_id_fkey"
+            columns: ["vendor_selection_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_selections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          building_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          delivery_terms: string | null
+          delivery_warehouse_id: string | null
+          discount_total: number
+          expected_delivery_date: string | null
+          freight: number
+          grand_total: number
+          id: string
+          other_charges: number
+          payment_terms: string | null
+          po_date: string
+          po_number: string
+          project_id: string
+          purchase_request_id: string
+          quotation_id: string
+          remarks: string | null
+          rfq_id: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["po_status"]
+          subtotal: number
+          tax_total: number
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          building_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          delivery_terms?: string | null
+          delivery_warehouse_id?: string | null
+          discount_total?: number
+          expected_delivery_date?: string | null
+          freight?: number
+          grand_total?: number
+          id?: string
+          other_charges?: number
+          payment_terms?: string | null
+          po_date?: string
+          po_number: string
+          project_id: string
+          purchase_request_id: string
+          quotation_id: string
+          remarks?: string | null
+          rfq_id: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["po_status"]
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          building_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          delivery_terms?: string | null
+          delivery_warehouse_id?: string | null
+          discount_total?: number
+          expected_delivery_date?: string | null
+          freight?: number
+          grand_total?: number
+          id?: string
+          other_charges?: number
+          payment_terms?: string | null
+          po_date?: string
+          po_number?: string
+          project_id?: string
+          purchase_request_id?: string
+          quotation_id?: string
+          remarks?: string | null
+          rfq_id?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["po_status"]
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_delivery_warehouse_id_fkey"
+            columns: ["delivery_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_purchase_request_id_fkey"
+            columns: ["purchase_request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -1278,6 +1909,110 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "permissions"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      stock_transfer_items: {
+        Row: {
+          id: string
+          material_id: string
+          quantity: number
+          transfer_id: string
+          unit_cost: number
+        }
+        Insert: {
+          id?: string
+          material_id: string
+          quantity: number
+          transfer_id: string
+          unit_cost: number
+        }
+        Update: {
+          id?: string
+          material_id?: string
+          quantity?: number
+          transfer_id?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfer_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_items_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          from_warehouse_id: string
+          id: string
+          reason: string
+          to_warehouse_id: string
+          transfer_date: string
+          transfer_number: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          from_warehouse_id: string
+          id?: string
+          reason: string
+          to_warehouse_id: string
+          transfer_date?: string
+          transfer_number: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          from_warehouse_id?: string
+          id?: string
+          reason?: string
+          to_warehouse_id?: string
+          transfer_date?: string
+          transfer_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_from_warehouse_id_fkey"
+            columns: ["from_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_to_warehouse_id_fkey"
+            columns: ["to_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1984,6 +2719,48 @@ export type Database = {
           },
         ]
       }
+      warehouse_stock: {
+        Row: {
+          material_id: string
+          quantity_on_hand: number
+          total_value: number
+          updated_at: string
+          warehouse_id: string
+          weighted_avg_cost: number
+        }
+        Insert: {
+          material_id: string
+          quantity_on_hand?: number
+          total_value?: number
+          updated_at?: string
+          warehouse_id: string
+          weighted_avg_cost?: number
+        }
+        Update: {
+          material_id?: string
+          quantity_on_hand?: number
+          total_value?: number
+          updated_at?: string
+          warehouse_id?: string
+          weighted_avg_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_stock_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_stock_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warehouses: {
         Row: {
           address: string | null
@@ -2102,6 +2879,19 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      create_goods_receipt: {
+        Args: {
+          _header: Json
+          _items: Json
+          _po_id: string
+          _warehouse_id: string
+        }
+        Returns: string
+      }
+      create_po_from_selection: {
+        Args: { _quotation_id: string; _rfq_id: string }
+        Returns: string
+      }
       ensure_profile: {
         Args: never
         Returns: {
@@ -2122,6 +2912,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      execute_stock_transfer: {
+        Args: { _from: string; _items: Json; _reason: string; _to: string }
+        Returns: string
       }
       generate_units: {
         Args: {
@@ -2155,6 +2949,36 @@ export type Database = {
       }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
       my_permissions: { Args: never; Returns: string[] }
+      next_doc_number: {
+        Args: { _doc: string; _prefix: string }
+        Returns: string
+      }
+      po_can_view: { Args: { _po_id: string }; Returns: boolean }
+      po_transition: {
+        Args: {
+          _action: Database["public"]["Enums"]["po_action"]
+          _comment: string
+          _po_id: string
+        }
+        Returns: Database["public"]["Enums"]["po_status"]
+      }
+      post_stock: {
+        Args: {
+          _company: string
+          _cost: number
+          _grn: string
+          _grn_item: string
+          _mat: string
+          _project: string
+          _qin: number
+          _qout: number
+          _remarks: string
+          _transfer: string
+          _type: Database["public"]["Enums"]["inventory_tx_type"]
+          _wh: string
+        }
+        Returns: number
+      }
       pr_transition: {
         Args: {
           _action: Database["public"]["Enums"]["pr_action"]
@@ -2202,6 +3026,34 @@ export type Database = {
         | "accountant"
         | "store_manager"
         | "auditor"
+      inventory_tx_type:
+        | "opening_stock"
+        | "goods_receipt"
+        | "transfer_in"
+        | "transfer_out"
+        | "damage"
+        | "adjustment"
+        | "material_issue"
+        | "material_return"
+        | "purchase_return"
+      po_action:
+        | "created"
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "sent"
+        | "cancelled"
+        | "closed"
+      po_status:
+        | "draft"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "sent"
+        | "partially_received"
+        | "fully_received"
+        | "closed"
+        | "cancelled"
       pr_action:
         | "created"
         | "submitted"
@@ -2387,6 +3239,37 @@ export const Constants = {
         "accountant",
         "store_manager",
         "auditor",
+      ],
+      inventory_tx_type: [
+        "opening_stock",
+        "goods_receipt",
+        "transfer_in",
+        "transfer_out",
+        "damage",
+        "adjustment",
+        "material_issue",
+        "material_return",
+        "purchase_return",
+      ],
+      po_action: [
+        "created",
+        "submitted",
+        "approved",
+        "rejected",
+        "sent",
+        "cancelled",
+        "closed",
+      ],
+      po_status: [
+        "draft",
+        "pending_approval",
+        "approved",
+        "rejected",
+        "sent",
+        "partially_received",
+        "fully_received",
+        "closed",
+        "cancelled",
       ],
       pr_action: [
         "created",

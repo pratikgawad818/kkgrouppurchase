@@ -112,7 +112,7 @@ function RfqDetail() {
         <section className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-4 text-sm">
           <div className="font-semibold">Ready for Purchase Order</div>
           <div className="mt-1 text-muted-foreground">Selection reason: {rfq.selection_reason}</div>
-          <div className="mt-1 text-xs text-muted-foreground">Purchase Orders will be created from this selection in the next phase.</div>
+          <AwardPos rfqId={id} quotes={quotes.filter((x) => x.status === "selected")} canCreate={can("purchase_order.create")} />
         </section>
       )}
 
@@ -124,5 +124,41 @@ function RfqDetail() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function AwardPos({ rfqId, quotes, canCreate }: { rfqId: string; quotes: Array<{ id: string; grand_total: number; vendors?: { company_name: string } | null }>; canCreate: boolean }) {
+  const qc = useQueryClient();
+  const pos = useQuery({
+    queryKey: ["rfq-pos", rfqId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("purchase_orders").select("id,po_number,status,quotation_id").eq("rfq_id", rfqId);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const create = useMutation({
+    mutationFn: async (quotationId: string) => {
+      const { data, error } = await supabase.rpc("create_po_from_selection", { _rfq_id: rfqId, _quotation_id: quotationId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => { toast.success("Draft purchase order created"); qc.invalidateQueries({ queryKey: ["rfq-pos", rfqId] }); qc.invalidateQueries({ queryKey: ["pos"] }); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  return (
+    <div className="mt-3 space-y-2">
+      {quotes.map((qt) => {
+        const po = pos.data?.find((p) => p.quotation_id === qt.id);
+        return (
+          <div key={qt.id} className="flex flex-wrap items-center justify-between gap-2 rounded-sm border bg-card px-3 py-2">
+            <div><span className="font-medium">{qt.vendors?.company_name ?? "Vendor"}</span> <span className="ml-2 font-mono text-xs text-muted-foreground">{inr(qt.grand_total)}</span></div>
+            {po ? <Link className="font-mono text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: po.id }}>{po.po_number}</Link>
+              : canCreate ? <Button size="sm" disabled={create.isPending} onClick={() => create.mutate(qt.id)}>Create purchase order</Button>
+              : <span className="text-xs text-muted-foreground">PO not yet created</span>}
+          </div>
+        );
+      })}
+    </div>
   );
 }

@@ -8,6 +8,13 @@
       "when": 1791005527917,
       "tag": "0000_phase3_rfq_quotations",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791006565412,
+      "tag": "0001_phase4_po_grn_inventory",
+      "breakpoints": true
     }
   ]
 }
