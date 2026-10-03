@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, Package, Store, Warehouse } from "lucide-react";
+import { Building2, Package, Plus, Store, Warehouse } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Stat, Loading } from "@/components/erp/common";
 import { fmtDateTime } from "@/lib/format";
@@ -22,6 +23,39 @@ function Pending({ label, phase }: { label: string; phase: number }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="mt-6"><h2 className="mb-2 text-sm font-semibold">{title}</h2><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{children}</div></section>;
+}
+
+function PrSummary({ fy, projectId, buildingId, canCreate }: { fy: number; projectId: string; buildingId: string; canCreate: boolean }) {
+  const q = useQuery({
+    queryKey: ["prs", "summary", fy, projectId, buildingId],
+    queryFn: async () => {
+      let r = supabase.from("purchase_requests").select("status,required_by").gte("request_date", `${fy}-04-01`).lte("request_date", `${fy + 1}-03-31`).limit(5000);
+      if (projectId) r = r.eq("project_id", projectId);
+      if (buildingId) r = r.eq("building_id", buildingId);
+      const { data, error } = await r;
+      if (error) throw error;
+      const soon = new Date(); soon.setDate(soon.getDate() + 7); const s = soon.toISOString().slice(0, 10);
+      const rows = data ?? [];
+      const c = (st: string) => rows.filter((x) => x.status === st).length;
+      return { total: rows.length, draft: c("draft"), pending: c("pending_approval"), approved: c("approved"), rejected: c("rejected"), due: rows.filter((x) => ["draft", "pending_approval", "approved"].includes(x.status) && x.required_by <= s).length };
+    },
+  });
+  const d = q.data;
+  const card = (label: string, value: number | undefined, search: { status?: string; due?: string }) => (
+    <Link to="/procurement/purchase-requests" search={search}><Stat label={label} value={value ?? "—"} className="hover:border-primary/50" /></Link>
+  );
+  return (
+    <section className="mt-6">
+      <div className="mb-2 flex items-center justify-between"><h2 className="text-sm font-semibold">Purchase Requests <span className="font-normal text-muted-foreground">· {d?.total ?? 0} total in {fyLabel(fy)}</span></h2>{canCreate && <Button asChild size="sm"><Link to="/procurement/purchase-requests/new"><Plus className="h-4 w-4" />Purchase Request</Link></Button>}</div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {card("Draft", d?.draft, { status: "draft" })}
+        {card("Pending approval", d?.pending, { status: "pending_approval" })}
+        {card("Approved", d?.approved, { status: "approved" })}
+        {card("Rejected", d?.rejected, { status: "rejected" })}
+        {card("Due in 7 days", d?.due, { due: "1" })}
+      </div>
+    </section>
+  );
 }
 
 function Dashboard() {
@@ -80,8 +114,8 @@ function Dashboard() {
           </>
         }
       />
+      {can("purchase_request.view") && <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />}
       <Section title="Purchase">
-        <Pending label="Purchase requests pending" phase={2} />
         <Pending label="Open purchase orders" phase={3} />
         <Pending label="Purchases this month" phase={3} />
         <Pending label={`Purchases ${fyLabel(fy)}`} phase={3} />

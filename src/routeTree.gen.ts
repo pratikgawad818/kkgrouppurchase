@@ -24,6 +24,10 @@ import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authent
 import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
+import { Route as AuthenticatedShellProcurementPurchaseRequestsIndexRouteImport } from './routes/_authenticated/_shell/procurement.purchase-requests.index'
+import { Route as AuthenticatedShellProcurementPurchaseRequestsNewRouteImport } from './routes/_authenticated/_shell/procurement.purchase-requests.new'
+import { Route as AuthenticatedShellProcurementPurchaseRequestsIdIndexRouteImport } from './routes/_authenticated/_shell/procurement.purchase-requests.$id.index'
+import { Route as AuthenticatedShellProcurementPurchaseRequestsIdEditRouteImport } from './routes/_authenticated/_shell/procurement.purchase-requests.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -106,6 +110,30 @@ const AuthenticatedShellSettingsUsersRoute =
     path: '/settings/users',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellProcurementPurchaseRequestsIndexRoute =
+  AuthenticatedShellProcurementPurchaseRequestsIndexRouteImport.update({
+    id: '/procurement/purchase-requests/',
+    path: '/procurement/purchase-requests/',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProcurementPurchaseRequestsNewRoute =
+  AuthenticatedShellProcurementPurchaseRequestsNewRouteImport.update({
+    id: '/procurement/purchase-requests/new',
+    path: '/procurement/purchase-requests/new',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute =
+  AuthenticatedShellProcurementPurchaseRequestsIdIndexRouteImport.update({
+    id: '/procurement/purchase-requests/$id/',
+    path: '/procurement/purchase-requests/$id/',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProcurementPurchaseRequestsIdEditRoute =
+  AuthenticatedShellProcurementPurchaseRequestsIdEditRouteImport.update({
+    id: '/procurement/purchase-requests/$id/edit',
+    path: '/procurement/purchase-requests/$id/edit',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -121,6 +149,10 @@ export interface FileRoutesByFullPath {
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
+  '/procurement/purchase-requests/': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
+  '/procurement/purchase-requests/$id/edit': typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
+  '/procurement/purchase-requests/$id/': typeof AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -136,6 +168,10 @@ export interface FileRoutesByTo {
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
+  '/procurement/purchase-requests': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
+  '/procurement/purchase-requests/$id/edit': typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
+  '/procurement/purchase-requests/$id': typeof AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -154,6 +190,10 @@ export interface FileRoutesById {
   '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/_authenticated/_shell/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
+  '/_authenticated/_shell/procurement/purchase-requests/': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
+  '/_authenticated/_shell/procurement/purchase-requests/$id/edit': typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
+  '/_authenticated/_shell/procurement/purchase-requests/$id/': typeof AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +211,10 @@ export interface FileRouteTypes {
     | '/warehouses'
     | '/settings/company'
     | '/settings/users'
+    | '/procurement/purchase-requests/new'
+    | '/procurement/purchase-requests/'
+    | '/procurement/purchase-requests/$id/edit'
+    | '/procurement/purchase-requests/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -186,6 +230,10 @@ export interface FileRouteTypes {
     | '/warehouses'
     | '/settings/company'
     | '/settings/users'
+    | '/procurement/purchase-requests/new'
+    | '/procurement/purchase-requests'
+    | '/procurement/purchase-requests/$id/edit'
+    | '/procurement/purchase-requests/$id'
   id:
     | '__root__'
     | '/'
@@ -203,6 +251,10 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/warehouses'
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/users'
+    | '/_authenticated/_shell/procurement/purchase-requests/new'
+    | '/_authenticated/_shell/procurement/purchase-requests/'
+    | '/_authenticated/_shell/procurement/purchase-requests/$id/edit'
+    | '/_authenticated/_shell/procurement/purchase-requests/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -319,6 +371,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellSettingsUsersRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/procurement/purchase-requests/': {
+      id: '/_authenticated/_shell/procurement/purchase-requests/'
+      path: '/procurement/purchase-requests'
+      fullPath: '/procurement/purchase-requests/'
+      preLoaderRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIndexRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/procurement/purchase-requests/new': {
+      id: '/_authenticated/_shell/procurement/purchase-requests/new'
+      path: '/procurement/purchase-requests/new'
+      fullPath: '/procurement/purchase-requests/new'
+      preLoaderRoute: typeof AuthenticatedShellProcurementPurchaseRequestsNewRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/procurement/purchase-requests/$id/': {
+      id: '/_authenticated/_shell/procurement/purchase-requests/$id/'
+      path: '/procurement/purchase-requests/$id'
+      fullPath: '/procurement/purchase-requests/$id/'
+      preLoaderRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIdIndexRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/procurement/purchase-requests/$id/edit': {
+      id: '/_authenticated/_shell/procurement/purchase-requests/$id/edit'
+      path: '/procurement/purchase-requests/$id/edit'
+      fullPath: '/procurement/purchase-requests/$id/edit'
+      preLoaderRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
   }
 }
 
@@ -333,6 +413,10 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellWarehousesRoute: typeof AuthenticatedShellWarehousesRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
+  AuthenticatedShellProcurementPurchaseRequestsNewRoute: typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
+  AuthenticatedShellProcurementPurchaseRequestsIndexRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
+  AuthenticatedShellProcurementPurchaseRequestsIdEditRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
+  AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute
 }
 
 const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
@@ -347,6 +431,14 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellSettingsCompanyRoute:
     AuthenticatedShellSettingsCompanyRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
+  AuthenticatedShellProcurementPurchaseRequestsNewRoute:
+    AuthenticatedShellProcurementPurchaseRequestsNewRoute,
+  AuthenticatedShellProcurementPurchaseRequestsIndexRoute:
+    AuthenticatedShellProcurementPurchaseRequestsIndexRoute,
+  AuthenticatedShellProcurementPurchaseRequestsIdEditRoute:
+    AuthenticatedShellProcurementPurchaseRequestsIdEditRoute,
+  AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute:
+    AuthenticatedShellProcurementPurchaseRequestsIdIndexRoute,
 }
 
 const AuthenticatedShellRouteWithChildren =
