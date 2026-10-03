@@ -24,7 +24,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/procurement/vendor-quotations", label: "Vendor Quotations", icon: FileText, perm: "quotation.view" },
     { to: "/procurement/purchase-orders", label: "Purchase Orders", icon: ShoppingCart, perm: "purchase_order.view" },
     { to: "/inventory/goods-received", label: "Goods Received", icon: Truck, perm: "grn.view" },
-    { label: "Vendor Invoices", icon: Receipt, phase: 5 },
+    { to: "/finance/vendor-invoices", label: "Vendor Invoices", icon: Receipt, perm: "vendor_invoice.view" },
   ] },
   { group: "Inventory", items: [
     { to: "/materials", label: "Materials", icon: Package, perm: "materials.view" },
@@ -37,9 +37,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
   ] },
   { group: "Vendors", items: [
     { to: "/vendors", label: "Vendor Master", icon: Store, perm: "vendors.view" },
-    { label: "Vendor Ledger", icon: BookOpen, phase: 5 },
-    { label: "Payables", icon: Wallet, phase: 5 },
-    { label: "Payments", icon: Banknote, phase: 5 },
+    { to: "/finance/vendor-ledger", label: "Vendor Ledger", icon: BookOpen, perm: "ledger.view" },
+    { to: "/finance/payments", label: "Vendor Payments", icon: Banknote, perm: "payment.view" },
   ] },
   { group: "Projects", items: [
     { to: "/projects", label: "Projects", icon: Building2 },
@@ -48,7 +47,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { label: "Building Costing", icon: Calculator, phase: 6 },
   ] },
   { group: "Finance & Accounting", items: [
-    { label: "Accounts Payable", icon: Wallet, phase: 5 },
+    { to: "/finance/payables", label: "Accounts Payable", icon: Wallet, perm: "payable.view" },
     { label: "Chart of Accounts", icon: BookOpen, phase: 6 },
     { label: "Journal Entries", icon: BookOpen, phase: 6 },
     { label: "Trial Balance", icon: BarChart3, phase: 6 },
@@ -60,6 +59,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Administration", items: [
     { to: "/settings/users", label: "Users & Permissions", icon: Users, perm: "users.manage" },
     { to: "/settings/company", label: "Company Settings", icon: Settings },
+    { to: "/settings/finance", label: "Finance Settings", icon: Settings, perm: "company.view" },
     { to: "/audit", label: "Audit Log", icon: FileClock, perm: "audit.view" },
   ] },
 ];

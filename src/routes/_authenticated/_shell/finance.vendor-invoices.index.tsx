@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 const META = "Vendor invoices matched against purchase orders and goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/")({
   head: () => ({ meta: [{ title: "Vendor Invoices — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "Vendor Invoices — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ status: typeof s.status === "string" ? s.status : undefined }),
+  validateSearch: (s: Record<string, unknown>): { status?: string } => (typeof s["status"] === "string" ? { status: s["status"] as string } : {}),
   component: InvoiceList,
 });
 

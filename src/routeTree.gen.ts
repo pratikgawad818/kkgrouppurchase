@@ -22,12 +22,18 @@ import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
 import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authenticated/_shell/vendors'
 import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
+import { Route as AuthenticatedShellFinancePayablesRouteImport } from './routes/_authenticated/_shell/finance.payables'
+import { Route as AuthenticatedShellFinancePaymentsRouteImport } from './routes/_authenticated/_shell/finance.payments'
+import { Route as AuthenticatedShellFinanceVendorLedgerRouteImport } from './routes/_authenticated/_shell/finance.vendor-ledger'
 import { Route as AuthenticatedShellInventoryStockRouteImport } from './routes/_authenticated/_shell/inventory.stock'
 import { Route as AuthenticatedShellInventoryStockMovementsRouteImport } from './routes/_authenticated/_shell/inventory.stock-movements'
 import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } from './routes/_authenticated/_shell/procurement.vendor-quotations'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
+import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIndexRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.index'
+import { Route as AuthenticatedShellFinanceVendorInvoicesIdRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.$id'
+import { Route as AuthenticatedShellFinanceVendorInvoicesNewRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.new'
 import { Route as AuthenticatedShellInventoryGoodsReceivedIndexRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.index'
 import { Route as AuthenticatedShellInventoryGoodsReceivedIdRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.$id'
 import { Route as AuthenticatedShellProcurementPurchaseOrdersIndexRouteImport } from './routes/_authenticated/_shell/procurement.purchase-orders.index'
@@ -111,6 +117,24 @@ const AuthenticatedShellWarehousesRoute =
     path: '/warehouses',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellFinancePayablesRoute =
+  AuthenticatedShellFinancePayablesRouteImport.update({
+    id: '/finance/payables',
+    path: '/finance/payables',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellFinancePaymentsRoute =
+  AuthenticatedShellFinancePaymentsRouteImport.update({
+    id: '/finance/payments',
+    path: '/finance/payments',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellFinanceVendorLedgerRoute =
+  AuthenticatedShellFinanceVendorLedgerRouteImport.update({
+    id: '/finance/vendor-ledger',
+    path: '/finance/vendor-ledger',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellInventoryStockRoute =
   AuthenticatedShellInventoryStockRouteImport.update({
     id: '/inventory/stock',
@@ -135,6 +159,12 @@ const AuthenticatedShellSettingsCompanyRoute =
     path: '/settings/company',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellSettingsFinanceRoute =
+  AuthenticatedShellSettingsFinanceRouteImport.update({
+    id: '/settings/finance',
+    path: '/settings/finance',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellSettingsUsersRoute =
   AuthenticatedShellSettingsUsersRouteImport.update({
     id: '/settings/users',
@@ -145,6 +175,18 @@ const AuthenticatedShellFinanceVendorInvoicesIndexRoute =
   AuthenticatedShellFinanceVendorInvoicesIndexRouteImport.update({
     id: '/finance/vendor-invoices/',
     path: '/finance/vendor-invoices/',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellFinanceVendorInvoicesIdRoute =
+  AuthenticatedShellFinanceVendorInvoicesIdRouteImport.update({
+    id: '/finance/vendor-invoices/$id',
+    path: '/finance/vendor-invoices/$id',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellFinanceVendorInvoicesNewRoute =
+  AuthenticatedShellFinanceVendorInvoicesNewRouteImport.update({
+    id: '/finance/vendor-invoices/new',
+    path: '/finance/vendor-invoices/new',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellInventoryGoodsReceivedIndexRoute =
@@ -238,11 +280,17 @@ export interface FileRoutesByFullPath {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
+  '/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
+  '/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
   '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
+  '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
@@ -270,11 +318,17 @@ export interface FileRoutesByTo {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
+  '/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
+  '/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
   '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
+  '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
@@ -305,11 +359,17 @@ export interface FileRoutesById {
   '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
   '/_authenticated/_shell/vendors': typeof AuthenticatedShellVendorsRoute
   '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/_authenticated/_shell/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
+  '/_authenticated/_shell/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
+  '/_authenticated/_shell/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
   '/_authenticated/_shell/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/_authenticated/_shell/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/_authenticated/_shell/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/_authenticated/_shell/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
+  '/_authenticated/_shell/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/_authenticated/_shell/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/_authenticated/_shell/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/_authenticated/_shell/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
@@ -339,11 +399,17 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
+    | '/finance/payables'
+    | '/finance/payments'
+    | '/finance/vendor-ledger'
     | '/inventory/stock'
     | '/inventory/stock-movements'
     | '/procurement/vendor-quotations'
     | '/settings/company'
+    | '/settings/finance'
     | '/settings/users'
+    | '/finance/vendor-invoices/$id'
+    | '/finance/vendor-invoices/new'
     | '/inventory/goods-received/$id'
     | '/procurement/purchase-orders/$id'
     | '/procurement/purchase-requests/new'
@@ -371,11 +437,17 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
+    | '/finance/payables'
+    | '/finance/payments'
+    | '/finance/vendor-ledger'
     | '/inventory/stock'
     | '/inventory/stock-movements'
     | '/procurement/vendor-quotations'
     | '/settings/company'
+    | '/settings/finance'
     | '/settings/users'
+    | '/finance/vendor-invoices/$id'
+    | '/finance/vendor-invoices/new'
     | '/inventory/goods-received/$id'
     | '/procurement/purchase-orders/$id'
     | '/procurement/purchase-requests/new'
@@ -405,11 +477,17 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/units'
     | '/_authenticated/_shell/vendors'
     | '/_authenticated/_shell/warehouses'
+    | '/_authenticated/_shell/finance/payables'
+    | '/_authenticated/_shell/finance/payments'
+    | '/_authenticated/_shell/finance/vendor-ledger'
     | '/_authenticated/_shell/inventory/stock'
     | '/_authenticated/_shell/inventory/stock-movements'
     | '/_authenticated/_shell/procurement/vendor-quotations'
     | '/_authenticated/_shell/settings/company'
+    | '/_authenticated/_shell/settings/finance'
     | '/_authenticated/_shell/settings/users'
+    | '/_authenticated/_shell/finance/vendor-invoices/$id'
+    | '/_authenticated/_shell/finance/vendor-invoices/new'
     | '/_authenticated/_shell/inventory/goods-received/$id'
     | '/_authenticated/_shell/procurement/purchase-orders/$id'
     | '/_authenticated/_shell/procurement/purchase-requests/new'
@@ -526,6 +604,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellWarehousesRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/finance/payables': {
+      id: '/_authenticated/_shell/finance/payables'
+      path: '/finance/payables'
+      fullPath: '/finance/payables'
+      preLoaderRoute: typeof AuthenticatedShellFinancePayablesRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/finance/payments': {
+      id: '/_authenticated/_shell/finance/payments'
+      path: '/finance/payments'
+      fullPath: '/finance/payments'
+      preLoaderRoute: typeof AuthenticatedShellFinancePaymentsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/finance/vendor-ledger': {
+      id: '/_authenticated/_shell/finance/vendor-ledger'
+      path: '/finance/vendor-ledger'
+      fullPath: '/finance/vendor-ledger'
+      preLoaderRoute: typeof AuthenticatedShellFinanceVendorLedgerRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/inventory/stock': {
       id: '/_authenticated/_shell/inventory/stock'
       path: '/inventory/stock'
@@ -554,6 +653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellSettingsCompanyRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/settings/finance': {
+      id: '/_authenticated/_shell/settings/finance'
+      path: '/settings/finance'
+      fullPath: '/settings/finance'
+      preLoaderRoute: typeof AuthenticatedShellSettingsFinanceRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/settings/users': {
       id: '/_authenticated/_shell/settings/users'
       path: '/settings/users'
@@ -566,6 +672,20 @@ declare module '@tanstack/react-router' {
       path: '/finance/vendor-invoices'
       fullPath: '/finance/vendor-invoices/'
       preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesIndexRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/finance/vendor-invoices/$id': {
+      id: '/_authenticated/_shell/finance/vendor-invoices/$id'
+      path: '/finance/vendor-invoices/$id'
+      fullPath: '/finance/vendor-invoices/$id'
+      preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesIdRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/finance/vendor-invoices/new': {
+      id: '/_authenticated/_shell/finance/vendor-invoices/new'
+      path: '/finance/vendor-invoices/new'
+      fullPath: '/finance/vendor-invoices/new'
+      preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/inventory/goods-received/': {
@@ -671,11 +791,17 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellUnitsRoute: typeof AuthenticatedShellUnitsRoute
   AuthenticatedShellVendorsRoute: typeof AuthenticatedShellVendorsRoute
   AuthenticatedShellWarehousesRoute: typeof AuthenticatedShellWarehousesRoute
+  AuthenticatedShellFinancePayablesRoute: typeof AuthenticatedShellFinancePayablesRoute
+  AuthenticatedShellFinancePaymentsRoute: typeof AuthenticatedShellFinancePaymentsRoute
+  AuthenticatedShellFinanceVendorLedgerRoute: typeof AuthenticatedShellFinanceVendorLedgerRoute
   AuthenticatedShellInventoryStockRoute: typeof AuthenticatedShellInventoryStockRoute
   AuthenticatedShellInventoryStockMovementsRoute: typeof AuthenticatedShellInventoryStockMovementsRoute
   AuthenticatedShellProcurementVendorQuotationsRoute: typeof AuthenticatedShellProcurementVendorQuotationsRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
+  AuthenticatedShellSettingsFinanceRoute: typeof AuthenticatedShellSettingsFinanceRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
+  AuthenticatedShellFinanceVendorInvoicesIdRoute: typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
+  AuthenticatedShellFinanceVendorInvoicesNewRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   AuthenticatedShellInventoryGoodsReceivedIdRoute: typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   AuthenticatedShellProcurementPurchaseOrdersIdRoute: typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   AuthenticatedShellProcurementPurchaseRequestsNewRoute: typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
@@ -701,6 +827,12 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellUnitsRoute: AuthenticatedShellUnitsRoute,
   AuthenticatedShellVendorsRoute: AuthenticatedShellVendorsRoute,
   AuthenticatedShellWarehousesRoute: AuthenticatedShellWarehousesRoute,
+  AuthenticatedShellFinancePayablesRoute:
+    AuthenticatedShellFinancePayablesRoute,
+  AuthenticatedShellFinancePaymentsRoute:
+    AuthenticatedShellFinancePaymentsRoute,
+  AuthenticatedShellFinanceVendorLedgerRoute:
+    AuthenticatedShellFinanceVendorLedgerRoute,
   AuthenticatedShellInventoryStockRoute: AuthenticatedShellInventoryStockRoute,
   AuthenticatedShellInventoryStockMovementsRoute:
     AuthenticatedShellInventoryStockMovementsRoute,
@@ -708,7 +840,13 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
     AuthenticatedShellProcurementVendorQuotationsRoute,
   AuthenticatedShellSettingsCompanyRoute:
     AuthenticatedShellSettingsCompanyRoute,
+  AuthenticatedShellSettingsFinanceRoute:
+    AuthenticatedShellSettingsFinanceRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
+  AuthenticatedShellFinanceVendorInvoicesIdRoute:
+    AuthenticatedShellFinanceVendorInvoicesIdRoute,
+  AuthenticatedShellFinanceVendorInvoicesNewRoute:
+    AuthenticatedShellFinanceVendorInvoicesNewRoute,
   AuthenticatedShellInventoryGoodsReceivedIdRoute:
     AuthenticatedShellInventoryGoodsReceivedIdRoute,
   AuthenticatedShellProcurementPurchaseOrdersIdRoute:

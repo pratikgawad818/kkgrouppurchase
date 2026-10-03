@@ -38,7 +38,7 @@ export async function uploadVendorDoc(folder: "invoices" | "payments", file: Fil
   if (file.size > 20 * 1024 * 1024) throw new Error("File must be under 20 MB");
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${folder}/${crypto.randomUUID()}-${safe}`;
-  const { error } = await supabase.storage.from("vendor-documents").upload(path, file, { contentType: file.type || undefined });
+  const { error } = await supabase.storage.from("vendor-documents").upload(path, file, file.type ? { contentType: file.type } : {});
   if (error) throw error;
   return path;
 }
