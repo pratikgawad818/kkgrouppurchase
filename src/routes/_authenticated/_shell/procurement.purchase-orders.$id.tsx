@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan, useMe } from "@/lib/session";
-import { PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
+import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
+import { PrintPo } from "@/components/erp/print-po";
 import { cn } from "@/lib/utils";
 
 const META = "Purchase order details, approval and goods receipts.";
@@ -21,10 +22,10 @@ export const Route = createFileRoute("/_authenticated/_shell/procurement/purchas
 
 async function loadPo(id: string) {
   const [p, i, a, g, w] = await Promise.all([
-    supabase.from("purchase_orders").select("*, vendors(company_name,gstin,address,city), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name)").eq("id", id).single(),
+    supabase.from("purchase_orders").select("*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)").eq("id", id).single(),
     supabase.from("purchase_order_items").select("*, items(code,name), units_of_measure(code)").eq("po_id", id).order("line_no"),
     supabase.from("purchase_order_approvals").select("*, profiles(full_name)").eq("po_id", id).order("acted_at"),
-    supabase.from("goods_receipt_notes").select("id,grn_number,received_date,challan_number,warehouses(name)").eq("po_id", id).order("created_at"),
+    supabase.from("goods_receipt_notes").select("id,grn_number,received_date,challan_number,status,created_at,warehouses(name)").eq("po_id", id).order("created_at"),
     supabase.from("warehouses").select("id,name,code").eq("status", "active").order("name"),
   ]);
   if (p.error) throw p.error;
@@ -79,6 +80,8 @@ function PoDetail() {
 
   return (
     <>
+      <PrintPo po={po} items={items} history={history} />
+      <div className="print:hidden">
       <PageHeader
         crumbs={<Link to="/procurement/purchase-orders" className="hover:underline">Purchase Orders</Link>}
         title={po.po_number}
@@ -94,6 +97,7 @@ function PoDetail() {
           {["partially_received", "fully_received"].includes(po.status) && can("purchase_order.approve") && <Button size="sm" variant="outline" onClick={() => setDlg("closed")}>Close PO</Button>}
           {["draft", "pending_approval", "approved", "rejected", "sent"].includes(po.status) && grns.length === 0 && can("purchase_order.cancel") && <Button size="sm" variant="ghost" onClick={() => setDlg("cancelled")}>Cancel</Button>}
           <Button size="sm" variant="ghost" onClick={() => window.print()}>Print</Button>
+          <Button size="sm" variant="ghost" onClick={() => { const t = document.title; document.title = po.po_number; window.print(); document.title = t; }}>Download PDF</Button>
         </div>}
       />
       {po.status === "pending_approval" && mine && <div className="mb-3 text-xs text-muted-foreground">Another approver must approve this PO — you created it.</div>}
@@ -101,6 +105,7 @@ function PoDetail() {
       <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
         <Info label="RFQ" value={<Link className="font-mono text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: po.rfq_id }}>{po.rfqs?.rfq_number}</Link>} />
         <Info label="Purchase request" value={<Link className="font-mono text-primary hover:underline" to="/procurement/purchase-requests/$id" params={{ id: po.purchase_request_id }}>{po.purchase_requests?.pr_number}</Link>} />
+        <Info label="Quotation" value={po.vendor_quotations?.quotation_number ?? "—"} />
         <Info label="PO date" value={fmtDate(po.po_date)} />
         <Info label="Vendor GSTIN" value={po.vendors?.gstin ?? "—"} />
         {!draft && <>
@@ -152,12 +157,14 @@ function PoDetail() {
         <section className="rounded-md border bg-card p-4">
           <div className="mb-2 text-sm font-semibold">Goods receipts</div>
           {grns.length === 0 ? <div className="text-xs text-muted-foreground">Nothing received yet.</div> : (
-            <ul className="space-y-1 text-sm">{grns.map((g) => <li key={g.id} className="flex justify-between"><Link className="font-mono text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: g.id }}>{g.grn_number}</Link><span className="text-xs text-muted-foreground">{fmtDate(g.received_date)} · {g.warehouses?.name}</span></li>)}</ul>
+            <ul className="space-y-1 text-sm">{grns.map((g) => <li key={g.id} className="flex justify-between"><Link className="font-mono text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: g.id }}>{g.grn_number}</Link><span className="text-xs text-muted-foreground">{fmtDate(g.received_date)} · {g.warehouses?.name} · <span className={cn("rounded-sm border px-1 text-[10px]", GRN_STATUS[g.status].cls)}>{GRN_STATUS[g.status].label}</span></span></li>)}</ul>
           )}
         </section>
         <section className="rounded-md border bg-card p-4">
           <div className="mb-2 text-sm font-semibold">Approval history</div>
-          <ol className="space-y-2 text-sm">{history.map((h) => (
+          <ol className="space-y-2 text-sm">{[...history.map((h) => ({ ...h, grn: null as null | (typeof grns)[number] })), ...grns.filter((g) => g.status !== "draft").map((g) => ({ id: g.id, action: "created" as PoAction, acted_at: g.created_at, comment: null, profiles: null, grn: g }))].sort((a, b) => a.acted_at.localeCompare(b.acted_at)).map((h) => h.grn ? (
+            <li key={h.id} className="border-l-2 border-success/50 pl-3"><div className="font-medium">Goods received — <Link className="font-mono text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: h.grn.id }}>{h.grn.grn_number}</Link>{h.grn.status === "cancelled" ? " (cancelled)" : ""}</div><div className="text-xs text-muted-foreground">{fmtDateTime(h.acted_at)}</div></li>
+          ) : (
             <li key={h.id} className="border-l-2 border-primary/40 pl-3">
               <div className="font-medium">{PO_ACTION_LABEL[h.action]} <span className="font-normal text-muted-foreground">by {h.profiles?.full_name ?? "—"}</span></div>
               <div className="text-xs text-muted-foreground">{fmtDateTime(h.acted_at)}</div>
@@ -175,6 +182,7 @@ function PoDetail() {
         </DialogContent>
       </Dialog>
 
+      </div>
       {receiveOpen && <ReceiveDialog poId={id} defaultWh={po.delivery_warehouse_id ?? ""} warehouses={warehouses} items={items} onClose={() => setReceiveOpen(false)} onDone={refresh} />}
     </>
   );
@@ -191,23 +199,26 @@ function ReceiveDialog({ poId, defaultWh, warehouses, items, onClose, onDone }: 
   const [wh, setWh] = useState(defaultWh);
   const [h, setH] = useState({ received_date: new Date().toISOString().slice(0, 10), challan_number: "", invoice_reference: "", vehicle_number: "", remarks: "" });
   const open = items.filter((x) => Number(x.ordered_quantity) > Number(x.received_quantity));
-  const [lines, setLines] = useState<Record<string, { r: string; d: string }>>({});
+  const can = useCan();
+  const canPost = can("grn.post");
+  const [lines, setLines] = useState<Record<string, { r: string; d: string; j: string }>>({});
   const save = useMutation({
-    mutationFn: async () => {
-      const payload = open.map((x) => ({ po_item_id: x.id, received_quantity: Number(lines[x.id]?.r || 0), damaged_quantity: Number(lines[x.id]?.d || 0) })).filter((x) => x.received_quantity > 0);
+    mutationFn: async (post: boolean) => {
+      const payload = open.map((x) => ({ po_item_id: x.id, received_quantity: Number(lines[x.id]?.r || 0), damaged_quantity: Number(lines[x.id]?.d || 0), rejected_quantity: Number(lines[x.id]?.j || 0) })).filter((x) => x.received_quantity > 0);
+      for (const p of payload) { const x = open.find((o) => o.id === p.po_item_id)!; const pend = Number(x.ordered_quantity) - Number(x.received_quantity); if (p.received_quantity > pend) throw new Error(`Cannot receive ${p.received_quantity}. Only ${pend} units remain pending.`); if (p.damaged_quantity + p.rejected_quantity > p.received_quantity) throw new Error("Damaged + rejected cannot exceed received"); }
       if (!wh) throw new Error("Choose the receiving store");
       if (!payload.length) throw new Error("Enter a received quantity for at least one line");
-      const { data, error } = await supabase.rpc("create_goods_receipt", { _po_id: poId, _warehouse_id: wh, _header: h, _items: payload });
+      const { data, error } = await supabase.rpc("create_goods_receipt", { _po_id: poId, _warehouse_id: wh, _header: h, _items: payload, _post: post });
       if (error) throw error;
-      return data;
+      return post;
     },
-    onSuccess: () => { toast.success("Goods receipt posted to stock"); qc.invalidateQueries({ queryKey: ["stock"] }); qc.invalidateQueries({ queryKey: ["grns"] }); onDone(); onClose(); },
+    onSuccess: (post) => { toast.success(post ? "Goods receipt posted to stock" : "Draft GRN saved — not yet in stock"); qc.invalidateQueries({ queryKey: ["stock"] }); qc.invalidateQueries({ queryKey: ["grns"] }); onDone(); onClose(); },
     onError: (e) => toast.error(errMsg(e)),
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl">
-        <DialogHeader><DialogTitle>Receive goods</DialogTitle><DialogDescription>Only accepted quantity (received − damaged) is added to stock. You cannot receive more than pending.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Receive goods</DialogTitle><DialogDescription>Only accepted quantity (received − damaged − rejected) is added to stock. You cannot receive more than pending.</DialogDescription></DialogHeader>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="Receiving store *"><select className={selectCls} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">Select store</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
           <Field label="Received date"><Input type="date" value={h.received_date} onChange={(e) => setH({ ...h, received_date: e.target.value })} /></Field>
@@ -217,10 +228,10 @@ function ReceiveDialog({ poId, defaultWh, warehouses, items, onClose, onDone }: 
           <Field label="Remarks"><Input value={h.remarks} onChange={(e) => setH({ ...h, remarks: e.target.value })} /></Field>
         </div>
         <table className="mt-2 w-full text-sm">
-          <thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-1.5">Material</th><th className="p-1.5 text-right">Pending</th><th className="p-1.5">Received</th><th className="p-1.5">Damaged</th><th className="p-1.5 text-right">Accepted</th></tr></thead>
+          <thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-1.5">Material</th><th className="p-1.5 text-right">Pending</th><th className="p-1.5">Received</th><th className="p-1.5">Damaged</th><th className="p-1.5">Rejected</th><th className="p-1.5 text-right">Accepted</th></tr></thead>
           <tbody>{open.map((x) => {
             const pending = Number(x.ordered_quantity) - Number(x.received_quantity);
-            const l = lines[x.id] ?? { r: "", d: "" };
+            const l = lines[x.id] ?? { r: "", d: "", j: "" };
             const over = Number(l.r || 0) > pending;
             return (
               <tr key={x.id} className="border-b last:border-0">
@@ -228,11 +239,12 @@ function ReceiveDialog({ poId, defaultWh, warehouses, items, onClose, onDone }: 
                 <td className="p-1.5 text-right font-mono">{num(pending)} {x.units_of_measure?.code}</td>
                 <td className="p-1.5"><Input type="number" min={0} className={cn("h-8 w-24", over && "border-destructive")} value={l.r} onChange={(e) => setLines({ ...lines, [x.id]: { ...l, r: e.target.value } })} /></td>
                 <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" value={l.d} onChange={(e) => setLines({ ...lines, [x.id]: { ...l, d: e.target.value } })} /></td>
-                <td className="p-1.5 text-right font-mono">{num(Math.max(0, Number(l.r || 0) - Number(l.d || 0)))}</td>
+                <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" value={l.j} onChange={(e) => setLines({ ...lines, [x.id]: { ...l, j: e.target.value } })} /></td>
+                <td className="p-1.5 text-right font-mono">{num(Math.max(0, Number(l.r || 0) - Number(l.d || 0) - Number(l.j || 0)))}{over && <div className="text-[10px] text-destructive">Only {num(pending)} pending</div>}</td>
               </tr>);
           })}</tbody>
         </table>
-        <DialogFooter><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={save.isPending} onClick={() => save.mutate()}>Post goods receipt</Button></DialogFooter>
+        <DialogFooter><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="outline" disabled={save.isPending} onClick={() => save.mutate(false)}>Save as draft</Button>{canPost && <Button disabled={save.isPending} onClick={() => save.mutate(true)}>Post goods receipt</Button>}</DialogFooter>
       </DialogContent>
     </Dialog>
   );
