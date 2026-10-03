@@ -82,7 +82,7 @@ function NewInvoice() {
         .eq("goods_receipt_notes.po_id", po).eq("goods_receipt_notes.status", "posted");
       if (error) throw error;
       const avail = await Promise.all((data ?? []).map((g) => supabase.rpc("grn_item_available", { _grn_item: g.id, _exclude_invoice: (editId ?? null) as string })));
-      return (data ?? []).map((g, i) => ({ ...g, available: Number(avail[i].data ?? 0) }));
+      return (data ?? []).map((g, i) => ({ ...g, available: Number(avail[i]?.data ?? 0) }));
     },
   });
   useEffect(() => {
