@@ -51,7 +51,7 @@ function PrDetail() {
 
   const run = useMutation({
     mutationFn: async (a: PrAction) => {
-      const { error } = await supabase.rpc("pr_transition", { _pr_id: id, _action: a, _comment: comment || undefined });
+      const { error } = await supabase.rpc("pr_transition", { _pr_id: id, _action: a, ...(comment.trim() ? { _comment: comment.trim() } : {}) });
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Updated"); setAct(null); setComment(""); qc.invalidateQueries({ queryKey: ["pr", id] }); qc.invalidateQueries({ queryKey: ["prs"] }); },
