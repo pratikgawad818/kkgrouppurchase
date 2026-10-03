@@ -1027,6 +1027,237 @@ export type Database = {
           },
         ]
       }
+      rfq_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          line_no: number
+          material_id: string
+          pr_item_id: string | null
+          requested_quantity: number
+          required_by: string | null
+          rfq_id: string
+          target_rate: number | null
+          unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          line_no: number
+          material_id: string
+          pr_item_id?: string | null
+          requested_quantity: number
+          required_by?: string | null
+          rfq_id: string
+          target_rate?: number | null
+          unit_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          line_no?: number
+          material_id?: string
+          pr_item_id?: string | null
+          requested_quantity?: number
+          required_by?: string | null
+          rfq_id?: string
+          target_rate?: number | null
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfq_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfq_items_pr_item_id_fkey"
+            columns: ["pr_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_request_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfq_items_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfq_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rfq_number_counters: {
+        Row: {
+          last_value: number
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          year: number
+        }
+        Update: {
+          last_value?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      rfq_vendors: {
+        Row: {
+          id: string
+          invited_at: string
+          remarks: string | null
+          responded_at: string | null
+          rfq_id: string
+          status: Database["public"]["Enums"]["rfq_vendor_status"]
+          vendor_id: string
+        }
+        Insert: {
+          id?: string
+          invited_at?: string
+          remarks?: string | null
+          responded_at?: string | null
+          rfq_id: string
+          status?: Database["public"]["Enums"]["rfq_vendor_status"]
+          vendor_id: string
+        }
+        Update: {
+          id?: string
+          invited_at?: string
+          remarks?: string | null
+          responded_at?: string | null
+          rfq_id?: string
+          status?: Database["public"]["Enums"]["rfq_vendor_status"]
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfq_vendors_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfq_vendors_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rfqs: {
+        Row: {
+          building_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          project_id: string
+          purchase_request_id: string
+          remarks: string | null
+          required_by_date: string | null
+          response_due_date: string
+          rfq_date: string
+          rfq_number: string
+          selection_reason: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["rfq_status"]
+          updated_at: string
+        }
+        Insert: {
+          building_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id: string
+          purchase_request_id: string
+          remarks?: string | null
+          required_by_date?: string | null
+          response_due_date: string
+          rfq_date?: string
+          rfq_number?: string
+          selection_reason?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["rfq_status"]
+          updated_at?: string
+        }
+        Update: {
+          building_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id?: string
+          purchase_request_id?: string
+          remarks?: string | null
+          required_by_date?: string | null
+          response_due_date?: string
+          rfq_date?: string
+          rfq_number?: string
+          selection_reason?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["rfq_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfqs_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfqs_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "rfqs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfqs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfqs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfqs_purchase_request_id_fkey"
+            columns: ["purchase_request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           permission_code: string
@@ -1402,6 +1633,258 @@ export type Database = {
           },
         ]
       }
+      vendor_quotation_items: {
+        Row: {
+          delivery_days: number | null
+          discount_amount: number
+          id: string
+          is_quoted: boolean
+          line_total: number
+          quotation_id: string
+          quoted_quantity: number
+          rate: number
+          remarks: string | null
+          rfq_item_id: string
+          tax_amount: number
+          tax_rate_percent: number
+          tax_type: string
+          taxable_amount: number
+        }
+        Insert: {
+          delivery_days?: number | null
+          discount_amount?: number
+          id?: string
+          is_quoted?: boolean
+          line_total?: number
+          quotation_id: string
+          quoted_quantity?: number
+          rate?: number
+          remarks?: string | null
+          rfq_item_id: string
+          tax_amount?: number
+          tax_rate_percent?: number
+          tax_type?: string
+          taxable_amount?: number
+        }
+        Update: {
+          delivery_days?: number | null
+          discount_amount?: number
+          id?: string
+          is_quoted?: boolean
+          line_total?: number
+          quotation_id?: string
+          quoted_quantity?: number
+          rate?: number
+          remarks?: string | null
+          rfq_item_id?: string
+          tax_amount?: number
+          tax_rate_percent?: number
+          tax_type?: string
+          taxable_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_quotation_items_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_quotation_items_rfq_item_id_fkey"
+            columns: ["rfq_item_id"]
+            isOneToOne: false
+            referencedRelation: "rfq_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_quotations: {
+        Row: {
+          attachment_path: string | null
+          created_at: string
+          created_by: string | null
+          delivery_days: number | null
+          discount_total: number
+          freight: number
+          grand_total: number
+          id: string
+          other_charges: number
+          payment_terms: string | null
+          quotation_date: string
+          quotation_number: string
+          remarks: string | null
+          rfq_id: string
+          rfq_vendor_id: string
+          status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          tax_total: number
+          updated_at: string
+          valid_until: string | null
+          vendor_id: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivery_days?: number | null
+          discount_total?: number
+          freight?: number
+          grand_total?: number
+          id?: string
+          other_charges?: number
+          payment_terms?: string | null
+          quotation_date?: string
+          quotation_number: string
+          remarks?: string | null
+          rfq_id: string
+          rfq_vendor_id: string
+          status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          valid_until?: string | null
+          vendor_id: string
+        }
+        Update: {
+          attachment_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivery_days?: number | null
+          discount_total?: number
+          freight?: number
+          grand_total?: number
+          id?: string
+          other_charges?: number
+          payment_terms?: string | null
+          quotation_date?: string
+          quotation_number?: string
+          remarks?: string | null
+          rfq_id?: string
+          rfq_vendor_id?: string
+          status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          valid_until?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_quotations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_quotations_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_quotations_rfq_vendor_id_fkey"
+            columns: ["rfq_vendor_id"]
+            isOneToOne: true
+            referencedRelation: "rfq_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_quotations_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_selections: {
+        Row: {
+          awarded_rate: number
+          id: string
+          quotation_id: string
+          quotation_item_id: string
+          reason: string | null
+          rfq_id: string
+          rfq_item_id: string
+          selected_at: string
+          selected_by: string | null
+          selected_quantity: number
+          vendor_id: string
+        }
+        Insert: {
+          awarded_rate: number
+          id?: string
+          quotation_id: string
+          quotation_item_id: string
+          reason?: string | null
+          rfq_id: string
+          rfq_item_id: string
+          selected_at?: string
+          selected_by?: string | null
+          selected_quantity: number
+          vendor_id: string
+        }
+        Update: {
+          awarded_rate?: number
+          id?: string
+          quotation_id?: string
+          quotation_item_id?: string
+          reason?: string | null
+          rfq_id?: string
+          rfq_item_id?: string
+          selected_at?: string
+          selected_by?: string | null
+          selected_quantity?: number
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_selections_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_selections_quotation_item_id_fkey"
+            columns: ["quotation_item_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_quotation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_selections_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_selections_rfq_item_id_fkey"
+            columns: ["rfq_item_id"]
+            isOneToOne: true
+            referencedRelation: "rfq_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_selections_selected_by_fkey"
+            columns: ["selected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_selections_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address: string | null
@@ -1680,6 +2163,21 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["pr_status"]
       }
+      record_vendor_selection: {
+        Args: { _reason: string; _rfq_id: string; _selections: Json }
+        Returns: number
+      }
+      rfq_can_edit_draft: { Args: { _rfq_id: string }; Returns: boolean }
+      rfq_can_quote: { Args: { _rfq_id: string }; Returns: boolean }
+      rfq_can_view: { Args: { _rfq_id: string }; Returns: boolean }
+      rfq_mark_vendor_declined: {
+        Args: { _remarks?: string; _rfq_vendor_id: string }
+        Returns: undefined
+      }
+      rfq_transition: {
+        Args: { _action: string; _comment?: string; _rfq_id: string }
+        Returns: Database["public"]["Enums"]["rfq_status"]
+      }
       set_unit_status: {
         Args: {
           _hold_until?: string
@@ -1689,6 +2187,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      vq_recompute: { Args: { _qid: string }; Returns: undefined }
     }
     Enums: {
       app_role:
@@ -1726,7 +2225,17 @@ export type Database = {
         | "completed"
         | "on_hold"
         | "cancelled"
+      quotation_status: "draft" | "submitted" | "selected" | "rejected"
       record_status: "active" | "inactive"
+      rfq_status:
+        | "draft"
+        | "sent"
+        | "partially_responded"
+        | "fully_responded"
+        | "ready_for_po"
+        | "closed"
+        | "cancelled"
+      rfq_vendor_status: "pending" | "responded" | "declined"
       unit_status:
         | "available"
         | "hold"
@@ -1905,7 +2414,18 @@ export const Constants = {
         "on_hold",
         "cancelled",
       ],
+      quotation_status: ["draft", "submitted", "selected", "rejected"],
       record_status: ["active", "inactive"],
+      rfq_status: [
+        "draft",
+        "sent",
+        "partially_responded",
+        "fully_responded",
+        "ready_for_po",
+        "closed",
+        "cancelled",
+      ],
+      rfq_vendor_status: ["pending", "responded", "declined"],
       unit_status: [
         "available",
         "hold",
