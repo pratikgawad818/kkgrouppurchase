@@ -149,7 +149,7 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className={cn("sticky top-0 hidden h-screen print:hidden shrink-0 border-r transition-[width] lg:block", collapsed ? "w-16" : "w-60")}>{nav}</aside>
+      <aside className={cn("sticky top-0 hidden h-screen print:!hidden shrink-0 border-r transition-[width] lg:block", collapsed ? "w-16" : "w-60")}>{nav}</aside>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-64 border-0 p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
