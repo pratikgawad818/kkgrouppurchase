@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const META = "Vendor account statement: bills, payments, advances and running balance.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-ledger")({
   head: () => ({ meta: [{ title: "Vendor Ledger — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "Vendor Ledger — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ vendor: typeof s.vendor === "string" ? s.vendor : undefined }),
+  validateSearch: (s: Record<string, unknown>): { vendor?: string } => (typeof s["vendor"] === "string" ? { vendor: s["vendor"] as string } : {}),
   component: Ledger,
 });
 

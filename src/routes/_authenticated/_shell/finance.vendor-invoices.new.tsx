@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 const META = "Enter a vendor bill against a purchase order and its goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/new")({
   head: () => ({ meta: [{ title: "New Vendor Invoice — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "New Vendor Invoice — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ id: typeof s.id === "string" ? s.id : undefined, po: typeof s.po === "string" ? s.po : undefined }),
+  validateSearch: (s: Record<string, unknown>): { id?: string; po?: string } => ({ ...(typeof s["id"] === "string" ? { id: s["id"] as string } : {}), ...(typeof s["po"] === "string" ? { po: s["po"] as string } : {}) }),
   component: NewInvoice,
 });
 
@@ -71,7 +71,7 @@ function NewInvoice() {
   const selVendor = vendors.find((v) => v.id === vendor);
 
   useEffect(() => {
-    if (selVendor && !h.due_date && !editId) setH((x) => ({ ...x, due_date: addDays(x.vendor_invoice_date, selVendor.payment_terms_days ?? 30) }));
+    if (selVendor && !h.due_date && !editId) setH((x) => ({ ...x, due_date: addDays(x.vendor_invoice_date, selVendor?.payment_terms_days ?? 30) }));
   }, [selVendor, editId, h.due_date]);
 
   const grn = useQuery({

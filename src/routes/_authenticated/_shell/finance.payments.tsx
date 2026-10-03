@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 const META = "Schedule, approve and record vendor payments and advances.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/payments")({
   head: () => ({ meta: [{ title: "Vendor Payments — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "Vendor Payments — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ vendor: typeof s.vendor === "string" ? s.vendor : undefined }),
+  validateSearch: (s: Record<string, unknown>): { vendor?: string } => (typeof s["vendor"] === "string" ? { vendor: s["vendor"] as string } : {}),
   component: Payments,
 });
 
@@ -90,7 +90,7 @@ function Payments() {
   );
 }
 
-function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: PaymentKind; initialVendor?: string; onClose: () => void; onDone: () => void }) {
+function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: PaymentKind; initialVendor?: string | undefined; onClose: () => void; onDone: () => void }) {
   const [vendor, setVendor] = useState(initialVendor ?? "");
   const [h, setH] = useState({ payment_date: today(), payment_mode: "neft", bank_account_id: "", reference: "", remarks: "", amount: "", project_id: "" });
   const [alloc, setAlloc] = useState<Record<string, string>>({});
