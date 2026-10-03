@@ -149,7 +149,7 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className={cn("sticky top-0 hidden h-screen shrink-0 border-r transition-[width] lg:block", collapsed ? "w-16" : "w-60")}>{nav}</aside>
+      <aside className={cn("sticky top-0 hidden h-screen print:!hidden shrink-0 border-r transition-[width] lg:block", collapsed ? "w-16" : "w-60")}>{nav}</aside>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-64 border-0 p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
@@ -157,7 +157,7 @@ function Shell() {
         </SheetContent>
       </Sheet>
        <div className="min-w-0 flex-1">
-         <div className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-card px-4">
+         <div className="sticky top-0 z-20 flex h-14 print:hidden items-center gap-3 border-b bg-card px-4">
            <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu" className="lg:hidden"><Menu className="h-5 w-5" /></Button>
            <Button variant="ghost" size="icon" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden lg:inline-flex">{collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}</Button>
            <div className="flex-1 text-sm font-medium text-muted-foreground">KK GROUP ERP</div>

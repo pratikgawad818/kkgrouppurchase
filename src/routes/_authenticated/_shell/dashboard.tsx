@@ -58,6 +58,92 @@ function PrSummary({ fy, projectId, buildingId, canCreate }: { fy: number; proje
   );
 }
 
+function PoSummary({ fy, projectId, buildingId }: { fy: number; projectId: string; buildingId: string }) {
+  const q = useQuery({
+    queryKey: ["pos", "summary", fy, projectId, buildingId],
+    queryFn: async () => {
+      let r = supabase.from("purchase_orders").select("status,grand_total,purchase_order_items(ordered_quantity,received_quantity,line_total)").gte("po_date", `${fy}-04-01`).lte("po_date", `${fy + 1}-03-31`).limit(5000);
+      if (projectId) r = r.eq("project_id", projectId);
+      if (buildingId) r = r.eq("building_id", buildingId);
+      const { data, error } = await r;
+      if (error) throw error;
+      const rows = data ?? [];
+      const c = (st: string) => rows.filter((x) => x.status === st).length;
+      let pendingValue = 0;
+      for (const x of rows) if (["approved", "sent", "partially_received"].includes(x.status))
+        for (const i of x.purchase_order_items) pendingValue += Number(i.ordered_quantity) ? Number(i.line_total) * (Number(i.ordered_quantity) - Number(i.received_quantity)) / Number(i.ordered_quantity) : 0;
+      return { total: rows.length, pending: c("pending_approval"), approved: c("approved"), sent: c("sent"), partial: c("partially_received"), full: c("fully_received"), pendingValue };
+    },
+  });
+  const d = q.data;
+  const card = (label: string, value: React.ReactNode) => <Link to="/procurement/purchase-orders"><Stat label={label} value={value ?? "—"} className="hover:border-primary/50" /></Link>;
+  return (
+    <section className="mt-6">
+      <h2 className="mb-2 text-sm font-semibold">Purchase Orders <span className="font-normal text-muted-foreground">· {d?.total ?? 0} in {fyLabel(fy)}</span></h2>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        {card("Pending approval", d?.pending)}{card("Approved", d?.approved)}{card("Sent", d?.sent)}
+        {card("Partially received", d?.partial)}{card("Fully received", d?.full)}{card("Pending receipt value", d ? inr(d.pendingValue) : undefined)}
+      </div>
+    </section>
+  );
+}
+
+function GrnSummary({ fy, projectId, buildingId }: { fy: number; projectId: string; buildingId: string }) {
+  const q = useQuery({
+    queryKey: ["grns", "summary", fy, projectId, buildingId],
+    queryFn: async () => {
+      let r = supabase.from("goods_receipt_notes").select("id,grn_number,received_date,status,vendors(company_name)").neq("status", "cancelled").gte("received_date", `${fy}-04-01`).lte("received_date", `${fy + 1}-03-31`).order("created_at", { ascending: false }).limit(5000);
+      if (projectId) r = r.eq("project_id", projectId);
+      if (buildingId) r = r.eq("building_id", buildingId);
+      const { data, error } = await r;
+      if (error) throw error;
+      const m = new Date().toISOString().slice(0, 7);
+      const rows = data ?? [];
+      return { fy: rows.length, month: rows.filter((x) => x.received_date.startsWith(m)).length, drafts: rows.filter((x) => x.status === "draft").length, recent: rows.slice(0, 5) };
+    },
+  });
+  const d = q.data;
+  return (
+    <section className="mt-6">
+      <h2 className="mb-2 text-sm font-semibold">Goods Received</h2>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Link to="/inventory/goods-received"><Stat label="This month" value={d?.month ?? "—"} className="hover:border-primary/50" /></Link>
+        <Link to="/inventory/goods-received"><Stat label={fyLabel(fy)} value={d?.fy ?? "—"} className="hover:border-primary/50" /></Link>
+        <Link to="/inventory/goods-received"><Stat label="Drafts awaiting posting" value={d?.drafts ?? "—"} className="hover:border-primary/50" /></Link>
+        <div className="rounded-md border bg-card p-3 text-xs">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Recent GRNs</div>
+          {d?.recent.length ? d.recent.map((g) => <div key={g.id} className="flex justify-between"><Link className="font-mono text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: g.id }}>{g.grn_number}</Link><span className="truncate pl-2 text-muted-foreground">{g.vendors?.company_name}</span></div>) : <div className="text-muted-foreground">None yet</div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function InvCards() {
+  const q = useQuery({
+    queryKey: ["stock", "summary"],
+    queryFn: async () => {
+      const [s, t] = await Promise.all([
+        supabase.from("warehouse_stock").select("quantity_on_hand,total_value,items(reorder_level)").limit(5000),
+        supabase.from("stock_transfers").select("id", { count: "exact", head: true }).gte("transfer_date", new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)),
+      ]);
+      if (s.error) throw s.error;
+      const rows = s.data ?? [];
+      return {
+        value: rows.reduce((a, x) => a + Number(x.total_value), 0),
+        low: rows.filter((x) => Number(x.quantity_on_hand) > 0 && Number(x.quantity_on_hand) <= Number(x.items?.reorder_level ?? 0)).length,
+        out: rows.filter((x) => Number(x.quantity_on_hand) <= 0).length,
+        transfers: t.count ?? 0,
+      };
+    },
+  });
+  const d = q.data;
+  return <>
+    <Link to="/inventory/stock"><Stat label="Inventory value" value={d ? inr(d.value) : "—"} hint="Weighted average cost" className="hover:border-primary/50" /></Link>
+    <Link to="/inventory/stock"><Stat label="Low / out of stock" value={d ? `${d.low} / ${d.out}` : "—"} hint={d ? `${d.transfers} transfers in last 30 days` : undefined} className="hover:border-primary/50" /></Link>
+  </>;
+}
+
 function Dashboard() {
   const can = useCan();
   const current = fyOf(new Date());
@@ -115,16 +201,12 @@ function Dashboard() {
         }
       />
       {can("purchase_request.view") && <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />}
-      <Section title="Purchase">
-        <Pending label="Open purchase orders" phase={3} />
-        <Pending label="Purchases this month" phase={3} />
-        <Pending label={`Purchases ${fyLabel(fy)}`} phase={3} />
-      </Section>
+      {can("purchase_order.view") && <PoSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
+      {can("grn.view") && <GrnSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
       <Section title="Inventory">
         <Link to="/materials"><Stat label="Total materials" value={<span className="flex items-center justify-between">{d.materials}<Package className="h-5 w-5 text-primary" /></span>} hint="Active material master" className="hover:border-primary/50" /></Link>
         <Link to="/warehouses"><Stat label="Stores" value={<span className="flex items-center justify-between">{d.warehouses}<Warehouse className="h-5 w-5 text-primary" /></span>} hint={projectId ? "For selected project" : "All active stores"} className="hover:border-primary/50" /></Link>
-        <Pending label="Inventory value" phase={4} />
-        <Pending label="Low / out of stock" phase={4} />
+        {can("inventory.view") ? <InvCards /> : <><Pending label="Inventory value" phase={4} /><Pending label="Low / out of stock" phase={4} /></>}
       </Section>
       <Section title="Vendors">
         <Link to="/vendors"><Stat label="Active vendors" value={<span className="flex items-center justify-between">{d.vendors}<Store className="h-5 w-5 text-primary" /></span>} hint="Supplier master" className="hover:border-primary/50" /></Link>

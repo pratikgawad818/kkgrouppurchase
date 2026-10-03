@@ -373,6 +373,7 @@ export type Database = {
           po_item_id: string
           previously_received: number
           received_quantity: number
+          rejected_quantity: number
           remarks: string | null
           unit_cost: number
           unit_id: string
@@ -387,6 +388,7 @@ export type Database = {
           po_item_id: string
           previously_received: number
           received_quantity: number
+          rejected_quantity?: number
           remarks?: string | null
           unit_cost: number
           unit_id: string
@@ -401,6 +403,7 @@ export type Database = {
           po_item_id?: string
           previously_received?: number
           received_quantity?: number
+          rejected_quantity?: number
           remarks?: string | null
           unit_cost?: number
           unit_id?: string
@@ -438,6 +441,10 @@ export type Database = {
       }
       goods_receipt_notes: {
         Row: {
+          building_id: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           challan_number: string | null
           company_id: string
           created_at: string
@@ -445,15 +452,23 @@ export type Database = {
           id: string
           invoice_reference: string | null
           po_id: string
+          posted_at: string | null
           project_id: string
+          purchase_request_id: string | null
           received_by: string
           received_date: string
           remarks: string | null
+          rfq_id: string | null
+          status: Database["public"]["Enums"]["grn_status"]
           vehicle_number: string | null
           vendor_id: string
           warehouse_id: string
         }
         Insert: {
+          building_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           challan_number?: string | null
           company_id: string
           created_at?: string
@@ -461,15 +476,23 @@ export type Database = {
           id?: string
           invoice_reference?: string | null
           po_id: string
+          posted_at?: string | null
           project_id: string
+          purchase_request_id?: string | null
           received_by: string
           received_date?: string
           remarks?: string | null
+          rfq_id?: string | null
+          status?: Database["public"]["Enums"]["grn_status"]
           vehicle_number?: string | null
           vendor_id: string
           warehouse_id: string
         }
         Update: {
+          building_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           challan_number?: string | null
           company_id?: string
           created_at?: string
@@ -477,15 +500,40 @@ export type Database = {
           id?: string
           invoice_reference?: string | null
           po_id?: string
+          posted_at?: string | null
           project_id?: string
+          purchase_request_id?: string | null
           received_by?: string
           received_date?: string
           remarks?: string | null
+          rfq_id?: string | null
+          status?: Database["public"]["Enums"]["grn_status"]
           vehicle_number?: string | null
           vendor_id?: string
           warehouse_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "goods_receipt_notes_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "goods_receipt_notes_company_id_fkey"
             columns: ["company_id"]
@@ -508,10 +556,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "goods_receipt_notes_purchase_request_id_fkey"
+            columns: ["purchase_request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "goods_receipt_notes_received_by_fkey"
             columns: ["received_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
             referencedColumns: ["id"]
           },
           {
@@ -532,7 +594,9 @@ export type Database = {
       }
       inventory_transactions: {
         Row: {
+          adjustment_id: string | null
           balance_after: number
+          building_id: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -552,7 +616,9 @@ export type Database = {
           warehouse_id: string
         }
         Insert: {
+          adjustment_id?: string | null
           balance_after: number
+          building_id?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -572,7 +638,9 @@ export type Database = {
           warehouse_id: string
         }
         Update: {
+          adjustment_id?: string | null
           balance_after?: number
+          building_id?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -592,6 +660,27 @@ export type Database = {
           warehouse_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "stock_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
           {
             foreignKeyName: "inventory_transactions_company_id_fkey"
             columns: ["company_id"]
@@ -1912,6 +2001,109 @@ export type Database = {
           },
         ]
       }
+      stock_adjustment_items: {
+        Row: {
+          adjustment_id: string
+          difference: number
+          id: string
+          material_id: string
+          physical_quantity: number
+          system_quantity: number
+          unit_cost: number
+        }
+        Insert: {
+          adjustment_id: string
+          difference: number
+          id?: string
+          material_id: string
+          physical_quantity?: number
+          system_quantity?: number
+          unit_cost?: number
+        }
+        Update: {
+          adjustment_id?: string
+          difference?: number
+          id?: string
+          material_id?: string
+          physical_quantity?: number
+          system_quantity?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_adjustment_items_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "stock_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_adjustments: {
+        Row: {
+          adjustment_date: string
+          adjustment_number: string
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: Database["public"]["Enums"]["adjustment_kind"]
+          reason: string
+          warehouse_id: string
+        }
+        Insert: {
+          adjustment_date?: string
+          adjustment_number: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: Database["public"]["Enums"]["adjustment_kind"]
+          reason: string
+          warehouse_id: string
+        }
+        Update: {
+          adjustment_date?: string
+          adjustment_number?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["adjustment_kind"]
+          reason?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_adjustments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustments_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_transfer_items: {
         Row: {
           id: string
@@ -2879,17 +3071,31 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_goods_receipt: {
+        Args: { _grn_id: string; _reason: string }
+        Returns: undefined
+      }
       create_goods_receipt: {
         Args: {
           _header: Json
           _items: Json
           _po_id: string
+          _post?: boolean
           _warehouse_id: string
         }
         Returns: string
       }
       create_po_from_selection: {
         Args: { _quotation_id: string; _rfq_id: string }
+        Returns: string
+      }
+      create_stock_adjustment: {
+        Args: {
+          _items: Json
+          _kind: Database["public"]["Enums"]["adjustment_kind"]
+          _reason: string
+          _warehouse_id: string
+        }
         Returns: string
       }
       ensure_profile: {
@@ -2936,6 +3142,7 @@ export type Database = {
         }
         Returns: number
       }
+      grn_apply: { Args: { _grn_id: string }; Returns: undefined }
       has_permission: {
         Args: { _code: string; _user_id: string }
         Returns: boolean
@@ -2962,8 +3169,28 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["po_status"]
       }
+      post_goods_receipt: { Args: { _grn_id: string }; Returns: undefined }
       post_stock: {
         Args: {
+          _company: string
+          _cost: number
+          _grn: string
+          _grn_item: string
+          _mat: string
+          _project: string
+          _qin: number
+          _qout: number
+          _remarks: string
+          _transfer: string
+          _type: Database["public"]["Enums"]["inventory_tx_type"]
+          _wh: string
+        }
+        Returns: number
+      }
+      post_stock_x: {
+        Args: {
+          _adjustment: string
+          _building: string
           _company: string
           _cost: number
           _grn: string
@@ -3014,6 +3241,7 @@ export type Database = {
       vq_recompute: { Args: { _qid: string }; Returns: undefined }
     }
     Enums: {
+      adjustment_kind: "adjustment" | "opening_stock"
       app_role:
         | "super_admin"
         | "director"
@@ -3026,6 +3254,7 @@ export type Database = {
         | "accountant"
         | "store_manager"
         | "auditor"
+      grn_status: "draft" | "posted" | "cancelled"
       inventory_tx_type:
         | "opening_stock"
         | "goods_receipt"
@@ -3227,6 +3456,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      adjustment_kind: ["adjustment", "opening_stock"],
       app_role: [
         "super_admin",
         "director",
@@ -3240,6 +3470,7 @@ export const Constants = {
         "store_manager",
         "auditor",
       ],
+      grn_status: ["draft", "posted", "cancelled"],
       inventory_tx_type: [
         "opening_stock",
         "goods_receipt",

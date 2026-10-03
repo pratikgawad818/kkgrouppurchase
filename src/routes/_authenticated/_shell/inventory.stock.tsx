@@ -23,15 +23,17 @@ function StockPage() {
   const [search, setSearch] = useState("");
   const [wh, setWh] = useState("");
   const [transfer, setTransfer] = useState(false);
+  const [adj, setAdj] = useState<null | "adjustment" | "opening_stock">(null);
   const q = useQuery({
     queryKey: ["stock"],
     queryFn: async () => {
-      const [s, w] = await Promise.all([
+      const [s, w, m] = await Promise.all([
         supabase.from("warehouse_stock").select("warehouse_id,material_id,quantity_on_hand,weighted_avg_cost,total_value,warehouses(name,code),items(code,name,minimum_stock,reorder_level,units_of_measure(code))").limit(2000),
         supabase.from("warehouses").select("id,name,code").eq("status", "active").order("name"),
+        supabase.from("items").select("id,code,name,units_of_measure(code)").eq("status", "active").order("name").limit(2000),
       ]);
       if (s.error) throw s.error;
-      return { stock: s.data ?? [], warehouses: w.data ?? [] };
+      return { stock: s.data ?? [], warehouses: w.data ?? [], materials: m.data ?? [] };
     },
   });
   const s = search.trim().toLowerCase();
@@ -45,8 +47,12 @@ function StockPage() {
   const total = rows.reduce((a, x) => a + Number(x.total_value), 0);
   return (
     <>
-      <PageHeader title="Stock" subtitle="Stock increases only from posted goods receipts and transfers."
-        actions={can("inventory.transfer") ? <Button size="sm" onClick={() => setTransfer(true)}>Transfer stock</Button> : null} />
+      <PageHeader title="Stock" subtitle="Stock changes only through posted goods receipts, transfers and authorised adjustments."
+        actions={<div className="flex gap-2">
+          {can("inventory.adjust") && <Button size="sm" variant="outline" onClick={() => setAdj("opening_stock")}>Opening stock</Button>}
+          {can("inventory.adjust") && <Button size="sm" variant="outline" onClick={() => setAdj("adjustment")}>Adjust stock</Button>}
+          {can("inventory.transfer") && <Button size="sm" onClick={() => setTransfer(true)}>Transfer stock</Button>}
+        </div>} />
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : <>
         <div className="mb-3 grid gap-3 md:grid-cols-3">
           <Stat label="Stock value" value={inr(total)} />
@@ -75,6 +81,7 @@ function StockPage() {
             </tbody>
           </table>
         </div>
+        {adj && <AdjustDialog kind={adj} stock={q.data!.stock} materials={q.data!.materials} warehouses={q.data!.warehouses} onClose={() => setAdj(null)} />}
         {transfer && <TransferDialog stock={q.data!.stock} warehouses={q.data!.warehouses} onClose={() => setTransfer(false)} />}
       </>}
     </>
@@ -117,6 +124,64 @@ function TransferDialog({ stock, warehouses, onClose }: { stock: StockRow[]; war
             </tr>))}</tbody></table>
         ))}
         <DialogFooter><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={save.isPending || !from || !to || !reason.trim()} onClick={() => save.mutate()}>Transfer</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type Mat = { id: string; code: string; name: string; units_of_measure: { code: string } | null };
+
+function AdjustDialog({ kind, stock, materials, warehouses, onClose }: { kind: "adjustment" | "opening_stock"; stock: StockRow[]; materials: Mat[]; warehouses: { id: string; name: string }[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [wh, setWh] = useState("");
+  const [reason, setReason] = useState("");
+  const [filter, setFilter] = useState("");
+  const [vals, setVals] = useState<Record<string, { q: string; c: string }>>({});
+  const opening = kind === "opening_stock";
+  const onHand = (m: string) => Number(stock.find((x) => x.warehouse_id === wh && x.material_id === m)?.quantity_on_hand ?? 0);
+  const hasRow = (m: string) => stock.some((x) => x.warehouse_id === wh && x.material_id === m);
+  const f = filter.trim().toLowerCase();
+  const list = materials.filter((m) => (opening ? !hasRow(m.id) : hasRow(m.id)) && (!f || m.name.toLowerCase().includes(f) || m.code.toLowerCase().includes(f))).slice(0, 100);
+  const save = useMutation({
+    mutationFn: async () => {
+      const items = Object.entries(vals).filter(([, v]) => v.q !== "").map(([material_id, v]) => opening
+        ? { material_id, quantity: Number(v.q), unit_cost: Number(v.c || 0) }
+        : { material_id, physical_quantity: Number(v.q) });
+      if (!wh) throw new Error("Choose a store");
+      if (!items.length) throw new Error("Enter at least one quantity");
+      const { error } = await supabase.rpc("create_stock_adjustment", { _warehouse_id: wh, _kind: kind, _items: items, _reason: reason.trim() });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success(opening ? "Opening stock posted" : "Adjustment posted"); qc.invalidateQueries({ queryKey: ["stock"] }); qc.invalidateQueries({ queryKey: ["stock-ledger"] }); onClose(); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{opening ? "Opening stock" : "Stock adjustment"}</DialogTitle>
+          <DialogDescription>{opening ? "For materials with no movements yet in this store. Enter quantity and unit cost." : "Enter the physically counted quantity. The difference from system stock is posted to the ledger."}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Store *"><select className={selectCls} value={wh} onChange={(e) => { setWh(e.target.value); setVals({}); }}><option value="">Select</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
+          <Field label="Reason *"><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={opening ? "e.g. Stock count on go-live" : "e.g. Physical count 30 Sep"} /></Field>
+        </div>
+        {wh && <>
+          <SearchBox value={filter} onChange={setFilter} placeholder="Find material" />
+          <div className="max-h-80 overflow-y-auto">
+            {list.length === 0 ? <div className="p-2 text-xs text-muted-foreground">{opening ? "No materials without movements in this store." : "No stock in this store to adjust."}</div> : (
+            <table className="w-full text-sm"><tbody>{list.map((m) => { const v = vals[m.id] ?? { q: "", c: "" }; const sys = onHand(m.id); const diff = v.q === "" ? null : Number(v.q) - sys; return (
+              <tr key={m.id} className="border-b last:border-0">
+                <td className="p-1.5">{m.name} <span className="font-mono text-[11px] text-muted-foreground">{m.code}</span></td>
+                {!opening && <td className="p-1.5 text-right font-mono text-xs">system {num(sys)}</td>}
+                <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" placeholder={opening ? "Qty" : "Counted"} value={v.q} onChange={(e) => setVals({ ...vals, [m.id]: { ...v, q: e.target.value } })} /></td>
+                {opening ? <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" placeholder="Unit cost" value={v.c} onChange={(e) => setVals({ ...vals, [m.id]: { ...v, c: e.target.value } })} /></td>
+                  : <td className={cn("p-1.5 text-right font-mono text-xs", diff && diff < 0 ? "text-destructive" : "text-success")}>{diff == null || diff === 0 ? "" : (diff > 0 ? "+" : "") + num(diff)}</td>}
+                <td className="p-1.5 text-xs text-muted-foreground">{m.units_of_measure?.code}</td>
+              </tr>); })}</tbody></table>)}
+          </div>
+        </>}
+        <DialogFooter><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={save.isPending || !reason.trim()} onClick={() => save.mutate()}>Post</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
