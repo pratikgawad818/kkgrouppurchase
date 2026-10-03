@@ -15,4 +15,4 @@
 - Keep the ERP authentication-first: `/` redirects to `/auth`, and authenticated users continue to `/dashboard`.
 - Purchase request status changes only through the pr_transition database function; direct edits are limited to the requester's drafts, so approval history stays trustworthy.
 - RFQ status and vendor awards change only through rfq_transition / rfq_mark_vendor_declined / record_vendor_selection database functions, so the PR → RFQ → quotation → selection trail stays auditable.
-- Purchase order, goods receipt and stock changes happen only through po_transition / create_po_from_selection / create_goods_receipt / execute_stock_transfer database functions; the stock ledger (inventory_transactions) is append-only, so every material movement traces to its source document.
+- Purchase order, goods receipt and stock changes happen only through po_transition / create_po_from_selection / create_goods_receipt / post_goods_receipt / cancel_goods_receipt / execute_stock_transfer / create_stock_adjustment database functions; the stock ledger (inventory_transactions) is append-only, so every material movement traces to its source document.
