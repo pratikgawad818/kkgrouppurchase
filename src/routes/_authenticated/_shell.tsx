@@ -19,7 +19,7 @@ type NavItem = { to?: string; label: string; icon: typeof LayoutDashboard; perm?
 const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Overview", items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
   { group: "Procurement", items: [
-    { label: "Purchase Requests", icon: ClipboardList, phase: 2 },
+    { to: "/procurement/purchase-requests", label: "Purchase Requests", icon: ClipboardList, perm: "purchase_request.view" },
     { label: "RFQs", icon: FileText, phase: 3 },
     { label: "Vendor Quotations", icon: FileText, phase: 3 },
     { label: "Purchase Orders", icon: ShoppingCart, phase: 3 },
