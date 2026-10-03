@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, inr, num } from "@/lib/format";
 import { lineCalc, TAX_RATES, TAX_TYPES } from "@/lib/rfq";
-import { loadRfq } from "./procurement.rfqs.$id.index";
+import { loadRfq } from "@/lib/rfq-data";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/$id/quotation")({
   validateSearch: (s: Record<string, unknown>) => ({ vendor: typeof s.vendor === "string" ? s.vendor : "" }),

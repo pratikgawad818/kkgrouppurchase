@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
-import { loadRfq } from "./procurement.rfqs.$id.index";
+import { loadRfq } from "@/lib/rfq-data";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/$id/compare")({
   head: () => ({ meta: [{ title: "Compare Quotations — KK GROUP ERP" }, { name: "description", content: "Side-by-side quotation comparison and vendor selection." }, { property: "og:title", content: "Compare Quotations — KK GROUP ERP" }, { property: "og:description", content: "Side-by-side quotation comparison and vendor selection." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),

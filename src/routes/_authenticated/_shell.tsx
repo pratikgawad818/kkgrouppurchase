@@ -20,8 +20,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Overview", items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
   { group: "Procurement", items: [
     { to: "/procurement/purchase-requests", label: "Purchase Requests", icon: ClipboardList, perm: "purchase_request.view" },
-    { label: "RFQs", icon: FileText, phase: 3 },
-    { label: "Vendor Quotations", icon: FileText, phase: 3 },
+    { to: "/procurement/rfqs", label: "RFQs", icon: FileText, perm: "rfq.view" },
+    { to: "/procurement/vendor-quotations", label: "Vendor Quotations", icon: FileText, perm: "quotation.view" },
     { label: "Purchase Orders", icon: ShoppingCart, phase: 3 },
     { label: "Goods Received", icon: Truck, phase: 4 },
     { label: "Vendor Invoices", icon: Receipt, phase: 5 },

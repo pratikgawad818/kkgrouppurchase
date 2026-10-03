@@ -29,7 +29,3 @@ export function lineCalc(qty: number, rate: number, disc: number, taxPct: number
   return { taxable: Math.round(taxable * 100) / 100, tax: Math.round(tax * 100) / 100, total: Math.round((taxable + tax) * 100) / 100 };
 }
 
-export function Badge({ s }: { s: RfqStatus }) {
-  const x = RFQ_STATUS[s];
-  return x.label;
-}

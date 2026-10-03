@@ -9,24 +9,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
+import { loadRfq } from "@/lib/rfq-data";
 import { QUOTATION_STATUS, RFQ_STATUS, RFQ_VENDOR_STATUS } from "@/lib/rfq";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/$id/")({
   head: () => ({ meta: [{ title: "RFQ — KK GROUP ERP" }, { name: "description", content: "RFQ details, vendor responses and selection." }, { property: "og:title", content: "RFQ — KK GROUP ERP" }, { property: "og:description", content: "RFQ details, vendor responses and selection." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: RfqDetail,
 });
-
-export async function loadRfq(id: string) {
-  const [r, i, v, q, s] = await Promise.all([
-    supabase.from("rfqs").select("*, projects(code,name), buildings(name), purchase_requests(id,pr_number)").eq("id", id).single(),
-    supabase.from("rfq_items").select("*, items(code,name), units_of_measure(code)").eq("rfq_id", id).order("line_no"),
-    supabase.from("rfq_vendors").select("*, vendors(code,company_name,contact_person,mobile,email)").eq("rfq_id", id).order("invited_at"),
-    supabase.from("vendor_quotations").select("*, vendor_quotation_items(*)").eq("rfq_id", id),
-    supabase.from("vendor_selections").select("*, vendors(company_name)").eq("rfq_id", id),
-  ]);
-  for (const x of [r, i, v, q, s]) if (x.error) throw x.error;
-  return { rfq: r.data!, items: i.data ?? [], vendors: v.data ?? [], quotes: q.data ?? [], selections: s.data ?? [] };
-}
 
 function RfqDetail() {
   const { id } = Route.useParams();
