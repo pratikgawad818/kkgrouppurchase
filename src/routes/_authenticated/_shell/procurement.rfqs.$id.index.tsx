@@ -112,7 +112,7 @@ function RfqDetail() {
         <section className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-4 text-sm">
           <div className="font-semibold">Ready for Purchase Order</div>
           <div className="mt-1 text-muted-foreground">Selection reason: {rfq.selection_reason}</div>
-          <div className="mt-1 text-xs text-muted-foreground">Purchase Orders will be created from this selection in the next phase.</div>
+          <AwardPos rfqId={id} quotes={quotes.filter((x) => x.status === "selected")} canCreate={can("purchase_order.create")} />
         </section>
       )}
 
