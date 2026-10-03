@@ -100,7 +100,15 @@ function Compare() {
         <section className="mt-4 rounded-md border bg-card p-4">
           <div className="mb-2 text-sm">Selected {Object.keys(pick).length} of {items.length} items · items value incl. tax <span className="font-mono font-semibold">{inr(pickedTotal)}</span> (freight/charges as per each quote)</div>
           <Textarea rows={2} placeholder="Reason for selection (required) — e.g. lowest landed cost, better delivery time" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <div className="mt-3 flex justify-end"><Button disabled={award.isPending || !reason.trim() || Object.keys(pick).length !== items.length} onClick={() => award.mutate()}>Confirm selection · Ready for PO</Button></div>
+          <div className="mt-3 flex items-center justify-end gap-3">
+            {(Object.keys(pick).length !== items.length || !reason.trim()) && <span className="text-xs text-muted-foreground">{Object.keys(pick).length !== items.length ? "Pick a vendor for every item" : "Enter a reason to continue"}</span>}
+            <Button disabled={award.isPending || !reason.trim() || Object.keys(pick).length !== items.length} onClick={() => award.mutate()}>Confirm selection · Ready for PO</Button>
+          </div>
+        </section>
+      )}
+      {rfq.status === "ready_for_po" && (
+        <section className="mt-4 rounded-md border bg-card p-4 text-sm">
+          Vendor selection is recorded. <Link className="font-medium text-primary underline" to="/procurement/rfqs/$id" params={{ id }}>Open the RFQ to create the purchase order</Link>.
         </section>
       )}
     </>
