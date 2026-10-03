@@ -25,3 +25,10 @@ export const TX_LABEL: Record<InvTxType, string> = {
 };
 
 export const selectCls = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
+
+export type GrnStatus = Database["public"]["Enums"]["grn_status"];
+export const GRN_STATUS: Record<GrnStatus, { label: string; cls: string }> = {
+  draft: { label: "Draft", cls: "bg-muted text-muted-foreground" },
+  posted: { label: "Posted", cls: "bg-success/15 text-success border-success/40" },
+  cancelled: { label: "Cancelled", cls: "bg-destructive/10 text-destructive border-destructive/30" },
+};
