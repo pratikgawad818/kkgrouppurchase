@@ -22,9 +22,15 @@ import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
 import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authenticated/_shell/vendors'
 import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
+import { Route as AuthenticatedShellInventoryStockRouteImport } from './routes/_authenticated/_shell/inventory.stock'
+import { Route as AuthenticatedShellInventoryStockMovementsRouteImport } from './routes/_authenticated/_shell/inventory.stock-movements'
 import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } from './routes/_authenticated/_shell/procurement.vendor-quotations'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
+import { Route as AuthenticatedShellInventoryGoodsReceivedIndexRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.index'
+import { Route as AuthenticatedShellInventoryGoodsReceivedIdRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.$id'
+import { Route as AuthenticatedShellProcurementPurchaseOrdersIndexRouteImport } from './routes/_authenticated/_shell/procurement.purchase-orders.index'
+import { Route as AuthenticatedShellProcurementPurchaseOrdersIdRouteImport } from './routes/_authenticated/_shell/procurement.purchase-orders.$id'
 import { Route as AuthenticatedShellProcurementPurchaseRequestsIndexRouteImport } from './routes/_authenticated/_shell/procurement.purchase-requests.index'
 import { Route as AuthenticatedShellProcurementPurchaseRequestsNewRouteImport } from './routes/_authenticated/_shell/procurement.purchase-requests.new'
 import { Route as AuthenticatedShellProcurementRfqsIndexRouteImport } from './routes/_authenticated/_shell/procurement.rfqs.index'
@@ -104,6 +110,18 @@ const AuthenticatedShellWarehousesRoute =
     path: '/warehouses',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellInventoryStockRoute =
+  AuthenticatedShellInventoryStockRouteImport.update({
+    id: '/inventory/stock',
+    path: '/inventory/stock',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellInventoryStockMovementsRoute =
+  AuthenticatedShellInventoryStockMovementsRouteImport.update({
+    id: '/inventory/stock-movements',
+    path: '/inventory/stock-movements',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellProcurementVendorQuotationsRoute =
   AuthenticatedShellProcurementVendorQuotationsRouteImport.update({
     id: '/procurement/vendor-quotations',
@@ -120,6 +138,30 @@ const AuthenticatedShellSettingsUsersRoute =
   AuthenticatedShellSettingsUsersRouteImport.update({
     id: '/settings/users',
     path: '/settings/users',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellInventoryGoodsReceivedIndexRoute =
+  AuthenticatedShellInventoryGoodsReceivedIndexRouteImport.update({
+    id: '/inventory/goods-received/',
+    path: '/inventory/goods-received/',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellInventoryGoodsReceivedIdRoute =
+  AuthenticatedShellInventoryGoodsReceivedIdRouteImport.update({
+    id: '/inventory/goods-received/$id',
+    path: '/inventory/goods-received/$id',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProcurementPurchaseOrdersIndexRoute =
+  AuthenticatedShellProcurementPurchaseOrdersIndexRouteImport.update({
+    id: '/procurement/purchase-orders/',
+    path: '/procurement/purchase-orders/',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProcurementPurchaseOrdersIdRoute =
+  AuthenticatedShellProcurementPurchaseOrdersIdRouteImport.update({
+    id: '/procurement/purchase-orders/$id',
+    path: '/procurement/purchase-orders/$id',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellProcurementPurchaseRequestsIndexRoute =
@@ -189,11 +231,17 @@ export interface FileRoutesByFullPath {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
+  '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
+  '/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   '/procurement/rfqs/new': typeof AuthenticatedShellProcurementRfqsNewRoute
+  '/inventory/goods-received/': typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
+  '/procurement/purchase-orders/': typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   '/procurement/purchase-requests/': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
   '/procurement/rfqs/': typeof AuthenticatedShellProcurementRfqsIndexRoute
   '/procurement/purchase-requests/$id/edit': typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
@@ -214,11 +262,17 @@ export interface FileRoutesByTo {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
+  '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
+  '/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   '/procurement/rfqs/new': typeof AuthenticatedShellProcurementRfqsNewRoute
+  '/inventory/goods-received': typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
+  '/procurement/purchase-orders': typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   '/procurement/purchase-requests': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
   '/procurement/rfqs': typeof AuthenticatedShellProcurementRfqsIndexRoute
   '/procurement/purchase-requests/$id/edit': typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
@@ -242,11 +296,17 @@ export interface FileRoutesById {
   '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
   '/_authenticated/_shell/vendors': typeof AuthenticatedShellVendorsRoute
   '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/_authenticated/_shell/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
+  '/_authenticated/_shell/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/_authenticated/_shell/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/_authenticated/_shell/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
+  '/_authenticated/_shell/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/_authenticated/_shell/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   '/_authenticated/_shell/procurement/rfqs/new': typeof AuthenticatedShellProcurementRfqsNewRoute
+  '/_authenticated/_shell/inventory/goods-received/': typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
+  '/_authenticated/_shell/procurement/purchase-orders/': typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   '/_authenticated/_shell/procurement/purchase-requests/': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
   '/_authenticated/_shell/procurement/rfqs/': typeof AuthenticatedShellProcurementRfqsIndexRoute
   '/_authenticated/_shell/procurement/purchase-requests/$id/edit': typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
@@ -269,11 +329,17 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
+    | '/inventory/stock'
+    | '/inventory/stock-movements'
     | '/procurement/vendor-quotations'
     | '/settings/company'
     | '/settings/users'
+    | '/inventory/goods-received/$id'
+    | '/procurement/purchase-orders/$id'
     | '/procurement/purchase-requests/new'
     | '/procurement/rfqs/new'
+    | '/inventory/goods-received/'
+    | '/procurement/purchase-orders/'
     | '/procurement/purchase-requests/'
     | '/procurement/rfqs/'
     | '/procurement/purchase-requests/$id/edit'
@@ -294,11 +360,17 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
+    | '/inventory/stock'
+    | '/inventory/stock-movements'
     | '/procurement/vendor-quotations'
     | '/settings/company'
     | '/settings/users'
+    | '/inventory/goods-received/$id'
+    | '/procurement/purchase-orders/$id'
     | '/procurement/purchase-requests/new'
     | '/procurement/rfqs/new'
+    | '/inventory/goods-received'
+    | '/procurement/purchase-orders'
     | '/procurement/purchase-requests'
     | '/procurement/rfqs'
     | '/procurement/purchase-requests/$id/edit'
@@ -321,11 +393,17 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/units'
     | '/_authenticated/_shell/vendors'
     | '/_authenticated/_shell/warehouses'
+    | '/_authenticated/_shell/inventory/stock'
+    | '/_authenticated/_shell/inventory/stock-movements'
     | '/_authenticated/_shell/procurement/vendor-quotations'
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/users'
+    | '/_authenticated/_shell/inventory/goods-received/$id'
+    | '/_authenticated/_shell/procurement/purchase-orders/$id'
     | '/_authenticated/_shell/procurement/purchase-requests/new'
     | '/_authenticated/_shell/procurement/rfqs/new'
+    | '/_authenticated/_shell/inventory/goods-received/'
+    | '/_authenticated/_shell/procurement/purchase-orders/'
     | '/_authenticated/_shell/procurement/purchase-requests/'
     | '/_authenticated/_shell/procurement/rfqs/'
     | '/_authenticated/_shell/procurement/purchase-requests/$id/edit'
@@ -435,6 +513,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellWarehousesRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/inventory/stock': {
+      id: '/_authenticated/_shell/inventory/stock'
+      path: '/inventory/stock'
+      fullPath: '/inventory/stock'
+      preLoaderRoute: typeof AuthenticatedShellInventoryStockRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/inventory/stock-movements': {
+      id: '/_authenticated/_shell/inventory/stock-movements'
+      path: '/inventory/stock-movements'
+      fullPath: '/inventory/stock-movements'
+      preLoaderRoute: typeof AuthenticatedShellInventoryStockMovementsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/procurement/vendor-quotations': {
       id: '/_authenticated/_shell/procurement/vendor-quotations'
       path: '/procurement/vendor-quotations'
@@ -454,6 +546,34 @@ declare module '@tanstack/react-router' {
       path: '/settings/users'
       fullPath: '/settings/users'
       preLoaderRoute: typeof AuthenticatedShellSettingsUsersRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/inventory/goods-received/': {
+      id: '/_authenticated/_shell/inventory/goods-received/'
+      path: '/inventory/goods-received'
+      fullPath: '/inventory/goods-received/'
+      preLoaderRoute: typeof AuthenticatedShellInventoryGoodsReceivedIndexRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/inventory/goods-received/$id': {
+      id: '/_authenticated/_shell/inventory/goods-received/$id'
+      path: '/inventory/goods-received/$id'
+      fullPath: '/inventory/goods-received/$id'
+      preLoaderRoute: typeof AuthenticatedShellInventoryGoodsReceivedIdRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/procurement/purchase-orders/': {
+      id: '/_authenticated/_shell/procurement/purchase-orders/'
+      path: '/procurement/purchase-orders'
+      fullPath: '/procurement/purchase-orders/'
+      preLoaderRoute: typeof AuthenticatedShellProcurementPurchaseOrdersIndexRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/procurement/purchase-orders/$id': {
+      id: '/_authenticated/_shell/procurement/purchase-orders/$id'
+      path: '/procurement/purchase-orders/$id'
+      fullPath: '/procurement/purchase-orders/$id'
+      preLoaderRoute: typeof AuthenticatedShellProcurementPurchaseOrdersIdRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/procurement/purchase-requests/': {
@@ -531,11 +651,17 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellUnitsRoute: typeof AuthenticatedShellUnitsRoute
   AuthenticatedShellVendorsRoute: typeof AuthenticatedShellVendorsRoute
   AuthenticatedShellWarehousesRoute: typeof AuthenticatedShellWarehousesRoute
+  AuthenticatedShellInventoryStockRoute: typeof AuthenticatedShellInventoryStockRoute
+  AuthenticatedShellInventoryStockMovementsRoute: typeof AuthenticatedShellInventoryStockMovementsRoute
   AuthenticatedShellProcurementVendorQuotationsRoute: typeof AuthenticatedShellProcurementVendorQuotationsRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
+  AuthenticatedShellInventoryGoodsReceivedIdRoute: typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
+  AuthenticatedShellProcurementPurchaseOrdersIdRoute: typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   AuthenticatedShellProcurementPurchaseRequestsNewRoute: typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   AuthenticatedShellProcurementRfqsNewRoute: typeof AuthenticatedShellProcurementRfqsNewRoute
+  AuthenticatedShellInventoryGoodsReceivedIndexRoute: typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
+  AuthenticatedShellProcurementPurchaseOrdersIndexRoute: typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   AuthenticatedShellProcurementPurchaseRequestsIndexRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
   AuthenticatedShellProcurementRfqsIndexRoute: typeof AuthenticatedShellProcurementRfqsIndexRoute
   AuthenticatedShellProcurementPurchaseRequestsIdEditRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIdEditRoute
@@ -554,15 +680,26 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellUnitsRoute: AuthenticatedShellUnitsRoute,
   AuthenticatedShellVendorsRoute: AuthenticatedShellVendorsRoute,
   AuthenticatedShellWarehousesRoute: AuthenticatedShellWarehousesRoute,
+  AuthenticatedShellInventoryStockRoute: AuthenticatedShellInventoryStockRoute,
+  AuthenticatedShellInventoryStockMovementsRoute:
+    AuthenticatedShellInventoryStockMovementsRoute,
   AuthenticatedShellProcurementVendorQuotationsRoute:
     AuthenticatedShellProcurementVendorQuotationsRoute,
   AuthenticatedShellSettingsCompanyRoute:
     AuthenticatedShellSettingsCompanyRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
+  AuthenticatedShellInventoryGoodsReceivedIdRoute:
+    AuthenticatedShellInventoryGoodsReceivedIdRoute,
+  AuthenticatedShellProcurementPurchaseOrdersIdRoute:
+    AuthenticatedShellProcurementPurchaseOrdersIdRoute,
   AuthenticatedShellProcurementPurchaseRequestsNewRoute:
     AuthenticatedShellProcurementPurchaseRequestsNewRoute,
   AuthenticatedShellProcurementRfqsNewRoute:
     AuthenticatedShellProcurementRfqsNewRoute,
+  AuthenticatedShellInventoryGoodsReceivedIndexRoute:
+    AuthenticatedShellInventoryGoodsReceivedIndexRoute,
+  AuthenticatedShellProcurementPurchaseOrdersIndexRoute:
+    AuthenticatedShellProcurementPurchaseOrdersIndexRoute,
   AuthenticatedShellProcurementPurchaseRequestsIndexRoute:
     AuthenticatedShellProcurementPurchaseRequestsIndexRoute,
   AuthenticatedShellProcurementRfqsIndexRoute:
