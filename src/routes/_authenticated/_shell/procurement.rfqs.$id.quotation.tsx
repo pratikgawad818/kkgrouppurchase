@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, inr, num } from "@/lib/format";
 import { lineCalc, TAX_RATES, TAX_TYPES } from "@/lib/rfq";
@@ -87,7 +86,7 @@ function QuoteEntry() {
           <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Quoted</th><th className="p-2">Material</th><th className="p-2">Qty</th><th className="p-2">Rate (₹)</th><th className="p-2">Discount (₹)</th><th className="p-2">Tax</th><th className="p-2">Days</th><th className="p-2 text-right">Line total</th></tr></thead>
           <tbody>{lines.map((l, i) => { const it = d.items[i]!; return (
             <tr key={l.rfq_item_id} className={`border-b last:border-0 ${l.is_quoted ? "" : "opacity-50"}`}>
-              <td className="p-2"><Checkbox checked={l.is_quoted} onCheckedChange={(c) => set(i, { is_quoted: !!c })} /></td>
+              <td className="p-2"><input type="checkbox" className="h-4 w-4 accent-primary" checked={l.is_quoted} onChange={(e) => set(i, { is_quoted: e.target.checked })} /></td>
               <td className="p-2"><div>{it.items?.name}</div><div className="text-xs text-muted-foreground">Requested {num(it.requested_quantity)} {it.units_of_measure?.code}</div></td>
               <td className="p-2"><Input className="w-24" type="number" disabled={!l.is_quoted} value={l.qty} onChange={(e) => set(i, { qty: e.target.value })} />{l.is_quoted && Number(l.qty) !== Number(it.requested_quantity) && <div className="mt-0.5 text-[10px] text-primary">Differs from requested</div>}</td>
               <td className="p-2"><Input className="w-28" type="number" disabled={!l.is_quoted} value={l.rate} onChange={(e) => set(i, { rate: e.target.value })} /></td>
