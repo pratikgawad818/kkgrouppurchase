@@ -13,3 +13,4 @@
 - Keep Phase 1 limited to authenticated master data; introduce transactional tables only in their approved phase.
 - Use project-scoped RLS for operational locations and separate role assignments from user profiles to prevent privilege escalation.
 - Keep the ERP authentication-first: `/` redirects to `/auth`, and authenticated users continue to `/dashboard`.
+- Purchase request status changes only through the pr_transition database function; direct edits are limited to the requester's drafts, so approval history stays trustworthy.
