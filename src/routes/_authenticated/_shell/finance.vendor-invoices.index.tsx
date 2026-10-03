@@ -1,0 +1,83 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Loading, PageHeader, SearchBox } from "@/components/erp/common";
+import { Pager } from "@/components/erp/pager";
+import { errMsg, fmtDate, inr } from "@/lib/format";
+import { selectCls } from "@/lib/po";
+import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
+import { useCan } from "@/lib/session";
+import { badge, INVOICE_STATUS, MATCH_STATUS, type InvoiceStatus } from "@/lib/finance";
+import { cn } from "@/lib/utils";
+
+const META = "Vendor invoices matched against purchase orders and goods receipts.";
+export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/")({
+  head: () => ({ meta: [{ title: "Vendor Invoices — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "Vendor Invoices — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({ status: typeof s.status === "string" ? s.status : undefined }),
+  component: InvoiceList,
+});
+
+function InvoiceList() {
+  const can = useCan();
+  const sp = Route.useSearch();
+  const [search, setSearch] = useState("");
+  const [f, setF] = useState({ status: sp.status ?? "", vendor: "", project: "", fy: "" });
+  const [page, setPage] = useState(0);
+  const q = useQuery({
+    queryKey: ["vendor-invoices"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vendor_invoices")
+        .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,due_date,grand_total,net_payable,balance_due,status,match_status,vendor_id,project_id,po_id,vendors(company_name),projects(name),purchase_orders(po_number)")
+        .order("created_at", { ascending: false }).limit(2000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const all = q.data ?? [];
+  const set = (k: keyof typeof f, v: string) => { setF({ ...f, [k]: v }); setPage(0); };
+  const uniq = <T,>(arr: T[], key: (x: T) => string) => [...new Map(arr.map((x) => [key(x), x])).values()];
+  const s = search.trim().toLowerCase();
+  const rows = all.filter((x) => (!f.status || x.status === f.status) && (!f.vendor || x.vendor_id === f.vendor) && (!f.project || x.project_id === f.project) &&
+    (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)) &&
+    (!s || [x.invoice_number, x.vendor_invoice_number, x.vendors?.company_name, x.purchase_orders?.po_number].some((v) => v?.toLowerCase().includes(s))));
+  const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
+  return (
+    <>
+      <PageHeader title="Vendor Invoices" subtitle="Bills from vendors, checked against the purchase order and goods received before they become payable."
+        actions={can("vendor_invoice.create") && <Button asChild size="sm"><Link to="/finance/vendor-invoices/new"><Plus className="mr-1 h-4 w-4" />New vendor invoice</Link></Button>} />
+      <div className="mb-3 flex flex-wrap gap-2">
+        <div className="w-60"><SearchBox value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="Invoice, bill no., vendor, PO" /></div>
+        <select className={cn(selectCls, "w-48")} value={f.status} onChange={(e) => set("status", e.target.value)}><option value="">All statuses</option>{(Object.keys(INVOICE_STATUS) as InvoiceStatus[]).map((k) => <option key={k} value={k}>{INVOICE_STATUS[k].label}</option>)}</select>
+        <select className={cn(selectCls, "w-48")} value={f.vendor} onChange={(e) => set("vendor", e.target.value)}><option value="">All vendors</option>{uniq(all, (x) => x.vendor_id).map((x) => <option key={x.vendor_id} value={x.vendor_id}>{x.vendors?.company_name}</option>)}</select>
+        <select className={cn(selectCls, "w-44")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
+        <select className={cn(selectCls, "w-36")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
+      </div>
+      {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
+        <div className="overflow-x-auto rounded-md border bg-card">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Invoice</th><th className="p-2">Vendor bill</th><th className="p-2">Bill date</th><th className="p-2">Due</th><th className="p-2">Vendor</th><th className="p-2">PO</th><th className="p-2">Project</th><th className="p-2 text-right">Invoice total</th><th className="p-2 text-right">Balance due</th><th className="p-2">Match</th><th className="p-2">Status</th></tr></thead>
+            <tbody>
+              {pageRows.length === 0 && <tr><td colSpan={11} className="p-4 text-xs text-muted-foreground">No vendor invoices yet.</td></tr>}
+              {pageRows.map((x) => (
+                <tr key={x.id} className="border-b last:border-0">
+                  <td className="p-2 font-mono"><Link className="text-primary hover:underline" to="/finance/vendor-invoices/$id" params={{ id: x.id }}>{x.invoice_number}</Link></td>
+                  <td className="p-2 font-mono text-xs">{x.vendor_invoice_number}</td>
+                  <td className="p-2">{fmtDate(x.vendor_invoice_date)}</td><td className="p-2">{fmtDate(x.due_date)}</td>
+                  <td className="p-2">{x.vendors?.company_name}</td>
+                  <td className="p-2 font-mono text-xs"><Link className="hover:underline" to="/procurement/purchase-orders/$id" params={{ id: x.po_id }}>{x.purchase_orders?.po_number}</Link></td>
+                  <td className="p-2">{x.projects?.name}</td>
+                  <td className="p-2 text-right font-mono">{inr(x.grand_total)}</td><td className="p-2 text-right font-mono">{inr(x.balance_due)}</td>
+                  <td className="p-2"><span className={cn(badge, MATCH_STATUS[x.match_status].cls)}>{MATCH_STATUS[x.match_status].label}</span></td>
+                  <td className="p-2"><span className={cn(badge, INVOICE_STATUS[x.status].cls)}>{INVOICE_STATUS[x.status].label}</span></td>
+                </tr>))}
+            </tbody>
+          </table>
+        </div>
+        <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
+      </>)}
+    </>
+  );
+}
