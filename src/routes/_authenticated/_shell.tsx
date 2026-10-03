@@ -59,6 +59,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Administration", items: [
     { to: "/settings/users", label: "Users & Permissions", icon: Users, perm: "users.manage" },
     { to: "/settings/company", label: "Company Settings", icon: Settings },
+    { to: "/settings/finance", label: "Finance Settings", icon: Settings, perm: "company.view" },
     { to: "/audit", label: "Audit Log", icon: FileClock, perm: "audit.view" },
   ] },
 ];

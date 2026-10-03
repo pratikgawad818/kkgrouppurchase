@@ -119,6 +119,35 @@ function GrnSummary({ fy, projectId, buildingId }: { fy: number; projectId: stri
   );
 }
 
+function ApCards() {
+  const q = useQuery({
+    queryKey: ["payables", "summary"],
+    queryFn: async () => {
+      const t = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+      const [i, p] = await Promise.all([
+        supabase.from("vendor_invoices").select("status,balance_due,due_date").in("status", ["approved", "partially_paid", "pending_review", "exception"]),
+        supabase.from("vendor_payments").select("amount").eq("status", "recorded").gte("payment_date", t.slice(0, 8) + "01"),
+      ]);
+      const rows = i.data ?? [];
+      const open = rows.filter((x) => x.status === "approved" || x.status === "partially_paid");
+      return {
+        outstanding: open.reduce((a, x) => a + Number(x.balance_due), 0),
+        overdue: open.filter((x) => x.due_date && x.due_date < t).reduce((a, x) => a + Number(x.balance_due), 0),
+        overdueN: open.filter((x) => x.due_date && x.due_date < t).length,
+        pending: rows.filter((x) => x.status === "pending_review").length,
+        exceptions: rows.filter((x) => x.status === "exception").length,
+        paid: (p.data ?? []).reduce((a, x) => a + Number(x.amount), 0),
+      };
+    },
+  });
+  const d = q.data;
+  return <>
+    <Link to="/finance/payables"><Stat label="Vendor payables" value={d ? inr(d.outstanding) : "—"} hint={d ? `${d.pending} awaiting approval · ${d.exceptions} exceptions` : undefined} className="hover:border-primary/50" /></Link>
+    <Link to="/finance/payables"><Stat label="Overdue bills" value={d ? inr(d.overdue) : "—"} hint={d ? `${d.overdueN} bills` : undefined} className="hover:border-primary/50" /></Link>
+    <Link to="/finance/payments"><Stat label="Payments this month" value={d ? inr(d.paid) : "—"} hint="Recorded payments" className="hover:border-primary/50" /></Link>
+  </>;
+}
+
 function InvCards() {
   const q = useQuery({
     queryKey: ["stock", "summary"],
@@ -210,9 +239,7 @@ function Dashboard() {
       </Section>
       <Section title="Vendors">
         <Link to="/vendors"><Stat label="Active vendors" value={<span className="flex items-center justify-between">{d.vendors}<Store className="h-5 w-5 text-primary" /></span>} hint="Supplier master" className="hover:border-primary/50" /></Link>
-        <Pending label="Vendor payables" phase={5} />
-        <Pending label="Overdue bills" phase={5} />
-        <Pending label="Payments this month" phase={5} />
+        {can("payable.view") ? <ApCards /> : <><Pending label="Vendor payables" phase={5} /><Pending label="Overdue bills" phase={5} /><Pending label="Payments this month" phase={5} /></>}
       </Section>
       <Section title="Projects">
         <Link to="/projects"><Stat label="Active projects" value={<span className="flex items-center justify-between">{active}<Building2 className="h-5 w-5 text-primary" /></span>} hint={`${scoped.length} total`} className="hover:border-primary/50" /></Link>
