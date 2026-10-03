@@ -30,6 +30,13 @@ function AuthPage() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
+    // Invite / recovery links arrive with tokens in the URL hash — send them
+    // to the password page before any session-based redirect swallows them.
+    const hash = window.location.hash;
+    if (hash.includes("access_token") || hash.includes("type=invite") || hash.includes("type=recovery")) {
+      window.location.replace("/reset-password" + hash);
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/dashboard", replace: true });
     });
