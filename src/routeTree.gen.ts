@@ -27,6 +27,7 @@ import { Route as AuthenticatedShellInventoryStockMovementsRouteImport } from '.
 import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } from './routes/_authenticated/_shell/procurement.vendor-quotations'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
+import { Route as AuthenticatedShellFinanceVendorInvoicesIndexRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.index'
 import { Route as AuthenticatedShellInventoryGoodsReceivedIndexRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.index'
 import { Route as AuthenticatedShellInventoryGoodsReceivedIdRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.$id'
 import { Route as AuthenticatedShellProcurementPurchaseOrdersIndexRouteImport } from './routes/_authenticated/_shell/procurement.purchase-orders.index'
@@ -140,6 +141,12 @@ const AuthenticatedShellSettingsUsersRoute =
     path: '/settings/users',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellFinanceVendorInvoicesIndexRoute =
+  AuthenticatedShellFinanceVendorInvoicesIndexRouteImport.update({
+    id: '/finance/vendor-invoices/',
+    path: '/finance/vendor-invoices/',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellInventoryGoodsReceivedIndexRoute =
   AuthenticatedShellInventoryGoodsReceivedIndexRouteImport.update({
     id: '/inventory/goods-received/',
@@ -240,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   '/procurement/rfqs/new': typeof AuthenticatedShellProcurementRfqsNewRoute
+  '/finance/vendor-invoices/': typeof AuthenticatedShellFinanceVendorInvoicesIndexRoute
   '/inventory/goods-received/': typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
   '/procurement/purchase-orders/': typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   '/procurement/purchase-requests/': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
@@ -271,6 +279,7 @@ export interface FileRoutesByTo {
   '/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   '/procurement/rfqs/new': typeof AuthenticatedShellProcurementRfqsNewRoute
+  '/finance/vendor-invoices': typeof AuthenticatedShellFinanceVendorInvoicesIndexRoute
   '/inventory/goods-received': typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
   '/procurement/purchase-orders': typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   '/procurement/purchase-requests': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
@@ -305,6 +314,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/procurement/purchase-orders/$id': typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   '/_authenticated/_shell/procurement/purchase-requests/new': typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   '/_authenticated/_shell/procurement/rfqs/new': typeof AuthenticatedShellProcurementRfqsNewRoute
+  '/_authenticated/_shell/finance/vendor-invoices/': typeof AuthenticatedShellFinanceVendorInvoicesIndexRoute
   '/_authenticated/_shell/inventory/goods-received/': typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
   '/_authenticated/_shell/procurement/purchase-orders/': typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   '/_authenticated/_shell/procurement/purchase-requests/': typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/procurement/purchase-orders/$id'
     | '/procurement/purchase-requests/new'
     | '/procurement/rfqs/new'
+    | '/finance/vendor-invoices/'
     | '/inventory/goods-received/'
     | '/procurement/purchase-orders/'
     | '/procurement/purchase-requests/'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/procurement/purchase-orders/$id'
     | '/procurement/purchase-requests/new'
     | '/procurement/rfqs/new'
+    | '/finance/vendor-invoices'
     | '/inventory/goods-received'
     | '/procurement/purchase-orders'
     | '/procurement/purchase-requests'
@@ -402,6 +414,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/procurement/purchase-orders/$id'
     | '/_authenticated/_shell/procurement/purchase-requests/new'
     | '/_authenticated/_shell/procurement/rfqs/new'
+    | '/_authenticated/_shell/finance/vendor-invoices/'
     | '/_authenticated/_shell/inventory/goods-received/'
     | '/_authenticated/_shell/procurement/purchase-orders/'
     | '/_authenticated/_shell/procurement/purchase-requests/'
@@ -548,6 +561,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellSettingsUsersRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/finance/vendor-invoices/': {
+      id: '/_authenticated/_shell/finance/vendor-invoices/'
+      path: '/finance/vendor-invoices'
+      fullPath: '/finance/vendor-invoices/'
+      preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesIndexRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/inventory/goods-received/': {
       id: '/_authenticated/_shell/inventory/goods-received/'
       path: '/inventory/goods-received'
@@ -660,6 +680,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellProcurementPurchaseOrdersIdRoute: typeof AuthenticatedShellProcurementPurchaseOrdersIdRoute
   AuthenticatedShellProcurementPurchaseRequestsNewRoute: typeof AuthenticatedShellProcurementPurchaseRequestsNewRoute
   AuthenticatedShellProcurementRfqsNewRoute: typeof AuthenticatedShellProcurementRfqsNewRoute
+  AuthenticatedShellFinanceVendorInvoicesIndexRoute: typeof AuthenticatedShellFinanceVendorInvoicesIndexRoute
   AuthenticatedShellInventoryGoodsReceivedIndexRoute: typeof AuthenticatedShellInventoryGoodsReceivedIndexRoute
   AuthenticatedShellProcurementPurchaseOrdersIndexRoute: typeof AuthenticatedShellProcurementPurchaseOrdersIndexRoute
   AuthenticatedShellProcurementPurchaseRequestsIndexRoute: typeof AuthenticatedShellProcurementPurchaseRequestsIndexRoute
@@ -696,6 +717,8 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
     AuthenticatedShellProcurementPurchaseRequestsNewRoute,
   AuthenticatedShellProcurementRfqsNewRoute:
     AuthenticatedShellProcurementRfqsNewRoute,
+  AuthenticatedShellFinanceVendorInvoicesIndexRoute:
+    AuthenticatedShellFinanceVendorInvoicesIndexRoute,
   AuthenticatedShellInventoryGoodsReceivedIndexRoute:
     AuthenticatedShellInventoryGoodsReceivedIndexRoute,
   AuthenticatedShellProcurementPurchaseOrdersIndexRoute:
