@@ -71,7 +71,7 @@ function PoDetail() {
   if (q.isLoading) return <Loading />;
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { po, items, history, grns, warehouses } = q.data!;
-  const mine = po.created_by === me.data?.id;
+  const mine = po.created_by === me.data?.profile.id;
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
   const canReceive = ["approved", "sent", "partially_received"].includes(po.status) && can("grn.create");
