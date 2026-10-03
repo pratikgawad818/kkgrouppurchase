@@ -36,6 +36,13 @@
       "when": 1791009471898,
       "tag": "0004_fix_goods_receipt_check",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791010478118,
+      "tag": "0005_phase5_invoices_payables_payments",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          account_type: string
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_system: boolean
+          name: string
+        }
+        Insert: {
+          account_type: string
+          code: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          name: string
+        }
+        Update: {
+          account_type?: string
+          code?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -118,6 +156,7 @@ export type Database = {
           cin: string | null
           created_at: string
           email: string | null
+          finance_settings: Json
           fy_start_month: number
           gst_rate_commercial: number
           gst_rate_residential: number
@@ -145,6 +184,7 @@ export type Database = {
           cin?: string | null
           created_at?: string
           email?: string | null
+          finance_settings?: Json
           fy_start_month?: number
           gst_rate_commercial?: number
           gst_rate_residential?: number
@@ -172,6 +212,7 @@ export type Database = {
           cin?: string | null
           created_at?: string
           email?: string | null
+          finance_settings?: Json
           fy_start_month?: number
           gst_rate_commercial?: number
           gst_rate_residential?: number
@@ -888,6 +929,116 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entries: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          entry_number: string
+          id: string
+          narration: string | null
+          project_id: string | null
+          source_id: string
+          source_type: string
+          vendor_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          entry_date: string
+          entry_number: string
+          id?: string
+          narration?: string | null
+          project_id?: string | null
+          source_id: string
+          source_type: string
+          vendor_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          entry_number?: string
+          id?: string
+          narration?: string | null
+          project_id?: string | null
+          source_id?: string
+          source_type?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_lines: {
+        Row: {
+          account_id: string
+          credit: number
+          debit: number
+          entry_id: string
+          id: number
+        }
+        Insert: {
+          account_id: string
+          credit?: number
+          debit?: number
+          entry_id: string
+          id?: never
+        }
+        Update: {
+          account_id?: string
+          credit?: number
+          debit?: number
+          entry_id?: string
+          id?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -2486,6 +2637,55 @@ export type Database = {
           },
         ]
       }
+      vendor_advance_adjustments: {
+        Row: {
+          advance_payment_id: string
+          amount: number
+          created_at: string
+          created_by: string
+          id: string
+          invoice_id: string
+        }
+        Insert: {
+          advance_payment_id: string
+          amount: number
+          created_at?: string
+          created_by: string
+          id?: string
+          invoice_id: string
+        }
+        Update: {
+          advance_payment_id?: string
+          amount?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          invoice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_advance_adjustments_advance_payment_id_fkey"
+            columns: ["advance_payment_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_advance_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_advance_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_categories: {
         Row: {
           company_id: string
@@ -2553,6 +2753,539 @@ export type Database = {
           },
           {
             foreignKeyName: "vendor_category_links_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoice_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          action: string
+          comment: string | null
+          id: string
+          invoice_id: string
+          new_status: Database["public"]["Enums"]["invoice_status"] | null
+          previous_status: Database["public"]["Enums"]["invoice_status"] | null
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          action: string
+          comment?: string | null
+          id?: string
+          invoice_id: string
+          new_status?: Database["public"]["Enums"]["invoice_status"] | null
+          previous_status?: Database["public"]["Enums"]["invoice_status"] | null
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          action?: string
+          comment?: string | null
+          id?: string
+          invoice_id?: string
+          new_status?: Database["public"]["Enums"]["invoice_status"] | null
+          previous_status?: Database["public"]["Enums"]["invoice_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoice_events_acted_by_fkey"
+            columns: ["acted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoice_items: {
+        Row: {
+          available_quantity: number
+          grn_id: string
+          grn_item_id: string
+          id: string
+          invoice_id: string
+          line_no: number
+          line_total: number
+          match_ok: boolean | null
+          material_id: string
+          po_item_id: string
+          po_rate: number
+          po_tax_rate: number
+          qty_variance: number
+          quantity: number
+          rate: number
+          rate_variance: number
+          tax_amount: number
+          tax_rate_percent: number
+          tax_type: string
+          tax_variance: number
+          taxable_amount: number
+        }
+        Insert: {
+          available_quantity?: number
+          grn_id: string
+          grn_item_id: string
+          id?: string
+          invoice_id: string
+          line_no: number
+          line_total?: number
+          match_ok?: boolean | null
+          material_id: string
+          po_item_id: string
+          po_rate?: number
+          po_tax_rate?: number
+          qty_variance?: number
+          quantity: number
+          rate: number
+          rate_variance?: number
+          tax_amount?: number
+          tax_rate_percent?: number
+          tax_type?: string
+          tax_variance?: number
+          taxable_amount?: number
+        }
+        Update: {
+          available_quantity?: number
+          grn_id?: string
+          grn_item_id?: string
+          id?: string
+          invoice_id?: string
+          line_no?: number
+          line_total?: number
+          match_ok?: boolean | null
+          material_id?: string
+          po_item_id?: string
+          po_rate?: number
+          po_tax_rate?: number
+          qty_variance?: number
+          quantity?: number
+          rate?: number
+          rate_variance?: number
+          tax_amount?: number
+          tax_rate_percent?: number
+          tax_type?: string
+          tax_variance?: number
+          taxable_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoice_items_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipt_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_items_grn_item_id_fkey"
+            columns: ["grn_item_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipt_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_items_po_item_id_fkey"
+            columns: ["po_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoices: {
+        Row: {
+          advance_adjusted: number
+          amount_paid: number
+          approved_at: string | null
+          approved_by: string | null
+          attachment_path: string | null
+          balance_due: number
+          building_id: string | null
+          cgst: number
+          company_id: string
+          created_at: string
+          created_by: string
+          due_date: string | null
+          freight: number
+          grand_total: number
+          id: string
+          igst: number
+          invoice_number: string
+          match_status: Database["public"]["Enums"]["match_status"]
+          match_summary: Json | null
+          net_payable: number
+          other_charges: number
+          po_id: string
+          project_id: string
+          remarks: string | null
+          sgst: number
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_total: number
+          tds_amount: number
+          tds_rate: number
+          tds_section: string | null
+          updated_at: string
+          vendor_id: string
+          vendor_invoice_date: string
+          vendor_invoice_number: string
+        }
+        Insert: {
+          advance_adjusted?: number
+          amount_paid?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          attachment_path?: string | null
+          balance_due?: number
+          building_id?: string | null
+          cgst?: number
+          company_id: string
+          created_at?: string
+          created_by: string
+          due_date?: string | null
+          freight?: number
+          grand_total?: number
+          id?: string
+          igst?: number
+          invoice_number: string
+          match_status?: Database["public"]["Enums"]["match_status"]
+          match_summary?: Json | null
+          net_payable?: number
+          other_charges?: number
+          po_id: string
+          project_id: string
+          remarks?: string | null
+          sgst?: number
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_total?: number
+          tds_amount?: number
+          tds_rate?: number
+          tds_section?: string | null
+          updated_at?: string
+          vendor_id: string
+          vendor_invoice_date: string
+          vendor_invoice_number: string
+        }
+        Update: {
+          advance_adjusted?: number
+          amount_paid?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          attachment_path?: string | null
+          balance_due?: number
+          building_id?: string | null
+          cgst?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          freight?: number
+          grand_total?: number
+          id?: string
+          igst?: number
+          invoice_number?: string
+          match_status?: Database["public"]["Enums"]["match_status"]
+          match_summary?: Json | null
+          net_payable?: number
+          other_charges?: number
+          po_id?: string
+          project_id?: string
+          remarks?: string | null
+          sgst?: number
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_total?: number
+          tds_amount?: number
+          tds_rate?: number
+          tds_section?: string | null
+          updated_at?: string
+          vendor_id?: string
+          vendor_invoice_date?: string
+          vendor_invoice_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoices_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_payment_allocations: {
+        Row: {
+          amount: number
+          id: string
+          invoice_id: string
+          payment_id: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          invoice_id: string
+          payment_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          invoice_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_payment_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          action: string
+          comment: string | null
+          id: string
+          new_status: Database["public"]["Enums"]["payment_status"] | null
+          payment_id: string
+          previous_status: Database["public"]["Enums"]["payment_status"] | null
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          action: string
+          comment?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["payment_status"] | null
+          payment_id: string
+          previous_status?: Database["public"]["Enums"]["payment_status"] | null
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          action?: string
+          comment?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["payment_status"] | null
+          payment_id?: string
+          previous_status?: Database["public"]["Enums"]["payment_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_payment_events_acted_by_fkey"
+            columns: ["acted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payment_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_payments: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          bank_account_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: Database["public"]["Enums"]["payment_kind"]
+          payment_date: string
+          payment_mode: string
+          payment_number: string
+          project_id: string | null
+          proof_path: string | null
+          recorded_at: string | null
+          recorded_by: string | null
+          reference: string | null
+          remarks: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_account_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: Database["public"]["Enums"]["payment_kind"]
+          payment_date: string
+          payment_mode: string
+          payment_number: string
+          project_id?: string | null
+          proof_path?: string | null
+          recorded_at?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+          remarks?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_account_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["payment_kind"]
+          payment_date?: string
+          payment_mode?: string
+          payment_number?: string
+          project_id?: string | null
+          proof_path?: string | null
+          recorded_at?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+          remarks?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_payments_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payments_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "company_bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payments_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payments_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
@@ -3067,6 +3800,11 @@ export type Database = {
       }
     }
     Functions: {
+      acct: { Args: { _code: string; _company: string }; Returns: string }
+      apply_vendor_advance: {
+        Args: { _advance_id: string; _amount: number; _invoice_id: string }
+        Returns: undefined
+      }
       can_access_project: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
@@ -3143,6 +3881,10 @@ export type Database = {
         Returns: number
       }
       grn_apply: { Args: { _grn_id: string }; Returns: undefined }
+      grn_item_available: {
+        Args: { _exclude_invoice: string; _grn_item: string }
+        Returns: number
+      }
       has_permission: {
         Args: { _code: string; _user_id: string }
         Returns: boolean
@@ -3154,11 +3896,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      invoice_transition: {
+        Args: { _action: string; _comment: string; _id: string }
+        Returns: Database["public"]["Enums"]["invoice_status"]
+      }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
       my_permissions: { Args: never; Returns: string[] }
       next_doc_number: {
         Args: { _doc: string; _prefix: string }
         Returns: string
+      }
+      next_fy_doc_number: {
+        Args: { _doc: string; _prefix: string }
+        Returns: string
+      }
+      payment_transition: {
+        Args: { _action: string; _comment: string; _details: Json; _id: string }
+        Returns: Database["public"]["Enums"]["payment_status"]
       }
       po_can_view: { Args: { _po_id: string }; Returns: boolean }
       po_transition: {
@@ -3170,6 +3924,19 @@ export type Database = {
         Returns: Database["public"]["Enums"]["po_status"]
       }
       post_goods_receipt: { Args: { _grn_id: string }; Returns: undefined }
+      post_journal: {
+        Args: {
+          _company: string
+          _date: string
+          _lines: Json
+          _narr: string
+          _project: string
+          _src: string
+          _src_id: string
+          _vendor: string
+        }
+        Returns: string
+      }
       post_stock: {
         Args: {
           _company: string
@@ -3229,6 +3996,18 @@ export type Database = {
         Args: { _action: string; _comment?: string; _rfq_id: string }
         Returns: Database["public"]["Enums"]["rfq_status"]
       }
+      run_invoice_match: {
+        Args: { _id: string }
+        Returns: Database["public"]["Enums"]["match_status"]
+      }
+      save_vendor_invoice: {
+        Args: { _header: Json; _id: string; _items: Json }
+        Returns: string
+      }
+      schedule_vendor_payment: {
+        Args: { _allocations: Json; _header: Json }
+        Returns: string
+      }
       set_unit_status: {
         Args: {
           _hold_until?: string
@@ -3238,6 +4017,9 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_finance_settings: { Args: { _settings: Json }; Returns: undefined }
+      vi_can_view: { Args: { _invoice_id: string }; Returns: boolean }
+      vi_refresh_balance: { Args: { _id: string }; Returns: undefined }
       vq_recompute: { Args: { _qid: string }; Returns: undefined }
     }
     Enums: {
@@ -3265,6 +4047,18 @@ export type Database = {
         | "material_issue"
         | "material_return"
         | "purchase_return"
+      invoice_status:
+        | "draft"
+        | "pending_review"
+        | "exception"
+        | "approved"
+        | "rejected"
+        | "partially_paid"
+        | "paid"
+        | "cancelled"
+      match_status: "pending" | "matched" | "exception"
+      payment_kind: "invoice" | "advance"
+      payment_status: "scheduled" | "approved" | "recorded" | "cancelled"
       po_action:
         | "created"
         | "submitted"
@@ -3482,6 +4276,19 @@ export const Constants = {
         "material_return",
         "purchase_return",
       ],
+      invoice_status: [
+        "draft",
+        "pending_review",
+        "exception",
+        "approved",
+        "rejected",
+        "partially_paid",
+        "paid",
+        "cancelled",
+      ],
+      match_status: ["pending", "matched", "exception"],
+      payment_kind: ["invoice", "advance"],
+      payment_status: ["scheduled", "approved", "recorded", "cancelled"],
       po_action: [
         "created",
         "submitted",
