@@ -12,7 +12,7 @@ import { lineCalc, TAX_RATES, TAX_TYPES } from "@/lib/rfq";
 import { loadRfq } from "@/lib/rfq-data";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/$id/quotation")({
-  validateSearch: (s: Record<string, unknown>) => ({ vendor: typeof s.vendor === "string" ? s.vendor : "" }),
+  validateSearch: (s: Record<string, unknown>) => ({ vendor: typeof s["vendor"] === "string" ? s["vendor"] : "" }),
   head: () => ({ meta: [{ title: "Vendor Quotation — KK GROUP ERP" }, { name: "description", content: "Record a vendor's quotation against an RFQ." }, { property: "og:title", content: "Vendor Quotation — KK GROUP ERP" }, { property: "og:description", content: "Record a vendor's quotation against an RFQ." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: QuoteEntry,
 });
@@ -85,7 +85,7 @@ function QuoteEntry() {
       <section className="mt-4 overflow-x-auto rounded-md border bg-card">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Quoted</th><th className="p-2">Material</th><th className="p-2">Qty</th><th className="p-2">Rate (₹)</th><th className="p-2">Discount (₹)</th><th className="p-2">Tax</th><th className="p-2">Days</th><th className="p-2 text-right">Line total</th></tr></thead>
-          <tbody>{lines.map((l, i) => { const it = d.items[i]; return (
+          <tbody>{lines.map((l, i) => { const it = d.items[i]!; return (
             <tr key={l.rfq_item_id} className={`border-b last:border-0 ${l.is_quoted ? "" : "opacity-50"}`}>
               <td className="p-2"><Checkbox checked={l.is_quoted} onCheckedChange={(c) => set(i, { is_quoted: !!c })} /></td>
               <td className="p-2"><div>{it.items?.name}</div><div className="text-xs text-muted-foreground">Requested {num(it.requested_quantity)} {it.units_of_measure?.code}</div></td>
@@ -97,7 +97,7 @@ function QuoteEntry() {
                 <select disabled={!l.is_quoted || l.taxType === "none"} className="h-9 rounded-md border bg-background px-1 text-xs" value={l.taxPct} onChange={(e) => set(i, { taxPct: Number(e.target.value) })}>{TAX_RATES.map((t) => <option key={t} value={t}>{t}%</option>)}</select>
               </div></td>
               <td className="p-2"><Input className="w-16" type="number" disabled={!l.is_quoted} value={l.days} onChange={(e) => set(i, { days: e.target.value })} /></td>
-              <td className="p-2 text-right font-mono">{l.is_quoted ? inr(calcs[i].total) : "Not quoted"}</td>
+              <td className="p-2 text-right font-mono">{l.is_quoted ? inr(calcs[i]!.total) : "Not quoted"}</td>
             </tr>
           ); })}</tbody>
           <tfoot className="text-sm">

@@ -12,7 +12,7 @@ import { errMsg, num } from "@/lib/format";
 import { useCan, useMe } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/new")({
-  validateSearch: (s: Record<string, unknown>) => ({ pr: typeof s.pr === "string" ? s.pr : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ pr: typeof s["pr"] === "string" ? s["pr"] : undefined }),
   head: () => ({ meta: [{ title: "New RFQ — KK GROUP ERP" }, { name: "description", content: "Create a request for quotation from an approved purchase request." }, { property: "og:title", content: "New RFQ — KK GROUP ERP" }, { property: "og:description", content: "Create a request for quotation from an approved purchase request." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: NewRfq,
 });
