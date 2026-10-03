@@ -14,3 +14,4 @@
 - Use project-scoped RLS for operational locations and separate role assignments from user profiles to prevent privilege escalation.
 - Keep the ERP authentication-first: `/` redirects to `/auth`, and authenticated users continue to `/dashboard`.
 - Purchase request status changes only through the pr_transition database function; direct edits are limited to the requester's drafts, so approval history stays trustworthy.
+- RFQ status and vendor awards change only through rfq_transition / rfq_mark_vendor_declined / record_vendor_selection database functions, so the PR → RFQ → quotation → selection trail stays auditable.

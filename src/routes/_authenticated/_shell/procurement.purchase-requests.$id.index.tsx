@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan, useMe } from "@/lib/session";
+import { RFQ_STATUS } from "@/lib/rfq";
 import { PR_ACTION, PR_PRIORITY, PR_STATUS, PR_TYPE, type PrAction } from "@/lib/pr";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/purchase-requests/$id/")({
@@ -49,6 +50,12 @@ function PrDetail() {
     },
   });
 
+  const rfqs = useQuery({
+    queryKey: ["pr-rfqs", id],
+    enabled: can("rfq.view"),
+    queryFn: async () => { const { data, error } = await supabase.from("rfqs").select("id,rfq_number,status,rfq_vendors(status)").eq("purchase_request_id", id).order("created_at"); if (error) throw error; return data ?? []; },
+  });
+
   const run = useMutation({
     mutationFn: async (a: PrAction) => {
       const { error } = await supabase.rpc("pr_transition", { _pr_id: id, _action: a, ...(comment.trim() ? { _comment: comment.trim() } : {}) });
@@ -76,6 +83,7 @@ function PrDetail() {
           {pr.status === "draft" && mine && can("purchase_request.submit") && <Button size="sm" disabled={run.isPending} onClick={() => run.mutate("submitted")}>Submit for approval</Button>}
           {pending && !mine && can("purchase_request.approve") && <><Button size="sm" onClick={() => setAct("approved")}>Approve</Button><Button size="sm" variant="outline" onClick={() => setAct("returned")}>Return</Button></>}
           {pending && !mine && can("purchase_request.reject") && <Button size="sm" variant="outline" onClick={() => setAct("rejected")}>Reject</Button>}
+          {pr.status === "approved" && can("rfq.create") && <Button asChild size="sm"><Link to="/procurement/rfqs/new" search={{ pr: id }}>Create RFQ</Link></Button>}
           {["draft", "pending_approval"].includes(pr.status) && can("purchase_request.cancel") && (mine || can("purchase_request.approve")) && <Button size="sm" variant="ghost" onClick={() => setAct("cancelled")}>Cancel PR</Button>}
         </>}
       />
@@ -107,6 +115,13 @@ function PrDetail() {
           <tfoot><tr className="border-t"><td colSpan={5} className="p-2 text-right text-xs text-muted-foreground">Estimated Value (not an accounting entry)</td><td className="p-2 text-right font-mono font-semibold">{inr(pr.estimated_total)}</td><td /></tr></tfoot>
         </table>
       </section>
+
+      {rfqs.data && rfqs.data.length > 0 && (
+        <section className="mt-4 rounded-md border bg-card p-4">
+          <h2 className="mb-2 text-sm font-semibold">Linked RFQs</h2>
+          <ul className="space-y-1 text-sm">{rfqs.data.map((r) => <li key={r.id}><Link className="font-mono text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: r.id }}>{r.rfq_number}</Link> <span className={`ml-2 inline-flex rounded-sm border px-1.5 text-[11px] ${RFQ_STATUS[r.status].cls}`}>{RFQ_STATUS[r.status].label}</span> <span className="ml-2 text-xs text-muted-foreground">{(r.rfq_vendors ?? []).filter((v) => v.status !== "pending").length}/{(r.rfq_vendors ?? []).length} responses</span></li>)}</ul>
+        </section>
+      )}
 
       <section className="mt-4 rounded-md border bg-card p-4">
         <h2 className="mb-3 text-sm font-semibold">Approval history</h2>
