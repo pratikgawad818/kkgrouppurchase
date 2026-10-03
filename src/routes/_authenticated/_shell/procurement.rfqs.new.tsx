@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, num } from "@/lib/format";
 import { useCan, useMe } from "@/lib/session";
@@ -106,7 +105,7 @@ function NewRfq() {
         <div className="grid max-h-80 gap-1 overflow-y-auto sm:grid-cols-2">
           {vs.map((v) => (
             <label key={v.id} className="flex cursor-pointer items-start gap-2 rounded border p-2 text-sm hover:bg-muted/40">
-              <Checkbox checked={vendors.includes(v.id)} onCheckedChange={(c) => setVendors(c ? [...vendors, v.id] : vendors.filter((x) => x !== v.id))} />
+              <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={vendors.includes(v.id)} onChange={(e) => setVendors(e.target.checked ? [...vendors, v.id] : vendors.filter((x) => x !== v.id))} />
               <span><span className="font-medium">{v.company_name}</span> <span className="text-xs text-muted-foreground">{v.code}</span>
                 <span className="block text-xs text-muted-foreground">{(v.vendor_category_links ?? []).map((l) => l.vendor_categories?.name).filter(Boolean).join(", ")}{v.contact_person ? ` · ${v.contact_person}` : ""}{v.mobile ? ` · ${v.mobile}` : ""}</span></span>
             </label>
