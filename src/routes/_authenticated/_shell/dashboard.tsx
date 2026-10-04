@@ -240,11 +240,11 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp }: { canMoney: boole
   let acc = 0;
   const donut = `conic-gradient(${groups.map((g) => { const a = acc; acc += (g.n / total) * 360; return `${g.c} ${a}deg ${acc}deg`; }).join(",")})`;
   const unitRows = [
-    { label: "Available", n: d.units.available ?? 0, c: "bg-st-available" },
-    { label: "Held", n: d.units.hold ?? 0, c: "bg-st-hold" },
-    { label: "Booked", n: (d.units.booked ?? 0) + (d.units.agreement_pending ?? 0) + (d.units.agreement_done ?? 0), c: "bg-st-booked" },
-    { label: "Sold / registered", n: (d.units.registered ?? 0) + (d.units.possession_pending ?? 0) + (d.units.possession_completed ?? 0), c: "bg-st-registered" },
-    { label: "Withdrawn", n: d.units.cancelled ?? 0, c: "bg-st-cancelled" },
+    { label: "Available", n: d.units["available"] ?? 0, c: "bg-st-available" },
+    { label: "Held", n: d.units["hold"] ?? 0, c: "bg-st-hold" },
+    { label: "Booked", n: (d.units["booked"] ?? 0) + (d.units["agreement_pending"] ?? 0) + (d.units["agreement_done"] ?? 0), c: "bg-st-booked" },
+    { label: "Sold / registered", n: (d.units["registered"] ?? 0) + (d.units["possession_pending"] ?? 0) + (d.units["possession_completed"] ?? 0), c: "bg-st-registered" },
+    { label: "Withdrawn", n: d.units["cancelled"] ?? 0, c: "bg-st-cancelled" },
   ];
   const uMax = Math.max(1, ...unitRows.map((r) => r.n));
   return (
