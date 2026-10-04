@@ -1,3 +1,4 @@
+import { safeSearch } from "@/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -18,7 +19,7 @@ const blank: VendorForm = { code: "", company_name: "", contact_person: "", mobi
 
 function Vendors() {
   const can = useCan(); const qc = useQueryClient(); const [search, setSearch] = useState(""); const [page, setPage] = useState(0); const [editing, setEditing] = useState<Vendor | null>(null); const [open, setOpen] = useState(false); const [form, setForm] = useState(blank);
-  const q = useQuery({ queryKey: ["vendors", search, page], queryFn: async () => { let req = supabase.from("vendors").select("id,code,company_name,contact_person,mobile,email,gstin,payment_terms_days,status,is_demo", { count: "exact" }).order("company_name").range(page * 10, page * 10 + 9); if (search) req = req.or(`company_name.ilike.%${search}%,code.ilike.%${search}%,gstin.ilike.%${search}%`); const r = await req; if (r.error) throw r.error; return { rows: r.data as Vendor[], count: r.count ?? 0 }; } });
+  const q = useQuery({ queryKey: ["vendors", search, page], queryFn: async () => { let req = supabase.from("vendors").select("id,code,company_name,contact_person,mobile,email,gstin,payment_terms_days,status,is_demo", { count: "exact" }).order("company_name").range(page * 10, page * 10 + 9); const s = safeSearch(search); if (s) req = req.or(`company_name.ilike.%${s}%,code.ilike.%${s}%,gstin.ilike.%${s}%`); const r = await req; if (r.error) throw r.error; return { rows: r.data as Vendor[], count: r.count ?? 0 }; } });
   const save = useMutation({ mutationFn: async () => { const { data: company } = await supabase.from("companies").select("id").limit(1).single(); if (!company) throw new Error("Company is unavailable."); const payload = { ...form, payment_terms_days: Number(form.payment_terms_days), gstin: form.gstin || null, company_id: company.id }; const r = editing ? await supabase.from("vendors").update(payload).eq("id", editing.id) : await supabase.from("vendors").insert(payload); if (r.error) throw r.error; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); setOpen(false); toast.success(editing ? "Vendor updated" : "Vendor created"); }, onError: (e) => toast.error(e.message) });
   function show(v?: Vendor) { setEditing(v ?? null); setForm(v ? { code: v.code, company_name: v.company_name, contact_person: v.contact_person ?? "", mobile: v.mobile ?? "", email: v.email ?? "", gstin: v.gstin ?? "", payment_terms_days: String(v.payment_terms_days), status: v.status } : blank); setOpen(true); }
   if (q.isLoading) return <Loading />;
