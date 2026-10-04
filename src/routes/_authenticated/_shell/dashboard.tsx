@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, Package, Plus, Store, Warehouse } from "lucide-react";
+import { AlertTriangle, Building2, ClipboardList, Clock, IndianRupee, Package, Plus, ShoppingCart, Store, Users, Wallet, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Stat, Loading } from "@/components/erp/common";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, PROJECT_STATUS_LABEL } from "@/lib/format";
 import { useCan } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
@@ -173,6 +173,123 @@ function InvCards() {
   </>;
 }
 
+function Panel({ title, to, children, className }: { title: string; to?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={"rounded-xl border bg-card shadow-card " + (className ?? "")}>
+      <div className="flex items-center justify-between border-b px-5 py-4"><h2 className="text-sm font-semibold">{title}</h2>{to && <Link to={to} className="text-sm text-primary hover:underline">View all</Link>}</div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function Kpi({ label, value, icon: Icon, tone, to }: { label: string; value: React.ReactNode; icon: typeof Building2; tone: string; to?: string }) {
+  const body = (
+    <div className="flex h-full items-start justify-between rounded-xl border bg-card p-5 shadow-card transition-colors hover:border-primary/40">
+      <div><div className="text-sm text-muted-foreground">{label}</div><div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div></div>
+      <span className={"grid h-10 w-10 place-items-center rounded-lg " + tone}><Icon className="h-5 w-5" /></span>
+    </div>
+  );
+  return to ? <Link to={to}>{body}</Link> : body;
+}
+
+const STATUS_TONE: Record<string, string> = {
+  under_construction: "bg-st-available/12 text-st-available border-st-available/30",
+  near_completion: "bg-st-available/12 text-st-available border-st-available/30",
+  completed: "bg-st-booked/12 text-st-booked border-st-booked/30",
+  planning: "bg-muted text-muted-foreground border-border",
+  approval: "bg-st-hold/15 text-st-hold border-st-hold/40",
+  on_hold: "bg-st-hold/15 text-st-hold border-st-hold/40",
+  cancelled: "bg-destructive/10 text-destructive border-destructive/30",
+};
+
+function Overview({ canMoney, canStock, canPr, canPo, canAp }: { canMoney: boolean; canStock: boolean; canPr: boolean; canPo: boolean; canAp: boolean }) {
+  const q = useQuery({
+    queryKey: ["dashboard", "overview"],
+    queryFn: async () => {
+      const [p, team, units, stock, pr, po, inv] = await Promise.all([
+        supabase.from("projects").select("id,name,code,status,budget,city").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("units").select("status").limit(10000),
+        canStock ? supabase.from("warehouse_stock").select("quantity_on_hand,items(name,reorder_level,unit_of_measure)").limit(5000) : Promise.resolve({ data: [] as any[] }),
+        canPr ? supabase.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending_approval") : Promise.resolve({ count: 0 }),
+        canPo ? supabase.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["approved", "sent", "partially_received"]) : Promise.resolve({ count: 0 }),
+        canAp ? supabase.from("vendor_invoices").select("balance_due").in("status", ["approved", "partially_paid"]) : Promise.resolve({ data: [] as any[] }),
+      ]);
+      if (p.error) throw p.error;
+      const low = ((stock as any).data ?? []).filter((x: any) => Number(x.quantity_on_hand) <= Number(x.items?.reorder_level ?? 0) && Number(x.items?.reorder_level ?? 0) > 0);
+      const uc: Record<string, number> = {};
+      for (const u of (units as any).data ?? []) uc[u.status] = (uc[u.status] ?? 0) + 1;
+      return {
+        projects: p.data ?? [], team: (team as any).count ?? 0, units: uc, low,
+        pendingPr: (pr as any).count ?? 0, openPo: (po as any).count ?? 0,
+        payable: ((inv as any).data ?? []).reduce((a: number, x: any) => a + Number(x.balance_due), 0),
+      };
+    },
+  });
+  const d = q.data;
+  if (!d) return null;
+  const active = d.projects.filter((p) => ["under_construction", "near_completion"].includes(p.status)).length;
+  const budget = d.projects.reduce((a, p) => a + Number(p.budget ?? 0), 0);
+  const groups = [
+    { label: "Active", n: active, c: "var(--st-available)" },
+    { label: "Completed", n: d.projects.filter((p) => p.status === "completed").length, c: "var(--st-booked)" },
+    { label: "Planning", n: d.projects.filter((p) => ["planning", "approval"].includes(p.status)).length, c: "var(--st-cancelled)" },
+    { label: "On hold", n: d.projects.filter((p) => ["on_hold", "cancelled"].includes(p.status)).length, c: "var(--st-hold)" },
+  ];
+  const total = groups.reduce((a, g) => a + g.n, 0) || 1;
+  let acc = 0;
+  const donut = `conic-gradient(${groups.map((g) => { const a = acc; acc += (g.n / total) * 360; return `${g.c} ${a}deg ${acc}deg`; }).join(",")})`;
+  const unitRows = [
+    { label: "Available", n: d.units.available ?? 0, c: "bg-st-available" },
+    { label: "Held", n: d.units.hold ?? 0, c: "bg-st-hold" },
+    { label: "Booked", n: (d.units.booked ?? 0) + (d.units.agreement_pending ?? 0) + (d.units.agreement_done ?? 0), c: "bg-st-booked" },
+    { label: "Sold / registered", n: (d.units.registered ?? 0) + (d.units.possession_pending ?? 0) + (d.units.possession_completed ?? 0), c: "bg-st-registered" },
+    { label: "Withdrawn", n: d.units.cancelled ?? 0, c: "bg-st-cancelled" },
+  ];
+  const uMax = Math.max(1, ...unitRows.map((r) => r.n));
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <Kpi label="Total Projects" value={d.projects.length} icon={Building2} tone="bg-accent text-accent-foreground" to="/projects" />
+        <Kpi label="Active Projects" value={active} icon={Clock} tone="bg-st-available/12 text-st-available" to="/projects" />
+        <Kpi label="Team Members" value={d.team} icon={Users} tone="bg-muted text-foreground" />
+        <Kpi label="Project Budget" value={canMoney ? inr(budget) : "—"} icon={IndianRupee} tone="bg-st-hold/15 text-st-hold" />
+        <Kpi label="PRs Pending Approval" value={canPr ? d.pendingPr : "—"} icon={ClipboardList} tone="bg-accent text-accent-foreground" to="/procurement/purchase-requests" />
+        <Kpi label="Open Purchase Orders" value={canPo ? d.openPo : "—"} icon={ShoppingCart} tone="bg-st-available/12 text-st-available" to="/procurement/purchase-orders" />
+        <Kpi label="Vendor Payables" value={canAp ? inr(d.payable) : "—"} icon={Wallet} tone="bg-st-hold/15 text-st-hold" to="/finance/payables" />
+        <Kpi label="Low Stock Materials" value={canStock ? d.low.length : "—"} icon={AlertTriangle} tone="bg-destructive/10 text-destructive" to="/inventory/stock" />
+      </div>
+      <div className="mt-6 grid gap-5 lg:grid-cols-3">
+        <Panel title="Recent projects" to="/projects" className="lg:col-span-2">
+          {d.projects.length === 0 && <div className="text-sm text-muted-foreground">No projects yet.</div>}
+          <div className="divide-y">
+            {d.projects.slice(0, 5).map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0"><div className="truncate text-sm font-medium">{p.name}</div><div className="truncate text-xs text-muted-foreground">{p.code}{p.city ? ` · ${p.city}` : ""}</div></div>
+                <span className={"shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium " + (STATUS_TONE[p.status] ?? "")}>{PROJECT_STATUS_LABEL[p.status as keyof typeof PROJECT_STATUS_LABEL]}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="Projects by status">
+          <div className="flex flex-col items-center gap-5">
+            <div className="relative h-44 w-44 rounded-full" style={{ background: d.projects.length ? donut : "var(--muted)" }}><div className="absolute inset-7 rounded-full bg-card" /></div>
+            <div className="flex flex-wrap justify-center gap-3 text-xs text-muted-foreground">{groups.map((g) => <span key={g.label} className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: g.c }} />{g.label} ({g.n})</span>)}</div>
+          </div>
+        </Panel>
+        <Panel title="Unit inventory" to="/units">
+          <div className="space-y-3">{unitRows.map((r) => <div key={r.label} className="grid grid-cols-[8rem_1fr_2.5rem] items-center gap-3 text-sm"><span className="text-muted-foreground">{r.label}</span><span className="h-2 rounded-full bg-muted"><i className={"block h-2 rounded-full " + r.c} style={{ width: `${(r.n / uMax) * 100}%` }} /></span><span className="text-right font-medium tabular-nums">{r.n}</span></div>)}</div>
+        </Panel>
+        <Panel title="Low stock materials" to="/inventory/stock" className="lg:col-span-2">
+          {!canStock ? <div className="text-sm text-muted-foreground">No stock access.</div> : d.low.length === 0 ? <div className="text-sm text-muted-foreground">All materials are above reorder level.</div> : (
+            <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">{d.low.slice(0, 9).map((x: any, i: number) => <div key={i} className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="truncate text-sm font-medium">{x.items?.name}</div><div className="text-xs text-muted-foreground">{Number(x.quantity_on_hand)} / {Number(x.items?.reorder_level)} {x.items?.unit_of_measure}</div></div><span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs text-destructive">Low</span></div>)}</div>
+          )}
+        </Panel>
+      </div>
+    </>
+  );
+}
+
 function Dashboard() {
   const can = useCan();
   const current = fyOf(new Date());
@@ -229,6 +346,7 @@ function Dashboard() {
           </>
         }
       />
+      <Overview canMoney={can("financial.view")} canStock={can("inventory.view")} canPr={can("purchase_request.view")} canPo={can("purchase_order.view")} canAp={can("payable.view")} />
       {can("purchase_request.view") && <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />}
       {can("purchase_order.view") && <PoSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
       {can("grn.view") && <GrnSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
