@@ -210,7 +210,7 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp }: { canMoney: boole
         supabase.from("projects").select("id,name,code,status,budget,city").order("created_at", { ascending: false }),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("units").select("status").limit(10000),
-        canStock ? supabase.from("warehouse_stock").select("quantity_on_hand,items(name,reorder_level,unit_of_measure)").limit(5000) : Promise.resolve({ data: [] as any[] }),
+        canStock ? supabase.from("warehouse_stock").select("quantity_on_hand,items(name,reorder_level)").limit(5000) : Promise.resolve({ data: [] as any[] }),
         canPr ? supabase.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending_approval") : Promise.resolve({ count: 0 }),
         canPo ? supabase.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["approved", "sent", "partially_received"]) : Promise.resolve({ count: 0 }),
         canAp ? supabase.from("vendor_invoices").select("balance_due").in("status", ["approved", "partially_paid"]) : Promise.resolve({ data: [] as any[] }),
@@ -282,7 +282,7 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp }: { canMoney: boole
         </Panel>
         <Panel title="Low stock materials" to="/inventory/stock" className="lg:col-span-2">
           {!canStock ? <div className="text-sm text-muted-foreground">No stock access.</div> : d.low.length === 0 ? <div className="text-sm text-muted-foreground">All materials are above reorder level.</div> : (
-            <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">{d.low.slice(0, 9).map((x: any, i: number) => <div key={i} className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="truncate text-sm font-medium">{x.items?.name}</div><div className="text-xs text-muted-foreground">{Number(x.quantity_on_hand)} / {Number(x.items?.reorder_level)} {x.items?.unit_of_measure}</div></div><span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs text-destructive">Low</span></div>)}</div>
+            <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">{d.low.slice(0, 9).map((x: any, i: number) => <div key={i} className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="truncate text-sm font-medium">{x.items?.name}</div><div className="text-xs text-muted-foreground">{Number(x.quantity_on_hand)} / {Number(x.items?.reorder_level)}</div></div><span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs text-destructive">Low</span></div>)}</div>
           )}
         </Panel>
       </div>
