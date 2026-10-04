@@ -1,3 +1,4 @@
+import { safeSearch } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -63,7 +64,7 @@ function PrList() {
       if (from) r = r.gte("request_date", from);
       if (to) r = r.lte("request_date", to);
       if (sp.due) { const d = new Date(); d.setDate(d.getDate() + 7); r = r.lte("required_by", d.toISOString().slice(0, 10)).in("status", ["draft", "pending_approval", "approved"]); }
-      const t = text.trim();
+      const t = safeSearch(text);
       if (t) {
         const ors = [`pr_number.ilike.%${t}%`];
         const [mat, proj, ppl] = await Promise.all([
