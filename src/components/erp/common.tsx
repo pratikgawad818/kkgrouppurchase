@@ -33,9 +33,9 @@ export function Pill({ children, className }: { children: ReactNode; className?:
 
 export function Stat({ label, value, hint, className }: { label: string; value: ReactNode; hint?: ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-md border bg-card p-4", className)}>
-      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1.5 font-mono text-xl font-semibold">{value}</div>
+    <div className={cn("rounded-xl border bg-card p-5 shadow-card", className)}>
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
