@@ -185,7 +185,7 @@ function Panel({ title, to, children, className }: { title: string; to?: string;
 function Kpi({ label, value, icon: Icon, tone, to }: { label: string; value: React.ReactNode; icon: typeof Building2; tone: string; to?: string }) {
   const body = (
     <div className="flex h-full items-start justify-between gap-3 rounded-xl border bg-card p-5 shadow-card transition-colors hover:border-primary/40">
-      <div className="min-w-0"><div className="truncate text-sm text-muted-foreground">{label}</div><div className="mt-2 truncate text-xl font-semibold tabular-nums xl:text-2xl">{value}</div></div>
+      <div className="min-w-0"><div className="text-sm text-muted-foreground">{label}</div><div className="mt-2 whitespace-nowrap text-lg font-semibold tabular-nums 2xl:text-2xl">{value}</div></div>
       <span className={"grid h-10 w-10 shrink-0 place-items-center rounded-lg " + tone}><Icon className="h-5 w-5" /></span>
     </div>
   );
