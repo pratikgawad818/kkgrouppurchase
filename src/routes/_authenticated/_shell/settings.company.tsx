@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Building2, FileCheck2, Image as ImageIcon, MapPin, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -180,6 +180,6 @@ function Company() {
   );
 }
 
-function FormField({ label, required, className, children }: { label: string; required?: boolean; className?: string; children: React.ReactNode }) {
+function FormField({ label, required, className, children }: { label: string; required?: boolean; className?: string; children: ReactNode }) {
   return <div className={className}><Label className="mb-1.5 block text-xs font-medium">{label}{required && <span className="text-destructive"> *</span>}</Label>{children}</div>;
 }
