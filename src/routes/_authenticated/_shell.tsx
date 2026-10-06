@@ -22,7 +22,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Projects", items: [
     { to: "/projects", label: "Projects", icon: Building2 },
     { to: "/buildings", label: "Buildings", icon: Building },
-    { to: "/units", label: "Inventory", icon: Boxes },
+    { to: "/units", label: "Flats Inventory", icon: Boxes },
     { label: "Land", icon: Map },
   ] },
   { group: "Sales", items: [
