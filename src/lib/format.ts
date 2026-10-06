@@ -81,6 +81,16 @@ export const ROLE_LABEL: Record<AppRole, string> = {
 };
 
 export function errMsg(e: unknown) {
-  if (e && typeof e === "object" && "message" in e) return String((e as { message: string }).message);
+  if (e && typeof e === "object" && "message" in e) {
+    const m = String((e as { message: string }).message);
+    const d = parseDuplicateInvoice(m);
+    if (d) return `This vendor bill number already exists for this vendor as ${d.number} (${d.status.replace(/_/g, " ")}).`;
+    return m;
+  }
   return "The request could not be completed.";
+}
+
+export function parseDuplicateInvoice(m: string) {
+  const p = m.match(/DUPLICATE_INVOICE\|([0-9a-f-]+)\|([^|]+)\|(\w+)/);
+  return p ? { id: p[1], number: p[2], status: p[3] } : null;
 }
