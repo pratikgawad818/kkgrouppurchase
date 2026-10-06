@@ -55,32 +55,50 @@ export type Database = {
       audit_logs: {
         Row: {
           action: string
+          actor_name: string | null
           created_at: string
+          document_number: string | null
+          document_type: string | null
           entity: string
           entity_id: string | null
           id: number
           new_data: Json | null
           old_data: Json | null
+          reason: string | null
+          source_id: string | null
+          source_type: string | null
           user_id: string | null
         }
         Insert: {
           action: string
+          actor_name?: string | null
           created_at?: string
+          document_number?: string | null
+          document_type?: string | null
           entity: string
           entity_id?: string | null
           id?: never
           new_data?: Json | null
           old_data?: Json | null
+          reason?: string | null
+          source_id?: string | null
+          source_type?: string | null
           user_id?: string | null
         }
         Update: {
           action?: string
+          actor_name?: string | null
           created_at?: string
+          document_number?: string | null
+          document_type?: string | null
           entity?: string
           entity_id?: string | null
           id?: never
           new_data?: Json | null
           old_data?: Json | null
+          reason?: string | null
+          source_id?: string | null
+          source_type?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -406,7 +424,12 @@ export type Database = {
       goods_receipt_items: {
         Row: {
           accepted_quantity: number
+          challan_item_id: string | null
           damaged_quantity: number
+          disposition: Database["public"]["Enums"]["grn_disposition"]
+          disposition_at: string | null
+          disposition_by: string | null
+          disposition_reason: string | null
           grn_id: string
           id: string
           material_id: string
@@ -416,12 +439,18 @@ export type Database = {
           received_quantity: number
           rejected_quantity: number
           remarks: string | null
+          short_closed_quantity: number
           unit_cost: number
           unit_id: string
         }
         Insert: {
           accepted_quantity: number
+          challan_item_id?: string | null
           damaged_quantity?: number
+          disposition?: Database["public"]["Enums"]["grn_disposition"]
+          disposition_at?: string | null
+          disposition_by?: string | null
+          disposition_reason?: string | null
           grn_id: string
           id?: string
           material_id: string
@@ -431,12 +460,18 @@ export type Database = {
           received_quantity: number
           rejected_quantity?: number
           remarks?: string | null
+          short_closed_quantity?: number
           unit_cost: number
           unit_id: string
         }
         Update: {
           accepted_quantity?: number
+          challan_item_id?: string | null
           damaged_quantity?: number
+          disposition?: Database["public"]["Enums"]["grn_disposition"]
+          disposition_at?: string | null
+          disposition_by?: string | null
+          disposition_reason?: string | null
           grn_id?: string
           id?: string
           material_id?: string
@@ -446,6 +481,7 @@ export type Database = {
           received_quantity?: number
           rejected_quantity?: number
           remarks?: string | null
+          short_closed_quantity?: number
           unit_cost?: number
           unit_id?: string
         }
@@ -776,6 +812,53 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_match_runs: {
+        Row: {
+          exceptions: Json
+          id: string
+          invoice_id: string
+          qty_tolerance_pct: number
+          rate_tolerance_pct: number
+          result: Database["public"]["Enums"]["match_status"]
+          run_at: string
+          run_by: string | null
+          summary: Json | null
+          value_tolerance: number
+        }
+        Insert: {
+          exceptions?: Json
+          id?: string
+          invoice_id: string
+          qty_tolerance_pct: number
+          rate_tolerance_pct: number
+          result: Database["public"]["Enums"]["match_status"]
+          run_at?: string
+          run_by?: string | null
+          summary?: Json | null
+          value_tolerance: number
+        }
+        Update: {
+          exceptions?: Json
+          id?: string
+          invoice_id?: string
+          qty_tolerance_pct?: number
+          rate_tolerance_pct?: number
+          result?: Database["public"]["Enums"]["match_status"]
+          run_at?: string
+          run_by?: string | null
+          summary?: Json | null
+          value_tolerance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_match_runs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -1373,6 +1456,7 @@ export type Database = {
       }
       purchase_order_items: {
         Row: {
+          accepted_quantity: number
           description: string | null
           discount_amount: number
           id: string
@@ -1385,6 +1469,8 @@ export type Database = {
           rate: number
           received_quantity: number
           rfq_item_id: string
+          short_close_reason: string | null
+          short_closed_quantity: number
           tax_amount: number
           tax_rate_percent: number
           tax_type: string
@@ -1393,6 +1479,7 @@ export type Database = {
           vendor_selection_id: string
         }
         Insert: {
+          accepted_quantity?: number
           description?: string | null
           discount_amount?: number
           id?: string
@@ -1405,6 +1492,8 @@ export type Database = {
           rate: number
           received_quantity?: number
           rfq_item_id: string
+          short_close_reason?: string | null
+          short_closed_quantity?: number
           tax_amount: number
           tax_rate_percent: number
           tax_type: string
@@ -1413,6 +1502,7 @@ export type Database = {
           vendor_selection_id: string
         }
         Update: {
+          accepted_quantity?: number
           description?: string | null
           discount_amount?: number
           id?: string
@@ -1425,6 +1515,8 @@ export type Database = {
           rate?: number
           received_quantity?: number
           rfq_item_id?: string
+          short_close_reason?: string | null
+          short_closed_quantity?: number
           tax_amount?: number
           tax_rate_percent?: number
           tax_type?: string
@@ -2937,6 +3029,8 @@ export type Database = {
           invoice_number: string
           match_status: Database["public"]["Enums"]["match_status"]
           match_summary: Json | null
+          match_tolerances: Json | null
+          matched_at: string | null
           net_payable: number
           other_charges: number
           po_id: string
@@ -2974,6 +3068,8 @@ export type Database = {
           invoice_number: string
           match_status?: Database["public"]["Enums"]["match_status"]
           match_summary?: Json | null
+          match_tolerances?: Json | null
+          matched_at?: string | null
           net_payable?: number
           other_charges?: number
           po_id: string
@@ -3011,6 +3107,8 @@ export type Database = {
           invoice_number?: string
           match_status?: Database["public"]["Enums"]["match_status"]
           match_summary?: Json | null
+          match_tolerances?: Json | null
+          matched_at?: string | null
           net_payable?: number
           other_charges?: number
           po_id?: string
@@ -3901,6 +3999,21 @@ export type Database = {
         Returns: Database["public"]["Enums"]["invoice_status"]
       }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
+      ist_today: { Args: never; Returns: string }
+      log_event: {
+        Args: {
+          _action: string
+          _doc_number: string
+          _doc_type: string
+          _new: Json
+          _old: Json
+          _reason: string
+          _record_id: string
+          _source_id?: string
+          _source_type?: string
+        }
+        Returns: undefined
+      }
       my_permissions: { Args: never; Returns: string[] }
       next_doc_number: {
         Args: { _doc: string; _prefix: string }
@@ -3910,11 +4023,16 @@ export type Database = {
         Args: { _doc: string; _prefix: string }
         Returns: string
       }
+      norm_bill_no: { Args: { _t: string }; Returns: string }
       payment_transition: {
         Args: { _action: string; _comment: string; _details: Json; _id: string }
         Returns: Database["public"]["Enums"]["payment_status"]
       }
       po_can_view: { Args: { _po_id: string }; Returns: boolean }
+      po_refresh_status: {
+        Args: { _po: string }
+        Returns: Database["public"]["Enums"]["po_status"]
+      }
       po_transition: {
         Args: {
           _action: Database["public"]["Enums"]["po_action"]
@@ -4008,6 +4126,14 @@ export type Database = {
         Args: { _allocations: Json; _header: Json }
         Returns: string
       }
+      set_grn_disposition: {
+        Args: {
+          _disposition: Database["public"]["Enums"]["grn_disposition"]
+          _grn_item: string
+          _reason: string
+        }
+        Returns: undefined
+      }
       set_unit_status: {
         Args: {
           _hold_until?: string
@@ -4015,6 +4141,10 @@ export type Database = {
           _status: Database["public"]["Enums"]["unit_status"]
           _unit_id: string
         }
+        Returns: undefined
+      }
+      short_close_po_line: {
+        Args: { _po_item: string; _qty: number; _reason: string }
         Returns: undefined
       }
       update_finance_settings: { Args: { _settings: Json }; Returns: undefined }
@@ -4036,6 +4166,13 @@ export type Database = {
         | "accountant"
         | "store_manager"
         | "auditor"
+      grn_disposition:
+        | "pending_decision"
+        | "replacement_expected"
+        | "short_close"
+        | "return_to_vendor"
+        | "credit_note_expected"
+        | "accepted_under_concession"
       grn_status: "draft" | "posted" | "cancelled"
       inventory_tx_type:
         | "opening_stock"
@@ -4077,6 +4214,8 @@ export type Database = {
         | "fully_received"
         | "closed"
         | "cancelled"
+        | "partially_accepted"
+        | "short_closed"
       pr_action:
         | "created"
         | "submitted"
@@ -4264,6 +4403,14 @@ export const Constants = {
         "store_manager",
         "auditor",
       ],
+      grn_disposition: [
+        "pending_decision",
+        "replacement_expected",
+        "short_close",
+        "return_to_vendor",
+        "credit_note_expected",
+        "accepted_under_concession",
+      ],
       grn_status: ["draft", "posted", "cancelled"],
       inventory_tx_type: [
         "opening_stock",
@@ -4308,6 +4455,8 @@ export const Constants = {
         "fully_received",
         "closed",
         "cancelled",
+        "partially_accepted",
+        "short_closed",
       ],
       pr_action: [
         "created",
