@@ -11,7 +11,9 @@ export const PO_STATUS: Record<PoStatus, { label: string; cls: string }> = {
   rejected: { label: "Rejected", cls: "bg-destructive/10 text-destructive border-destructive/30" },
   sent: { label: "Sent to vendor", cls: "bg-primary/10 text-primary border-primary/30" },
   partially_received: { label: "Partially received", cls: "bg-warning/15 text-warning-foreground border-warning/40" },
+  partially_accepted: { label: "Partially accepted", cls: "bg-warning/15 text-warning-foreground border-warning/40" },
   fully_received: { label: "Fully received", cls: "bg-success/15 text-success border-success/40" },
+  short_closed: { label: "Short closed", cls: "bg-muted text-foreground" },
   closed: { label: "Closed", cls: "bg-muted text-muted-foreground" },
   cancelled: { label: "Cancelled", cls: "bg-muted text-muted-foreground line-through" },
 };
