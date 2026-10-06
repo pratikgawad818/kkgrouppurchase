@@ -84,7 +84,7 @@ export function errMsg(e: unknown) {
   if (e && typeof e === "object" && "message" in e) {
     const m = String((e as { message: string }).message);
     const d = parseDuplicateInvoice(m);
-    if (d) return `This vendor bill number already exists for this vendor as ${d.number} (${d.status.replace(/_/g, " ")}).`;
+    if (d) return `This vendor bill number already exists for this vendor as ${d.number} (${(d.status ?? "").replace(/_/g, " ")}).`;
     return m;
   }
   return "The request could not be completed.";

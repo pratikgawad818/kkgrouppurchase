@@ -35,7 +35,7 @@ function Audit() {
       return res.data;
     },
   });
-  const actions = ["grn_created", "grn_posted", "grn_cancelled", "grn_reversed", "grn_line_edited", "disposition_decision", "short_close", "invoice_created", "invoice_matched", "invoice_approve", "invoice_reject", "invoice_cancel", "finance_settings_changed", "insert", "update", "delete"];
+  const actions = ["grn_created", "grn_posted", "grn_cancelled", "grn_reversed", "grn_line_edited", "invoice_submit", "disposition_decision", "short_close", "invoice_created", "invoice_matched", "invoice_approve", "invoice_reject", "invoice_cancel", "finance_settings_changed", "insert", "update", "delete"];
   return (
     <>
       <PageHeader title="Audit Log" subtitle="Permanent history. Entries cannot be edited or deleted." />
