@@ -50,6 +50,13 @@
       "when": 1791286227254,
       "tag": "0006_r1_enums",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791286428407,
+      "tag": "0007_r1_transaction_integrity",
+      "breakpoints": true
     }
   ]
 }
