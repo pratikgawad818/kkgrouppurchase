@@ -12,6 +12,7 @@ import { useCan } from "@/lib/session";
 import { GRN_STATUS, TX_LABEL } from "@/lib/po";
 import { cn } from "@/lib/utils";
 
+const DISP_LABEL: Record<string, string> = { pending_decision: "Pending Decision", replacement_expected: "Replacement Expected", short_close: "Short Closed", return_to_vendor: "Return to Vendor", credit_note_expected: "Credit Note Expected", accepted_under_concession: "Accepted Under Concession" };
 const META = "Goods receipt note with accepted, damaged and rejected quantities.";
 export const Route = createFileRoute("/_authenticated/_shell/inventory/goods-received/$id")({
   head: () => ({ meta: [{ title: "Goods Receipt — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "Goods Receipt — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -24,11 +25,13 @@ function GrnDetail() {
   const qc = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [disp, setDisp] = useState<null | { id: string; to: "pending_decision" | "replacement_expected" | "short_close"; qty: number }>(null);
+  const [dReason, setDReason] = useState("");
   const q = useQuery({
     queryKey: ["grn", id],
     queryFn: async () => {
       const [g, i, t] = await Promise.all([
-        supabase.from("goods_receipt_notes").select("*, purchase_orders(po_number,purchase_order_items(id,ordered_quantity,received_quantity)), rfqs(rfq_number), purchase_requests(pr_number), vendors(company_name), warehouses(name), projects(name), buildings(name), profiles!goods_receipt_notes_received_by_fkey(full_name)").eq("id", id).single(),
+        supabase.from("goods_receipt_notes").select("*, purchase_orders(po_number,purchase_order_items(id,ordered_quantity,received_quantity,accepted_quantity,short_closed_quantity)), rfqs(rfq_number), purchase_requests(pr_number), vendors(company_name), warehouses(name), projects(name), buildings(name), profiles!goods_receipt_notes_received_by_fkey(full_name)").eq("id", id).single(),
         supabase.from("goods_receipt_items").select("*, items(code,name), units_of_measure(code)").eq("grn_id", id),
         supabase.from("inventory_transactions").select("id,created_at,tx_type,quantity_in,quantity_out,balance_after,unit_cost,total_cost,remarks,items(name),warehouses(name)").eq("grn_id", id).order("id"),
       ]);
@@ -45,6 +48,16 @@ function GrnDetail() {
   const cancel = useMutation({
     mutationFn: async () => { const { error } = await supabase.rpc("cancel_goods_receipt", { _grn_id: id, _reason: reason.trim() }); if (error) throw error; },
     onSuccess: () => { toast.success("GRN cancelled"); setCancelOpen(false); refresh(); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const setDisposition = useMutation({
+    mutationFn: async () => {
+      if (!disp) return;
+      if (disp.to === "short_close" && !dReason.trim()) throw new Error("A reason is required to short-close");
+      const { error } = await supabase.rpc("set_grn_disposition", { _grn_item: disp.id, _disposition: disp.to, _reason: dReason.trim() });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Decision recorded"); setDisp(null); setDReason(""); refresh(); },
     onError: (e) => toast.error(errMsg(e)),
   });
   if (q.isLoading) return <Loading />;
@@ -73,18 +86,28 @@ function GrnDetail() {
       </section>
       <section className="mt-4 overflow-x-auto rounded-md border bg-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Material</th><th className="p-2 text-right">Ordered</th><th className="p-2 text-right">Previously received</th><th className="p-2 text-right">This receipt</th><th className="p-2 text-right">Pending now</th><th className="p-2 text-right">Damaged</th><th className="p-2 text-right">Rejected</th><th className="p-2 text-right">Accepted</th><th className="p-2 text-right">Unit cost</th></tr></thead>
+          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Material</th><th className="p-2 text-right">Ordered</th><th className="p-2 text-right">Previously received</th><th className="p-2 text-right">Physically received</th><th className="p-2 text-right">PO remaining</th><th className="p-2 text-right">Damaged</th><th className="p-2 text-right">Rejected</th><th className="p-2 text-right">Accepted</th><th className="p-2 text-right">Unit cost</th><th className="p-2">Disposition</th></tr></thead>
           <tbody>{items.map((x) => { const pi = poItems.find((p) => p.id === x.po_item_id); return (
             <tr key={x.id} className="border-b last:border-0">
               <td className="p-2">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
               <td className="p-2 text-right font-mono">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
               <td className="p-2 text-right font-mono">{num(x.previously_received)}</td>
               <td className="p-2 text-right font-mono">{num(x.received_quantity)}</td>
-              <td className="p-2 text-right font-mono">{pi ? num(Number(pi.ordered_quantity) - Number(pi.received_quantity)) : "—"}</td>
+              <td className="p-2 text-right font-mono">{pi ? num(Number(pi.ordered_quantity) - Number(pi.accepted_quantity) - Number(pi.short_closed_quantity)) : "—"}</td>
               <td className="p-2 text-right font-mono text-destructive">{num(x.damaged_quantity)}</td>
               <td className="p-2 text-right font-mono text-destructive">{num(x.rejected_quantity)}</td>
               <td className="p-2 text-right font-mono font-semibold">{num(x.accepted_quantity)}</td>
               <td className="p-2 text-right font-mono">{inr(x.unit_cost)}</td>
+              <td className="p-2 text-xs">{Number(x.damaged_quantity) + Number(x.rejected_quantity) === 0 ? "—" : (<div>
+                <div className="font-medium">{DISP_LABEL[x.disposition] ?? x.disposition}{x.disposition === "short_close" ? ` (${num(x.short_closed_quantity)})` : ""}</div>
+                {x.disposition_reason && <div className="text-muted-foreground">“{x.disposition_reason}”</div>}
+                {g.status === "posted" && x.disposition !== "short_close" && can("grn.create") && <select aria-label="Change disposition" className="mt-1 h-7 rounded border bg-background px-1 text-xs" value="" onChange={(e) => e.target.value && setDisp({ id: x.id, to: e.target.value as "pending_decision", qty: Number(x.damaged_quantity) + Number(x.rejected_quantity) })}>
+                  <option value="">Change…</option>
+                  {x.disposition !== "pending_decision" && <option value="pending_decision">Pending Decision</option>}
+                  {x.disposition !== "replacement_expected" && <option value="replacement_expected">Replacement Expected</option>}
+                  {can("purchase_order.short_close") && <option value="short_close">Short Close</option>}
+                </select>}
+              </div>)}</td>
             </tr>); })}
           </tbody>
         </table>
@@ -101,6 +124,13 @@ function GrnDetail() {
         )}
       </section>
       <p className="mt-2 text-xs text-muted-foreground">Posted receipts are never edited. Corrections are made by cancelling, which posts reversal entries.</p>
+      <Dialog open={!!disp} onOpenChange={(o) => !o && setDisp(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{disp ? DISP_LABEL[disp.to] : ""}</DialogTitle><DialogDescription>{disp?.to === "short_close" ? `Short-close up to ${num(disp.qty)} damaged/rejected units. They will no longer be expected from the vendor; accepted quantity stays the same.` : "This decision is recorded in the audit trail."}</DialogDescription></DialogHeader>
+          <Textarea value={dReason} onChange={(e) => setDReason(e.target.value)} placeholder={disp?.to === "short_close" ? "Reason (required)" : "Reason (optional)"} />
+          <DialogFooter><Button variant="ghost" onClick={() => setDisp(null)}>Cancel</Button><Button disabled={setDisposition.isPending || (disp?.to === "short_close" && !dReason.trim())} onClick={() => setDisposition.mutate()}>Confirm</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Cancel {g.grn_number}</DialogTitle><DialogDescription>Stock added by this receipt is reversed and the PO pending quantity is restored. A reason is required.</DialogDescription></DialogHeader>

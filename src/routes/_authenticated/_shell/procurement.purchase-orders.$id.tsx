@@ -28,8 +28,10 @@ async function loadPo(id: string) {
     supabase.from("goods_receipt_notes").select("id,grn_number,received_date,challan_number,status,created_at,warehouses(name)").eq("po_id", id).order("created_at"),
     supabase.from("warehouses").select("id,name,code").eq("status", "active").order("name"),
   ]);
+  const gIds = (g.data ?? []).filter((x) => x.status === "posted").map((x) => x.id);
+  const gi = gIds.length ? await supabase.from("goods_receipt_items").select("po_item_id,damaged_quantity,rejected_quantity,short_closed_quantity,disposition").in("grn_id", gIds) : { data: [] as { po_item_id: string; damaged_quantity: number; rejected_quantity: number; short_closed_quantity: number; disposition: string }[] };
   if (p.error) throw p.error;
-  return { po: p.data, items: i.data ?? [], history: a.data ?? [], grns: g.data ?? [], warehouses: w.data ?? [] };
+  return { po: p.data, items: i.data ?? [], history: a.data ?? [], grns: g.data ?? [], warehouses: w.data ?? [], grnItems: gi.data ?? [] };
 }
 
 function PoDetail() {
@@ -41,6 +43,9 @@ function PoDetail() {
   const [dlg, setDlg] = useState<null | PoAction>(null);
   const [comment, setComment] = useState("");
   const [receiveOpen, setReceiveOpen] = useState(false);
+  const [sc, setSc] = useState<null | { id: string; max: number; name: string }>(null);
+  const [scQty, setScQty] = useState("");
+  const [scReason, setScReason] = useState("");
   const [terms, setTerms] = useState({ delivery_warehouse_id: "", expected_delivery_date: "", payment_terms: "", delivery_terms: "", remarks: "" });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["po", id] }); qc.invalidateQueries({ queryKey: ["pos"] }); };
 
@@ -69,14 +74,26 @@ function PoDetail() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
+  const shortClose = useMutation({
+    mutationFn: async () => {
+      const qty = Number(scQty);
+      if (!sc || !(qty > 0) || qty > sc.max) throw new Error(`Enter a quantity between 1 and ${sc?.max ?? 0}`);
+      if (!scReason.trim()) throw new Error("A reason is required to short-close");
+      const { error } = await supabase.rpc("short_close_po_line", { _po_item: sc.id, _qty: qty, _reason: scReason.trim() });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Line short-closed"); setSc(null); setScQty(""); setScReason(""); refresh(); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+
   if (q.isLoading) return <Loading />;
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
-  const { po, items, history, grns, warehouses } = q.data!;
+  const { po, items, history, grns, warehouses, grnItems } = q.data!;
   const mine = po.created_by === me.data?.profile.id;
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
-  const canReceive = ["approved", "sent", "partially_received"].includes(po.status) && can("grn.create");
-  const needsComment = dlg === "rejected" || dlg === "cancelled" || (dlg === "closed" && po.status === "partially_received");
+  const canReceive = ["approved", "sent", "partially_received", "partially_accepted"].includes(po.status) && can("grn.create");
+  const needsComment = dlg === "rejected" || dlg === "cancelled" || (dlg === "closed" && ["partially_received", "partially_accepted"].includes(po.status));
 
   return (
     <>
@@ -132,14 +149,19 @@ function PoDetail() {
 
       <section className="mt-4 overflow-x-auto rounded-md border bg-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">#</th><th className="p-2">Material</th><th className="p-2 text-right">Ordered</th><th className="p-2 text-right">Received</th><th className="p-2 text-right">Pending</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">Discount</th><th className="p-2 text-right">Tax</th><th className="p-2 text-right">Line total</th></tr></thead>
+          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">#</th><th className="p-2">Material</th><th className="p-2 text-right">Ordered</th><th className="p-2 text-right">Physically received</th><th className="p-2 text-right">Accepted</th><th className="p-2 text-right">Replacement pending / Unresolved</th><th className="p-2 text-right">Short closed</th><th className="p-2 text-right">Remaining</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">Discount</th><th className="p-2 text-right">Tax</th><th className="p-2 text-right">Line total</th></tr></thead>
           <tbody>{items.map((x) => (
             <tr key={x.id} className="border-b last:border-0">
               <td className="p-2">{x.line_no}</td>
               <td className="p-2"><div className="font-medium">{x.items?.name}</div><div className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</div></td>
               <td className="p-2 text-right font-mono">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
               <td className="p-2 text-right font-mono">{num(x.received_quantity)}</td>
-              <td className="p-2 text-right font-mono">{num(Number(x.ordered_quantity) - Number(x.received_quantity))}</td>
+              <td className="p-2 text-right font-mono font-semibold">{num(x.accepted_quantity)}</td>
+              {(() => { const rem = Number(x.ordered_quantity) - Number(x.accepted_quantity) - Number(x.short_closed_quantity); const lines = grnItems.filter((g) => g.po_item_id === x.id); const rep = Math.min(rem, lines.filter((g) => g.disposition === "replacement_expected").reduce((a, g) => a + Number(g.damaged_quantity) + Number(g.rejected_quantity), 0)); const unr = Math.min(rem - rep, lines.filter((g) => g.disposition === "pending_decision").reduce((a, g) => a + Number(g.damaged_quantity) + Number(g.rejected_quantity), 0)); return (<>
+                <td className="p-2 text-right font-mono text-xs">{rep > 0 && <div className="text-primary">{num(rep)} replacement</div>}{unr > 0 && <div className="text-warning-foreground">{num(unr)} unresolved</div>}{rep + unr === 0 && "—"}</td>
+                <td className="p-2 text-right font-mono">{num(x.short_closed_quantity)}</td>
+                <td className="p-2 text-right font-mono">{num(rem)}{rem > 0 && can("purchase_order.short_close") && ["partially_received", "partially_accepted", "sent", "approved"].includes(po.status) && <div><button className="text-[11px] text-primary hover:underline" onClick={() => { setSc({ id: x.id, max: rem, name: x.items?.name ?? "" }); setScQty(String(rem)); }}>Short close</button></div>}</td>
+              </>); })()}
               <td className="p-2 text-right font-mono">{inr(x.rate)}</td>
               <td className="p-2 text-right font-mono">{inr(x.discount_amount)}</td>
               <td className="p-2 text-right font-mono">{inr(x.tax_amount)} <span className="text-[10px] text-muted-foreground">{x.tax_rate_percent}%</span></td>
@@ -147,8 +169,8 @@ function PoDetail() {
             </tr>))}
           </tbody>
           <tfoot className="text-sm">
-            {[["Subtotal", po.subtotal], ["Discount", -Number(po.discount_total)], ["Tax", po.tax_total], ["Freight", po.freight], ["Other charges", po.other_charges]].map(([l, v]) => <tr key={l as string}><td colSpan={8} className="p-1.5 text-right text-muted-foreground">{l}</td><td className="p-1.5 text-right font-mono">{inr(v as number)}</td></tr>)}
-            <tr className="border-t font-semibold"><td colSpan={8} className="p-2 text-right">Grand total</td><td className="p-2 text-right font-mono">{inr(po.grand_total)}</td></tr>
+            {[["Subtotal", po.subtotal], ["Discount", -Number(po.discount_total)], ["Tax", po.tax_total], ["Freight", po.freight], ["Other charges", po.other_charges]].map(([l, v]) => <tr key={l as string}><td colSpan={11} className="p-1.5 text-right text-muted-foreground">{l}</td><td className="p-1.5 text-right font-mono">{inr(v as number)}</td></tr>)}
+            <tr className="border-t font-semibold"><td colSpan={11} className="p-2 text-right">Grand total</td><td className="p-2 text-right font-mono">{inr(po.grand_total)}</td></tr>
           </tfoot>
         </table>
       </section>
@@ -182,6 +204,14 @@ function PoDetail() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!sc} onOpenChange={(o) => !o && setSc(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Short close — {sc?.name}</DialogTitle><DialogDescription>The quantity will no longer be expected from the vendor. Accepted quantity does not change. A reason is required and is kept in the audit trail.</DialogDescription></DialogHeader>
+          <label className="text-xs">Quantity to short-close (max {num(sc?.max ?? 0)})<Input type="number" min={0} max={sc?.max} value={scQty} onChange={(e) => setScQty(e.target.value)} /></label>
+          <Textarea value={scReason} onChange={(e) => setScReason(e.target.value)} placeholder="Reason (required)" />
+          <DialogFooter><Button variant="ghost" onClick={() => setSc(null)}>Cancel</Button><Button disabled={shortClose.isPending || !scReason.trim() || !(Number(scQty) > 0)} onClick={() => shortClose.mutate()}>Confirm short close</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
       {receiveOpen && <ReceiveDialog poId={id} defaultWh={po.delivery_warehouse_id ?? ""} warehouses={warehouses} items={items} onClose={() => setReceiveOpen(false)} onDone={refresh} />}
     </>
@@ -192,21 +222,24 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
   return <div><div className="text-[11px] uppercase text-muted-foreground">{label}</div><div className="mt-0.5">{value}</div></div>;
 }
 
-type PoItem = { id: string; line_no: number; ordered_quantity: number; received_quantity: number; items: { name: string; code: string } | null; units_of_measure: { code: string } | null };
+type PoItem = { id: string; line_no: number; ordered_quantity: number; received_quantity: number; accepted_quantity: number; short_closed_quantity: number; items: { name: string; code: string } | null; units_of_measure: { code: string } | null };
 
 function ReceiveDialog({ poId, defaultWh, warehouses, items, onClose, onDone }: { poId: string; defaultWh: string; warehouses: { id: string; name: string; code: string }[]; items: PoItem[]; onClose: () => void; onDone: () => void }) {
   const qc = useQueryClient();
   const [wh, setWh] = useState(defaultWh);
-  const [h, setH] = useState({ received_date: new Date().toISOString().slice(0, 10), challan_number: "", invoice_reference: "", vehicle_number: "", remarks: "" });
-  const open = items.filter((x) => Number(x.ordered_quantity) > Number(x.received_quantity));
+  const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+  const [h, setH] = useState({ received_date: today, challan_number: "", invoice_reference: "", vehicle_number: "", remarks: "" });
+  const pendingOf = (x: PoItem) => Number(x.ordered_quantity) - Number(x.accepted_quantity) - Number(x.short_closed_quantity);
+  const open = items.filter((x) => pendingOf(x) > 0);
   const can = useCan();
   const canPost = can("grn.post");
   const [lines, setLines] = useState<Record<string, { r: string; d: string; j: string }>>({});
   const save = useMutation({
     mutationFn: async (post: boolean) => {
       const payload = open.map((x) => ({ po_item_id: x.id, received_quantity: Number(lines[x.id]?.r || 0), damaged_quantity: Number(lines[x.id]?.d || 0), rejected_quantity: Number(lines[x.id]?.j || 0) })).filter((x) => x.received_quantity > 0);
-      for (const p of payload) { const x = open.find((o) => o.id === p.po_item_id)!; const pend = Number(x.ordered_quantity) - Number(x.received_quantity); if (p.received_quantity > pend) throw new Error(`Cannot receive ${p.received_quantity}. Only ${pend} units remain pending.`); if (p.damaged_quantity + p.rejected_quantity > p.received_quantity) throw new Error("Damaged + rejected cannot exceed received"); }
+      for (const p of payload) { const x = open.find((o) => o.id === p.po_item_id)!; const pend = pendingOf(x); if (p.received_quantity > pend) throw new Error(`Cannot receive ${p.received_quantity}. Only ${pend} units remain pending.`); if (p.damaged_quantity + p.rejected_quantity > p.received_quantity) throw new Error("Damaged + rejected cannot exceed received"); }
       if (!wh) throw new Error("Choose the receiving store");
+      if (h.received_date > today) throw new Error("Received date cannot be in the future");
       if (!payload.length) throw new Error("Enter a received quantity for at least one line");
       const { data, error } = await supabase.rpc("create_goods_receipt", { _po_id: poId, _warehouse_id: wh, _header: h, _items: payload, _post: post });
       if (error) throw error;
@@ -221,7 +254,7 @@ function ReceiveDialog({ poId, defaultWh, warehouses, items, onClose, onDone }: 
         <DialogHeader><DialogTitle>Receive goods</DialogTitle><DialogDescription>Only accepted quantity (received − damaged − rejected) is added to stock. You cannot receive more than pending.</DialogDescription></DialogHeader>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="Receiving store *"><select className={selectCls} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">Select store</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
-          <Field label="Received date"><Input type="date" value={h.received_date} onChange={(e) => setH({ ...h, received_date: e.target.value })} /></Field>
+          <Field label="Received date"><Input type="date" max={today} value={h.received_date} onChange={(e) => setH({ ...h, received_date: e.target.value })} /></Field>
           <Field label="Delivery challan no."><Input value={h.challan_number} onChange={(e) => setH({ ...h, challan_number: e.target.value })} /></Field>
           <Field label="Vendor invoice ref."><Input value={h.invoice_reference} onChange={(e) => setH({ ...h, invoice_reference: e.target.value })} /></Field>
           <Field label="Vehicle no."><Input value={h.vehicle_number} onChange={(e) => setH({ ...h, vehicle_number: e.target.value })} /></Field>
@@ -230,7 +263,7 @@ function ReceiveDialog({ poId, defaultWh, warehouses, items, onClose, onDone }: 
         <table className="mt-2 w-full text-sm">
           <thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-1.5">Material</th><th className="p-1.5 text-right">Pending</th><th className="p-1.5">Received</th><th className="p-1.5">Damaged</th><th className="p-1.5">Rejected</th><th className="p-1.5 text-right">Accepted</th></tr></thead>
           <tbody>{open.map((x) => {
-            const pending = Number(x.ordered_quantity) - Number(x.received_quantity);
+            const pending = pendingOf(x);
             const l = lines[x.id] ?? { r: "", d: "", j: "" };
             const over = Number(l.r || 0) > pending;
             return (

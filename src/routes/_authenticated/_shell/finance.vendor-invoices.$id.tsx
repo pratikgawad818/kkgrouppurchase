@@ -51,7 +51,7 @@ function InvoiceDetail() {
   if (q.error || !q.data) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { inv, items, events, payments, adjustments } = q.data;
   const mine = inv.created_by === me.data?.profile.id;
-  const ms = inv.match_summary as null | { qty_variances: number; rate_variances: number; tax_variances: number; expected_total: number; invoice_total: number; total_variance: number; tolerances: { qty_pct: number; rate_pct: number; value: number } };
+  const ms = inv.match_summary as null | { qty_variances: number; rate_variances: number; tax_variances: number; expected_total: number; invoice_total: number; total_variance: number; matched_at?: string; exceptions?: { message: string }[]; tolerances: { qty_pct: number; rate_pct: number; value: number; source?: string } };
   const needsComment = dlg === "reject" || dlg === "cancel" || dlg === "approve_exception";
   const editable = inv.status === "draft" || inv.status === "exception";
   return (
@@ -86,7 +86,7 @@ function InvoiceDetail() {
           <div className="flex justify-between border-t pt-1 font-semibold"><span>Net payable</span><span className="font-mono">{inr(inv.net_payable)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Paid</span><span className="font-mono">{inr(inv.amount_paid)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Advance adjusted</span><span className="font-mono">{inr(inv.advance_adjusted)}</span></div>
-          <div className="flex justify-between font-semibold"><span>Balance due</span><span className="font-mono">{inr(inv.balance_due)}</span></div>
+          <div className="flex justify-between font-semibold"><span>Balance due</span><span className="font-mono">{inv.status === "rejected" || inv.status === "cancelled" ? inr(0) : inr(inv.balance_due)}</span></div>
         </div>
         <div className="rounded-md border bg-card p-4 text-sm">
           <div className="mb-2 font-medium">Three-way match</div>
@@ -97,9 +97,15 @@ function InvoiceDetail() {
             <div className="flex justify-between"><span>Expected (PO rate × qty + tax)</span><span className="font-mono">{inr(ms.expected_total)}</span></div>
             <div className="flex justify-between"><span>Billed (lines + tax)</span><span className="font-mono">{inr(ms.invoice_total)}</span></div>
             <div className={cn("flex justify-between font-medium", Math.abs(ms.total_variance) > ms.tolerances.value && "text-amber-700")}><span>Total variance</span><span className="font-mono">{inr(ms.total_variance)}</span></div>
-            <div className="pt-1 text-muted-foreground">Tolerances: qty {ms.tolerances.qty_pct}% · rate {ms.tolerances.rate_pct}% · value {inr(ms.tolerances.value)}</div>
+            {!!ms.exceptions?.length && <ul className="mt-1 space-y-0.5 rounded-sm border border-destructive/30 bg-destructive/5 p-2 text-destructive">{ms.exceptions.map((x, i) => <li key={i}>{x.message}</li>)}</ul>}
+            <div className="mt-1 rounded-sm border bg-muted/40 p-2">
+              <div className="font-medium text-foreground">Tolerance used for this match</div>
+              <div className="text-muted-foreground">Quantity {ms.tolerances.qty_pct}% · Rate {ms.tolerances.rate_pct}% · Value {inr(ms.tolerances.value)}</div>
+              <div className="text-muted-foreground">{ms.tolerances.source ?? "Company Settings → Finance"}{ms.matched_at ? ` · matched ${fmtDateTime(ms.matched_at)}` : ""}</div>
+            </div>
           </div>)}
           {inv.status === "exception" && <p className="mt-2 rounded-sm bg-amber-50 p-2 text-xs text-amber-800">Invoice has exceptions. Resolve by editing, approve the exception with a reason, or reject.</p>}
+          {(inv.status === "rejected" || inv.status === "cancelled") && <p className="mt-2 rounded-sm border border-destructive/30 bg-destructive/10 p-2 text-xs font-semibold text-destructive">Not Payable — {inv.status === "rejected" ? "Rejected" : "Cancelled"}. Payable balance ₹0.</p>}
         </div>
       </div>
 
