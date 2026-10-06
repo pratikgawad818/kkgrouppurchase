@@ -71,6 +71,13 @@
       "when": 1791288040057,
       "tag": "0009_r1_fix_replacement_receipt_and_invoice_save",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791288097568,
+      "tag": "0010_r1_rejected_cancelled_invoice_zero_balance",
+      "breakpoints": true
     }
   ]
 }
