@@ -4036,6 +4036,13 @@ export type Database = {
         | "accountant"
         | "store_manager"
         | "auditor"
+      grn_disposition:
+        | "pending_decision"
+        | "replacement_expected"
+        | "short_close"
+        | "return_to_vendor"
+        | "credit_note_expected"
+        | "accepted_under_concession"
       grn_status: "draft" | "posted" | "cancelled"
       inventory_tx_type:
         | "opening_stock"
@@ -4077,6 +4084,8 @@ export type Database = {
         | "fully_received"
         | "closed"
         | "cancelled"
+        | "partially_accepted"
+        | "short_closed"
       pr_action:
         | "created"
         | "submitted"
@@ -4264,6 +4273,14 @@ export const Constants = {
         "store_manager",
         "auditor",
       ],
+      grn_disposition: [
+        "pending_decision",
+        "replacement_expected",
+        "short_close",
+        "return_to_vendor",
+        "credit_note_expected",
+        "accepted_under_concession",
+      ],
       grn_status: ["draft", "posted", "cancelled"],
       inventory_tx_type: [
         "opening_stock",
@@ -4308,6 +4325,8 @@ export const Constants = {
         "fully_received",
         "closed",
         "cancelled",
+        "partially_accepted",
+        "short_closed",
       ],
       pr_action: [
         "created",
