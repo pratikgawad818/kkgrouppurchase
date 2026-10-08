@@ -70,9 +70,9 @@ function PoSummary({ fy, projectId, buildingId }: { fy: number; projectId: strin
       const rows = data ?? [];
       const c = (st: string) => rows.filter((x) => x.status === st).length;
       let pendingValue = 0;
-      for (const x of rows) if (["approved", "sent", "partially_received"].includes(x.status))
+      for (const x of rows) if (["approved", "sent", "partially_received", "partially_accepted"].includes(x.status))
         for (const i of x.purchase_order_items) pendingValue += Number(i.ordered_quantity) ? Number(i.line_total) * (Number(i.ordered_quantity) - Number(i.received_quantity)) / Number(i.ordered_quantity) : 0;
-      return { total: rows.length, pending: c("pending_approval"), approved: c("approved"), sent: c("sent"), partial: c("partially_received"), full: c("fully_received"), pendingValue };
+      return { total: rows.length, pending: c("pending_approval"), approved: c("approved"), sent: c("sent"), partial: c("partially_received") + c("partially_accepted"), full: c("fully_received"), pendingValue };
     },
   });
   const d = q.data;
@@ -212,7 +212,7 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp }: { canMoney: boole
         supabase.from("units").select("status").limit(10000),
         canStock ? supabase.from("warehouse_stock").select("quantity_on_hand,items(name,reorder_level)").limit(5000) : Promise.resolve({ data: [] as any[] }),
         canPr ? supabase.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending_approval") : Promise.resolve({ count: 0 }),
-        canPo ? supabase.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["approved", "sent", "partially_received"]) : Promise.resolve({ count: 0 }),
+        canPo ? supabase.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["approved", "sent", "partially_received", "partially_accepted"]) : Promise.resolve({ count: 0 }),
         canAp ? supabase.from("vendor_invoices").select("balance_due").in("status", ["approved", "partially_paid"]) : Promise.resolve({ data: [] as any[] }),
       ]);
       if (p.error) throw p.error;

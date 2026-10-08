@@ -57,7 +57,7 @@ function NewInvoice() {
     queryFn: async () => {
       const [p, c] = await Promise.all([
         supabase.from("purchase_orders").select("id,po_number,po_date,vendor_id,status,grand_total,payment_terms,projects(name),buildings(name),vendors(id,company_name,gstin,address,city,state,contact_person,mobile,email,payment_terms_days)")
-          .in("status", ["partially_received", "fully_received", "closed"]).order("po_date", { ascending: false }),
+          .in("status", ["partially_received", "partially_accepted", "fully_received", "short_closed", "closed"]).order("po_date", { ascending: false }),
         supabase.from("companies").select("finance_settings").limit(1).maybeSingle(),
       ]);
       if (p.error) throw p.error;
