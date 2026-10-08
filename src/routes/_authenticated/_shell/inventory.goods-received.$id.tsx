@@ -68,7 +68,7 @@ function GrnDetail() {
   return (
     <>
       <PageHeader crumbs={<Link to="/inventory/goods-received" className="hover:underline">Goods Received</Link>} title={g.grn_number}
-        subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("rounded-sm border px-1.5 py-0.5 text-[11px]", st.cls)}>{st.label}</span>{g.vendors?.company_name} · {g.warehouses?.name}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>{st.label}</span>{g.vendors?.company_name} · {g.warehouses?.name}</span>}
         actions={<div className="flex gap-2">
           {g.status === "draft" && can("grn.post") && <Button size="sm" disabled={post.isPending} onClick={() => post.mutate()}>Post to stock</Button>}
           {g.status !== "cancelled" && can("grn.cancel") && <Button size="sm" variant="outline" onClick={() => setCancelOpen(true)}>Cancel GRN</Button>}
@@ -84,21 +84,21 @@ function GrnDetail() {
         <Info l="Received by" v={g.profiles?.full_name ?? "—"} /><Info l="Challan" v={g.challan_number ?? "—"} />
         <Info l="Vendor invoice ref." v={g.invoice_reference ?? "—"} /><Info l="Vehicle" v={g.vehicle_number ?? "—"} /><Info l="Remarks" v={g.remarks ?? "—"} />
       </section>
-      <section className="mt-4 overflow-x-auto rounded-md border bg-card">
+      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Material</th><th className="p-2 text-right">Ordered</th><th className="p-2 text-right">Previously received</th><th className="p-2 text-right">Physically received</th><th className="p-2 text-right">PO remaining</th><th className="p-2 text-right">Damaged</th><th className="p-2 text-right">Rejected</th><th className="p-2 text-right">Accepted</th><th className="p-2 text-right">Unit cost</th><th className="p-2">Disposition</th></tr></thead>
+          <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Ordered</th><th className="px-4 py-3 text-right">Previously received</th><th className="px-4 py-3 text-right">Physically received</th><th className="px-4 py-3 text-right">PO remaining</th><th className="px-4 py-3 text-right">Damaged</th><th className="px-4 py-3 text-right">Rejected</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Unit cost</th><th className="px-4 py-3">Disposition</th></tr></thead>
           <tbody>{items.map((x) => { const pi = poItems.find((p) => p.id === x.po_item_id); return (
-            <tr key={x.id} className="border-b last:border-0">
-              <td className="p-2">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
-              <td className="p-2 text-right font-mono">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
-              <td className="p-2 text-right font-mono">{num(x.previously_received)}</td>
-              <td className="p-2 text-right font-mono">{num(x.received_quantity)}</td>
-              <td className="p-2 text-right font-mono">{pi ? num(Number(pi.ordered_quantity) - Number(pi.accepted_quantity) - Number(pi.short_closed_quantity)) : "—"}</td>
-              <td className="p-2 text-right font-mono text-destructive">{num(x.damaged_quantity)}</td>
-              <td className="p-2 text-right font-mono text-destructive">{num(x.rejected_quantity)}</td>
-              <td className="p-2 text-right font-mono font-semibold">{num(x.accepted_quantity)}</td>
-              <td className="p-2 text-right font-mono">{inr(x.unit_cost)}</td>
-              <td className="p-2 text-xs">{Number(x.damaged_quantity) + Number(x.rejected_quantity) === 0 ? "—" : (<div>
+            <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
+              <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
+              <td className="px-4 py-3 text-right font-mono">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
+              <td className="px-4 py-3 text-right font-mono">{num(x.previously_received)}</td>
+              <td className="px-4 py-3 text-right font-mono">{num(x.received_quantity)}</td>
+              <td className="px-4 py-3 text-right font-mono">{pi ? num(Number(pi.ordered_quantity) - Number(pi.accepted_quantity) - Number(pi.short_closed_quantity)) : "—"}</td>
+              <td className="px-4 py-3 text-right font-mono text-destructive">{num(x.damaged_quantity)}</td>
+              <td className="px-4 py-3 text-right font-mono text-destructive">{num(x.rejected_quantity)}</td>
+              <td className="px-4 py-3 text-right font-mono font-semibold">{num(x.accepted_quantity)}</td>
+              <td className="px-4 py-3 text-right font-mono">{inr(x.unit_cost)}</td>
+              <td className="px-4 py-3 text-xs">{Number(x.damaged_quantity) + Number(x.rejected_quantity) === 0 ? "—" : (<div>
                 <div className="font-medium">{DISP_LABEL[x.disposition] ?? x.disposition}{x.disposition === "short_close" ? ` (${num(x.short_closed_quantity)})` : ""}</div>
                 {x.disposition_reason && <div className="text-muted-foreground">“{x.disposition_reason}”</div>}
                 {g.status === "posted" && x.disposition !== "short_close" && can("grn.create") && <select aria-label="Change disposition" className="mt-1 h-7 rounded border bg-background px-1 text-xs" value="" onChange={(e) => e.target.value && setDisp({ id: x.id, to: e.target.value as "pending_decision", qty: Number(x.damaged_quantity) + Number(x.rejected_quantity) })}>
@@ -116,7 +116,7 @@ function GrnDetail() {
         <div className="mb-2 text-sm font-semibold">Stock entries created by this GRN</div>
         {txs.length === 0 ? <div className="text-xs text-muted-foreground">None{g.status === "draft" ? " yet — the GRN is a draft." : "."}</div> : (
           <table className="w-full text-sm"><tbody>{txs.map((t) => (
-            <tr key={t.id} className="border-b last:border-0">
+            <tr key={t.id} className="border-b last:border-0 hover:bg-muted/40">
               <td className="p-1.5 text-xs">{fmtDateTime(t.created_at)}</td><td className="p-1.5">{TX_LABEL[t.tx_type]}</td><td className="p-1.5">{t.items?.name}</td><td className="p-1.5">{t.warehouses?.name}</td>
               <td className="p-1.5 text-right font-mono">{Number(t.quantity_in) ? `+${num(t.quantity_in)}` : `−${num(t.quantity_out)}`}</td>
               <td className="p-1.5 text-right font-mono">bal {num(t.balance_after)}</td><td className="p-1.5 text-right font-mono">{inr(t.total_cost)}</td>

@@ -6,13 +6,13 @@ import { Search } from "lucide-react";
 
 export function PageHeader({ title, subtitle, actions, crumbs }: { title: string; subtitle?: ReactNode; actions?: ReactNode; crumbs?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         {crumbs && <div className="mb-1 text-xs text-muted-foreground">{crumbs}</div>}
-        <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
-        {subtitle && <div className="mt-1 text-sm text-muted-foreground">{subtitle}</div>}
+        <h2 className="truncate text-lg font-semibold tracking-tight">{title}</h2>
+        {subtitle && <div className="mt-0.5 text-sm text-muted-foreground">{subtitle}</div>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
