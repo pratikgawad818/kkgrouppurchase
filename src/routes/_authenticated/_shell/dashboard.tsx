@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Building2, ClipboardList, Clock, IndianRupee, Package, Plus, ShoppingCart, Store, Users, Wallet, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { PageHeader, Stat, Loading } from "@/components/erp/common";
+import { Stat, Loading } from "@/components/erp/common";
 import { fmtDateTime, PROJECT_STATUS_LABEL } from "@/lib/format";
 import { useCan } from "@/lib/session";
 
@@ -18,11 +18,11 @@ function fyLabel(y: number) { return `FY ${y}–${String(y + 1).slice(2)}`; }
 const inr = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
 function Pending({ label, phase }: { label: string; phase: number }) {
-  return <div className="rounded-md border border-dashed bg-card p-4"><div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1.5 text-xs text-muted-foreground">Available from Phase {phase}</div></div>;
+  return <div className="h-full rounded-xl border border-dashed bg-muted/30 p-4"><div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1.5 text-xs text-muted-foreground">Available from Phase {phase}</div></div>;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mt-6"><h2 className="mb-2 text-sm font-semibold">{title}</h2><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{children}</div></section>;
+  return <section className="mt-8"><h2 className="mb-3 flex items-baseline gap-2 text-[15px] font-semibold tracking-tight">{title}</h2><div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">{children}</div></section>;
 }
 
 function PrSummary({ fy, projectId, buildingId, canCreate }: { fy: number; projectId: string; buildingId: string; canCreate: boolean }) {
@@ -42,12 +42,12 @@ function PrSummary({ fy, projectId, buildingId, canCreate }: { fy: number; proje
   });
   const d = q.data;
   const card = (label: string, value: number | undefined, search: { status?: string; due?: string }) => (
-    <Link to="/procurement/purchase-requests" search={search}><Stat label={label} value={value ?? "—"} className="hover:border-primary/50" /></Link>
+    <Link to="/procurement/purchase-requests" search={search}><Stat label={label} value={value ?? "—"} className="hover:border-primary/40 hover:shadow-md" /></Link>
   );
   return (
-    <section className="mt-6">
-      <div className="mb-2 flex items-center justify-between"><h2 className="text-sm font-semibold">Purchase Requests <span className="font-normal text-muted-foreground">· {d?.total ?? 0} total in {fyLabel(fy)}</span></h2>{canCreate && <Button asChild size="sm"><Link to="/procurement/purchase-requests/new"><Plus className="h-4 w-4" />Purchase Request</Link></Button>}</div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <section className="mt-8">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-[15px] font-semibold tracking-tight">Purchase Requests <span className="font-normal text-muted-foreground">· {d?.total ?? 0} total in {fyLabel(fy)}</span></h2>{canCreate && <Button asChild size="sm"><Link to="/procurement/purchase-requests/new"><Plus className="h-4 w-4" />Purchase Request</Link></Button>}</div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {card("Draft", d?.draft, { status: "draft" })}
         {card("Pending approval", d?.pending, { status: "pending_approval" })}
         {card("Approved", d?.approved, { status: "approved" })}
@@ -76,11 +76,11 @@ function PoSummary({ fy, projectId, buildingId }: { fy: number; projectId: strin
     },
   });
   const d = q.data;
-  const card = (label: string, value: React.ReactNode) => <Link to="/procurement/purchase-orders"><Stat label={label} value={value ?? "—"} className="hover:border-primary/50" /></Link>;
+  const card = (label: string, value: React.ReactNode) => <Link to="/procurement/purchase-orders"><Stat label={label} value={value ?? "—"} className="hover:border-primary/40 hover:shadow-md" /></Link>;
   return (
-    <section className="mt-6">
-      <h2 className="mb-2 text-sm font-semibold">Purchase Orders <span className="font-normal text-muted-foreground">· {d?.total ?? 0} in {fyLabel(fy)}</span></h2>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+    <section className="mt-8">
+      <h2 className="mb-3 flex items-baseline gap-2 text-[15px] font-semibold tracking-tight">Purchase Orders <span className="font-normal text-muted-foreground">· {d?.total ?? 0} in {fyLabel(fy)}</span></h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {card("Pending approval", d?.pending)}{card("Approved", d?.approved)}{card("Sent", d?.sent)}
         {card("Partially received", d?.partial)}{card("Fully received", d?.full)}{card("Pending receipt value", d ? inr(d.pendingValue) : undefined)}
       </div>
@@ -104,13 +104,13 @@ function GrnSummary({ fy, projectId, buildingId }: { fy: number; projectId: stri
   });
   const d = q.data;
   return (
-    <section className="mt-6">
-      <h2 className="mb-2 text-sm font-semibold">Goods Received</h2>
+    <section className="mt-8">
+      <h2 className="mb-3 flex items-baseline gap-2 text-[15px] font-semibold tracking-tight">Goods Received</h2>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Link to="/inventory/goods-received"><Stat label="This month" value={d?.month ?? "—"} className="hover:border-primary/50" /></Link>
-        <Link to="/inventory/goods-received"><Stat label={fyLabel(fy)} value={d?.fy ?? "—"} className="hover:border-primary/50" /></Link>
-        <Link to="/inventory/goods-received"><Stat label="Drafts awaiting posting" value={d?.drafts ?? "—"} className="hover:border-primary/50" /></Link>
-        <div className="rounded-md border bg-card p-3 text-xs">
+        <Link to="/inventory/goods-received"><Stat label="This month" value={d?.month ?? "—"} className="hover:border-primary/40 hover:shadow-md" /></Link>
+        <Link to="/inventory/goods-received"><Stat label={fyLabel(fy)} value={d?.fy ?? "—"} className="hover:border-primary/40 hover:shadow-md" /></Link>
+        <Link to="/inventory/goods-received"><Stat label="Drafts awaiting posting" value={d?.drafts ?? "—"} className="hover:border-primary/40 hover:shadow-md" /></Link>
+        <div className="col-span-2 rounded-xl border bg-card p-4 text-xs shadow-card sm:col-span-1">
           <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Recent GRNs</div>
           {d?.recent.length ? d.recent.map((g) => <div key={g.id} className="flex justify-between"><Link className="font-mono text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: g.id }}>{g.grn_number}</Link><span className="truncate pl-2 text-muted-foreground">{g.vendors?.company_name}</span></div>) : <div className="text-muted-foreground">None yet</div>}
         </div>
@@ -142,9 +142,9 @@ function ApCards() {
   });
   const d = q.data;
   return <>
-    <Link to="/finance/payables"><Stat label="Vendor payables" value={d ? inr(d.outstanding) : "—"} hint={d ? `${d.pending} awaiting approval · ${d.exceptions} exceptions` : undefined} className="hover:border-primary/50" /></Link>
-    <Link to="/finance/payables"><Stat label="Overdue bills" value={d ? inr(d.overdue) : "—"} hint={d ? `${d.overdueN} bills` : undefined} className="hover:border-primary/50" /></Link>
-    <Link to="/finance/payments"><Stat label="Payments this month" value={d ? inr(d.paid) : "—"} hint="Recorded payments" className="hover:border-primary/50" /></Link>
+    <Link to="/finance/payables"><Stat label="Vendor payables" value={d ? inr(d.outstanding) : "—"} hint={d ? `${d.pending} awaiting approval · ${d.exceptions} exceptions` : undefined} className="hover:border-primary/40 hover:shadow-md" /></Link>
+    <Link to="/finance/payables"><Stat label="Overdue bills" value={d ? inr(d.overdue) : "—"} hint={d ? `${d.overdueN} bills` : undefined} className="hover:border-primary/40 hover:shadow-md" /></Link>
+    <Link to="/finance/payments"><Stat label="Payments this month" value={d ? inr(d.paid) : "—"} hint="Recorded payments" className="hover:border-primary/40 hover:shadow-md" /></Link>
   </>;
 }
 
@@ -168,8 +168,8 @@ function InvCards() {
   });
   const d = q.data;
   return <>
-    <Link to="/inventory/stock"><Stat label="Inventory value" value={d ? inr(d.value) : "—"} hint="Weighted average cost" className="hover:border-primary/50" /></Link>
-    <Link to="/inventory/stock"><Stat label="Low / out of stock" value={d ? `${d.low} / ${d.out}` : "—"} hint={d ? `${d.transfers} transfers in last 30 days` : undefined} className="hover:border-primary/50" /></Link>
+    <Link to="/inventory/stock"><Stat label="Inventory value" value={d ? inr(d.value) : "—"} hint="Weighted average cost" className="hover:border-primary/40 hover:shadow-md" /></Link>
+    <Link to="/inventory/stock"><Stat label="Low / out of stock" value={d ? `${d.low} / ${d.out}` : "—"} hint={d ? `${d.transfers} transfers in last 30 days` : undefined} className="hover:border-primary/40 hover:shadow-md" /></Link>
   </>;
 }
 
@@ -184,12 +184,12 @@ function Panel({ title, to, children, className }: { title: string; to?: string;
 
 function Kpi({ label, value, icon: Icon, tone, to }: { label: string; value: React.ReactNode; icon: typeof Building2; tone: string; to?: string }) {
   const body = (
-    <div className="flex h-full items-start justify-between gap-3 rounded-xl border bg-card p-5 shadow-card transition-colors hover:border-primary/40">
-      <div className="min-w-0"><div className="text-sm text-muted-foreground">{label}</div><div className="mt-2 whitespace-nowrap text-lg font-semibold tabular-nums 2xl:text-2xl">{value}</div></div>
-      <span className={"grid h-10 w-10 shrink-0 place-items-center rounded-lg " + tone}><Icon className="h-5 w-5" /></span>
+    <div className="flex h-full items-start justify-between gap-3 rounded-xl border bg-card p-4 shadow-card transition-[border-color,box-shadow] hover:border-primary/40 hover:shadow-md md:p-5">
+      <div className="min-w-0"><div className="text-[13px] font-medium text-muted-foreground">{label}</div><div className="num mt-2 truncate text-xl font-semibold text-foreground 2xl:text-2xl">{value}</div></div>
+      <span aria-hidden className={"grid h-9 w-9 shrink-0 place-items-center rounded-lg " + tone}><Icon className="h-[18px] w-[18px]" /></span>
     </div>
   );
-  return to ? <Link to={to}>{body}</Link> : body;
+  return to ? <Link to={to} className="block rounded-xl">{body}</Link> : body;
 }
 
 const STATUS_TONE: Record<string, string> = {
@@ -266,7 +266,7 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp, projectId, building
   const uMax = Math.max(1, ...unitRows.map((r) => r.n));
   return (
     <>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4 md:gap-4">
         <Kpi label="Total Projects" value={d.projects.length} icon={Building2} tone="bg-accent text-accent-foreground" to="/projects" />
         <Kpi label="Active Projects" value={active} icon={Clock} tone="bg-st-available/12 text-st-available" to="/projects" />
         <Kpi label="Company Team Members" value={d.team} icon={Users} tone="bg-muted text-foreground" />
@@ -276,7 +276,7 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp, projectId, building
         <Kpi label="Vendor Payables" value={canAp ? inr(d.payable) : "—"} icon={Wallet} tone="bg-st-hold/15 text-st-hold" to="/finance/payables" />
         <Kpi label={projectId ? "Project Low Stock" : "Low Stock Materials"} value={canStock ? d.low.length : "—"} icon={AlertTriangle} tone="bg-destructive/10 text-destructive" to="/inventory/stock" />
       </div>
-      <div className="mt-6 grid gap-5 lg:grid-cols-3">
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <Panel title="Recent projects" to="/projects" className="lg:col-span-2">
           {d.projects.length === 0 && <div className="text-sm text-muted-foreground">No projects yet.</div>}
           <div className="divide-y">
@@ -295,7 +295,7 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp, projectId, building
           </div>
         </Panel>
         <Panel title="Unit inventory" to="/units">
-          <div className="space-y-3">{unitRows.map((r) => <div key={r.label} className="grid grid-cols-[8rem_1fr_2.5rem] items-center gap-3 text-sm"><span className="text-muted-foreground">{r.label}</span><span className="h-2 rounded-full bg-muted"><i className={"block h-2 rounded-full " + r.c} style={{ width: `${(r.n / uMax) * 100}%` }} /></span><span className="text-right font-medium tabular-nums">{r.n}</span></div>)}</div>
+          <div className="space-y-3">{unitRows.map((r) => <div key={r.label} className="grid grid-cols-[7.5rem_1fr_2.5rem] items-center gap-3 text-sm"><span className="text-muted-foreground">{r.label}</span><span className="h-2 rounded-full bg-muted"><i className={"block h-2 rounded-full " + r.c} style={{ width: `${(r.n / uMax) * 100}%` }} /></span><span className="text-right font-medium tabular-nums">{r.n}</span></div>)}</div>
         </Panel>
         <Panel title="Low stock materials" to="/inventory/stock" className="lg:col-span-2">
           {!canStock ? <div className="text-sm text-muted-foreground">No stock access.</div> : d.low.length === 0 ? <div className="text-sm text-muted-foreground">All materials are above reorder level.</div> : (
@@ -304,6 +304,25 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp, projectId, building
         </Panel>
       </div>
     </>
+  );
+}
+
+function QuickActions({ can }: { can: (p: string) => boolean }) {
+  const actions = [
+    can("purchase_request.create") && { to: "/procurement/purchase-requests/new", label: "New purchase request", icon: Plus },
+    can("rfq.view") && { to: "/procurement/rfqs", label: "RFQs & quotations", icon: ClipboardList },
+    can("grn.view") && { to: "/inventory/goods-received", label: "Receive goods", icon: Package },
+    can("vendor_invoice.view") && { to: "/finance/vendor-invoices", label: "Vendor invoices", icon: Wallet },
+    { to: "/units", label: "Flats inventory", icon: Building2 },
+  ].filter(Boolean) as { to: string; label: string; icon: typeof Plus }[];
+  return (
+    <nav aria-label="Quick actions" className="mb-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+      {actions.map((a) => (
+        <Link key={a.to} to={a.to} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border bg-card px-3.5 text-sm font-medium shadow-card transition-colors hover:border-primary/40 hover:text-primary sm:min-h-9">
+          <a.icon className="h-4 w-4 text-primary" aria-hidden />{a.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -352,61 +371,64 @@ function Dashboard() {
   const active = scoped.filter((p) => ["under_construction", "near_completion"].includes(p.status)).length;
   const building = scopedBuildings.find((b) => b.id === buildingId);
   const budget = building ? Number(building.budget) : scoped.reduce((s, p) => s + Number(p.budget), 0);
-  const sel = "h-9 rounded-md border bg-background px-2 text-sm";
-
+  
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        subtitle={`${fyLabel(fy)} · 1 Apr ${fy} – 31 Mar ${fy + 1}`}
-        actions={
-          <>
-            <select className={sel} value={fy} onChange={(e) => setFy(Number(e.target.value))} aria-label="Financial year">
-              {[current + 1, current, current - 1, current - 2].map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}
-            </select>
-            <select className={sel} value={projectId} onChange={(e) => selectProject(e.target.value)} aria-label="Project">
-              <option value="">All projects</option>
-              {d.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <select className={sel} value={buildingId} onChange={(e) => setBuildingId(e.target.value)} aria-label="Building" disabled={!projectId}>
-              <option value="">All buildings</option>
-              {scopedBuildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </>
-        }
-      />
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current workspace</p>
-          <p className="mt-1 text-base font-semibold">{selectedProject?.name ?? "All projects"}</p>
-          <p className="text-xs text-muted-foreground">{selectedProject ? `${selectedProject.code} · ${scopedBuildings.length} buildings` : `${d.projects.length} projects across KK GROUP`}</p>
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-brass">Command centre · {fyLabel(fy)}</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight md:text-[22px]">{selectedProject?.name ?? "All projects"}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {selectedProject ? `${selectedProject.code} · ${scopedBuildings.length} building${scopedBuildings.length === 1 ? "" : "s"}` : `${d.projects.length} projects across KK GROUP`} · 1 Apr {fy} – 31 Mar {fy + 1}
+            {selectedProject && <> · <Link to="/projects" className="font-medium text-primary hover:underline">View projects</Link></>}
+          </p>
         </div>
-        {selectedProject && <Link to="/projects" className="text-sm font-medium text-primary hover:underline">View projects</Link>}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:items-center">
+          <label className="sr-only" htmlFor="dash-fy">Financial year</label>
+          <select id="dash-fy" className="min-h-11 sm:min-h-9 lg:w-36" value={fy} onChange={(e) => setFy(Number(e.target.value))}>
+            {[current + 1, current, current - 1, current - 2].map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}
+          </select>
+          <label className="sr-only" htmlFor="dash-project">Project</label>
+          <select id="dash-project" className="min-h-11 sm:min-h-9 lg:w-52" value={projectId} onChange={(e) => selectProject(e.target.value)}>
+            <option value="">All projects</option>
+            {d.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <label className="sr-only" htmlFor="dash-building">Building</label>
+          <select id="dash-building" className="min-h-11 sm:min-h-9 lg:w-44" value={buildingId} onChange={(e) => setBuildingId(e.target.value)} disabled={!projectId}>
+            <option value="">All buildings</option>
+            {scopedBuildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
       </div>
+      <QuickActions can={can} />
       <Overview canMoney={can("financial.view")} canStock={can("inventory.view")} canPr={can("purchase_request.view")} canPo={can("purchase_order.view")} canAp={can("payable.view")} projectId={projectId} buildingId={buildingId} />
+      {(can("purchase_request.view") || can("purchase_order.view") || can("grn.view")) && <div className="mt-10 flex items-center gap-3"><h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Procurement pipeline</h2><span className="h-px flex-1 bg-border" /></div>}
       {can("purchase_request.view") && <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />}
       {can("purchase_order.view") && <PoSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
       {can("grn.view") && <GrnSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
+      <div className="mt-10 flex items-center gap-3"><h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Stores, vendors & projects</h2><span className="h-px flex-1 bg-border" /></div>
+      <div className="grid gap-x-6 xl:grid-cols-2">
       <Section title="Inventory">
-        <Link to="/materials"><Stat label="Total materials" value={<span className="flex items-center justify-between">{d.materials}<Package className="h-5 w-5 text-primary" /></span>} hint="Active material master" className="hover:border-primary/50" /></Link>
-        <Link to="/warehouses"><Stat label="Stores" value={<span className="flex items-center justify-between">{d.warehouses}<Warehouse className="h-5 w-5 text-primary" /></span>} hint={projectId ? "For selected project" : "All active stores"} className="hover:border-primary/50" /></Link>
+        <Link to="/materials"><Stat label="Total materials" value={<span className="flex items-center justify-between">{d.materials}<Package className="h-5 w-5 text-primary" /></span>} hint="Active material master" className="hover:border-primary/40 hover:shadow-md" /></Link>
+        <Link to="/warehouses"><Stat label="Stores" value={<span className="flex items-center justify-between">{d.warehouses}<Warehouse className="h-5 w-5 text-primary" /></span>} hint={projectId ? "For selected project" : "All active stores"} className="hover:border-primary/40 hover:shadow-md" /></Link>
         {can("inventory.view") ? <InvCards /> : <><Pending label="Inventory value" phase={4} /><Pending label="Low / out of stock" phase={4} /></>}
       </Section>
       <Section title="Vendors">
-        <Link to="/vendors"><Stat label="Active vendors" value={<span className="flex items-center justify-between">{d.vendors}<Store className="h-5 w-5 text-primary" /></span>} hint="Supplier master" className="hover:border-primary/50" /></Link>
+        <Link to="/vendors"><Stat label="Active vendors" value={<span className="flex items-center justify-between">{d.vendors}<Store className="h-5 w-5 text-primary" /></span>} hint="Supplier master" className="hover:border-primary/40 hover:shadow-md" /></Link>
         {can("payable.view") ? <ApCards /> : <><Pending label="Vendor payables" phase={5} /><Pending label="Overdue bills" phase={5} /><Pending label="Payments this month" phase={5} /></>}
       </Section>
       <Section title="Projects">
-        <Link to="/projects"><Stat label="Active projects" value={<span className="flex items-center justify-between">{active}<Building2 className="h-5 w-5 text-primary" /></span>} hint={`${scoped.length} total`} className="hover:border-primary/50" /></Link>
+        <Link to="/projects"><Stat label="Active projects" value={<span className="flex items-center justify-between">{active}<Building2 className="h-5 w-5 text-primary" /></span>} hint={`${scoped.length} total`} className="hover:border-primary/40 hover:shadow-md" /></Link>
         <Stat label="Buildings" value={building ? 1 : d.buildings.length} hint={projectId ? "In selected project" : "All projects"} />
-        {can("financial.view") ? <Stat label="Budget" value={inr(budget)} hint={building ? building.name : "Sum of project budgets"} /> : <div className="rounded-md border border-dashed bg-card p-4 text-xs text-muted-foreground">Budget hidden — no financial access</div>}
+        {can("financial.view") ? <Stat label="Budget" value={inr(budget)} hint={building ? building.name : "Sum of project budgets"} /> : <div className="rounded-xl border border-dashed bg-muted/30 p-4 text-xs text-muted-foreground">Budget hidden — no financial access</div>}
         <Pending label="Actual cost & variance" phase={6} />
       </Section>
-      <section className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold">Recent activity</h2>
-        <div className="rounded-md border bg-card">
-          {d.audit.length === 0 && <div className="p-3 text-xs text-muted-foreground">No recorded activity yet.</div>}
-          {d.audit.map((x) => <div key={x.id} className="grid grid-cols-[9rem_5rem_1fr] gap-3 border-b px-3 py-2 text-xs last:border-0"><span className="text-muted-foreground">{fmtDateTime(x.created_at)}</span><span className="font-medium capitalize">{x.action}</span><span className="truncate">{x.entity.replaceAll("_", " ")} <span className="font-mono text-muted-foreground">{x.entity_id}</span></span></div>)}
+      </div>
+      <section className="mt-8">
+        <h2 className="mb-3 flex items-baseline gap-2 text-[15px] font-semibold tracking-tight">Recent activity</h2>
+        <div className="overflow-hidden rounded-xl border bg-card shadow-card">
+          {d.audit.length === 0 && <div className="p-4 text-xs text-muted-foreground">No recorded activity yet.</div>}
+          {d.audit.map((x) => <div key={x.id} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-b px-4 py-3 text-xs sm:grid-cols-[10rem_6rem_1fr] last:border-0"><span className="text-muted-foreground">{fmtDateTime(x.created_at)}</span><span className="font-medium capitalize">{x.action}</span><span className="truncate">{x.entity.replaceAll("_", " ")} <span className="font-mono text-muted-foreground">{x.entity_id}</span></span></div>)}
         </div>
       </section>
     </>
