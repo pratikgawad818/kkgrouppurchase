@@ -123,6 +123,8 @@ function BuildingView({ rows, onPick }: { rows: any[]; onPick: (u: any) => void 
   );
 }
 
+const L = ({ label, children }: { label: string; children: React.ReactNode }) => <label className="space-y-1 text-sm"><span className="font-medium">{label}</span>{children}</label>;
+
 function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; projects: { id: string; name: string }[]; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
     project_id: unit?.project_id ?? "", building_id: unit?.building_id ?? "", floor_id: unit?.floor_id ?? "",
@@ -149,7 +151,6 @@ function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; pro
     setBusy(false); toast.success(unit ? "Unit updated" : "Unit added"); onSaved();
   }
 
-  const L = ({ label, children }: { label: string; children: React.ReactNode }) => <label className="space-y-1 text-sm"><span className="font-medium">{label}</span>{children}</label>;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
