@@ -29,8 +29,16 @@ function MaterialConsumption() {
       return data ?? [];
     },
   });
+  const projectOptions = useQuery({
+    queryKey: ["material-consumption-project-options"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const all = q.data ?? [];
-  const projects = [...new Map(all.map(x=>[x.project_id,{id:x.project_id,name:x.project_name}])).values()];
+  const projects = projectOptions.data ?? [...new Map(all.map(x=>[x.project_id,{id:x.project_id,name:x.project_name}])).values()];
   const buildings = [...new Map(all.filter(x=>x.building_id).map(x=>[x.building_id!,{id:x.building_id!,name:x.building_name??"Building"}])).values()];
   const rows = all.filter(x =>
     (!buildingId || x.building_id===buildingId) &&
