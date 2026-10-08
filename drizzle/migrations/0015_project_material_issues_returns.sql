@@ -316,3 +316,66 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.record_material_return(uuid,text,text,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.record_material_return(uuid,text,text,jsonb) TO authenticated;
+
+-- Live project cost report: net material consumption valued at each issue's
+-- weighted-average unit cost, less return credits at the ORIGINAL issue cost.
+-- SQL aggregation prevents pagination-based cost understatement in the UI.
+CREATE OR REPLACE FUNCTION public.project_material_consumption(_project_id uuid DEFAULT NULL)
+RETURNS TABLE (
+  project_id uuid,
+  project_name text,
+  building_id uuid,
+  building_name text,
+  material_id uuid,
+  material_code text,
+  material_name text,
+  unit_code text,
+  issued_quantity numeric,
+  returned_quantity numeric,
+  net_quantity numeric,
+  issued_value numeric,
+  returned_value numeric,
+  net_value numeric
+) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  WITH issues AS (
+    SELECT h.project_id,h.building_id,i.material_id,
+      sum(i.quantity) AS qty,sum(i.total_cost) AS value
+    FROM public.material_issues h
+    JOIN public.material_issue_items i ON i.issue_id=h.id
+    GROUP BY h.project_id,h.building_id,i.material_id
+  ),
+  returns AS (
+    SELECT h.project_id,h.building_id,i.material_id,
+      sum(i.quantity) AS qty,sum(i.total_cost) AS value
+    FROM public.material_returns h
+    JOIN public.material_return_items i ON i.return_id=h.id
+    GROUP BY h.project_id,h.building_id,i.material_id
+  ),
+  combined AS (
+    SELECT coalesce(i.project_id,r.project_id) AS pid,
+      coalesce(i.building_id,r.building_id) AS bid,
+      coalesce(i.material_id,r.material_id) AS mid,
+      coalesce(i.qty,0) AS issued_q, coalesce(i.value,0) AS issued_v,
+      coalesce(r.qty,0) AS returned_q, coalesce(r.value,0) AS returned_v
+    FROM issues i FULL JOIN returns r ON
+      i.project_id=r.project_id
+      AND i.building_id IS NOT DISTINCT FROM r.building_id
+      AND i.material_id=r.material_id
+  )
+  SELECT p.id,p.name::text,c.bid,b.name::text,m.id,m.code::text,m.name::text,u.code::text,
+    c.issued_q,c.returned_q,c.issued_q-c.returned_q,
+    c.issued_v,c.returned_v,c.issued_v-c.returned_v
+  FROM combined c
+  JOIN public.projects p ON p.id=c.pid
+  JOIN public.items m ON m.id=c.mid
+  JOIN public.units_of_measure u ON u.id=m.unit_id
+  LEFT JOIN public.buildings b ON b.id=c.bid
+  JOIN public.profiles viewer ON viewer.id=auth.uid()
+  WHERE viewer.is_active AND viewer.company_id=p.company_id
+    AND public.has_permission(auth.uid(),'inventory.view')
+    AND public.can_access_project(auth.uid(),p.id)
+    AND (_project_id IS NULL OR p.id=_project_id)
+  ORDER BY p.name,b.name NULLS FIRST,m.name;
+$$;
+REVOKE ALL ON FUNCTION public.project_material_consumption(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.project_material_consumption(uuid) TO authenticated;
