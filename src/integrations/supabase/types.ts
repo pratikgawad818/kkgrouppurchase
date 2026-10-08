@@ -52,6 +52,44 @@ export type Database = {
           },
         ]
       }
+      director_approval_votes: {
+        Row: {
+          id: string
+          entity_type: string
+          entity_id: string
+          actor_id: string
+          decision: string
+          comment: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          entity_type: string
+          entity_id: string
+          actor_id: string
+          decision: string
+          comment?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          entity_type?: string
+          entity_id?: string
+          actor_id?: string
+          decision?: string
+          comment?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_approval_votes_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
