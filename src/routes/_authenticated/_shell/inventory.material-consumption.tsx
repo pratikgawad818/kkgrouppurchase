@@ -108,7 +108,7 @@ function MaterialConsumption() {
             <td className="p-3 text-right tabular-nums font-semibold">{inr(x.net_value)}</td>
           </tr>)}</tbody>
         </table>
-      </div>}
+      </div></>}
       <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
       <p className="mt-3 text-xs text-muted-foreground">This operational report tracks the consumption of materials from stock. It is not a second purchase invoice, cash-flow record or general-ledger expense posting.</p>
     </>}
