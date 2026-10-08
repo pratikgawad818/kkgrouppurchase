@@ -202,25 +202,42 @@ const STATUS_TONE: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
-function Overview({ canMoney, canStock, canPr, canPo, canAp }: { canMoney: boolean; canStock: boolean; canPr: boolean; canPo: boolean; canAp: boolean }) {
+function Overview({ canMoney, canStock, canPr, canPo, canAp, projectId, buildingId }: { canMoney: boolean; canStock: boolean; canPr: boolean; canPo: boolean; canAp: boolean; projectId: string; buildingId: string }) {
   const q = useQuery({
-    queryKey: ["dashboard", "overview"],
+    queryKey: ["dashboard", "overview", projectId, buildingId],
     queryFn: async () => {
+      let unitsQuery = supabase.from("units").select("status").limit(10000);
+      let prQuery = supabase.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending_approval");
+      let poQuery = supabase.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
+      let invoiceQuery = supabase.from("vendor_invoices").select("balance_due").in("status", ["approved", "partially_paid"]);
+      if (projectId) {
+        unitsQuery = unitsQuery.eq("project_id", projectId);
+        prQuery = prQuery.eq("project_id", projectId);
+        poQuery = poQuery.eq("project_id", projectId);
+        invoiceQuery = invoiceQuery.eq("project_id", projectId);
+      }
+      if (buildingId) {
+        unitsQuery = unitsQuery.eq("building_id", buildingId);
+        prQuery = prQuery.eq("building_id", buildingId);
+        poQuery = poQuery.eq("building_id", buildingId);
+        invoiceQuery = invoiceQuery.eq("building_id", buildingId);
+      }
       const [p, team, units, stock, pr, po, inv] = await Promise.all([
         supabase.from("projects").select("id,name,code,status,budget,city").order("created_at", { ascending: false }),
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("units").select("status").limit(10000),
-        canStock ? supabase.from("warehouse_stock").select("quantity_on_hand,items(name,reorder_level)").limit(5000) : Promise.resolve({ data: [] as any[] }),
-        canPr ? supabase.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending_approval") : Promise.resolve({ count: 0 }),
-        canPo ? supabase.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["approved", "sent", "partially_received", "partially_accepted"]) : Promise.resolve({ count: 0 }),
-        canAp ? supabase.from("vendor_invoices").select("balance_due").in("status", ["approved", "partially_paid"]) : Promise.resolve({ data: [] as any[] }),
+        unitsQuery,
+        canStock ? supabase.from("warehouse_stock").select("quantity_on_hand,items(name,reorder_level),warehouses!inner(project_id)").limit(5000) : Promise.resolve({ data: [] as any[] }),
+        canPr ? prQuery : Promise.resolve({ count: 0 }),
+        canPo ? poQuery : Promise.resolve({ count: 0 }),
+        canAp ? invoiceQuery : Promise.resolve({ data: [] as any[] }),
       ]);
       if (p.error) throw p.error;
-      const low = ((stock as any).data ?? []).filter((x: any) => Number(x.quantity_on_hand) <= Number(x.items?.reorder_level ?? 0) && Number(x.items?.reorder_level ?? 0) > 0);
+      const stockRows = ((stock as any).data ?? []).filter((x: any) => !projectId || x.warehouses?.project_id === projectId);
+      const low = stockRows.filter((x: any) => Number(x.quantity_on_hand) <= Number(x.items?.reorder_level ?? 0) && Number(x.items?.reorder_level ?? 0) > 0);
       const uc: Record<string, number> = {};
       for (const u of (units as any).data ?? []) uc[u.status] = (uc[u.status] ?? 0) + 1;
       return {
-        projects: p.data ?? [], team: (team as any).count ?? 0, units: uc, low,
+        projects: projectId ? (p.data ?? []).filter((x) => x.id === projectId) : (p.data ?? []), team: (team as any).count ?? 0, units: uc, low,
         pendingPr: (pr as any).count ?? 0, openPo: (po as any).count ?? 0,
         payable: ((inv as any).data ?? []).reduce((a: number, x: any) => a + Number(x.balance_due), 0),
       };
@@ -252,12 +269,12 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp }: { canMoney: boole
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Total Projects" value={d.projects.length} icon={Building2} tone="bg-accent text-accent-foreground" to="/projects" />
         <Kpi label="Active Projects" value={active} icon={Clock} tone="bg-st-available/12 text-st-available" to="/projects" />
-        <Kpi label="Team Members" value={d.team} icon={Users} tone="bg-muted text-foreground" />
+        <Kpi label="Company Team Members" value={d.team} icon={Users} tone="bg-muted text-foreground" />
         <Kpi label="Project Budget" value={canMoney ? inr(budget) : "—"} icon={IndianRupee} tone="bg-st-hold/15 text-st-hold" />
         <Kpi label="PRs Pending Approval" value={canPr ? d.pendingPr : "—"} icon={ClipboardList} tone="bg-accent text-accent-foreground" to="/procurement/purchase-requests" />
         <Kpi label="Open Purchase Orders" value={canPo ? d.openPo : "—"} icon={ShoppingCart} tone="bg-st-available/12 text-st-available" to="/procurement/purchase-orders" />
         <Kpi label="Vendor Payables" value={canAp ? inr(d.payable) : "—"} icon={Wallet} tone="bg-st-hold/15 text-st-hold" to="/finance/payables" />
-        <Kpi label="Low Stock Materials" value={canStock ? d.low.length : "—"} icon={AlertTriangle} tone="bg-destructive/10 text-destructive" to="/inventory/stock" />
+        <Kpi label={projectId ? "Project Low Stock" : "Low Stock Materials"} value={canStock ? d.low.length : "—"} icon={AlertTriangle} tone="bg-destructive/10 text-destructive" to="/inventory/stock" />
       </div>
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <Panel title="Recent projects" to="/projects" className="lg:col-span-2">
@@ -366,7 +383,7 @@ function Dashboard() {
         </div>
         {selectedProject && <Link to="/projects" className="text-sm font-medium text-primary hover:underline">View projects</Link>}
       </div>
-      <Overview canMoney={can("financial.view")} canStock={can("inventory.view")} canPr={can("purchase_request.view")} canPo={can("purchase_order.view")} canAp={can("payable.view")} />
+      <Overview canMoney={can("financial.view")} canStock={can("inventory.view")} canPr={can("purchase_request.view")} canPo={can("purchase_order.view")} canAp={can("payable.view")} projectId={projectId} buildingId={buildingId} />
       {can("purchase_request.view") && <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />}
       {can("purchase_order.view") && <PoSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
       {can("grn.view") && <GrnSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
