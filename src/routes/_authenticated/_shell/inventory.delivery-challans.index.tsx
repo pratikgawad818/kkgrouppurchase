@@ -112,13 +112,13 @@ function DeliveryChallanRegister() {
   return <>
     <PageHeader title="Vendor Delivery Challans" subtitle="Register what the supplier dispatched before the site records and posts a GRN. Registering a challan never adds stock."
       actions={can("grn.create") && <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" />Register challan</Button>} />
-    <div className="mb-3 flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm">
+    <div className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-3 py-1.5 text-sm shadow-card focus-within:border-primary/40">
       <Search className="h-4 w-4 text-muted-foreground" />
       <Input className="h-8 border-0 shadow-none focus-visible:ring-0" aria-label="Search delivery challans" placeholder="Search challan, PO, vendor or project" value={searchText} onChange={e => { setSearchText(e.target.value); setPage(0); }} />
     </div>
     {register.isLoading ? <Loading /> : register.error ? <p className="text-sm text-destructive">{errMsg(register.error)}</p> :
       !visible.length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground"><Truck className="mx-auto mb-3 h-7 w-7" />No delivery challans found.</div> :
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-muted/50 text-xs text-muted-foreground"><tr>
             <th className="p-3">Vendor challan</th><th className="p-3">Date</th><th className="p-3">PO</th><th className="p-3">Vendor</th><th className="p-3">Project</th><th className="p-3">Status</th><th className="p-3 text-right">Lines</th>
