@@ -234,3 +234,28 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
+
+/* Responsive document lists: tables inside .doc-table become stacked cards below 640px. */
+.doc-table tbody tr { transition: background-color 0.12s; }
+.doc-table tbody tr:hover { background-color: color-mix(in oklab, var(--color-primary) 4%, transparent); }
+.doc-table thead th { font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-muted-foreground); }
+@media (max-width: 639px) {
+  .doc-table { overflow: visible !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+  .doc-table table, .doc-table tbody { display: block; width: 100%; }
+  .doc-table thead { display: none; }
+  .doc-table tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.625rem 0.875rem;
+    margin-bottom: 0.75rem; padding: 1rem; border: 1px solid var(--color-border); border-radius: calc(var(--radius) + 4px);
+    background: var(--color-card); box-shadow: var(--shadow-card);
+  }
+  .doc-table tbody tr:hover { background: var(--color-card); }
+  .doc-table td { display: block; min-width: 0; padding: 0 !important; border: 0 !important; white-space: normal !important; text-align: left !important; overflow-wrap: anywhere; }
+  .doc-table td::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted-foreground); }
+  .doc-table td[data-label=""]::before, .doc-table td:first-child::before { display: none; }
+  .doc-table td:first-child { grid-column: 1 / -1; font-size: 15px; font-weight: 600; }
+  .doc-table td[colspan] { grid-column: 1 / -1; text-align: center !important; padding: 1.5rem 0 !important; }
+  .doc-table td:last-child:has(button, a[href]):not(:first-child) { grid-column: 1 / -1; padding-top: 0.625rem !important; border-top: 1px solid var(--color-border) !important; }
+  .doc-table td:last-child:has(button, a[href]):not(:first-child)::before { display: none; }
+  .doc-table td:last-child > div, .doc-table td:last-child { gap: 0.5rem; }
+  .doc-table td button { min-height: 2.75rem; }
+}

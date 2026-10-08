@@ -9,6 +9,7 @@ import { ROLE_LABEL } from "@/lib/format";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { useDocTableLabels } from "@/components/erp/doc-table";
 import { Loading } from "@/components/erp/common";
 import { cn } from "@/lib/utils";
 import brandMark from "@/assets/kk-groups-full.png.asset.json";
@@ -66,11 +67,14 @@ function titleFor(path: string) {
 }
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "U"; }
 
+const getMain = () => (typeof document === "undefined" ? null : document.body);
+
 function Shell() {
   const me = useMe();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  useDocTableLabels(getMain);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearchOpen((v) => !v); } };
     window.addEventListener("keydown", onKey);
