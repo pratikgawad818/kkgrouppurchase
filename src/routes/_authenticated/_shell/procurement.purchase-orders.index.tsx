@@ -53,13 +53,13 @@ function PoList() {
       <PageHeader title="Purchase Orders" subtitle="Create POs from an RFQ that is Ready for Purchase Order." />
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="w-full sm:w-64"><SearchBox value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="PO, vendor, material, project, RFQ" /></div>
-        <select className={cn(selectCls, "w-44")} value={f.status} onChange={(e) => set("status", e.target.value)}>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={f.status} onChange={(e) => set("status", e.target.value)}>
           <option value="">All statuses</option>{Object.entries(PO_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
-        <select className={cn(selectCls, "w-44")} value={f.vendor} onChange={(e) => set("vendor", e.target.value)}><option value="">All vendors</option>{vendors.map((x) => <option key={x.vendor_id} value={x.vendor_id}>{x.vendors?.company_name}</option>)}</select>
-        <select className={cn(selectCls, "w-44")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{projects.map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
-        <select className={cn(selectCls, "w-40")} value={f.building} onChange={(e) => set("building", e.target.value)}><option value="">All buildings</option>{buildings.map((x) => <option key={x.building_id!} value={x.building_id!}>{x.buildings?.name}</option>)}</select>
-        <select className={cn(selectCls, "w-36")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.po_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={f.vendor} onChange={(e) => set("vendor", e.target.value)}><option value="">All vendors</option>{vendors.map((x) => <option key={x.vendor_id} value={x.vendor_id}>{x.vendors?.company_name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{projects.map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.building} onChange={(e) => set("building", e.target.value)}><option value="">All buildings</option>{buildings.map((x) => <option key={x.building_id!} value={x.building_id!}>{x.buildings?.name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.po_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
         <Input type="date" className="h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none" value={f.from} onChange={(e) => set("from", e.target.value)} aria-label="From date" />
         <Input type="date" className="h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none" value={f.to} onChange={(e) => set("to", e.target.value)} aria-label="To date" />
       </div>
