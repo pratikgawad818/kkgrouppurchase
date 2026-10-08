@@ -179,8 +179,15 @@ FOR EACH ROW EXECUTE FUNCTION public.prevent_po_cancel_with_active_challans();
 
 -- The deprecated four-argument GRN RPC from the original Phase 4 migration
 -- lacks the newer integrity guards. The frontend uses the five-argument RPC.
-REVOKE EXECUTE ON FUNCTION public.create_goods_receipt(uuid,uuid,jsonb,jsonb)
-  FROM PUBLIC, authenticated;
+-- Some deployments never had the legacy four-argument overload.
+-- Do not fail this migration when it is absent; revoke only if present.
+DO $migration$
+BEGIN
+  IF to_regprocedure('public.create_goods_receipt(uuid,uuid,jsonb,jsonb)') IS NOT NULL THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.create_goods_receipt(uuid,uuid,jsonb,jsonb) FROM PUBLIC, authenticated';
+  END IF;
+END
+$migration$;
 
 -- Preserve the existing five-argument GRN API. When a challan is supplied,
 -- validate every material and its remaining dispatch quantity under a row lock.
