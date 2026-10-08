@@ -104,21 +104,21 @@ function PrList() {
         <Input type="date" className="h-9 w-auto" value={to} onChange={(e) => { setTo(e.target.value); reset(); }} aria-label="To date" />
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : q.data!.rows.length === 0 ? <Empty>No purchase requests match these filters.</Empty> : (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">PR</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Building</th><th className="px-4 py-3">Requested by</th><th className="px-4 py-3">Required by</th><th className="px-4 py-3 text-right">Est. value</th><th className="px-4 py-3">Priority</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead>
             <tbody>
               {q.data!.rows.map((r) => (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono font-medium"><Link to="/procurement/purchase-requests/$id" params={{ id: r.id }} className="text-primary hover:underline">{r.pr_number}</Link></td>
+                  <td className="px-4 py-3 font-medium tabular-nums font-medium"><Link to="/procurement/purchase-requests/$id" params={{ id: r.id }} className="text-primary hover:underline">{r.pr_number}</Link></td>
                   <td className="px-4 py-3">{fmtDate(r.request_date)}</td>
                   <td className="px-4 py-3">{r.projects?.name}</td>
                   <td className="px-4 py-3">{r.buildings?.name ?? "—"}</td>
                   <td className="px-4 py-3">{who(r.requested_by)}</td>
                   <td className="px-4 py-3">{fmtDate(r.required_by)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{inr(r.estimated_total)}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(r.estimated_total)}</td>
                   <td className="px-4 py-3">{PR_PRIORITY[r.priority]}</td>
-                  <td className="px-4 py-3"><span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${PR_STATUS[r.status].cls}`}>{PR_STATUS[r.status].label}</span></td>
+                  <td className="px-4 py-3"><span className={`inline-flex whitespace-nowrap whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${PR_STATUS[r.status].cls}`}>{PR_STATUS[r.status].label}</span></td>
                   <td className="px-4 py-3 text-right"><Link to="/procurement/purchase-requests/$id" params={{ id: r.id }} className="text-xs text-primary hover:underline">Open</Link></td>
                 </tr>
               ))}

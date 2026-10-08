@@ -63,17 +63,17 @@ function Ledger() {
           <Stat label="Unadjusted advances" value={inr(q.data?.advLeft)} />
           <Stat label="Open PO commitments" value={inr((q.data?.pos ?? []).reduce((s, x) => s + Number(x.grand_total), 0))} hint={`${q.data?.pos.length ?? 0} POs — not payable`} />
         </div>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card"><table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap"><table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Document</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Details</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
           <tbody>
-            <tr className="border-b bg-muted/20"><td className="px-4 py-3" colSpan={6}>Opening balance</td><td className="px-4 py-3 text-right font-mono">{inr(opening)}</td></tr>
+            <tr className="border-b bg-muted/20"><td className="px-4 py-3" colSpan={6}>Opening balance</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(opening)}</td></tr>
             {inFy.length === 0 && <tr><td colSpan={7} className="p-3 text-xs text-muted-foreground">No records in this year.</td></tr>}
             {inFy.map((r, i) => (
               <tr key={i} className="border-b last:border-0 hover:bg-muted/40">
                 <td className="px-4 py-3">{fmtDate(r.date)}</td>
-                <td className="px-4 py-3 font-mono text-xs">{r.link ? <Link className="text-primary hover:underline" to={r.link.to} params={{ id: r.link.id }}>{r.doc}</Link> : r.doc}</td>
+                <td className="px-4 py-3 font-medium tabular-nums text-xs">{r.link ? <Link className="text-primary hover:underline" to={r.link.to} params={{ id: r.link.id }}>{r.doc}</Link> : r.doc}</td>
                 <td className="px-4 py-3">{r.kind}</td><td className="px-4 py-3 text-xs text-muted-foreground">{r.note}</td>
-                <td className="px-4 py-3 text-right font-mono">{r.debit ? inr(r.debit) : ""}</td><td className="px-4 py-3 text-right font-mono">{r.credit ? inr(r.credit) : ""}</td><td className="px-4 py-3 text-right font-mono">{inr(r.bal)}</td>
+                <td className="px-4 py-3 text-right font-medium tabular-nums">{r.debit ? inr(r.debit) : ""}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{r.credit ? inr(r.credit) : ""}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(r.bal)}</td>
               </tr>))}
           </tbody>
         </table></div>

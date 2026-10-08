@@ -173,13 +173,13 @@ function NewInvoice() {
                   return (
                     <tr key={l.grn_item_id} className={cn("border-b last:border-0", !l.include && "opacity-50")}>
                       <td className="px-4 py-3"><input type="checkbox" checked={l.include} disabled={l.available <= 0} onChange={(e) => upd(l.grn_item_id, { include: e.target.checked })} aria-label="Include line" /></td>
-                      <td className="px-4 py-3 font-mono text-xs">{l.grn_number}</td><td className="px-4 py-3">{l.material}</td>
-                      <td className="px-4 py-3 text-right font-mono">{num(l.accepted)} {l.unit}</td><td className="px-4 py-3 text-right font-mono">{num(l.available)}</td>
+                      <td className="px-4 py-3 font-medium tabular-nums text-xs">{l.grn_number}</td><td className="px-4 py-3">{l.material}</td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums">{num(l.accepted)} {l.unit}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(l.available)}</td>
                       <td className="px-4 py-3"><Input className={cn("h-8 w-24 text-right", over && "border-destructive")} type="number" min={0} value={l.quantity} onChange={(e) => upd(l.grn_item_id, { quantity: e.target.value })} /></td>
-                      <td className="px-4 py-3 text-right font-mono">{inr(l.po_rate)}</td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(l.po_rate)}</td>
                       <td className="px-4 py-3"><Input className={cn("h-8 w-28 text-right", rateOff && "border-amber-400")} type="number" min={0} value={l.rate} onChange={(e) => upd(l.grn_item_id, { rate: e.target.value })} /></td>
                       <td className="px-4 py-3"><select className={cn(selectCls, "h-8 w-20", taxOff && "border-amber-400")} value={l.tax_rate_percent} onChange={(e) => upd(l.grn_item_id, { tax_rate_percent: e.target.value })}>{[...new Set([...TAX_RATES, l.po_tax])].map((r) => <option key={r} value={r}>{r}</option>)}</select></td>
-                      <td className="px-4 py-3 text-right font-mono">{inr(Number(l.quantity) * Number(l.rate) * (1 + Number(l.tax_rate_percent) / 100))}</td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(Number(l.quantity) * Number(l.rate) * (1 + Number(l.tax_rate_percent) / 100))}</td>
                     </tr>);
                 })}
               </tbody>

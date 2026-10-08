@@ -63,7 +63,7 @@ function StockPage() {
           <div className="w-64"><SearchBox value={search} onChange={setSearch} placeholder="Material" /></div>
           <select className={cn(selectCls, "w-56")} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">All stores</option>{q.data!.warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
         </div>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3">Store</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Reorder level</th><th className="px-4 py-3 text-right">Avg cost</th><th className="px-4 py-3 text-right">Value</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
@@ -72,11 +72,11 @@ function StockPage() {
                 <tr key={x.warehouse_id + x.material_id} className="border-b last:border-0">
                   <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
                   <td className="px-4 py-3">{x.warehouses?.name}</td>
-                  <td className="px-4 py-3 text-right font-mono">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
-                  <td className="px-4 py-3 text-right font-mono">{num(x.items?.reorder_level)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{inr(x.weighted_avg_cost)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{inr(x.total_value)}</td>
-                  <td className="px-4 py-3"><span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", st.c)}>{st.l}</span></td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.items?.reorder_level)}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.weighted_avg_cost)}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.total_value)}</td>
+                  <td className="px-4 py-3"><span className={cn("whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium", st.c)}>{st.l}</span></td>
                 </tr>); })}
             </tbody>
           </table>

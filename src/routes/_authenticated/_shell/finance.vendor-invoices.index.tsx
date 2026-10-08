@@ -56,20 +56,20 @@ function InvoiceList() {
         <select className={cn(selectCls, "w-36")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Vendor bill</th><th className="px-4 py-3">Bill date</th><th className="px-4 py-3">Due</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">PO</th><th className="px-4 py-3">Project</th><th className="px-4 py-3 text-right">Invoice total</th><th className="px-4 py-3 text-right">Balance due</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
               {pageRows.length === 0 && <tr><td colSpan={11} className="p-4 text-xs text-muted-foreground">No vendor invoices yet.</td></tr>}
               {pageRows.map((x) => (
                 <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
-                  <td className="px-4 py-3 font-mono"><Link className="text-primary hover:underline" to="/finance/vendor-invoices/$id" params={{ id: x.id }}>{x.invoice_number}</Link></td>
-                  <td className="px-4 py-3 font-mono text-xs">{x.vendor_invoice_number}</td>
+                  <td className="px-4 py-3 font-medium tabular-nums"><Link className="text-primary hover:underline" to="/finance/vendor-invoices/$id" params={{ id: x.id }}>{x.invoice_number}</Link></td>
+                  <td className="px-4 py-3 font-medium tabular-nums text-xs">{x.vendor_invoice_number}</td>
                   <td className="px-4 py-3">{fmtDate(x.vendor_invoice_date)}</td><td className="px-4 py-3">{fmtDate(x.due_date)}</td>
                   <td className="px-4 py-3">{x.vendors?.company_name}</td>
-                  <td className="px-4 py-3 font-mono text-xs"><Link className="hover:underline" to="/procurement/purchase-orders/$id" params={{ id: x.po_id }}>{x.purchase_orders?.po_number}</Link></td>
+                  <td className="px-4 py-3 font-medium tabular-nums text-xs"><Link className="hover:underline" to="/procurement/purchase-orders/$id" params={{ id: x.po_id }}>{x.purchase_orders?.po_number}</Link></td>
                   <td className="px-4 py-3">{x.projects?.name}</td>
-                  <td className="px-4 py-3 text-right font-mono">{inr(x.grand_total)}</td><td className="px-4 py-3 text-right font-mono">{inr(x.balance_due)}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.grand_total)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.balance_due)}</td>
                   <td className="px-4 py-3"><span className={cn(badge, MATCH_STATUS[x.match_status].cls)}>{MATCH_STATUS[x.match_status].label}</span></td>
                   <td className="px-4 py-3"><span className={cn(badge, INVOICE_STATUS[x.status].cls)}>{INVOICE_STATUS[x.status].label}</span></td>
                 </tr>))}
