@@ -46,7 +46,7 @@ function Buildings() {
       if (r.error) throw r.error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["buildings"] }); setOpen(false); toast.success(editingId ? "Building updated" : "Building created"); },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => toast.error(e.message.includes("buildings_project_id_code_key") ? "This project already has a building with that code. Use a different code (e.g. B, C, T2)." : e.message),
   });
   const manage = can("buildings.manage");
   type B = NonNullable<typeof q.data>[number];
@@ -79,7 +79,7 @@ function Buildings() {
           <DialogHeader><DialogTitle>{editingId ? "Edit building" : "New building"}</DialogTitle><DialogDescription>Building or wing details within a project.</DialogDescription></DialogHeader>
           <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
             <div className="sm:col-span-2"><Label>Project</Label><select required className="h-9 w-full rounded-lg border bg-background px-3 text-sm" value={form.project_id} onChange={set("project_id")}><option value="">Select project</option>{projects.data?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-            <div><Label>Building code</Label><Input required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} /></div>
+            <div><Label>Building code</Label><Input required value={form.code} maxLength={6} placeholder="e.g. A, B, T1" onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} /><p className="mt-1 text-xs text-muted-foreground">Up to 6 letters/numbers; must differ from other buildings in the same project.</p></div>
             <div><Label>Building name</Label><Input required value={form.name} onChange={set("name")} /></div>
             <div><Label>Wing</Label><Input value={form.wing} onChange={set("wing")} /></div>
             <div><Label>Planned floors</Label><Input type="number" min="0" value={form.planned_floors} onChange={set("planned_floors")} /></div>
