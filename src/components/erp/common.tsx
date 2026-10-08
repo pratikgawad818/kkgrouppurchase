@@ -73,6 +73,7 @@ export function SearchBox({ value, onChange, placeholder = "Search" }: { value: 
   return <div className="relative w-full max-w-sm"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></div>;
 }
 
+// Records keep their is_demo flag in the database; the label is hidden because the company treats these records as real.
 export function DemoBadge() {
-  return <span className="rounded-sm border border-primary/25 bg-primary/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">Demo</span>;
+  return null;
 }
