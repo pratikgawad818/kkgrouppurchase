@@ -17,9 +17,9 @@ type Vote = { entity_type: string; entity_id: string; actor_id: string; decision
 const linkFor = (request: Request) => request.kind === "purchase_order" ? `/procurement/purchase-orders/${request.id}` : "/finance/payments";
 
 export const Route = createFileRoute("/_authenticated/_shell/approvals")({
-  validateSearch: (s: Record<string, unknown>): { kind?: Kind; id?: string } => ({
-    kind: s.kind === "purchase_order" || s.kind === "vendor_payment" ? s.kind : undefined,
-    id: typeof s.id === "string" && /^[0-9a-f-]{36}$/i.test(s.id) ? s.id : undefined,
+  validateSearch: (s: Record<string, unknown>): { kind: Kind | null; id: string | null } => ({
+    kind: s.kind === "purchase_order" || s.kind === "vendor_payment" ? s.kind : null,
+    id: typeof s.id === "string" && /^[0-9a-f-]{36}$/i.test(s.id) ? s.id : null,
   }),
   component: DirectorApprovals,
   head: () => ({ meta: [{ title: "Director Approvals — KK GROUP ERP" }] }),
