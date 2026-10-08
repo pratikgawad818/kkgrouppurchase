@@ -84,7 +84,7 @@ function IssueDetail() {
     <PageHeader title={issue.issue_number} crumbs={<Link to="/inventory/material-issues" className="hover:underline">Material Issues</Link>}
       subtitle="Posted stock issue · original issue lines are immutable"
       actions={can("inventory.return") && available && <Button size="sm" onClick={()=>setShowReturn(true)}><Undo2 className="mr-1 h-4 w-4" />Return unused materials</Button>} />
-    <section className="grid gap-4 rounded-xl border bg-card p-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
+    <section className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 text-sm shadow-card sm:p-5 lg:grid-cols-4">
       <div><p className="text-xs text-muted-foreground">Project / building</p><p className="font-semibold">{issue.projects?.name}{issue.buildings?.name ? ` / ${issue.buildings.name}` : ""}</p></div>
       <div><p className="text-xs text-muted-foreground">Source store</p><p className="font-semibold">{issue.warehouses?.name}</p></div>
       <div><p className="text-xs text-muted-foreground">Issue date</p><p className="font-semibold">{fmtDate(issue.issue_date)}</p></div>
@@ -98,7 +98,7 @@ function IssueDetail() {
     </section>
     <section className="mt-5 rounded-xl border bg-card p-4 sm:p-5">
       <h2 className="mb-3 font-semibold">Materials issued and returned</h2>
-      <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm">
+      <div className="doc-table overflow-x-auto"><table className="w-full text-sm sm:min-w-[600px]">
         <thead className="border-b bg-muted/30 text-xs"><tr>
           <th className="p-2 text-left">Material</th><th className="p-2 text-right">Issued</th><th className="p-2 text-right">Returned</th><th className="p-2 text-right">Net used</th><th className="p-2 text-right">Issue unit cost</th><th className="p-2 text-right">Net cost</th>
         </tr></thead>
@@ -136,7 +136,7 @@ function IssueDetail() {
           <div><label htmlFor="return-reason" className="text-sm font-medium">Reason *</label>
             <Input id="return-reason" maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} placeholder="e.g. surplus after slab casting" /></div>
         </div>
-        <div className="max-h-72 overflow-y-auto rounded-md border">
+        <div className="doc-table max-h-72 overflow-y-auto rounded-md border max-sm:max-h-none">
           <table className="w-full text-sm"><thead className="border-b bg-muted/50 text-xs"><tr><th className="p-2 text-left">Material</th><th className="p-2 text-right">Can return</th><th className="p-2 text-right">Quantity</th></tr></thead>
             <tbody>{lines.map(x=>{
               const remaining=Math.max(0,Number(x.quantity)-(returnedQty.get(x.id)??0));

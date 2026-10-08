@@ -163,7 +163,7 @@ function NewInvoice() {
             <select className={cn(selectCls, "w-48")} value={grnFilter} onChange={(e) => setGrnFilter(e.target.value)}><option value="">All GRNs</option>{grnNumbers.map((g) => <option key={g}>{g}</option>)}</select>
           </div>
           {grn.isLoading ? <Loading /> : (
-            <div className="overflow-x-auto"><table className="w-full text-sm">
+            <div className="doc-table overflow-x-auto"><table className="w-full text-sm">
               <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3"></th><th className="px-4 py-3">GRN</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Available</th><th className="px-4 py-3 text-right">Invoice qty</th><th className="px-4 py-3 text-right">PO rate</th><th className="px-4 py-3 text-right">Bill rate</th><th className="px-4 py-3">GST %</th><th className="px-4 py-3 text-right">Amount</th></tr></thead>
               <tbody>
                 {shown.length === 0 && <tr><td colSpan={10} className="p-3 text-xs text-muted-foreground">No posted goods receipts on this PO.</td></tr>}

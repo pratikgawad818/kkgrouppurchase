@@ -113,7 +113,7 @@ function MaterialIssues() {
     {register.isLoading ? <Loading /> : register.error ? <p className="text-sm text-destructive">{errMsg(register.error)}</p> :
     !matched.length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
       <PackageMinus className="mx-auto mb-2 h-7 w-7" />No material issues found.
-    </div> : <div className="overflow-x-auto rounded-xl border bg-card">
+    </div> : <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
       <table className="w-full text-left text-sm"><thead className="border-b bg-muted/40 text-xs">
         <tr><th className="p-3">Issue</th><th className="p-3">Date</th><th className="p-3">Project / building</th><th className="p-3">Store</th><th className="p-3">Issued to</th><th className="p-3 text-right">Issue value</th></tr>
       </thead><tbody>{matched.slice(page * PAGE, (page + 1)*PAGE).map(x => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/30">

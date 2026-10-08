@@ -73,7 +73,7 @@ function ChallanDetails() {
       subtitle={<span>Vendor Delivery Challan · <span className={h.status === "registered" ? "font-semibold text-green-700 dark:text-green-400" : "font-semibold text-destructive"}>{h.status === "registered" ? "Registered" : "Cancelled"}</span></span>}
       crumbs={<Link to="/inventory/delivery-challans" search={{ po: null }} className="hover:underline">Delivery Challans</Link>}
       actions={canCancel && <Button variant="outline" size="sm" onClick={() => setCancelOpen(true)}>Cancel challan</Button>} />
-    <section className="grid gap-4 rounded-xl border bg-card p-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
+    <section className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 text-sm shadow-card sm:p-5 lg:grid-cols-4">
       <div><p className="text-xs text-muted-foreground">Supplier</p><p className="font-semibold">{h.vendors?.company_name}</p></div>
       <div><p className="text-xs text-muted-foreground">Purchase order</p><Link className="font-semibold text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: h.po_id }}>{h.purchase_orders?.po_number}</Link></div>
       <div><p className="text-xs text-muted-foreground">Challan date</p><p className="font-semibold">{fmtDate(h.challan_date)}</p></div>
@@ -86,7 +86,7 @@ function ChallanDetails() {
     </section>
     <section className="mt-5 rounded-xl border bg-card p-5">
       <div className="mb-3 flex flex-wrap justify-between gap-3"><h2 className="font-semibold">Dispatched vs received quantities</h2><div className="text-xs text-muted-foreground">{num(received)} of {num(qty)} recorded as physically received</div></div>
-      <div className="overflow-x-auto"><table className="w-full min-w-[580px] text-sm">
+      <div className="doc-table overflow-x-auto"><table className="w-full text-sm sm:min-w-[580px]">
         <thead className="border-b bg-muted/30 text-left text-xs"><tr><th className="p-2">Material</th><th className="p-2 text-right">Dispatched</th><th className="p-2 text-right">GRN received</th><th className="p-2 text-right">Remaining on challan</th></tr></thead>
         <tbody>{lines.map(x => { const got = receivedByLine.get(x.id) ?? 0; return <tr key={x.id} className="border-b last:border-0">
           <td className="p-2">{x.purchase_order_items?.items?.name} <span className="text-xs text-muted-foreground">{x.purchase_order_items?.items?.code}</span></td>
