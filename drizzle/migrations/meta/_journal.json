@@ -78,6 +78,13 @@
       "when": 1791288097568,
       "tag": "0010_r1_rejected_cancelled_invoice_zero_balance",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791448053025,
+      "tag": "0011_sync_floors_with_planned_floors",
+      "breakpoints": true
     }
   ]
 }
