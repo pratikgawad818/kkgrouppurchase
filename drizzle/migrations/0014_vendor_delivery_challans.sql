@@ -172,7 +172,12 @@ BEGIN
   SELECT * INTO p FROM purchase_orders WHERE id = _po_id FOR UPDATE;
   IF p IS NULL OR NOT can_access_project(auth.uid(), p.project_id) THEN RAISE EXCEPTION 'Purchase order not found'; END IF;
   IF p.status NOT IN ('approved','sent','partially_received','partially_accepted') THEN RAISE EXCEPTION 'Goods can only be received against open approved or sent POs'; END IF;
-  IF NOT EXISTS (SELECT 1 FROM warehouses WHERE id = _warehouse_id AND status = 'active') THEN RAISE EXCEPTION 'Invalid store'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM warehouses
+    WHERE id = _warehouse_id AND status = 'active'
+      AND company_id = p.company_id
+      AND (project_id IS NULL OR project_id = p.project_id)
+  ) THEN RAISE EXCEPTION 'Receiving store must belong to this company and project'; END IF;
   requested_dc := nullif(_header->>'challan_id','')::uuid;
   IF requested_dc IS NOT NULL THEN
     SELECT * INTO dc FROM vendor_delivery_challans WHERE id=requested_dc FOR UPDATE;
@@ -183,6 +188,9 @@ BEGIN
   END IF;
   rdate := coalesce(nullif(_header->>'received_date','')::date, ist_today());
   IF rdate > ist_today() THEN RAISE EXCEPTION 'Received date cannot be in the future'; END IF;
+  IF requested_dc IS NOT NULL AND rdate < dc.challan_date THEN
+    RAISE EXCEPTION 'GRN date cannot precede the supplier challan date';
+  END IF;
   gnum := next_doc_number('grn','GRN');
   INSERT INTO goods_receipt_notes(grn_number, company_id, po_id, vendor_id, project_id, building_id, rfq_id, purchase_request_id, warehouse_id, received_date, challan_id, challan_number, invoice_reference, vehicle_number, remarks, received_by, status)
     VALUES (gnum, p.company_id, p.id, p.vendor_id, p.project_id, p.building_id, p.rfq_id, p.purchase_request_id, _warehouse_id,
