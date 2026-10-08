@@ -53,7 +53,7 @@ function Payments() {
   return (
     <>
       <PageHeader title="Vendor Payments" subtitle="Scheduled → Approved (Director) → Recorded with bank reference. Only recorded payments reduce payables."
-        actions={can("payment.schedule") && <div className="flex gap-2"><Button size="sm" onClick={() => setSchedule("invoice")}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => setSchedule("advance")}>Vendor advance</Button></div>} />
+        actions={can("payment.schedule") && <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => setSchedule("invoice")}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => setSchedule("advance")}>Vendor advance</Button></div>} />
       <div className="mb-3"><select className={cn(selectCls, "w-44")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="">All statuses</option>{Object.entries(PAYMENT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap"><table className="w-full text-sm">

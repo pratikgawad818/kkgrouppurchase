@@ -49,7 +49,7 @@ function InvoiceList() {
       <PageHeader title="Vendor Invoices" subtitle="Bills from vendors, checked against the purchase order and goods received before they become payable."
         actions={can("vendor_invoice.create") && <Button asChild size="sm"><Link to="/finance/vendor-invoices/new"><Plus className="mr-1 h-4 w-4" />New vendor invoice</Link></Button>} />
       <div className="mb-3 flex flex-wrap gap-2">
-        <div className="w-60"><SearchBox value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="Invoice, bill no., vendor, PO" /></div>
+        <div className="w-full sm:w-60"><SearchBox value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="Invoice, bill no., vendor, PO" /></div>
         <select className={cn(selectCls, "w-48")} value={f.status} onChange={(e) => set("status", e.target.value)}><option value="">All statuses</option>{(Object.keys(INVOICE_STATUS) as InvoiceStatus[]).map((k) => <option key={k} value={k}>{INVOICE_STATUS[k].label}</option>)}</select>
         <select className={cn(selectCls, "w-48")} value={f.vendor} onChange={(e) => set("vendor", e.target.value)}><option value="">All vendors</option>{uniq(all, (x) => x.vendor_id).map((x) => <option key={x.vendor_id} value={x.vendor_id}>{x.vendors?.company_name}</option>)}</select>
         <select className={cn(selectCls, "w-44")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
