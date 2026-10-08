@@ -43,7 +43,7 @@ function AuthPage() {
       navigating = true;
       const next = window.sessionStorage.getItem("kk-approval-return");
       window.sessionStorage.removeItem("kk-approval-return");
-      if (next && /^\\/approvals(?:\\?|$)/.test(next)) {
+      if (next && /^\/approvals(?:\?|$)/.test(next)) {
         window.location.replace(next);
         return;
       }
