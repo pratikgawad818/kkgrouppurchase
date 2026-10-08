@@ -37,11 +37,23 @@ function AuthPage() {
       window.location.replace("/reset-password" + hash);
       return;
     }
+    let navigating = false;
+    const afterSignIn = () => {
+      if (navigating) return;
+      navigating = true;
+      const next = window.sessionStorage.getItem("kk-approval-return");
+      window.sessionStorage.removeItem("kk-approval-return");
+      if (next && /^\\/approvals(?:\\?|$)/.test(next)) {
+        window.location.replace(next);
+        return;
+      }
+      navigate({ to: "/dashboard", replace: true });
+    };
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
+      if (data.session) afterSignIn();
     });
     const { data } = supabase.auth.onAuthStateChange((e, s) => {
-      if (s && e !== "PASSWORD_RECOVERY") navigate({ to: "/dashboard", replace: true });
+      if (s && e !== "PASSWORD_RECOVERY") afterSignIn();
     });
     return () => data.subscription.unsubscribe();
   }, [navigate]);
