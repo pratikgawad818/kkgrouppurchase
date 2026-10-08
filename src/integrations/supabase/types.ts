@@ -90,6 +90,83 @@ export type Database = {
           },
         ]
       }
+      vendor_delivery_challans: {
+        Row: {
+          id: string
+          company_id: string
+          po_id: string
+          vendor_id: string
+          project_id: string
+          building_id: string | null
+          challan_number: string
+          challan_date: string
+          vehicle_number: string | null
+          invoice_reference: string | null
+          remarks: string | null
+          status: string
+          created_by: string
+          created_at: string
+          cancelled_by: string | null
+          cancelled_at: string | null
+          cancel_reason: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          po_id: string
+          vendor_id: string
+          project_id: string
+          building_id?: string | null
+          challan_number: string
+          challan_date: string
+          vehicle_number?: string | null
+          invoice_reference?: string | null
+          remarks?: string | null
+          status?: string
+          created_by: string
+          created_at?: string
+          cancelled_by?: string | null
+          cancelled_at?: string | null
+          cancel_reason?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          po_id?: string
+          vendor_id?: string
+          project_id?: string
+          building_id?: string | null
+          challan_number?: string
+          challan_date?: string
+          vehicle_number?: string | null
+          invoice_reference?: string | null
+          remarks?: string | null
+          status?: string
+          created_by?: string
+          created_at?: string
+          cancelled_by?: string | null
+          cancelled_at?: string | null
+          cancel_reason?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "vendor_delivery_challans_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
+          { foreignKeyName: "vendor_delivery_challans_po_id_fkey"; columns: ["po_id"]; isOneToOne: false; referencedRelation: "purchase_orders"; referencedColumns: ["id"] },
+          { foreignKeyName: "vendor_delivery_challans_vendor_id_fkey"; columns: ["vendor_id"]; isOneToOne: false; referencedRelation: "vendors"; referencedColumns: ["id"] },
+          { foreignKeyName: "vendor_delivery_challans_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "vendor_delivery_challans_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
+          { foreignKeyName: "vendor_delivery_challans_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "vendor_delivery_challans_cancelled_by_fkey"; columns: ["cancelled_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      vendor_delivery_challan_items: {
+        Row: { id: string; challan_id: string; po_item_id: string; quantity: number }
+        Insert: { id?: string; challan_id: string; po_item_id: string; quantity: number }
+        Update: { id?: string; challan_id?: string; po_item_id?: string; quantity?: number }
+        Relationships: [
+          { foreignKeyName: "vendor_delivery_challan_items_challan_id_fkey"; columns: ["challan_id"]; isOneToOne: false; referencedRelation: "vendor_delivery_challans"; referencedColumns: ["id"] },
+          { foreignKeyName: "vendor_delivery_challan_items_po_item_id_fkey"; columns: ["po_item_id"]; isOneToOne: false; referencedRelation: "purchase_order_items"; referencedColumns: ["id"] },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -525,6 +602,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "goods_receipt_items_challan_item_fk"
+            columns: ["challan_item_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_delivery_challan_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "goods_receipt_items_grn_id_fkey"
             columns: ["grn_id"]
             isOneToOne: false
@@ -560,6 +644,7 @@ export type Database = {
           cancel_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          challan_id: string | null
           challan_number: string | null
           company_id: string
           created_at: string
@@ -584,6 +669,7 @@ export type Database = {
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          challan_id?: string | null
           challan_number?: string | null
           company_id: string
           created_at?: string
@@ -608,6 +694,7 @@ export type Database = {
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          challan_id?: string | null
           challan_number?: string | null
           company_id?: string
           created_at?: string
@@ -628,6 +715,7 @@ export type Database = {
           warehouse_id?: string
         }
         Relationships: [
+          { foreignKeyName: "goods_receipt_notes_challan_id_fkey"; columns: ["challan_id"]; isOneToOne: false; referencedRelation: "vendor_delivery_challans"; referencedColumns: ["id"] },
           {
             foreignKeyName: "goods_receipt_notes_building_id_fkey"
             columns: ["building_id"]
@@ -3936,6 +4024,14 @@ export type Database = {
       }
     }
     Functions: {
+      register_vendor_delivery_challan: {
+        Args: { _po_id: string; _header: Json; _items: Json }
+        Returns: string
+      }
+      cancel_vendor_delivery_challan: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
       acct: { Args: { _code: string; _company: string }; Returns: string }
       apply_vendor_advance: {
         Args: { _advance_id: string; _amount: number; _invoice_id: string }

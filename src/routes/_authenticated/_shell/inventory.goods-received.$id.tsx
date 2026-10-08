@@ -81,7 +81,7 @@ function GrnDetail() {
         <Info l="Purchase request" v={g.purchase_request_id ? <Link className="font-mono text-primary hover:underline" to="/procurement/purchase-requests/$id" params={{ id: g.purchase_request_id }}>{g.purchase_requests?.pr_number}</Link> : "—"} />
         <Info l="Received date" v={fmtDate(g.received_date)} />
         <Info l="Project" v={g.projects?.name} /><Info l="Building" v={g.buildings?.name ?? "—"} />
-        <Info l="Received by" v={g.profiles?.full_name ?? "—"} /><Info l="Challan" v={g.challan_number ?? "—"} />
+        <Info l="Received by" v={g.profiles?.full_name ?? "—"} /><Info l="Challan" v={g.challan_id ? <Link className="font-mono text-primary hover:underline" to="/inventory/delivery-challans/$id" params={{ id: g.challan_id }}>{g.challan_number || "View supplier challan"}</Link> : <span>{g.challan_number ?? "—"} <span className="text-xs text-muted-foreground">(legacy, unlinked)</span></span>} />
         <Info l="Vendor invoice ref." v={g.invoice_reference ?? "—"} /><Info l="Vehicle" v={g.vehicle_number ?? "—"} /><Info l="Remarks" v={g.remarks ?? "—"} />
       </section>
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">

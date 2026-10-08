@@ -21,17 +21,19 @@ export const Route = createFileRoute("/_authenticated/_shell/procurement/purchas
 });
 
 async function loadPo(id: string) {
-  const [p, i, a, g, w] = await Promise.all([
+  const [p, i, a, g, w, dc] = await Promise.all([
     supabase.from("purchase_orders").select("*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)").eq("id", id).single(),
     supabase.from("purchase_order_items").select("*, items(code,name), units_of_measure(code)").eq("po_id", id).order("line_no"),
     supabase.from("purchase_order_approvals").select("*, profiles(full_name)").eq("po_id", id).order("acted_at"),
-    supabase.from("goods_receipt_notes").select("id,grn_number,received_date,challan_number,status,created_at,warehouses(name)").eq("po_id", id).order("created_at"),
+    supabase.from("goods_receipt_notes").select("id,grn_number,received_date,challan_id,challan_number,status,created_at,warehouses(name),goods_receipt_items(challan_item_id,received_quantity)").eq("po_id", id).order("created_at"),
     supabase.from("warehouses").select("id,name,code").eq("status", "active").order("name"),
+    supabase.from("vendor_delivery_challans").select("id,challan_number,challan_date,vehicle_number,invoice_reference,status,vendor_delivery_challan_items(id,po_item_id,quantity)").eq("po_id", id).order("created_at", { ascending: false }),
   ]);
   const gIds = (g.data ?? []).filter((x) => x.status === "posted").map((x) => x.id);
   const gi = gIds.length ? await supabase.from("goods_receipt_items").select("po_item_id,damaged_quantity,rejected_quantity,short_closed_quantity,disposition").in("grn_id", gIds) : { data: [] as { po_item_id: string; damaged_quantity: number; rejected_quantity: number; short_closed_quantity: number; disposition: string }[] };
   if (p.error) throw p.error;
-  return { po: p.data, items: i.data ?? [], history: a.data ?? [], grns: g.data ?? [], warehouses: w.data ?? [], grnItems: gi.data ?? [] };
+  if (dc.error) throw dc.error;
+  return { po: p.data, items: i.data ?? [], history: a.data ?? [], grns: g.data ?? [], warehouses: w.data ?? [], challans: dc.data ?? [], grnItems: gi.data ?? [] };
 }
 
 function PoDetail() {
@@ -88,7 +90,7 @@ function PoDetail() {
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
-  const { po, items, history, grns, warehouses, grnItems } = q.data!;
+  const { po, items, history, grns, warehouses, challans, grnItems } = q.data!;
   const mine = po.created_by === me.data?.profile.id;
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
@@ -110,6 +112,7 @@ function PoDetail() {
             <Button size="sm" variant="outline" onClick={() => setDlg("rejected")}>Reject</Button>
           </>}
           {po.status === "approved" && can("purchase_order.create") && <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate("sent")}>Mark as sent</Button>}
+          {canReceive && <Link to="/inventory/delivery-challans" search={{ po: id }}><Button size="sm" variant="outline">Register vendor challan</Button></Link>}
           {canReceive && <Button size="sm" onClick={() => setReceiveOpen(true)}>Receive goods</Button>}
           {["partially_received", "partially_accepted", "fully_received"].includes(po.status) && can("purchase_order.approve") && <Button size="sm" variant="outline" onClick={() => setDlg("closed")}>Close PO</Button>}
           {["draft", "pending_approval", "approved", "rejected", "sent"].includes(po.status) && grns.length === 0 && can("purchase_order.cancel") && <Button size="sm" variant="ghost" onClick={() => setDlg("cancelled")}>Cancel</Button>}
@@ -175,6 +178,17 @@ function PoDetail() {
         </table>
       </section>
 
+      <section className="mt-4 rounded-md border bg-card p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">
+          <span>Vendor delivery challans</span>
+          {canReceive && <Link to="/inventory/delivery-challans" search={{ po: id }} className="text-xs font-medium text-primary hover:underline">Register challan</Link>}
+        </div>
+        {challans.length === 0 ? <p className="text-xs text-muted-foreground">No supplier dispatch documents registered. Register a vendor challan before receiving goods.</p> :
+          <ul className="grid gap-2 text-sm sm:grid-cols-2">{challans.map(dc => <li key={dc.id} className="flex justify-between gap-3 rounded-md border p-2">
+            <Link className="font-medium text-primary hover:underline" to="/inventory/delivery-challans/$id" params={{ id: dc.id }}>{dc.challan_number}</Link>
+            <span className="text-xs text-muted-foreground">{fmtDate(dc.challan_date)} · {dc.status}</span>
+          </li>)}</ul>}
+      </section>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <section className="rounded-md border bg-card p-4">
           <div className="mb-2 text-sm font-semibold">Goods receipts</div>
@@ -213,7 +227,7 @@ function PoDetail() {
         </DialogContent>
       </Dialog>
       </div>
-      {receiveOpen && <ReceiveDialog poId={id} defaultWh={po.delivery_warehouse_id ?? ""} warehouses={warehouses} items={items} onClose={() => setReceiveOpen(false)} onDone={refresh} />}
+      {receiveOpen && <ReceiveDialog poId={id} defaultWh={po.delivery_warehouse_id ?? ""} warehouses={warehouses} items={items} challans={challans} grns={grns} onClose={() => setReceiveOpen(false)} onDone={refresh} />}
     </>
   );
 }
@@ -223,61 +237,144 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 type PoItem = { id: string; line_no: number; ordered_quantity: number; received_quantity: number; accepted_quantity: number; short_closed_quantity: number; items: { name: string; code: string } | null; units_of_measure: { code: string } | null };
+type VendorChallan = { id: string; challan_number: string; challan_date: string; vehicle_number: string | null; invoice_reference: string | null; status: string; vendor_delivery_challan_items: { id: string; po_item_id: string; quantity: number }[] };
+type PoReceipt = { status: string; goods_receipt_items: { challan_item_id: string | null; received_quantity: number }[] };
 
-function ReceiveDialog({ poId, defaultWh, warehouses, items, onClose, onDone }: { poId: string; defaultWh: string; warehouses: { id: string; name: string; code: string }[]; items: PoItem[]; onClose: () => void; onDone: () => void }) {
+function ReceiveDialog({ poId, defaultWh, warehouses, items, challans, grns, onClose, onDone }: {
+  poId: string;
+  defaultWh: string;
+  warehouses: { id: string; name: string; code: string }[];
+  items: PoItem[];
+  challans: VendorChallan[];
+  grns: PoReceipt[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const qc = useQueryClient();
   const [wh, setWh] = useState(defaultWh);
   const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
-  const [h, setH] = useState({ received_date: today, challan_number: "", invoice_reference: "", vehicle_number: "", remarks: "" });
+  const firstChallan = challans.find(x => x.status === "registered");
+  const [challanId, setChallanId] = useState(firstChallan?.id ?? "");
+  const [h, setH] = useState({
+    received_date: today,
+    challan_number: firstChallan?.challan_number ?? "",
+    invoice_reference: firstChallan?.invoice_reference ?? "",
+    vehicle_number: firstChallan?.vehicle_number ?? "",
+    remarks: "",
+  });
+  const chosen = challans.find(x => x.id === challanId && x.status === "registered");
   const pendingOf = (x: PoItem) => Number(x.ordered_quantity) - Number(x.accepted_quantity) - Number(x.short_closed_quantity);
-  const open = items.filter((x) => pendingOf(x) > 0);
+  const availableFromChallan = (x: PoItem) => {
+    const line = chosen?.vendor_delivery_challan_items.find(i => i.po_item_id === x.id);
+    if (!line) return 0;
+    const used = grns.filter(r => r.status !== "cancelled")
+      .flatMap(r => r.goods_receipt_items ?? [])
+      .filter(r => r.challan_item_id === line.id)
+      .reduce((total, receipt) => total + Number(receipt.received_quantity), 0);
+    return Math.max(0, Number(line.quantity) - used);
+  };
+  const maxOf = (x: PoItem) => Math.max(0, Math.min(pendingOf(x), availableFromChallan(x)));
+  const open = chosen ? items.filter(x => maxOf(x) > 0) : [];
   const can = useCan();
   const canPost = can("grn.post");
   const [lines, setLines] = useState<Record<string, { r: string; d: string; j: string }>>({});
   const save = useMutation({
     mutationFn: async (post: boolean) => {
-      const payload = open.map((x) => ({ po_item_id: x.id, received_quantity: Number(lines[x.id]?.r || 0), damaged_quantity: Number(lines[x.id]?.d || 0), rejected_quantity: Number(lines[x.id]?.j || 0) })).filter((x) => x.received_quantity > 0);
-      for (const p of payload) { const x = open.find((o) => o.id === p.po_item_id)!; const pend = pendingOf(x); if (p.received_quantity > pend) throw new Error(`Cannot receive ${p.received_quantity}. Only ${pend} units remain pending.`); if (p.damaged_quantity + p.rejected_quantity > p.received_quantity) throw new Error("Damaged + rejected cannot exceed received"); }
+      if (!chosen) throw new Error("Select a registered supplier delivery challan before receiving.");
+      const payload = open.map(x => ({
+        po_item_id: x.id,
+        received_quantity: Number(lines[x.id]?.r || 0),
+        damaged_quantity: Number(lines[x.id]?.d || 0),
+        rejected_quantity: Number(lines[x.id]?.j || 0),
+      })).filter(x => x.received_quantity > 0);
+      for (const p of payload) {
+        const x = open.find(o => o.id === p.po_item_id)!;
+        const allowed = maxOf(x);
+        if (!Number.isFinite(p.received_quantity) || p.received_quantity > allowed) throw new Error(`Cannot receive ${p.received_quantity}. Only ${num(allowed)} dispatched units remain available.`);
+        if (![p.damaged_quantity, p.rejected_quantity].every(v => Number.isFinite(v) && v >= 0) || p.damaged_quantity + p.rejected_quantity > p.received_quantity) {
+          throw new Error("Damaged and rejected quantities must be nonnegative and cannot exceed received.");
+        }
+      }
       if (!wh) throw new Error("Choose the receiving store");
+      if (h.received_date < chosen.challan_date) throw new Error("Receipt date cannot precede the challan date");
       if (h.received_date > today) throw new Error("Received date cannot be in the future");
-      if (!payload.length) throw new Error("Enter a received quantity for at least one line");
-      const { data, error } = await supabase.rpc("create_goods_receipt", { _po_id: poId, _warehouse_id: wh, _header: h, _items: payload, _post: post });
+      if (!payload.length) throw new Error("Enter a received quantity for at least one challan line");
+      const { error } = await supabase.rpc("create_goods_receipt", {
+        _po_id: poId, _warehouse_id: wh,
+        _header: { ...h, challan_id: chosen.id },
+        _items: payload, _post: post,
+      });
       if (error) throw error;
       return post;
     },
-    onSuccess: (post) => { toast.success(post ? "Goods receipt posted to stock" : "Draft GRN saved — not yet in stock"); qc.invalidateQueries({ queryKey: ["stock"] }); qc.invalidateQueries({ queryKey: ["grns"] }); onDone(); onClose(); },
-    onError: (e) => toast.error(errMsg(e)),
+    onSuccess: post => {
+      toast.success(post ? "Goods receipt posted to stock" : "Draft GRN saved — not yet in stock");
+      ["stock", "grns", "vendor-delivery-challans", "vendor-delivery-challan"].forEach(key => qc.invalidateQueries({ queryKey: [key] }));
+      onDone(); onClose();
+    },
+    onError: e => toast.error(errMsg(e)),
   });
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader><DialogTitle>Receive goods</DialogTitle><DialogDescription>Only accepted quantity (received − damaged − rejected) is added to stock. You cannot receive more than pending.</DialogDescription></DialogHeader>
+    <Dialog open onOpenChange={value => !value && !save.isPending && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader><DialogTitle>Receive goods against delivery challan</DialogTitle>
+          <DialogDescription>Match the supplier's dispatched quantities with physical delivery. Only accepted goods from a posted GRN enter stock.</DialogDescription>
+        </DialogHeader>
         <div className="grid gap-3 md:grid-cols-3">
-          <Field label="Receiving store *"><select className={selectCls} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">Select store</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
-          <Field label="Received date"><Input type="date" max={today} value={h.received_date} onChange={(e) => setH({ ...h, received_date: e.target.value })} /></Field>
-          <Field label="Delivery challan no."><Input value={h.challan_number} onChange={(e) => setH({ ...h, challan_number: e.target.value })} /></Field>
-          <Field label="Vendor invoice ref."><Input value={h.invoice_reference} onChange={(e) => setH({ ...h, invoice_reference: e.target.value })} /></Field>
-          <Field label="Vehicle no."><Input value={h.vehicle_number} onChange={(e) => setH({ ...h, vehicle_number: e.target.value })} /></Field>
-          <Field label="Remarks"><Input value={h.remarks} onChange={(e) => setH({ ...h, remarks: e.target.value })} /></Field>
+          <Field label="Registered vendor challan *">
+            <select className={selectCls} value={challanId} onChange={e => {
+              const dc = challans.find(x => x.id === e.target.value);
+              setChallanId(e.target.value);
+              setLines({});
+              setH(previous => ({
+                ...previous,
+                challan_number: dc?.challan_number ?? "",
+                invoice_reference: dc?.invoice_reference ?? "",
+                vehicle_number: dc?.vehicle_number ?? "",
+              }));
+            }}>
+              <option value="">Select supplier challan</option>
+              {challans.filter(x => x.status === "registered").map(dc =>
+                <option key={dc.id} value={dc.id}>{dc.challan_number} · {fmtDate(dc.challan_date)}</option>)}
+            </select>
+          </Field>
+          <Field label="Receiving store *"><select className={selectCls} value={wh} onChange={e => setWh(e.target.value)}>
+            <option value="">Select store</option>
+            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select></Field>
+          <Field label="Received date *"><Input type="date" max={today} min={chosen?.challan_date} value={h.received_date} onChange={e => setH({ ...h, received_date: e.target.value })} /></Field>
+          <Field label="Supplier challan number"><Input readOnly value={h.challan_number} /></Field>
+          <Field label="Vendor invoice ref."><Input value={h.invoice_reference} onChange={e => setH({ ...h, invoice_reference: e.target.value })} /></Field>
+          <Field label="Vehicle no."><Input value={h.vehicle_number} onChange={e => setH({ ...h, vehicle_number: e.target.value })} /></Field>
+          <Field label="Remarks"><Input value={h.remarks} onChange={e => setH({ ...h, remarks: e.target.value })} /></Field>
         </div>
-        <table className="mt-2 w-full text-sm">
-          <thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-1.5">Material</th><th className="p-1.5 text-right">Pending</th><th className="p-1.5">Received</th><th className="p-1.5">Damaged</th><th className="p-1.5">Rejected</th><th className="p-1.5 text-right">Accepted</th></tr></thead>
-          <tbody>{open.map((x) => {
-            const pending = pendingOf(x);
+        {!chosen && <div className="rounded-md border p-4 text-sm text-muted-foreground">
+          No vendor challan selected. <Link to="/inventory/delivery-challans" search={{ po: poId }} className="font-semibold text-primary hover:underline">Register the supplier's delivery challan</Link> first.
+        </div>}
+        {chosen && !open.length && <p className="rounded-md border p-3 text-sm text-muted-foreground">This challan has no further receivable quantities. Choose another challan or review previous GRNs.</p>}
+        {open.length > 0 && <div className="overflow-x-auto"><table className="mt-2 w-full min-w-[650px] text-sm">
+          <thead className="border-b text-left text-[11px] uppercase text-muted-foreground">
+            <tr><th className="p-1.5">Material</th><th className="p-1.5 text-right">Challan available</th><th className="p-1.5">Received</th><th className="p-1.5">Damaged</th><th className="p-1.5">Rejected</th><th className="p-1.5 text-right">Accepted</th></tr>
+          </thead>
+          <tbody>{open.map(x => {
+            const available = maxOf(x);
             const l = lines[x.id] ?? { r: "", d: "", j: "" };
-            const over = Number(l.r || 0) > pending;
-            return (
-              <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
-                <td className="p-1.5">{x.items?.name}</td>
-                <td className="p-1.5 text-right font-mono">{num(pending)} {x.units_of_measure?.code}</td>
-                <td className="p-1.5"><Input type="number" min={0} className={cn("h-8 w-24", over && "border-destructive")} value={l.r} onChange={(e) => setLines({ ...lines, [x.id]: { ...l, r: e.target.value } })} /></td>
-                <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" value={l.d} onChange={(e) => setLines({ ...lines, [x.id]: { ...l, d: e.target.value } })} /></td>
-                <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" value={l.j} onChange={(e) => setLines({ ...lines, [x.id]: { ...l, j: e.target.value } })} /></td>
-                <td className="p-1.5 text-right font-mono">{num(Math.max(0, Number(l.r || 0) - Number(l.d || 0) - Number(l.j || 0)))}{over && <div className="text-[10px] text-destructive">Only {num(pending)} pending</div>}</td>
-              </tr>);
+            const over = Number(l.r || 0) > available;
+            return <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
+              <td className="p-1.5">{x.items?.name}</td>
+              <td className="p-1.5 text-right font-mono">{num(available)} {x.units_of_measure?.code}</td>
+              <td className="p-1.5"><Input type="number" inputMode="decimal" min={0} max={available} step="0.001" className={cn("h-8 w-24", over && "border-destructive")} value={l.r} onChange={e => setLines({ ...lines, [x.id]: { ...l, r: e.target.value } })} /></td>
+              <td className="p-1.5"><Input type="number" inputMode="decimal" min={0} step="0.001" className="h-8 w-24" value={l.d} onChange={e => setLines({ ...lines, [x.id]: { ...l, d: e.target.value } })} /></td>
+              <td className="p-1.5"><Input type="number" inputMode="decimal" min={0} step="0.001" className="h-8 w-24" value={l.j} onChange={e => setLines({ ...lines, [x.id]: { ...l, j: e.target.value } })} /></td>
+              <td className="p-1.5 text-right font-mono">{num(Math.max(0, Number(l.r || 0) - Number(l.d || 0) - Number(l.j || 0)))}{over && <div className="text-[10px] text-destructive">Only {num(available)} available</div>}</td>
+            </tr>;
           })}</tbody>
-        </table>
-        <DialogFooter><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="outline" disabled={save.isPending} onClick={() => save.mutate(false)}>Save as draft</Button>{canPost && <Button disabled={save.isPending} onClick={() => save.mutate(true)}>Post goods receipt</Button>}</DialogFooter>
+        </table></div>}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" disabled={save.isPending || !chosen || !open.length} onClick={() => save.mutate(false)}>Save as draft</Button>
+          {canPost && <Button disabled={save.isPending || !chosen || !open.length} onClick={() => save.mutate(true)}>Post goods receipt</Button>}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

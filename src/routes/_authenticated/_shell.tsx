@@ -32,6 +32,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/procurement/rfqs", label: "RFQs & Quotations", icon: FileText, perm: "rfq.view" },
     { to: "/procurement/vendor-quotations", label: "Vendor Quotations", icon: FileText, perm: "quotation.view" },
     { to: "/procurement/purchase-orders", label: "Purchase Orders", icon: ShoppingCart, perm: "purchase_order.view" },
+    { to: "/inventory/delivery-challans", label: "Delivery Challans", icon: FileText, perm: "grn.view" },
     { to: "/inventory/goods-received", label: "Goods Received", icon: Truck, perm: "grn.view" },
   ] },
   { group: "Materials & Stores", items: [
