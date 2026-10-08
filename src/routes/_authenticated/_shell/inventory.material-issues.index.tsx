@@ -85,7 +85,7 @@ function MaterialIssues() {
       if (!issuedTo.trim() || !purpose.trim()) throw new Error("Enter who is receiving the materials and the work purpose.");
       if (!lines.length) throw new Error("Enter a quantity for at least one material.");
       const { data, error } = await supabase.rpc("record_material_issue", {
-        _warehouse_id: warehouseId, _project_id: projectId as string, _building_id: buildingId || null,
+        _warehouse_id: warehouseId, _project_id: projectId as string, _building_id: (buildingId || null) as unknown as string,
         _issued_to: issuedTo.trim(), _purpose: purpose.trim(), _items: lines,
       });
       if (error) throw error;
