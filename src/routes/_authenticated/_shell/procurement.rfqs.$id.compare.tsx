@@ -94,7 +94,7 @@ function Compare() {
               <tr className="border-t"><td className="px-4 py-3 text-right text-muted-foreground">Delivery · Payment</td>{cols.map(({ qt }) => <td key={qt.id} className="p-2">{qt.delivery_days != null ? `${qt.delivery_days} days` : "—"} · {qt.payment_terms ?? "—"}</td>)}</tr>
             </tfoot>
           </table>
-        </div>
+        </div></div>
       )}
       {canSelect && cols.length > 0 && (
         <section className="mt-4 rounded-md border bg-card p-4">
