@@ -59,7 +59,7 @@ function Compare() {
     <>
       <PageHeader crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{rfq.rfq_number}</Link>} title="Quotation comparison" subtitle="Lowest rate per item is highlighted. Select a vendor per item, or award all items to one vendor." />
       {cols.length === 0 ? <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">No quotations recorded yet.</div> : (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+        <div><p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div role="region" aria-label="Quotation comparison" tabIndex={0} className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs">
               <tr><th className="px-4 py-3">Item</th>{cols.map(({ qt, v }) => (
@@ -94,7 +94,7 @@ function Compare() {
               <tr className="border-t"><td className="px-4 py-3 text-right text-muted-foreground">Delivery · Payment</td>{cols.map(({ qt }) => <td key={qt.id} className="p-2">{qt.delivery_days != null ? `${qt.delivery_days} days` : "—"} · {qt.payment_terms ?? "—"}</td>)}</tr>
             </tfoot>
           </table>
-        </div>
+        </div></div>
       )}
       {canSelect && cols.length > 0 && (
         <section className="mt-4 rounded-md border bg-card p-4">

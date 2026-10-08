@@ -87,7 +87,7 @@ function MaterialConsumption() {
       </section>}
       {rows.length===0 ? <p className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
         No posted material issue/return consumption found for these filters.
-      </p> : <div className="overflow-x-auto rounded-xl border bg-card">
+      </p> : <><p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div role="region" aria-label="Project consumption" tabIndex={0} className="overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full min-w-[890px] text-sm">
           <thead className="border-b bg-muted/30 text-xs"><tr>
             <th className="p-3 text-left">Project</th><th className="p-3 text-left">Building</th>
@@ -108,7 +108,7 @@ function MaterialConsumption() {
             <td className="p-3 text-right tabular-nums font-semibold">{inr(x.net_value)}</td>
           </tr>)}</tbody>
         </table>
-      </div>}
+      </div></>}
       <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
       <p className="mt-3 text-xs text-muted-foreground">This operational report tracks the consumption of materials from stock. It is not a second purchase invoice, cash-flow record or general-ledger expense posting.</p>
     </>}

@@ -60,7 +60,7 @@ function Buildings() {
   return (
     <>
       <PageHeader title="Buildings" actions={manage && <Button size="sm" onClick={() => show()}><Plus className="h-4 w-4" />New building</Button>} />
-      <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-xs uppercase text-muted-foreground"><tr>{["Building","Project","Floors","Units","Available","Hold","Budget","Progress","Status", ...(manage ? [""] : [])].map((h, i) => <th key={i} className="px-3 py-2">{h}</th>)}</tr></thead>
           <tbody>{q.data?.map((b) => (

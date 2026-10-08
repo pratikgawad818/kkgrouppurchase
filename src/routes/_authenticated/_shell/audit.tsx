@@ -47,7 +47,7 @@ function Audit() {
         <Input type="date" aria-label="To" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
       {q.isLoading ? <Loading /> : (
-        <div className="divide-y rounded-md border bg-card text-sm">
+        <div className="divide-y overflow-hidden rounded-xl border bg-card text-sm shadow-card">
           {q.data?.length === 0 && <div className="p-4 text-xs text-muted-foreground">No entries match.</div>}
           {q.data?.map((a) => (
             <details key={a.id} className="px-4 py-2">

@@ -61,10 +61,10 @@ function StockPage() {
           <Stat label="Out of stock lines" value={rows.filter((x) => status(x).l === "Out of stock").length} />
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          <div className="w-64"><SearchBox value={search} onChange={setSearch} placeholder="Material" /></div>
-          <select className={cn(selectCls, "w-56")} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">All stores</option>{q.data!.warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
+          <div className="w-full sm:w-64"><SearchBox value={search} onChange={setSearch} placeholder="Material" /></div>
+          <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-56 sm:flex-none")} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">All stores</option>{q.data!.warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
         </div>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+        <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3">Store</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Reorder level</th><th className="px-4 py-3 text-right">Avg cost</th><th className="px-4 py-3 text-right">Value</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
