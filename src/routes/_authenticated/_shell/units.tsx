@@ -111,7 +111,7 @@ function BuildingView({ rows, onPick }: { rows: any[]; onPick: (u: any) => void 
                     {f.units.map((u) => (
                       <button key={u.id} onClick={() => onPick(u)} className="rounded-md border p-2 text-left hover:bg-muted/50">
                         <div className="text-sm font-medium">{u.unit_number}</div>
-                        <div className="mb-1 text-[11px] text-muted-foreground">{UNIT_TYPE_LABEL[u.unit_type]} · {num(u.carpet_area)} sqft</div>
+                        <div className="mb-1 text-[11px] text-muted-foreground">{UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]} · {num(u.carpet_area)} sqft</div>
                         <UnitStatusBadge status={u.status as UnitStatus} />
                       </button>))}
                   </div>
@@ -137,14 +137,14 @@ function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; pro
   const buildings = useQuery({ queryKey: ["bld", f.project_id], enabled: !!f.project_id, queryFn: async () => (await supabase.from("buildings").select("id,name").eq("project_id", f.project_id).order("name")).data ?? [] });
   const floors = useQuery({ queryKey: ["flr", f.building_id], enabled: !!f.building_id, queryFn: async () => (await supabase.from("floors").select("id,name,floor_number").eq("building_id", f.building_id).order("floor_number")).data ?? [] });
 
-  async function save(e: React.FormEvent) {
+  async function save(e: React.FormEvent): Promise<void> {
     e.preventDefault(); setBusy(true);
     const payload = { floor_id: f.floor_id, unit_number: f.unit_number.trim(), unit_type: f.unit_type, facing: f.facing || null, carpet_area: Number(f.carpet_area), built_up_area: Number(f.built_up_area), saleable_area: Number(f.saleable_area), base_rate: Number(f.base_rate), parking_count: Number(f.parking_count) || 0, notes: f.notes || null } as any;
     const r = unit ? await supabase.from("units").update(payload).eq("id", unit.id) : await supabase.from("units").insert({ ...payload, project_id: f.project_id, building_id: f.building_id });
-    if (r.error) { setBusy(false); return toast.error(r.error.message.includes("units_building_id_unit_number_key") ? "This unit number already exists in this building." : r.error.message); }
+    if (r.error) { setBusy(false); { toast.error(r.error.message.includes("units_building_id_unit_number_key") ? "This unit number already exists in this building." : r.error.message); return; } }
     if (unit && newStatus !== unit.status) {
-      const s = await supabase.rpc("set_unit_status", { _unit_id: unit.id, _status: newStatus as UnitStatus, _reason: reason || undefined });
-      if (s.error) { setBusy(false); return toast.error(s.error.message); }
+      const s = await supabase.rpc("set_unit_status", { _unit_id: unit.id, _status: newStatus as UnitStatus, _reason: reason || undefined } as any);
+      if (s.error) { setBusy(false); toast.error(s.error.message); return; }
     }
     setBusy(false); toast.success(unit ? "Unit updated" : "Unit added"); onSaved();
   }
