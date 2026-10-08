@@ -42,7 +42,7 @@ function RfqList() {
         </select>
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">RFQ</th><th className="px-4 py-3">PR</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Response due</th><th className="px-4 py-3">Responses</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
@@ -51,13 +51,13 @@ function RfqList() {
                 const v = r.rfq_vendors ?? [];
                 return (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
-                    <td className="px-4 py-3 font-mono"><Link className="text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: r.id }}>{r.rfq_number}</Link></td>
-                    <td className="px-4 py-3 font-mono text-xs">{r.purchase_requests?.pr_number}</td>
+                    <td className="px-4 py-3 font-medium tabular-nums"><Link className="text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: r.id }}>{r.rfq_number}</Link></td>
+                    <td className="px-4 py-3 font-medium tabular-nums text-xs">{r.purchase_requests?.pr_number}</td>
                     <td className="px-4 py-3">{r.projects?.code} · {r.projects?.name}{r.buildings ? ` / ${r.buildings.name}` : ""}</td>
                     <td className="px-4 py-3">{fmtDate(r.rfq_date)}</td>
                     <td className="px-4 py-3">{fmtDate(r.response_due_date)}</td>
                     <td className="px-4 py-3">{v.filter((x) => x.status !== "pending").length}/{v.length}</td>
-                    <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${RFQ_STATUS[r.status].cls}`}>{RFQ_STATUS[r.status].label}</span></td>
+                    <td className="px-4 py-3"><span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${RFQ_STATUS[r.status].cls}`}>{RFQ_STATUS[r.status].label}</span></td>
                   </tr>
                 );
               })}

@@ -102,7 +102,7 @@ function PoDetail() {
       <PageHeader
         crumbs={<Link to="/procurement/purchase-orders" className="hover:underline">Purchase Orders</Link>}
         title={po.po_number}
-        subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>{st.label}</span>{po.vendors?.company_name} · {po.projects?.name}{po.buildings?.name ? ` · ${po.buildings.name}` : ""}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>{st.label}</span>{po.vendors?.company_name} · {po.projects?.name}{po.buildings?.name ? ` · ${po.buildings.name}` : ""}</span>}
         actions={<div className="flex flex-wrap gap-2">
           {draft && can("purchase_order.create") && <Button size="sm" disabled={act.isPending} onClick={() => act.mutate("submitted")}>Submit for approval</Button>}
           {po.status === "pending_approval" && can("purchase_order.approve") && !mine && <>
@@ -147,30 +147,30 @@ function PoDetail() {
         </section>
       )}
 
-      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card">
+      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Ordered</th><th className="px-4 py-3 text-right">Physically received</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Replacement pending / Unresolved</th><th className="px-4 py-3 text-right">Short closed</th><th className="px-4 py-3 text-right">Remaining</th><th className="px-4 py-3 text-right">Rate</th><th className="px-4 py-3 text-right">Discount</th><th className="px-4 py-3 text-right">Tax</th><th className="px-4 py-3 text-right">Line total</th></tr></thead>
           <tbody>{items.map((x) => (
             <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
               <td className="px-4 py-3">{x.line_no}</td>
               <td className="px-4 py-3"><div className="font-medium">{x.items?.name}</div><div className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</div></td>
-              <td className="px-4 py-3 text-right font-mono">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
-              <td className="px-4 py-3 text-right font-mono">{num(x.received_quantity)}</td>
-              <td className="px-4 py-3 text-right font-mono font-semibold">{num(x.accepted_quantity)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.received_quantity)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums font-semibold">{num(x.accepted_quantity)}</td>
               {(() => { const rem = Number(x.ordered_quantity) - Number(x.accepted_quantity) - Number(x.short_closed_quantity); const lines = grnItems.filter((g) => g.po_item_id === x.id); const rep = Math.min(rem, lines.filter((g) => g.disposition === "replacement_expected").reduce((a, g) => a + Number(g.damaged_quantity) + Number(g.rejected_quantity), 0)); const unr = Math.min(rem - rep, lines.filter((g) => g.disposition === "pending_decision").reduce((a, g) => a + Number(g.damaged_quantity) + Number(g.rejected_quantity), 0)); return (<>
-                <td className="px-4 py-3 text-right font-mono text-xs">{rep > 0 && <div className="text-primary">{num(rep)} replacement</div>}{unr > 0 && <div className="text-warning-foreground">{num(unr)} unresolved</div>}{rep + unr === 0 && "—"}</td>
-                <td className="px-4 py-3 text-right font-mono">{num(x.short_closed_quantity)}</td>
-                <td className="px-4 py-3 text-right font-mono">{num(rem)}{rem > 0 && can("purchase_order.short_close") && ["partially_received", "partially_accepted", "sent", "approved"].includes(po.status) && <div><button className="text-[11px] text-primary hover:underline" onClick={() => { setSc({ id: x.id, max: rem, name: x.items?.name ?? "" }); setScQty(String(rem)); }}>Short close</button></div>}</td>
+                <td className="px-4 py-3 text-right font-medium tabular-nums text-xs">{rep > 0 && <div className="text-primary">{num(rep)} replacement</div>}{unr > 0 && <div className="text-warning-foreground">{num(unr)} unresolved</div>}{rep + unr === 0 && "—"}</td>
+                <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.short_closed_quantity)}</td>
+                <td className="px-4 py-3 text-right font-medium tabular-nums">{num(rem)}{rem > 0 && can("purchase_order.short_close") && ["partially_received", "partially_accepted", "sent", "approved"].includes(po.status) && <div><button className="text-[11px] text-primary hover:underline" onClick={() => { setSc({ id: x.id, max: rem, name: x.items?.name ?? "" }); setScQty(String(rem)); }}>Short close</button></div>}</td>
               </>); })()}
-              <td className="px-4 py-3 text-right font-mono">{inr(x.rate)}</td>
-              <td className="px-4 py-3 text-right font-mono">{inr(x.discount_amount)}</td>
-              <td className="px-4 py-3 text-right font-mono">{inr(x.tax_amount)} <span className="text-[10px] text-muted-foreground">{x.tax_rate_percent}%</span></td>
-              <td className="px-4 py-3 text-right font-mono">{inr(x.line_total)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.rate)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.discount_amount)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.tax_amount)} <span className="text-[10px] text-muted-foreground">{x.tax_rate_percent}%</span></td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.line_total)}</td>
             </tr>))}
           </tbody>
           <tfoot className="text-sm">
             {[["Subtotal", po.subtotal], ["Discount", -Number(po.discount_total)], ["Tax", po.tax_total], ["Freight", po.freight], ["Other charges", po.other_charges]].map(([l, v]) => <tr key={l as string}><td colSpan={11} className="p-1.5 text-right text-muted-foreground">{l}</td><td className="p-1.5 text-right font-mono">{inr(v as number)}</td></tr>)}
-            <tr className="border-t font-semibold"><td colSpan={11} className="p-2 text-right">Grand total</td><td className="px-4 py-3 text-right font-mono">{inr(po.grand_total)}</td></tr>
+            <tr className="border-t font-semibold"><td colSpan={11} className="p-2 text-right">Grand total</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(po.grand_total)}</td></tr>
           </tfoot>
         </table>
       </section>

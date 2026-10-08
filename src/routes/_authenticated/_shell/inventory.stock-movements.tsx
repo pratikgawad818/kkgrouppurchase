@@ -51,7 +51,7 @@ function Ledger() {
         <Input type="date" className="h-9 w-40" value={f.to} onChange={(e) => set("to", e.target.value)} aria-label="To date" />
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">When</th><th className="px-4 py-3">Material</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Reference</th><th className="px-4 py-3">Store</th><th className="px-4 py-3 text-right">In</th><th className="px-4 py-3 text-right">Out</th><th className="px-4 py-3 text-right">Balance</th><th className="px-4 py-3 text-right">Value</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Building</th><th className="px-4 py-3">By</th></tr></thead>
             <tbody>
@@ -60,12 +60,12 @@ function Ledger() {
                 <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40" title={x.remarks ?? undefined}>
                   <td className="px-4 py-3 text-xs">{fmtDateTime(x.created_at)}</td>
                   <td className="px-4 py-3">{x.items?.name}</td><td className="px-4 py-3">{TX_LABEL[x.tx_type]}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{x.grn_id ? <Link className="text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: x.grn_id }}>{x.goods_receipt_notes?.grn_number}</Link> : x.stock_transfers?.transfer_number ?? x.stock_adjustments?.adjustment_number ?? "—"}</td>
+                  <td className="px-4 py-3 font-medium tabular-nums text-xs">{x.grn_id ? <Link className="text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: x.grn_id }}>{x.goods_receipt_notes?.grn_number}</Link> : x.stock_transfers?.transfer_number ?? x.stock_adjustments?.adjustment_number ?? "—"}</td>
                   <td className="px-4 py-3">{x.warehouses?.name}</td>
-                  <td className="px-4 py-3 text-right font-mono text-success">{Number(x.quantity_in) ? num(x.quantity_in) : ""}</td>
-                  <td className="px-4 py-3 text-right font-mono text-destructive">{Number(x.quantity_out) ? num(x.quantity_out) : ""}</td>
-                  <td className="px-4 py-3 text-right font-mono">{num(x.balance_after)} <span className="text-[10px] text-muted-foreground">{x.items?.units_of_measure?.code}</span></td>
-                  <td className="px-4 py-3 text-right font-mono">{inr(x.total_cost)}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums text-success">{Number(x.quantity_in) ? num(x.quantity_in) : ""}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums text-destructive">{Number(x.quantity_out) ? num(x.quantity_out) : ""}</td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.balance_after)} <span className="text-[10px] text-muted-foreground">{x.items?.units_of_measure?.code}</span></td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.total_cost)}</td>
                   <td className="px-4 py-3 text-xs">{x.projects?.name ?? "—"}</td><td className="px-4 py-3 text-xs">{x.buildings?.name ?? "—"}</td>
                   <td className="px-4 py-3 text-xs">{x.profiles?.full_name ?? "—"}</td>
                 </tr>

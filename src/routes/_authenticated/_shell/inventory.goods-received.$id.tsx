@@ -68,7 +68,7 @@ function GrnDetail() {
   return (
     <>
       <PageHeader crumbs={<Link to="/inventory/goods-received" className="hover:underline">Goods Received</Link>} title={g.grn_number}
-        subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>{st.label}</span>{g.vendors?.company_name} · {g.warehouses?.name}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>{st.label}</span>{g.vendors?.company_name} · {g.warehouses?.name}</span>}
         actions={<div className="flex gap-2">
           {g.status === "draft" && can("grn.post") && <Button size="sm" disabled={post.isPending} onClick={() => post.mutate()}>Post to stock</Button>}
           {g.status !== "cancelled" && can("grn.cancel") && <Button size="sm" variant="outline" onClick={() => setCancelOpen(true)}>Cancel GRN</Button>}
@@ -84,20 +84,20 @@ function GrnDetail() {
         <Info l="Received by" v={g.profiles?.full_name ?? "—"} /><Info l="Challan" v={g.challan_number ?? "—"} />
         <Info l="Vendor invoice ref." v={g.invoice_reference ?? "—"} /><Info l="Vehicle" v={g.vehicle_number ?? "—"} /><Info l="Remarks" v={g.remarks ?? "—"} />
       </section>
-      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card">
+      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Ordered</th><th className="px-4 py-3 text-right">Previously received</th><th className="px-4 py-3 text-right">Physically received</th><th className="px-4 py-3 text-right">PO remaining</th><th className="px-4 py-3 text-right">Damaged</th><th className="px-4 py-3 text-right">Rejected</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Unit cost</th><th className="px-4 py-3">Disposition</th></tr></thead>
           <tbody>{items.map((x) => { const pi = poItems.find((p) => p.id === x.po_item_id); return (
             <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
               <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
-              <td className="px-4 py-3 text-right font-mono">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
-              <td className="px-4 py-3 text-right font-mono">{num(x.previously_received)}</td>
-              <td className="px-4 py-3 text-right font-mono">{num(x.received_quantity)}</td>
-              <td className="px-4 py-3 text-right font-mono">{pi ? num(Number(pi.ordered_quantity) - Number(pi.accepted_quantity) - Number(pi.short_closed_quantity)) : "—"}</td>
-              <td className="px-4 py-3 text-right font-mono text-destructive">{num(x.damaged_quantity)}</td>
-              <td className="px-4 py-3 text-right font-mono text-destructive">{num(x.rejected_quantity)}</td>
-              <td className="px-4 py-3 text-right font-mono font-semibold">{num(x.accepted_quantity)}</td>
-              <td className="px-4 py-3 text-right font-mono">{inr(x.unit_cost)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.previously_received)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.received_quantity)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{pi ? num(Number(pi.ordered_quantity) - Number(pi.accepted_quantity) - Number(pi.short_closed_quantity)) : "—"}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums text-destructive">{num(x.damaged_quantity)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums text-destructive">{num(x.rejected_quantity)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums font-semibold">{num(x.accepted_quantity)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.unit_cost)}</td>
               <td className="px-4 py-3 text-xs">{Number(x.damaged_quantity) + Number(x.rejected_quantity) === 0 ? "—" : (<div>
                 <div className="font-medium">{DISP_LABEL[x.disposition] ?? x.disposition}{x.disposition === "short_close" ? ` (${num(x.short_closed_quantity)})` : ""}</div>
                 {x.disposition_reason && <div className="text-muted-foreground">“{x.disposition_reason}”</div>}

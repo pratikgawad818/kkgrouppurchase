@@ -59,7 +59,7 @@ function Compare() {
     <>
       <PageHeader crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{rfq.rfq_number}</Link>} title="Quotation comparison" subtitle="Lowest rate per item is highlighted. Select a vendor per item, or award all items to one vendor." />
       {cols.length === 0 ? <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">No quotations recorded yet.</div> : (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs">
               <tr><th className="px-4 py-3">Item</th>{cols.map(({ qt, v }) => (

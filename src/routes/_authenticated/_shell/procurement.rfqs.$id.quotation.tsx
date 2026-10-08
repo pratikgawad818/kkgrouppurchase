@@ -81,7 +81,7 @@ function QuoteEntry() {
         {hf("quotation_number", "Vendor quote ref *")}{hf("quotation_date", "Quote date", "date")}{hf("valid_until", "Valid until", "date")}{hf("delivery_days", "Delivery (days)", "number")}
         {hf("payment_terms", "Payment terms")}{hf("freight", "Freight (₹)", "number")}{hf("other_charges", "Other charges (₹)", "number")}{hf("remarks", "Remarks")}
       </section>
-      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card">
+      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Quoted</th><th className="px-4 py-3">Material</th><th className="px-4 py-3">Qty</th><th className="px-4 py-3">Rate (₹)</th><th className="px-4 py-3">Discount (₹)</th><th className="px-4 py-3">Tax</th><th className="px-4 py-3">Days</th><th className="px-4 py-3 text-right">Line total</th></tr></thead>
           <tbody>{lines.map((l, i) => { const it = d.items[i]!; return (
@@ -96,14 +96,14 @@ function QuoteEntry() {
                 <select disabled={!l.is_quoted || l.taxType === "none"} className="h-9 rounded-md border bg-background px-1 text-xs" value={l.taxPct} onChange={(e) => set(i, { taxPct: Number(e.target.value) })}>{TAX_RATES.map((t) => <option key={t} value={t}>{t}%</option>)}</select>
               </div></td>
               <td className="px-4 py-3"><Input className="w-16" type="number" disabled={!l.is_quoted} value={l.days} onChange={(e) => set(i, { days: e.target.value })} /></td>
-              <td className="px-4 py-3 text-right font-mono">{l.is_quoted ? inr(calcs[i]!.total) : "Not quoted"}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{l.is_quoted ? inr(calcs[i]!.total) : "Not quoted"}</td>
             </tr>
           ); })}</tbody>
           <tfoot className="text-sm">
-            <tr className="border-t"><td colSpan={7} className="p-2 text-right text-muted-foreground">Taxable value</td><td className="px-4 py-3 text-right font-mono">{inr(taxable)}</td></tr>
-            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">Tax</td><td className="px-4 py-3 text-right font-mono">{inr(tax)}</td></tr>
-            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">Freight + other charges</td><td className="px-4 py-3 text-right font-mono">{inr((Number(h.freight) || 0) + (Number(h.other_charges) || 0))}</td></tr>
-            <tr className="border-t"><td colSpan={7} className="p-2 text-right font-semibold">Grand total</td><td className="px-4 py-3 text-right font-mono font-semibold">{inr(grand)}</td></tr>
+            <tr className="border-t"><td colSpan={7} className="p-2 text-right text-muted-foreground">Taxable value</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(taxable)}</td></tr>
+            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">Tax</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(tax)}</td></tr>
+            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">Freight + other charges</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr((Number(h.freight) || 0) + (Number(h.other_charges) || 0))}</td></tr>
+            <tr className="border-t"><td colSpan={7} className="p-2 text-right font-semibold">Grand total</td><td className="px-4 py-3 text-right font-medium tabular-nums font-semibold">{inr(grand)}</td></tr>
           </tfoot>
         </table>
       </section>

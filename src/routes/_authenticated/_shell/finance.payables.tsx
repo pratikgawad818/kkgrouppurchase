@@ -68,10 +68,10 @@ function Payables() {
                 {pageRows.length === 0 && <tr><td colSpan={7} className="p-4 text-xs text-muted-foreground">No records.</td></tr>}
                 {pageRows.map((x) => (
                   <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
-                    <td className="px-4 py-3 font-mono"><Link className="text-primary hover:underline" to="/finance/vendor-invoices/$id" params={{ id: x.id }}>{x.invoice_number}</Link><div className="text-[11px] text-muted-foreground">{x.vendor_invoice_number}</div></td>
+                    <td className="px-4 py-3 font-medium tabular-nums"><Link className="text-primary hover:underline" to="/finance/vendor-invoices/$id" params={{ id: x.id }}>{x.invoice_number}</Link><div className="text-[11px] text-muted-foreground">{x.vendor_invoice_number}</div></td>
                     <td className="px-4 py-3">{x.vendors?.company_name}</td>
                     <td className={cn("p-2", x.status !== "paid" && x.due_date && x.due_date < t && "font-medium text-destructive")}>{fmtDate(x.due_date)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{inr(x.net_payable)}</td><td className="px-4 py-3 text-right font-mono">{inr(Number(x.amount_paid) + Number(x.advance_adjusted))}</td><td className="px-4 py-3 text-right font-mono">{inr(x.balance_due)}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.net_payable)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(Number(x.amount_paid) + Number(x.advance_adjusted))}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.balance_due)}</td>
                     <td className="px-4 py-3"><span className={cn(badge, INVOICE_STATUS[x.status].cls)}>{INVOICE_STATUS[x.status].label}</span></td>
                   </tr>))}
               </tbody>

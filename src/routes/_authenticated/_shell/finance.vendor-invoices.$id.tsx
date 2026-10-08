@@ -109,16 +109,16 @@ function InvoiceDetail() {
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card">
+      <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">GRN</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Invoiced qty</th><th className="px-4 py-3 text-right">Available at GRN</th><th className="px-4 py-3 text-right">PO rate</th><th className="px-4 py-3 text-right">Bill rate</th><th className="px-4 py-3 text-right">PO GST</th><th className="px-4 py-3 text-right">Bill GST</th><th className="px-4 py-3 text-right">Line total</th><th className="px-4 py-3">Match</th></tr></thead>
           <tbody>{items.map((l) => (
             <tr key={l.id} className="border-b last:border-0 hover:bg-muted/40">
-              <td className="px-4 py-3">{l.line_no}</td><td className="px-4 py-3 font-mono text-xs">{l.goods_receipt_notes?.grn_number}</td><td className="px-4 py-3">{l.items?.code} · {l.items?.name}</td>
-              <td className={cn("p-2 text-right font-mono", Number(l.quantity) > Number(l.available_quantity) && "text-amber-700")}>{num(l.quantity)}</td><td className="px-4 py-3 text-right font-mono">{num(l.available_quantity)}</td>
-              <td className="px-4 py-3 text-right font-mono">{inr(l.po_rate)}</td><td className={cn("p-2 text-right font-mono", Number(l.rate) !== Number(l.po_rate) && "text-amber-700")}>{inr(l.rate)}</td>
+              <td className="px-4 py-3">{l.line_no}</td><td className="px-4 py-3 font-medium tabular-nums text-xs">{l.goods_receipt_notes?.grn_number}</td><td className="px-4 py-3">{l.items?.code} · {l.items?.name}</td>
+              <td className={cn("p-2 text-right font-mono", Number(l.quantity) > Number(l.available_quantity) && "text-amber-700")}>{num(l.quantity)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(l.available_quantity)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(l.po_rate)}</td><td className={cn("p-2 text-right font-mono", Number(l.rate) !== Number(l.po_rate) && "text-amber-700")}>{inr(l.rate)}</td>
               <td className="px-4 py-3 text-right">{num(l.po_tax_rate)}%</td><td className={cn("p-2 text-right", Number(l.tax_rate_percent) !== Number(l.po_tax_rate) && "text-amber-700")}>{num(l.tax_rate_percent)}%</td>
-              <td className="px-4 py-3 text-right font-mono">{inr(l.line_total)}</td>
+              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(l.line_total)}</td>
               <td className="px-4 py-3 text-xs">{l.match_ok === null ? "—" : l.match_ok ? <span className="text-emerald-700">OK</span> : <span className="text-amber-700">Variance</span>}</td>
             </tr>))}</tbody>
         </table>
