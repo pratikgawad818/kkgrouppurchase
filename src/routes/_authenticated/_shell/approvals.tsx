@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CheckCircle2, Clock3, ExternalLink, ShieldCheck, XCircle } from "lucide-react";
@@ -73,7 +73,7 @@ function DirectorApprovals() {
         <p className="mt-3 text-2xl font-bold tabular-nums">{inr(r.amount)}</p>
         <div className="mt-3 space-y-1 text-sm text-muted-foreground"><p>Project: {r.project}</p><p>Vendor: {r.vendor}</p></div>
         <div className="mt-4 grid grid-cols-3 gap-2">{[0,1,2].map(i => <div key={i} className="rounded-lg border p-2 text-center text-xs">{i < approved ? <CheckCircle2 className="mx-auto mb-1 h-5 w-5 text-green-600" /> : <Clock3 className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />}{i < approved ? "Approved" : "Pending"}</div>)}</div>
-        <Link to={linkFor(r)} className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">Review full details <ExternalLink className="h-3.5 w-3.5" /></Link>
+        <a href={linkFor(r)} className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">Review full details <ExternalLink className="h-3.5 w-3.5" /></a>
         {mine ? <p className="mt-4 rounded-lg bg-muted p-3 text-sm">Your decision: {mine.decision} · {new Date(mine.created_at).toLocaleString()}</p> : !canVote ? <p className="mt-4 text-sm text-muted-foreground">You cannot approve a request you created.</p> :
         <div className="mt-4 space-y-3"><Textarea placeholder="Comment or rejection reason" value={reason[r.id] ?? ""} onChange={e => setReason(prev => ({ ...prev, [r.id]: e.target.value }))} /><div className="flex gap-2"><Button className="min-h-11 flex-1" disabled={action.isPending} onClick={() => action.mutate({ request:r, decision:"approved" })}><CheckCircle2 className="mr-2 h-4 w-4" />Approve</Button>{r.kind === "purchase_order" && <Button className="min-h-11 flex-1" variant="outline" disabled={action.isPending || !(reason[r.id] ?? "").trim()} onClick={() => action.mutate({ request:r, decision:"rejected" })}><XCircle className="mr-2 h-4 w-4" />Reject</Button>}</div></div>}
       </section>;
