@@ -91,11 +91,11 @@ function NewRfq() {
       </section>
 
       {prId && (
-        <section className="mt-4 overflow-x-auto rounded-md border bg-card">
+        <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card">
           <h2 className="p-3 text-sm font-semibold">Items requested</h2>
           <table className="w-full text-sm">
-            <thead className="border-y bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">#</th><th className="p-2">Material</th><th className="p-2 text-right">Qty</th><th className="p-2">Unit</th></tr></thead>
-            <tbody>{(items.data ?? []).map((x) => <tr key={x.id} className="border-b last:border-0"><td className="p-2">{x.line_no}</td><td className="p-2">{x.items?.name} <span className="text-xs text-muted-foreground">{x.items?.code}</span></td><td className="p-2 text-right font-mono">{num(x.quantity)}</td><td className="p-2">{x.units_of_measure?.code}</td></tr>)}</tbody>
+            <thead className="border-y bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3">Unit</th></tr></thead>
+            <tbody>{(items.data ?? []).map((x) => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3">{x.line_no}</td><td className="px-4 py-3">{x.items?.name} <span className="text-xs text-muted-foreground">{x.items?.code}</span></td><td className="px-4 py-3 text-right font-mono">{num(x.quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td></tr>)}</tbody>
           </table>
         </section>
       )}

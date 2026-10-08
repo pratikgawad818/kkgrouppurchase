@@ -42,22 +42,22 @@ function RfqList() {
         </select>
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (
-        <div className="overflow-x-auto rounded-md border bg-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="p-2">RFQ</th><th className="p-2">PR</th><th className="p-2">Project</th><th className="p-2">Date</th><th className="p-2">Response due</th><th className="p-2">Responses</th><th className="p-2">Status</th></tr></thead>
+            <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">RFQ</th><th className="px-4 py-3">PR</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Response due</th><th className="px-4 py-3">Responses</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
               {q.data!.rows.length === 0 && <tr><td colSpan={7} className="p-4 text-xs text-muted-foreground">No RFQs yet. Open an approved purchase request and choose “Create RFQ”.</td></tr>}
               {q.data!.rows.map((r) => {
                 const v = r.rfq_vendors ?? [];
                 return (
-                  <tr key={r.id} className="border-b last:border-0">
-                    <td className="p-2 font-mono"><Link className="text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: r.id }}>{r.rfq_number}</Link></td>
-                    <td className="p-2 font-mono text-xs">{r.purchase_requests?.pr_number}</td>
-                    <td className="p-2">{r.projects?.code} · {r.projects?.name}{r.buildings ? ` / ${r.buildings.name}` : ""}</td>
-                    <td className="p-2">{fmtDate(r.rfq_date)}</td>
-                    <td className="p-2">{fmtDate(r.response_due_date)}</td>
-                    <td className="p-2">{v.filter((x) => x.status !== "pending").length}/{v.length}</td>
-                    <td className="p-2"><span className={`inline-flex rounded-sm border px-1.5 py-0.5 text-[11px] font-medium ${RFQ_STATUS[r.status].cls}`}>{RFQ_STATUS[r.status].label}</span></td>
+                  <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
+                    <td className="px-4 py-3 font-mono"><Link className="text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: r.id }}>{r.rfq_number}</Link></td>
+                    <td className="px-4 py-3 font-mono text-xs">{r.purchase_requests?.pr_number}</td>
+                    <td className="px-4 py-3">{r.projects?.code} · {r.projects?.name}{r.buildings ? ` / ${r.buildings.name}` : ""}</td>
+                    <td className="px-4 py-3">{fmtDate(r.rfq_date)}</td>
+                    <td className="px-4 py-3">{fmtDate(r.response_due_date)}</td>
+                    <td className="px-4 py-3">{v.filter((x) => x.status !== "pending").length}/{v.length}</td>
+                    <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${RFQ_STATUS[r.status].cls}`}>{RFQ_STATUS[r.status].label}</span></td>
                   </tr>
                 );
               })}

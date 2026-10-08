@@ -63,20 +63,20 @@ function StockPage() {
           <div className="w-64"><SearchBox value={search} onChange={setSearch} placeholder="Material" /></div>
           <select className={cn(selectCls, "w-56")} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">All stores</option>{q.data!.warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
         </div>
-        <div className="overflow-x-auto rounded-md border bg-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Material</th><th className="p-2">Store</th><th className="p-2 text-right">On hand</th><th className="p-2 text-right">Reorder level</th><th className="p-2 text-right">Avg cost</th><th className="p-2 text-right">Value</th><th className="p-2">Status</th></tr></thead>
+            <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3">Store</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Reorder level</th><th className="px-4 py-3 text-right">Avg cost</th><th className="px-4 py-3 text-right">Value</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
               {rows.length === 0 && <tr><td colSpan={7} className="p-4 text-xs text-muted-foreground">No stock yet. Stock appears after goods are received against a purchase order.</td></tr>}
               {rows.map((x) => { const st = status(x); return (
                 <tr key={x.warehouse_id + x.material_id} className="border-b last:border-0">
-                  <td className="p-2">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
-                  <td className="p-2">{x.warehouses?.name}</td>
-                  <td className="p-2 text-right font-mono">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
-                  <td className="p-2 text-right font-mono">{num(x.items?.reorder_level)}</td>
-                  <td className="p-2 text-right font-mono">{inr(x.weighted_avg_cost)}</td>
-                  <td className="p-2 text-right font-mono">{inr(x.total_value)}</td>
-                  <td className="p-2"><span className={cn("rounded-sm border px-1.5 py-0.5 text-[11px]", st.c)}>{st.l}</span></td>
+                  <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
+                  <td className="px-4 py-3">{x.warehouses?.name}</td>
+                  <td className="px-4 py-3 text-right font-mono">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
+                  <td className="px-4 py-3 text-right font-mono">{num(x.items?.reorder_level)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{inr(x.weighted_avg_cost)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{inr(x.total_value)}</td>
+                  <td className="px-4 py-3"><span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", st.c)}>{st.l}</span></td>
                 </tr>); })}
             </tbody>
           </table>
@@ -171,7 +171,7 @@ function AdjustDialog({ kind, stock, materials, warehouses, onClose }: { kind: "
           <div className="max-h-80 overflow-y-auto">
             {list.length === 0 ? <div className="p-2 text-xs text-muted-foreground">{opening ? "No materials without movements in this store." : "No stock in this store to adjust."}</div> : (
             <table className="w-full text-sm"><tbody>{list.map((m) => { const v = vals[m.id] ?? { q: "", c: "" }; const sys = onHand(m.id); const diff = v.q === "" ? null : Number(v.q) - sys; return (
-              <tr key={m.id} className="border-b last:border-0">
+              <tr key={m.id} className="border-b last:border-0 hover:bg-muted/40">
                 <td className="p-1.5">{m.name} <span className="font-mono text-[11px] text-muted-foreground">{m.code}</span></td>
                 {!opening && <td className="p-1.5 text-right font-mono text-xs">system {num(sys)}</td>}
                 <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" placeholder={opening ? "Qty" : "Counted"} value={v.q} onChange={(e) => setVals({ ...vals, [m.id]: { ...v, q: e.target.value } })} /></td>

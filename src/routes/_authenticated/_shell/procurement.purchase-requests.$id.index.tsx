@@ -77,7 +77,7 @@ function PrDetail() {
       <PageHeader
         crumbs={<Link to="/procurement/purchase-requests">Purchase Requests</Link>}
         title={pr.pr_number}
-        subtitle={<span className={`inline-flex rounded-sm border px-1.5 py-0.5 text-[11px] font-medium ${st.cls}`}>{st.label}</span>}
+        subtitle={<span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${st.cls}`}>{st.label}</span>}
         actions={<>
           {pr.status === "draft" && mine && can("purchase_request.edit") && <Button asChild size="sm" variant="outline"><Link to="/procurement/purchase-requests/$id/edit" params={{ id }}>Edit draft</Link></Button>}
           {pr.status === "draft" && mine && can("purchase_request.submit") && <Button size="sm" disabled={run.isPending} onClick={() => run.mutate("submitted")}>Submit for approval</Button>}
@@ -105,14 +105,14 @@ function PrDetail() {
         </div>
       </section>
 
-      <section className="mt-4 overflow-x-auto rounded-md border bg-card">
+      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="p-2">#</th><th className="p-2">Material</th><th className="p-2 text-right">Qty</th><th className="p-2">Unit</th><th className="p-2 text-right">Est. rate</th><th className="p-2 text-right">Est. amount</th><th className="p-2">Required by</th></tr></thead>
+          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3">Unit</th><th className="px-4 py-3 text-right">Est. rate</th><th className="px-4 py-3 text-right">Est. amount</th><th className="px-4 py-3">Required by</th></tr></thead>
           <tbody>
             {items.length === 0 && <tr><td colSpan={7} className="p-3 text-xs text-muted-foreground">No items yet.</td></tr>}
-            {items.map((x) => <tr key={x.id} className="border-b last:border-0"><td className="p-2 text-muted-foreground">{x.line_no}</td><td className="p-2"><div>{x.items?.name}</div><div className="text-xs text-muted-foreground">{x.items?.code}{x.description ? ` · ${x.description}` : ""}</div></td><td className="p-2 text-right font-mono">{num(x.quantity)}</td><td className="p-2">{x.units_of_measure?.code}</td><td className="p-2 text-right font-mono">{x.estimated_rate == null ? "—" : inr(x.estimated_rate)}</td><td className="p-2 text-right font-mono">{inr(x.estimated_amount)}</td><td className="p-2">{fmtDate(x.required_by)}</td></tr>)}
+            {items.map((x) => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3 text-muted-foreground">{x.line_no}</td><td className="px-4 py-3"><div>{x.items?.name}</div><div className="text-xs text-muted-foreground">{x.items?.code}{x.description ? ` · ${x.description}` : ""}</div></td><td className="px-4 py-3 text-right font-mono">{num(x.quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td><td className="px-4 py-3 text-right font-mono">{x.estimated_rate == null ? "—" : inr(x.estimated_rate)}</td><td className="px-4 py-3 text-right font-mono">{inr(x.estimated_amount)}</td><td className="px-4 py-3">{fmtDate(x.required_by)}</td></tr>)}
           </tbody>
-          <tfoot><tr className="border-t"><td colSpan={5} className="p-2 text-right text-xs text-muted-foreground">Estimated Value (not an accounting entry)</td><td className="p-2 text-right font-mono font-semibold">{inr(pr.estimated_total)}</td><td /></tr></tfoot>
+          <tfoot><tr className="border-t"><td colSpan={5} className="p-2 text-right text-xs text-muted-foreground">Estimated Value (not an accounting entry)</td><td className="px-4 py-3 text-right font-mono font-semibold">{inr(pr.estimated_total)}</td><td /></tr></tfoot>
         </table>
       </section>
 

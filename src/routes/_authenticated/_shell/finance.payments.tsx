@@ -56,8 +56,8 @@ function Payments() {
         actions={can("payment.schedule") && <div className="flex gap-2"><Button size="sm" onClick={() => setSchedule("invoice")}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => setSchedule("advance")}>Vendor advance</Button></div>} />
       <div className="mb-3"><select className={cn(selectCls, "w-44")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="">All statuses</option>{Object.entries(PAYMENT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
-        <div className="overflow-x-auto rounded-md border bg-card"><table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Number</th><th className="p-2">Type</th><th className="p-2">Date</th><th className="p-2">Vendor</th><th className="p-2">Against</th><th className="p-2">Mode / ref</th><th className="p-2 text-right">Amount</th><th className="p-2">Status</th><th className="p-2"></th></tr></thead>
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card"><table className="w-full text-sm">
+          <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Number</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Against</th><th className="px-4 py-3">Mode / ref</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th></tr></thead>
           <tbody>
             {pageRows.length === 0 && <tr><td colSpan={9} className="p-4 text-xs text-muted-foreground">No payments yet.</td></tr>}
             {pageRows.map((p) => {
@@ -65,13 +65,13 @@ function Payments() {
               const left = Number(p.amount) - (q.data?.used.get(p.id) ?? 0);
               return (
                 <tr key={p.id} className="border-b last:border-0 align-top">
-                  <td className="p-2 font-mono">{p.payment_number}</td><td className="p-2">{p.kind === "advance" ? "Advance" : "Invoice"}</td><td className="p-2">{fmtDate(p.payment_date)}</td>
-                  <td className="p-2">{p.vendors?.company_name}</td>
-                  <td className="p-2 text-xs">{p.kind === "advance" ? <>{p.remarks}{p.status === "recorded" && <div className="text-muted-foreground">Unadjusted {inr(left)}</div>}</> : p.vendor_payment_allocations.map((a, i) => <div key={i} className="font-mono">{a.vendor_invoices?.invoice_number} · {inr(a.amount)}</div>)}</td>
-                  <td className="p-2 text-xs">{PAYMENT_MODES.find((m) => m[0] === p.payment_mode)?.[1]} {p.reference ?? ""}<div className="text-muted-foreground">{p.company_bank_accounts?.account_name}</div>{p.proof_path && <button className="text-primary hover:underline" onClick={() => openVendorDoc(p.proof_path!).catch((e) => toast.error(errMsg(e)))}>Proof</button>}</td>
-                  <td className="p-2 text-right font-mono">{inr(p.amount)}</td>
-                  <td className="p-2"><span className={cn(badge, PAYMENT_STATUS[p.status].cls)}>{PAYMENT_STATUS[p.status].label}</span></td>
-                  <td className="p-2"><div className="flex flex-wrap justify-end gap-1">
+                  <td className="px-4 py-3 font-mono">{p.payment_number}</td><td className="px-4 py-3">{p.kind === "advance" ? "Advance" : "Invoice"}</td><td className="px-4 py-3">{fmtDate(p.payment_date)}</td>
+                  <td className="px-4 py-3">{p.vendors?.company_name}</td>
+                  <td className="px-4 py-3 text-xs">{p.kind === "advance" ? <>{p.remarks}{p.status === "recorded" && <div className="text-muted-foreground">Unadjusted {inr(left)}</div>}</> : p.vendor_payment_allocations.map((a, i) => <div key={i} className="font-mono">{a.vendor_invoices?.invoice_number} · {inr(a.amount)}</div>)}</td>
+                  <td className="px-4 py-3 text-xs">{PAYMENT_MODES.find((m) => m[0] === p.payment_mode)?.[1]} {p.reference ?? ""}<div className="text-muted-foreground">{p.company_bank_accounts?.account_name}</div>{p.proof_path && <button className="text-primary hover:underline" onClick={() => openVendorDoc(p.proof_path!).catch((e) => toast.error(errMsg(e)))}>Proof</button>}</td>
+                  <td className="px-4 py-3 text-right font-mono">{inr(p.amount)}</td>
+                  <td className="px-4 py-3"><span className={cn(badge, PAYMENT_STATUS[p.status].cls)}>{PAYMENT_STATUS[p.status].label}</span></td>
+                  <td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-1">
                     {p.status === "scheduled" && can("payment.approve") && !mine && <Button size="sm" variant="outline" onClick={() => setAct({ id: p.id, action: "approve" })}>Approve</Button>}
                     {p.status === "approved" && can("payment.record") && <Button size="sm" onClick={() => setAct({ id: p.id, action: "record" })}>Record payment</Button>}
                     {(p.status === "scheduled" || p.status === "approved") && (can("payment.schedule") || can("payment.approve")) && <Button size="sm" variant="ghost" onClick={() => setAct({ id: p.id, action: "cancel" })}>Cancel</Button>}
@@ -144,11 +144,11 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
         </div>
         {kind === "invoice" && vendor && (inv.isLoading ? <Loading /> : (
           <div className="max-h-64 overflow-auto rounded-md border"><table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">Invoice</th><th className="p-2">Due</th><th className="p-2 text-right">Payable now</th><th className="p-2 text-right">Pay</th></tr></thead>
+            <thead className="bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Payable now</th><th className="px-4 py-3 text-right">Pay</th></tr></thead>
             <tbody>
               {(inv.data ?? []).length === 0 && <tr><td colSpan={4} className="p-3 text-xs text-muted-foreground">No approved unpaid invoices for this vendor.</td></tr>}
-              {inv.data?.map((x) => <tr key={x.id} className="border-t"><td className="p-2 font-mono text-xs">{x.invoice_number}<div className="text-muted-foreground">{x.vendor_invoice_number}</div></td><td className="p-2">{fmtDate(x.due_date)}</td><td className="p-2 text-right font-mono">{inr(x.payable)}</td>
-                <td className="p-2"><div className="flex items-center justify-end gap-1"><Input className="h-8 w-28 text-right" type="number" min={0} max={x.payable} value={alloc[x.id] ?? ""} onChange={(e) => setAlloc({ ...alloc, [x.id]: e.target.value })} /><Button size="sm" variant="ghost" onClick={() => setAlloc({ ...alloc, [x.id]: String(x.payable) })}>Full</Button></div></td></tr>)}
+              {inv.data?.map((x) => <tr key={x.id} className="border-t"><td className="px-4 py-3 font-mono text-xs">{x.invoice_number}<div className="text-muted-foreground">{x.vendor_invoice_number}</div></td><td className="px-4 py-3">{fmtDate(x.due_date)}</td><td className="px-4 py-3 text-right font-mono">{inr(x.payable)}</td>
+                <td className="px-4 py-3"><div className="flex items-center justify-end gap-1"><Input className="h-8 w-28 text-right" type="number" min={0} max={x.payable} value={alloc[x.id] ?? ""} onChange={(e) => setAlloc({ ...alloc, [x.id]: e.target.value })} /><Button size="sm" variant="ghost" onClick={() => setAlloc({ ...alloc, [x.id]: String(x.payable) })}>Full</Button></div></td></tr>)}
             </tbody>
           </table></div>
         ))}

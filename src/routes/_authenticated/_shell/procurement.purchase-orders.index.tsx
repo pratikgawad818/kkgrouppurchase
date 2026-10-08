@@ -64,21 +64,21 @@ function PoList() {
         <Input type="date" className="h-9 w-40" value={f.to} onChange={(e) => set("to", e.target.value)} aria-label="To date" />
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
-        <div className="overflow-x-auto rounded-md border bg-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="p-2">PO</th><th className="p-2">Date</th><th className="p-2">Vendor</th><th className="p-2">Project</th><th className="p-2">Building</th><th className="p-2">RFQ</th><th className="p-2 text-right">Total</th><th className="p-2 text-right">Received</th><th className="p-2 text-right">Pending</th><th className="p-2">Status</th></tr></thead>
+            <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">PO</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Building</th><th className="px-4 py-3">RFQ</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3 text-right">Received</th><th className="px-4 py-3 text-right">Pending</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
               {pageRows.length === 0 && <tr><td colSpan={10} className="p-4 text-xs text-muted-foreground">No purchase orders match.</td></tr>}
               {pageRows.map((x) => { const v = val(x); return (
-                <tr key={x.id} className="border-b last:border-0">
-                  <td className="p-2 font-mono"><Link className="text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: x.id }}>{x.po_number}</Link></td>
-                  <td className="p-2">{fmtDate(x.po_date)}</td>
-                  <td className="p-2">{x.vendors?.company_name}</td><td className="p-2">{x.projects?.name}</td><td className="p-2">{x.buildings?.name ?? "—"}</td>
-                  <td className="p-2 font-mono text-xs">{x.rfqs?.rfq_number}</td>
-                  <td className="p-2 text-right font-mono">{inr(x.grand_total)}</td>
-                  <td className="p-2 text-right font-mono">{inr(v.rec)}</td>
-                  <td className="p-2 text-right font-mono">{x.status === "cancelled" || x.status === "closed" ? "—" : inr(v.pend)}</td>
-                  <td className="p-2"><span className={cn("rounded-sm border px-1.5 py-0.5 text-[11px]", PO_STATUS[x.status].cls)}>{PO_STATUS[x.status].label}</span></td>
+                <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
+                  <td className="px-4 py-3 font-mono"><Link className="text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: x.id }}>{x.po_number}</Link></td>
+                  <td className="px-4 py-3">{fmtDate(x.po_date)}</td>
+                  <td className="px-4 py-3">{x.vendors?.company_name}</td><td className="px-4 py-3">{x.projects?.name}</td><td className="px-4 py-3">{x.buildings?.name ?? "—"}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{x.rfqs?.rfq_number}</td>
+                  <td className="px-4 py-3 text-right font-mono">{inr(x.grand_total)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{inr(v.rec)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{x.status === "cancelled" || x.status === "closed" ? "—" : inr(v.pend)}</td>
+                  <td className="px-4 py-3"><span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", PO_STATUS[x.status].cls)}>{PO_STATUS[x.status].label}</span></td>
                 </tr>); })}
             </tbody>
           </table>

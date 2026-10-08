@@ -59,10 +59,10 @@ function Compare() {
     <>
       <PageHeader crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{rfq.rfq_number}</Link>} title="Quotation comparison" subtitle="Lowest rate per item is highlighted. Select a vendor per item, or award all items to one vendor." />
       {cols.length === 0 ? <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">No quotations recorded yet.</div> : (
-        <div className="overflow-x-auto rounded-md border bg-card">
+        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs">
-              <tr><th className="p-2">Item</th>{cols.map(({ qt, v }) => (
+              <tr><th className="px-4 py-3">Item</th>{cols.map(({ qt, v }) => (
                 <th key={qt.id} className="min-w-48 p-2 align-top">
                   <div className="font-semibold">{v?.vendors?.company_name}</div>
                   <div className="font-normal text-muted-foreground">Ref {qt.quotation_number} · valid {fmtDate(qt.valid_until)}{qt.valid_until && qt.valid_until < today ? " (expired)" : ""}</div>
@@ -72,7 +72,7 @@ function Compare() {
             <tbody>
               {items.map((it) => { const lo = lowest(it.id); const sel = selections.find((s) => s.rfq_item_id === it.id); return (
                 <tr key={it.id} className="border-b">
-                  <td className="p-2 align-top"><div className="font-medium">{it.items?.name}</div><div className="text-xs text-muted-foreground">{num(it.requested_quantity)} {it.units_of_measure?.code}{it.target_rate != null ? ` · target ${inr(it.target_rate)}` : ""}</div></td>
+                  <td className="px-4 py-3 align-top"><div className="font-medium">{it.items?.name}</div><div className="text-xs text-muted-foreground">{num(it.requested_quantity)} {it.units_of_measure?.code}{it.target_rate != null ? ` · target ${inr(it.target_rate)}` : ""}</div></td>
                   {cols.map(({ qt }) => { const c = cell(qt.id, it.id); const chosen = sel ? sel.quotation_item_id === c?.id : pick[it.id] === c?.id; return (
                     <td key={qt.id} className={`p-2 align-top ${chosen ? "bg-primary/10" : ""}`}>
                       {!c || !c.is_quoted ? <span className="inline-flex rounded-sm border px-1.5 text-[11px] text-muted-foreground">Not quoted</span> : (
@@ -89,9 +89,9 @@ function Compare() {
             </tbody>
             <tfoot className="text-xs">
               {([["Subtotal", "subtotal"], ["Discount", "discount_total"], ["Tax", "tax_total"], ["Freight", "freight"], ["Other charges", "other_charges"], ["Grand total (landed)", "grand_total"]] as const).map(([l, k]) => (
-                <tr key={k} className="border-t"><td className="p-2 text-right text-muted-foreground">{l}</td>{cols.map(({ qt }) => <td key={qt.id} className={`p-2 font-mono ${k === "grand_total" ? "font-semibold" : ""}`}>{inr(qt[k])}</td>)}</tr>
+                <tr key={k} className="border-t"><td className="px-4 py-3 text-right text-muted-foreground">{l}</td>{cols.map(({ qt }) => <td key={qt.id} className={`p-2 font-mono ${k === "grand_total" ? "font-semibold" : ""}`}>{inr(qt[k])}</td>)}</tr>
               ))}
-              <tr className="border-t"><td className="p-2 text-right text-muted-foreground">Delivery · Payment</td>{cols.map(({ qt }) => <td key={qt.id} className="p-2">{qt.delivery_days != null ? `${qt.delivery_days} days` : "—"} · {qt.payment_terms ?? "—"}</td>)}</tr>
+              <tr className="border-t"><td className="px-4 py-3 text-right text-muted-foreground">Delivery · Payment</td>{cols.map(({ qt }) => <td key={qt.id} className="p-2">{qt.delivery_days != null ? `${qt.delivery_days} days` : "—"} · {qt.payment_terms ?? "—"}</td>)}</tr>
             </tfoot>
           </table>
         </div>
