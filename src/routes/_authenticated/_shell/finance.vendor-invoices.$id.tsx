@@ -109,7 +109,7 @@ function InvoiceDetail() {
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      <div className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">GRN</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Invoiced qty</th><th className="px-4 py-3 text-right">Available at GRN</th><th className="px-4 py-3 text-right">PO rate</th><th className="px-4 py-3 text-right">Bill rate</th><th className="px-4 py-3 text-right">PO GST</th><th className="px-4 py-3 text-right">Bill GST</th><th className="px-4 py-3 text-right">Line total</th><th className="px-4 py-3">Match</th></tr></thead>
           <tbody>{items.map((l) => (

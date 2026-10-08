@@ -78,7 +78,7 @@ function UsersPage() {
   return (
     <>
       <PageHeader title="Users & Permissions" subtitle="Create staff accounts, assign roles and control access" actions={<Button size="sm" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4" />Invite staff</Button>} />
-      <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-xs text-muted-foreground"><tr><th className="px-3 py-2">Staff member</th><th className="px-3 py-2">Phone</th><th className="px-3 py-2">Department</th><th className="px-3 py-2">Designation</th><th className="px-3 py-2">Role</th><th className="px-3 py-2">Access</th><th /></tr></thead>
           <tbody>

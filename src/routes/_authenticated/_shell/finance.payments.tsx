@@ -143,7 +143,7 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
           </>}
         </div>
         {kind === "invoice" && vendor && (inv.isLoading ? <Loading /> : (
-          <div className="max-h-64 overflow-auto rounded-md border"><table className="w-full text-sm">
+          <div className="doc-table max-h-64 overflow-auto rounded-md border max-sm:max-h-[55vh]"><table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Payable now</th><th className="px-4 py-3 text-right">Pay</th></tr></thead>
             <tbody>
               {(inv.data ?? []).length === 0 && <tr><td colSpan={4} className="p-3 text-xs text-muted-foreground">No approved unpaid invoices for this vendor.</td></tr>}

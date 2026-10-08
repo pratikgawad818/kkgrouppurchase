@@ -151,7 +151,7 @@ function DeliveryChallanRegister() {
           <Field label="Vendor invoice reference"><Input value={h.invoice_reference} onChange={e => setH({ ...h, invoice_reference: e.target.value })} /></Field>
           <Field label="Notes"><Textarea value={h.remarks} onChange={e => setH({ ...h, remarks: e.target.value })} rows={2} /></Field>
         </div>
-        {poId && <div className="overflow-x-auto rounded-md border">
+        {poId && <div className="doc-table overflow-x-auto rounded-md border">
           {items.isLoading ? <Loading /> : items.error ? <p className="p-3 text-sm text-destructive">{errMsg(items.error)}</p> :
             <table className="w-full text-sm"><thead className="border-b bg-muted/40 text-xs"><tr><th className="p-2 text-left">Material</th><th className="p-2 text-right">Ordered</th><th className="p-2 text-right">Dispatch quantity *</th></tr></thead>
               <tbody>{items.data?.map(x => <tr className="border-b last:border-0" key={x.id}>

@@ -122,7 +122,7 @@ function PoDetail() {
       />
       {po.status === "pending_approval" && mine && <div className="mb-3 text-xs text-muted-foreground">Another approver must approve this PO — you created it.</div>}
 
-      <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 text-sm shadow-card sm:p-5 md:grid-cols-4">
         <Info label="RFQ" value={<Link className="font-mono text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: po.rfq_id }}>{po.rfqs?.rfq_number}</Link>} />
         <Info label="Purchase request" value={<Link className="font-mono text-primary hover:underline" to="/procurement/purchase-requests/$id" params={{ id: po.purchase_request_id }}>{po.purchase_requests?.pr_number}</Link>} />
         <Info label="Quotation" value={po.vendor_quotations?.quotation_number ?? "—"} />
@@ -150,7 +150,7 @@ function PoDetail() {
         </section>
       )}
 
-      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      <section className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Ordered</th><th className="px-4 py-3 text-right">Physically received</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Replacement pending / Unresolved</th><th className="px-4 py-3 text-right">Short closed</th><th className="px-4 py-3 text-right">Remaining</th><th className="px-4 py-3 text-right">Rate</th><th className="px-4 py-3 text-right">Discount</th><th className="px-4 py-3 text-right">Tax</th><th className="px-4 py-3 text-right">Line total</th></tr></thead>
           <tbody>{items.map((x) => (
@@ -352,7 +352,7 @@ function ReceiveDialog({ poId, defaultWh, warehouses, items, challans, grns, onC
           No vendor challan selected. <Link to="/inventory/delivery-challans" search={{ po: poId }} className="font-semibold text-primary hover:underline">Register the supplier's delivery challan</Link> first.
         </div>}
         {chosen && !open.length && <p className="rounded-md border p-3 text-sm text-muted-foreground">This challan has no further receivable quantities. Choose another challan or review previous GRNs.</p>}
-        {open.length > 0 && <div className="overflow-x-auto"><table className="mt-2 w-full min-w-[650px] text-sm">
+        {open.length > 0 && <div className="doc-table overflow-x-auto rounded-lg border"><table className="w-full text-sm sm:min-w-[650px]">
           <thead className="border-b text-left text-[11px] uppercase text-muted-foreground">
             <tr><th className="p-1.5">Material</th><th className="p-1.5 text-right">Challan available</th><th className="p-1.5">Received</th><th className="p-1.5">Damaged</th><th className="p-1.5">Rejected</th><th className="p-1.5 text-right">Accepted</th></tr>
           </thead>

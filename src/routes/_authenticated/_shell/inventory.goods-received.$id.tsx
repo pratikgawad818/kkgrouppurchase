@@ -75,7 +75,7 @@ function GrnDetail() {
         </div>} />
       {g.status === "draft" && <div className="mb-3 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">Draft — not yet in stock. A user with posting rights must post it.</div>}
       {g.status === "cancelled" && <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs">Cancelled {fmtDateTime(g.cancelled_at)} — “{g.cancel_reason}”. Any stock it added was reversed.</div>}
-      <section className="grid gap-3 rounded-md border bg-card p-4 text-sm md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 text-sm shadow-card sm:p-5 md:grid-cols-4">
         <Info l="Purchase order" v={<Link className="font-mono text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: g.po_id }}>{g.purchase_orders?.po_number}</Link>} />
         <Info l="RFQ" v={g.rfq_id ? <Link className="font-mono text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: g.rfq_id }}>{g.rfqs?.rfq_number}</Link> : "—"} />
         <Info l="Purchase request" v={g.purchase_request_id ? <Link className="font-mono text-primary hover:underline" to="/procurement/purchase-requests/$id" params={{ id: g.purchase_request_id }}>{g.purchase_requests?.pr_number}</Link> : "—"} />
@@ -84,7 +84,7 @@ function GrnDetail() {
         <Info l="Received by" v={g.profiles?.full_name ?? "—"} /><Info l="Challan" v={g.challan_id ? <Link className="font-mono text-primary hover:underline" to="/inventory/delivery-challans/$id" params={{ id: g.challan_id }}>{g.challan_number || "View supplier challan"}</Link> : <span>{g.challan_number ?? "—"} <span className="text-xs text-muted-foreground">(legacy, unlinked)</span></span>} />
         <Info l="Vendor invoice ref." v={g.invoice_reference ?? "—"} /><Info l="Vehicle" v={g.vehicle_number ?? "—"} /><Info l="Remarks" v={g.remarks ?? "—"} />
       </section>
-      <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      <section className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Ordered</th><th className="px-4 py-3 text-right">Previously received</th><th className="px-4 py-3 text-right">Physically received</th><th className="px-4 py-3 text-right">PO remaining</th><th className="px-4 py-3 text-right">Damaged</th><th className="px-4 py-3 text-right">Rejected</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Unit cost</th><th className="px-4 py-3">Disposition</th></tr></thead>
           <tbody>{items.map((x) => { const pi = poItems.find((p) => p.id === x.po_item_id); return (
