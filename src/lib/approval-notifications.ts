@@ -21,6 +21,9 @@ export function whatsappPhone(raw: string | null | undefined): string | null {
   if (/^[6-9][0-9]{9}$/.test(compact)) return "91" + compact;
   if (/^0[6-9][0-9]{9}$/.test(compact)) return "91" + compact.slice(1);
   const digits = compact.startsWith("+") ? compact.slice(1) : compact;
+  // A 10-digit domestic number must be valid for India; otherwise require
+  // a full international number to avoid messaging the wrong recipient.
+  if (digits.length === 10 && !compact.startsWith("+")) return null;
   if (!/^[1-9][0-9]{7,14}$/.test(digits)) return null;
   return digits;
 }
@@ -43,7 +46,9 @@ export function approvalMessage(notice: ApprovalNotice, origin: string) {
     "Vendor: " + notice.vendor,
     "Amount: " + new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(notice.amount),
     "",
-    "Open to review and approve/reject securely:",
+    notice.kind === "purchase_order"
+      ? "Open to review and approve/reject securely:"
+      : "Open to review and approve securely (contact Accounts to decline):",
     link,
     "",
     "Sign in with your own Director account. Forwarding this link does NOT grant approval authority.",
