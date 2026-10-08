@@ -130,7 +130,7 @@ function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; pro
     project_id: unit?.project_id ?? "", building_id: unit?.building_id ?? "", floor_id: unit?.floor_id ?? "",
     unit_number: unit?.unit_number ?? "", unit_type: unit?.unit_type ?? "2bhk", facing: unit?.facing ?? "",
     carpet_area: unit?.carpet_area?.toString() ?? "", built_up_area: unit?.built_up_area?.toString() ?? "", saleable_area: unit?.saleable_area?.toString() ?? "",
-    base_rate: unit?.base_rate?.toString() ?? "", parking_count: unit?.parking_count?.toString() ?? "0", notes: unit?.notes ?? "",
+    base_rate: unit?.base_rate?.toString() ?? "", parking_count: unit?.parking_count?.toString() ?? "0", parking_charges: unit?.parking_charges?.toString() ?? "0", other_charges: unit?.other_charges?.toString() ?? "0", gst_rate: unit?.gst_rate?.toString() ?? "5", notes: unit?.notes ?? "",
   });
   const [newStatus, setNewStatus] = useState<string>(unit?.status ?? "available");
   const [reason, setReason] = useState("");
@@ -141,7 +141,7 @@ function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; pro
 
   async function save(e: React.FormEvent): Promise<void> {
     e.preventDefault(); setBusy(true);
-    const payload = { floor_id: f.floor_id, unit_number: f.unit_number.trim(), unit_type: f.unit_type, facing: f.facing || null, carpet_area: Number(f.carpet_area), built_up_area: Number(f.built_up_area), saleable_area: Number(f.saleable_area), base_rate: Number(f.base_rate), parking_count: Number(f.parking_count) || 0, notes: f.notes || null } as any;
+    const payload = { floor_id: f.floor_id, unit_number: f.unit_number.trim(), unit_type: f.unit_type, facing: f.facing || null, carpet_area: Number(f.carpet_area), built_up_area: Number(f.built_up_area), saleable_area: Number(f.saleable_area), base_rate: Number(f.base_rate), parking_count: Number(f.parking_count) || 0, parking_charges: Number(f.parking_charges) || 0, other_charges: Number(f.other_charges) || 0, gst_rate: Number(f.gst_rate) || 0, notes: f.notes || null } as any;
     const r = unit ? await supabase.from("units").update(payload).eq("id", unit.id) : await supabase.from("units").insert({ ...payload, project_id: f.project_id, building_id: f.building_id });
     if (r.error) { setBusy(false); { toast.error(r.error.message.includes("units_building_id_unit_number_key") ? "This unit number already exists in this building." : r.error.message); return; } }
     if (unit && newStatus !== unit.status) {
@@ -168,6 +168,9 @@ function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; pro
             <L label="Saleable area (sqft) *"><input className={inp} type="number" step="0.01" required value={f.saleable_area} onChange={(e) => set("saleable_area", e.target.value)} /></L>
             <L label="Base rate (₹/sqft) *"><input className={inp} type="number" step="0.01" required value={f.base_rate} onChange={(e) => set("base_rate", e.target.value)} /></L>
             <L label="Parking count"><input className={inp} type="number" min={0} value={f.parking_count} onChange={(e) => set("parking_count", e.target.value)} /></L>
+            <L label="Parking price (₹)"><input className={inp} type="number" min={0} step="0.01" value={f.parking_charges} onChange={(e) => set("parking_charges", e.target.value)} /></L>
+            <L label="Other charges (₹)"><input className={inp} type="number" min={0} step="0.01" value={f.other_charges} onChange={(e) => set("other_charges", e.target.value)} /></L>
+            <L label="GST (%)"><input className={inp} type="number" min={0} max={28} step="0.01" value={f.gst_rate} onChange={(e) => set("gst_rate", e.target.value)} /></L>
             {unit && <L label="Status"><select className={sel} value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>{["available", "hold", "cancelled", unit.status].filter((v, i, a) => a.indexOf(v) === i).map((k) => <option key={k} value={k}>{UNIT_STATUS[k as UnitStatus].label}</option>)}</select></L>}
           </div>
           {unit && newStatus !== unit.status && <L label="Reason for status change *"><input className={inp} required value={reason} onChange={(e) => setReason(e.target.value)} /></L>}
