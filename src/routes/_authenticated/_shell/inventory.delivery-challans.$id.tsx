@@ -71,7 +71,7 @@ function ChallanDetails() {
   return <div className="mx-auto max-w-5xl pb-20">
     <PageHeader title={h.challan_number}
       subtitle={<span>Vendor Delivery Challan · <span className={h.status === "registered" ? "font-semibold text-green-700 dark:text-green-400" : "font-semibold text-destructive"}>{h.status === "registered" ? "Registered" : "Cancelled"}</span></span>}
-      crumbs={<Link to="/inventory/delivery-challans" className="hover:underline">Delivery Challans</Link>}
+      crumbs={<Link to="/inventory/delivery-challans" search={{ po: null }} className="hover:underline">Delivery Challans</Link>}
       actions={canCancel && <Button variant="outline" size="sm" onClick={() => setCancelOpen(true)}>Cancel challan</Button>} />
     <section className="grid gap-4 rounded-xl border bg-card p-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
       <div><p className="text-xs text-muted-foreground">Supplier</p><p className="font-semibold">{h.vendors?.company_name}</p></div>
