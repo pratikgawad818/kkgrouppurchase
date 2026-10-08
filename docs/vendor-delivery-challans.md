@@ -13,7 +13,7 @@ This module records the supplier's **physical dispatch document** separately fro
 7. Only GRN posting adds accepted quantities to the immutable stock ledger.
 8. Staff can cancel a challan only if no live GRN references it; cancellation needs an audit reason. GRN cancellation releases the associated dispatched quantity for later reuse.
 
-Existing legacy GRNs remain visible with an unlinked text challan number. Existing five-argument `create_goods_receipt` still permits a legacy call without a registered challan for compatibility; the **new UI requires** one. Before imposing a strict all-new-GRNs mandate at database level, ensure legacy API clients have migrated.
+Existing legacy GRNs remain visible with an unlinked text challan number. The five-argument `create_goods_receipt` supports a legacy **unlinked** receipt for controlled integrations; the new UI requires a registered challan. The deprecated **four-argument** RPC has its public/authenticated execute privilege revoked because it bypasses newer GRN guards. Before imposing a strict all-new-GRNs mandate at database level, ensure legacy API clients have migrated.
 
 ## Deployment and staging gates — DO NOT SKIP
 
@@ -46,5 +46,7 @@ Existing legacy GRNs remain visible with an unlinked text challan number. Existi
 | Receiving warehouse from another company or unrelated project | Rejected |
 | Multiple partial challans for same PO | Quantities tracked per challan, not pooled |
 | PO closes after prior receipts | New GRNs cannot post |
+| PO cancellation while registered challan exists | Blocked until supplier challan is cancelled |
+| Deprecated four-argument GRN RPC through authenticated API | Permission denied |
 
 **No production inventory posting until the actual database migration, RLS rules and transactional tests are verified.**
