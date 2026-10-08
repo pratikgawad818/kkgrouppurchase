@@ -105,12 +105,12 @@ FROM protected ORDER BY name;
 
 -- Company-level readiness. The workflow needs exactly 3 separate active
 -- director accounts in each company. Do not create dummy production users.
-SELECT p.company_id,COUNT(DISTINCT r.user_id) AS active_directors,
+SELECT c.id AS company_id,COUNT(DISTINCT r.user_id) AS active_directors,
        COUNT(DISTINCT r.user_id)=3 AS exactly_three_ready
-FROM public.profiles p
-JOIN public.user_roles r ON r.user_id=p.id AND r.role='director'
-WHERE p.is_active
-GROUP BY p.company_id
-ORDER BY p.company_id;
+FROM public.companies c
+LEFT JOIN public.profiles p ON p.company_id=c.id AND p.is_active
+LEFT JOIN public.user_roles r ON r.user_id=p.id AND r.role='director'
+GROUP BY c.id
+ORDER BY c.id;
 
 ROLLBACK;
