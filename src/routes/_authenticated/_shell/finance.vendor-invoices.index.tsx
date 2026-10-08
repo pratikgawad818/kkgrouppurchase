@@ -56,7 +56,7 @@ function InvoiceList() {
         <select className={cn(selectCls, "w-36")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+        <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Vendor bill</th><th className="px-4 py-3">Bill date</th><th className="px-4 py-3">Due</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">PO</th><th className="px-4 py-3">Project</th><th className="px-4 py-3 text-right">Invoice total</th><th className="px-4 py-3 text-right">Balance due</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>

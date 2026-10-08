@@ -118,7 +118,7 @@ function DeliveryChallanRegister() {
     </div>
     {register.isLoading ? <Loading /> : register.error ? <p className="text-sm text-destructive">{errMsg(register.error)}</p> :
       !visible.length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground"><Truck className="mx-auto mb-3 h-7 w-7" />No delivery challans found.</div> :
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-muted/50 text-xs text-muted-foreground"><tr>
             <th className="p-3">Vendor challan</th><th className="p-3">Date</th><th className="p-3">PO</th><th className="p-3">Vendor</th><th className="p-3">Project</th><th className="p-3">Status</th><th className="p-3 text-right">Lines</th>
