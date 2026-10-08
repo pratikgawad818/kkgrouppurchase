@@ -162,7 +162,7 @@ GRANT EXECUTE ON FUNCTION public.cancel_vendor_delivery_challan(uuid,text) TO au
 -- A PO with a live supplier dispatch document must not be cancelled until
 -- those dispatch documents are cancelled or resolved.
 CREATE OR REPLACE FUNCTION public.prevent_po_cancel_with_active_challans()
-RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $
+RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
 BEGIN
   IF NEW.status = 'cancelled' AND OLD.status IS DISTINCT FROM NEW.status
      AND EXISTS (
@@ -172,7 +172,7 @@ BEGIN
     RAISE EXCEPTION 'Cancel active supplier delivery challans before cancelling this PO';
   END IF;
   RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER prevent_po_cancel_with_active_challans
 BEFORE UPDATE OF status ON public.purchase_orders
 FOR EACH ROW EXECUTE FUNCTION public.prevent_po_cancel_with_active_challans();
