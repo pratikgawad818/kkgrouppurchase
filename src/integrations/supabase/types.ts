@@ -988,10 +988,10 @@ export type Database = {
         }
         Insert: {
           adjustment_id?: string | null
-          material_issue_id: string | null
-          material_issue_item_id: string | null
-          material_return_id: string | null
-          material_return_item_id: string | null
+          material_issue_id?: string | null
+          material_issue_item_id?: string | null
+          material_return_id?: string | null
+          material_return_item_id?: string | null
           balance_after: number
           building_id?: string | null
           company_id: string
