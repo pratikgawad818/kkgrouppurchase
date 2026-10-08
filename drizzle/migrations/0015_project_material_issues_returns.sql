@@ -203,7 +203,7 @@ BEGIN
   END IF;
   SELECT * INTO w FROM public.warehouses WHERE id=_warehouse_id AND status='active';
   SELECT * INTO pr FROM public.projects WHERE id=_project_id;
-  IF w IS NULL OR pr IS NULL OR pr.company_id <> w.company_id THEN
+  IF w IS NULL OR pr IS NULL OR pr.company_id <> w.company_id OR pr.record_status <> 'active' THEN
     RAISE EXCEPTION 'Invalid source store or project';
   END IF;
   IF w.project_id IS NOT NULL AND w.project_id <> _project_id THEN
@@ -238,7 +238,7 @@ BEGIN
     IF stock IS NULL OR stock.quantity_on_hand < qty THEN
       RAISE EXCEPTION 'Insufficient stock for material';
     END IF;
-    IF NOT EXISTS(SELECT 1 FROM public.items WHERE id=material AND status='active') THEN
+    IF NOT EXISTS(SELECT 1 FROM public.items WHERE id=material AND status='active' AND company_id=w.company_id) THEN
       RAISE EXCEPTION 'Material not active';
     END IF;
     INSERT INTO public.material_issue_items(issue_id,material_id,quantity,unit_cost,total_cost)
