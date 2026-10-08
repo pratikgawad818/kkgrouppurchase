@@ -24,7 +24,7 @@ function MaterialConsumption() {
   const q = useQuery({
     queryKey: ["project-material-consumption", projectId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("project_material_consumption", { _project_id: projectId || null });
+      const { data, error } = await supabase.rpc("project_material_consumption", { _project_id: (projectId || null) as unknown as string });
       if (error) throw error;
       return data ?? [];
     },

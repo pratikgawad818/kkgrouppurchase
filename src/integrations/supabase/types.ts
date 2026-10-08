@@ -52,285 +52,6 @@ export type Database = {
           },
         ]
       }
-      director_approval_votes: {
-        Row: {
-          id: string
-          entity_type: string
-          entity_id: string
-          actor_id: string
-          decision: string
-          comment: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          entity_type: string
-          entity_id: string
-          actor_id: string
-          decision: string
-          comment?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          entity_type?: string
-          entity_id?: string
-          actor_id?: string
-          decision?: string
-          comment?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "director_approval_votes_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vendor_delivery_challans: {
-        Row: {
-          id: string
-          company_id: string
-          po_id: string
-          vendor_id: string
-          project_id: string
-          building_id: string | null
-          challan_number: string
-          challan_date: string
-          vehicle_number: string | null
-          invoice_reference: string | null
-          remarks: string | null
-          status: string
-          created_by: string
-          created_at: string
-          cancelled_by: string | null
-          cancelled_at: string | null
-          cancel_reason: string | null
-        }
-        Insert: {
-          id?: string
-          company_id: string
-          po_id: string
-          vendor_id: string
-          project_id: string
-          building_id?: string | null
-          challan_number: string
-          challan_date: string
-          vehicle_number?: string | null
-          invoice_reference?: string | null
-          remarks?: string | null
-          status?: string
-          created_by: string
-          created_at?: string
-          cancelled_by?: string | null
-          cancelled_at?: string | null
-          cancel_reason?: string | null
-        }
-        Update: {
-          id?: string
-          company_id?: string
-          po_id?: string
-          vendor_id?: string
-          project_id?: string
-          building_id?: string | null
-          challan_number?: string
-          challan_date?: string
-          vehicle_number?: string | null
-          invoice_reference?: string | null
-          remarks?: string | null
-          status?: string
-          created_by?: string
-          created_at?: string
-          cancelled_by?: string | null
-          cancelled_at?: string | null
-          cancel_reason?: string | null
-        }
-        Relationships: [
-          { foreignKeyName: "vendor_delivery_challans_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
-          { foreignKeyName: "vendor_delivery_challans_po_id_fkey"; columns: ["po_id"]; isOneToOne: false; referencedRelation: "purchase_orders"; referencedColumns: ["id"] },
-          { foreignKeyName: "vendor_delivery_challans_vendor_id_fkey"; columns: ["vendor_id"]; isOneToOne: false; referencedRelation: "vendors"; referencedColumns: ["id"] },
-          { foreignKeyName: "vendor_delivery_challans_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
-          { foreignKeyName: "vendor_delivery_challans_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
-          { foreignKeyName: "vendor_delivery_challans_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
-          { foreignKeyName: "vendor_delivery_challans_cancelled_by_fkey"; columns: ["cancelled_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
-        ]
-      }
-      vendor_delivery_challan_items: {
-        Row: { id: string; challan_id: string; po_item_id: string; quantity: number }
-        Insert: { id?: string; challan_id: string; po_item_id: string; quantity: number }
-        Update: { id?: string; challan_id?: string; po_item_id?: string; quantity?: number }
-        Relationships: [
-          { foreignKeyName: "vendor_delivery_challan_items_challan_id_fkey"; columns: ["challan_id"]; isOneToOne: false; referencedRelation: "vendor_delivery_challans"; referencedColumns: ["id"] },
-          { foreignKeyName: "vendor_delivery_challan_items_po_item_id_fkey"; columns: ["po_item_id"]; isOneToOne: false; referencedRelation: "purchase_order_items"; referencedColumns: ["id"] },
-        ]
-      }
-      material_issues: {
-        Row: {
-          id: string
-          issue_number: string
-          company_id: string
-          warehouse_id: string
-          project_id: string
-          building_id: string | null
-          issued_to: string
-          purpose: string
-          issue_date: string
-          created_by: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          issue_number: string
-          company_id: string
-          warehouse_id: string
-          project_id: string
-          building_id?: string | null
-          issued_to: string
-          purpose: string
-          issue_date?: string
-          created_by: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          issue_number?: string
-          company_id?: string
-          warehouse_id?: string
-          project_id?: string
-          building_id?: string | null
-          issued_to?: string
-          purpose?: string
-          issue_date?: string
-          created_by?: string
-          created_at?: string
-        }
-        Relationships: [
-          { foreignKeyName: "material_issues_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_issues_warehouse_id_fkey"; columns: ["warehouse_id"]; isOneToOne: false; referencedRelation: "warehouses"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_issues_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_issues_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_issues_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
-        ]
-      }
-      material_issue_items: {
-        Row: {
-          id: string
-          issue_id: string
-          material_id: string
-          quantity: number
-          unit_cost: number
-          total_cost: number
-        }
-        Insert: {
-          id?: string
-          issue_id: string
-          material_id: string
-          quantity: number
-          unit_cost: number
-          total_cost: number
-        }
-        Update: {
-          id?: string
-          issue_id?: string
-          material_id?: string
-          quantity?: number
-          unit_cost?: number
-          total_cost?: number
-        }
-        Relationships: [
-          { foreignKeyName: "material_issue_items_issue_id_fkey"; columns: ["issue_id"]; isOneToOne: false; referencedRelation: "material_issues"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_issue_items_material_id_fkey"; columns: ["material_id"]; isOneToOne: false; referencedRelation: "items"; referencedColumns: ["id"] },
-        ]
-      }
-      material_returns: {
-        Row: {
-          id: string
-          return_number: string
-          issue_id: string
-          company_id: string
-          warehouse_id: string
-          project_id: string
-          building_id: string | null
-          returned_by: string
-          reason: string
-          return_date: string
-          created_by: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          return_number: string
-          issue_id: string
-          company_id: string
-          warehouse_id: string
-          project_id: string
-          building_id?: string | null
-          returned_by: string
-          reason: string
-          return_date?: string
-          created_by: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          return_number?: string
-          issue_id?: string
-          company_id?: string
-          warehouse_id?: string
-          project_id?: string
-          building_id?: string | null
-          returned_by?: string
-          reason?: string
-          return_date?: string
-          created_by?: string
-          created_at?: string
-        }
-        Relationships: [
-          { foreignKeyName: "material_returns_issue_id_fkey"; columns: ["issue_id"]; isOneToOne: false; referencedRelation: "material_issues"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_returns_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_returns_warehouse_id_fkey"; columns: ["warehouse_id"]; isOneToOne: false; referencedRelation: "warehouses"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_returns_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_returns_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_returns_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
-        ]
-      }
-      material_return_items: {
-        Row: {
-          id: string
-          return_id: string
-          issue_item_id: string
-          material_id: string
-          quantity: number
-          unit_cost: number
-          total_cost: number
-        }
-        Insert: {
-          id?: string
-          return_id: string
-          issue_item_id: string
-          material_id: string
-          quantity: number
-          unit_cost: number
-          total_cost: number
-        }
-        Update: {
-          id?: string
-          return_id?: string
-          issue_item_id?: string
-          material_id?: string
-          quantity?: number
-          unit_cost?: number
-          total_cost?: number
-        }
-        Relationships: [
-          { foreignKeyName: "material_return_items_return_id_fkey"; columns: ["return_id"]; isOneToOne: false; referencedRelation: "material_returns"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_return_items_issue_item_id_fkey"; columns: ["issue_item_id"]; isOneToOne: false; referencedRelation: "material_issue_items"; referencedColumns: ["id"] },
-          { foreignKeyName: "material_return_items_material_id_fkey"; columns: ["material_id"]; isOneToOne: false; referencedRelation: "items"; referencedColumns: ["id"] },
-        ]
-      }
       audit_logs: {
         Row: {
           action: string
@@ -586,6 +307,44 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      director_approval_votes: {
+        Row: {
+          actor_id: string
+          comment: string | null
+          created_at: string
+          decision: string
+          entity_id: string
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          actor_id: string
+          comment?: string | null
+          created_at?: string
+          decision: string
+          entity_id: string
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          actor_id?: string
+          comment?: string | null
+          created_at?: string
+          decision?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_approval_votes_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -879,7 +638,6 @@ export type Database = {
           warehouse_id?: string
         }
         Relationships: [
-          { foreignKeyName: "goods_receipt_notes_challan_id_fkey"; columns: ["challan_id"]; isOneToOne: false; referencedRelation: "vendor_delivery_challans"; referencedColumns: ["id"] },
           {
             foreignKeyName: "goods_receipt_notes_building_id_fkey"
             columns: ["building_id"]
@@ -899,6 +657,13 @@ export type Database = {
             columns: ["cancelled_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_notes_challan_id_fkey"
+            columns: ["challan_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_delivery_challans"
             referencedColumns: ["id"]
           },
           {
@@ -962,10 +727,6 @@ export type Database = {
       inventory_transactions: {
         Row: {
           adjustment_id: string | null
-          material_issue_id: string | null
-          material_issue_item_id: string | null
-          material_return_id: string | null
-          material_return_item_id: string | null
           balance_after: number
           building_id: string | null
           company_id: string
@@ -975,6 +736,10 @@ export type Database = {
           grn_item_id: string | null
           id: number
           material_id: string
+          material_issue_id: string | null
+          material_issue_item_id: string | null
+          material_return_id: string | null
+          material_return_item_id: string | null
           project_id: string | null
           quantity_in: number
           quantity_out: number
@@ -988,10 +753,6 @@ export type Database = {
         }
         Insert: {
           adjustment_id?: string | null
-          material_issue_id?: string | null
-          material_issue_item_id?: string | null
-          material_return_id?: string | null
-          material_return_item_id?: string | null
           balance_after: number
           building_id?: string | null
           company_id: string
@@ -1001,6 +762,10 @@ export type Database = {
           grn_item_id?: string | null
           id?: never
           material_id: string
+          material_issue_id?: string | null
+          material_issue_item_id?: string | null
+          material_return_id?: string | null
+          material_return_item_id?: string | null
           project_id?: string | null
           quantity_in?: number
           quantity_out?: number
@@ -1014,10 +779,6 @@ export type Database = {
         }
         Update: {
           adjustment_id?: string | null
-          material_issue_id?: string | null
-          material_issue_item_id?: string | null
-          material_return_id?: string | null
-          material_return_item_id?: string | null
           balance_after?: number
           building_id?: string | null
           company_id?: string
@@ -1027,6 +788,10 @@ export type Database = {
           grn_item_id?: string | null
           id?: never
           material_id?: string
+          material_issue_id?: string | null
+          material_issue_item_id?: string | null
+          material_return_id?: string | null
+          material_return_item_id?: string | null
           project_id?: string | null
           quantity_in?: number
           quantity_out?: number
@@ -1039,10 +804,6 @@ export type Database = {
           warehouse_id?: string
         }
         Relationships: [
-          { foreignKeyName: "inventory_transactions_material_issue_id_fkey"; columns: ["material_issue_id"]; isOneToOne: false; referencedRelation: "material_issues"; referencedColumns: ["id"] },
-          { foreignKeyName: "inventory_transactions_material_issue_item_id_fkey"; columns: ["material_issue_item_id"]; isOneToOne: false; referencedRelation: "material_issue_items"; referencedColumns: ["id"] },
-          { foreignKeyName: "inventory_transactions_material_return_id_fkey"; columns: ["material_return_id"]; isOneToOne: false; referencedRelation: "material_returns"; referencedColumns: ["id"] },
-          { foreignKeyName: "inventory_transactions_material_return_item_id_fkey"; columns: ["material_return_item_id"]; isOneToOne: false; referencedRelation: "material_return_items"; referencedColumns: ["id"] },
           {
             foreignKeyName: "inventory_transactions_adjustment_id_fkey"
             columns: ["adjustment_id"]
@@ -1097,6 +858,34 @@ export type Database = {
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_issue_id_fkey"
+            columns: ["material_issue_id"]
+            isOneToOne: false
+            referencedRelation: "material_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_issue_item_id_fkey"
+            columns: ["material_issue_item_id"]
+            isOneToOne: false
+            referencedRelation: "material_issue_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_return_id_fkey"
+            columns: ["material_return_id"]
+            isOneToOne: false
+            referencedRelation: "material_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_return_item_id_fkey"
+            columns: ["material_return_item_id"]
+            isOneToOne: false
+            referencedRelation: "material_return_items"
             referencedColumns: ["id"]
           },
           {
@@ -1428,6 +1217,280 @@ export type Database = {
             columns: ["entry_id"]
             isOneToOne: false
             referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_issue_items: {
+        Row: {
+          id: string
+          issue_id: string
+          material_id: string
+          quantity: number
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          material_id: string
+          quantity: number
+          total_cost: number
+          unit_cost: number
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          material_id?: string
+          quantity?: number
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_issue_items_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "material_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_issue_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_issues: {
+        Row: {
+          building_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          issue_date: string
+          issue_number: string
+          issued_to: string
+          project_id: string
+          purpose: string
+          warehouse_id: string
+        }
+        Insert: {
+          building_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          issue_date?: string
+          issue_number: string
+          issued_to: string
+          project_id: string
+          purpose: string
+          warehouse_id: string
+        }
+        Update: {
+          building_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          issue_date?: string
+          issue_number?: string
+          issued_to?: string
+          project_id?: string
+          purpose?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_issues_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_issues_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "material_issues_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_issues_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_issues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_issues_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_return_items: {
+        Row: {
+          id: string
+          issue_item_id: string
+          material_id: string
+          quantity: number
+          return_id: string
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          id?: string
+          issue_item_id: string
+          material_id: string
+          quantity: number
+          return_id: string
+          total_cost: number
+          unit_cost: number
+        }
+        Update: {
+          id?: string
+          issue_item_id?: string
+          material_id?: string
+          quantity?: number
+          return_id?: string
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_return_items_issue_item_id_fkey"
+            columns: ["issue_item_id"]
+            isOneToOne: false
+            referencedRelation: "material_issue_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_return_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "material_returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_returns: {
+        Row: {
+          building_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          issue_id: string
+          project_id: string
+          reason: string
+          return_date: string
+          return_number: string
+          returned_by: string
+          warehouse_id: string
+        }
+        Insert: {
+          building_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          issue_id: string
+          project_id: string
+          reason: string
+          return_date?: string
+          return_number: string
+          returned_by: string
+          warehouse_id: string
+        }
+        Update: {
+          building_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          issue_id?: string
+          project_id?: string
+          reason?: string
+          return_date?: string
+          return_number?: string
+          returned_by?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_returns_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_returns_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "material_returns_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_returns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_returns_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "material_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_returns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_returns_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -3158,6 +3221,159 @@ export type Database = {
           },
         ]
       }
+      vendor_delivery_challan_items: {
+        Row: {
+          challan_id: string
+          id: string
+          po_item_id: string
+          quantity: number
+        }
+        Insert: {
+          challan_id: string
+          id?: string
+          po_item_id: string
+          quantity: number
+        }
+        Update: {
+          challan_id?: string
+          id?: string
+          po_item_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_delivery_challan_items_challan_id_fkey"
+            columns: ["challan_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_delivery_challans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challan_items_po_item_id_fkey"
+            columns: ["po_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_delivery_challans: {
+        Row: {
+          building_id: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          challan_date: string
+          challan_number: string
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          invoice_reference: string | null
+          po_id: string
+          project_id: string
+          remarks: string | null
+          status: string
+          vehicle_number: string | null
+          vendor_id: string
+        }
+        Insert: {
+          building_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          challan_date: string
+          challan_number: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          invoice_reference?: string | null
+          po_id: string
+          project_id: string
+          remarks?: string | null
+          status?: string
+          vehicle_number?: string | null
+          vendor_id: string
+        }
+        Update: {
+          building_id?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          challan_date?: string
+          challan_number?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          invoice_reference?: string | null
+          po_id?: string
+          project_id?: string
+          remarks?: string | null
+          status?: string
+          vehicle_number?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_delivery_challans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challans_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challans_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_delivery_challans_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_invoice_events: {
         Row: {
           acted_at: string
@@ -4204,53 +4420,6 @@ export type Database = {
       }
     }
     Functions: {
-      register_vendor_delivery_challan: {
-        Args: { _po_id: string; _header: Json; _items: Json }
-        Returns: string
-      }
-      cancel_vendor_delivery_challan: {
-        Args: { _id: string; _reason: string }
-        Returns: undefined
-      }
-      record_material_issue: {
-        Args: {
-          _warehouse_id: string
-          _project_id: string
-          _building_id: string | null
-          _issued_to: string
-          _purpose: string
-          _items: Json
-        }
-        Returns: string
-      }
-      record_material_return: {
-        Args: {
-          _issue_id: string
-          _returned_by: string
-          _reason: string
-          _items: Json
-        }
-        Returns: string
-      }
-      project_material_consumption: {
-        Args: { _project_id?: string | null }
-        Returns: {
-          project_id: string
-          project_name: string
-          building_id: string | null
-          building_name: string | null
-          material_id: string
-          material_code: string
-          material_name: string
-          unit_code: string
-          issued_quantity: number
-          returned_quantity: number
-          net_quantity: number
-          issued_value: number
-          returned_value: number
-          net_value: number
-        }[]
-      }
       acct: { Args: { _code: string; _company: string }; Returns: string }
       apply_vendor_advance: {
         Args: { _advance_id: string; _amount: number; _invoice_id: string }
@@ -4262,6 +4431,10 @@ export type Database = {
       }
       cancel_goods_receipt: {
         Args: { _grn_id: string; _reason: string }
+        Returns: undefined
+      }
+      cancel_vendor_delivery_challan: {
+        Args: { _id: string; _reason: string }
         Returns: undefined
       }
       create_goods_receipt: {
@@ -4408,6 +4581,24 @@ export type Database = {
         }
         Returns: string
       }
+      post_material_stock: {
+        Args: {
+          _building: string
+          _company: string
+          _document_value: number
+          _issue: string
+          _issue_item: string
+          _kind: string
+          _material: string
+          _project: string
+          _qty: number
+          _return: string
+          _return_item: string
+          _source_cost: number
+          _warehouse: string
+        }
+        Returns: number
+      }
       post_stock: {
         Args: {
           _company: string
@@ -4452,9 +4643,61 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["pr_status"]
       }
+      project_material_consumption: {
+        Args: { _project_id?: string }
+        Returns: {
+          building_id: string
+          building_name: string
+          issued_quantity: number
+          issued_value: number
+          material_code: string
+          material_id: string
+          material_name: string
+          net_quantity: number
+          net_value: number
+          project_id: string
+          project_name: string
+          returned_quantity: number
+          returned_value: number
+          unit_code: string
+        }[]
+      }
+      record_material_issue: {
+        Args: {
+          _building_id: string
+          _issued_to: string
+          _items: Json
+          _project_id: string
+          _purpose: string
+          _warehouse_id: string
+        }
+        Returns: string
+      }
+      record_material_return: {
+        Args: {
+          _issue_id: string
+          _items: Json
+          _reason: string
+          _returned_by: string
+        }
+        Returns: string
+      }
       record_vendor_selection: {
         Args: { _reason: string; _rfq_id: string; _selections: Json }
         Returns: number
+      }
+      register_director_vote: {
+        Args: {
+          _comment: string
+          _decision: string
+          _id: string
+          _type: string
+        }
+        Returns: number
+      }
+      register_vendor_delivery_challan: {
+        Args: { _header: Json; _items: Json; _po_id: string }
+        Returns: string
       }
       rfq_can_edit_draft: { Args: { _rfq_id: string }; Returns: boolean }
       rfq_can_quote: { Args: { _rfq_id: string }; Returns: boolean }

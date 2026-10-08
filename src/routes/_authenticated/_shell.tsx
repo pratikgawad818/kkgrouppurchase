@@ -1,13 +1,14 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Banknote, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
+import { ArrowLeftRight, Banknote, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/format";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Loading } from "@/components/erp/common";
 import { cn } from "@/lib/utils";
 import brandMark from "@/assets/kk-groups-full.png.asset.json";
@@ -69,6 +70,12 @@ function Shell() {
   const me = useMe();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearchOpen((v) => !v); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -86,22 +93,22 @@ function Shell() {
   if (me.error) return <div className="p-8 text-sm text-destructive">Could not load your profile: {me.error.message}</div>;
   const { profile, roles, permissions } = me.data!;
 
-  const nav = (
-    <nav className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
-         <div className="grid h-10 w-16 shrink-0 place-items-center rounded-sm bg-card p-0.5"><img src={brandMark.url} alt="KK Groups" className="h-full w-full object-contain" /></div>
-        <div className={cn("leading-tight", collapsed && "lg:hidden")}>
-          <div className="text-sm font-semibold text-sidebar-accent-foreground">KK GROUP ERP</div>
-          <div className="text-[11px] text-sidebar-foreground/70">Real estate & construction</div>
-        </div>
+  const renderNav = (mini: boolean) => (
+    <nav aria-label="Main navigation" className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+      <div className={cn("flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border", mini ? "justify-center px-2" : "px-4")}>
+        <div className={cn("grid shrink-0 place-items-center rounded-lg bg-card p-1 shadow-sm ring-1 ring-sidebar-border", mini ? "h-10 w-12" : "h-10 w-16")}><img src={brandMark.url} alt="KK Groups" className="h-full w-full object-contain" /></div>
+        {!mini && <div className="min-w-0 leading-tight">
+          <div className="truncate text-sm font-semibold tracking-tight text-sidebar-accent-foreground">KK GROUP ERP</div>
+          <div className="truncate text-[11px] text-sidebar-foreground/70">Real estate & construction</div>
+        </div>}
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      <div className={cn("flex-1 overflow-y-auto py-3", mini ? "px-2" : "px-3")}>
         {NAV.map((g) => {
           const items = g.items.filter((i) => !i.perm || permissions.has(i.perm));
           if (!items.length) return null;
           return (
-            <div key={g.group || "top"} className="mb-3">
-               {g.group && <div className={cn("px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60", collapsed && "lg:hidden")}>{g.group}</div>}
+            <div key={g.group} className="mb-2">
+              {mini ? <div className="mx-auto my-2 h-px w-6 bg-sidebar-border" aria-hidden /> : <div className="px-3 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/55">{g.group}</div>}
               {items.map((i) => {
                 const active = path === i.to || path.startsWith(i.to + "/");
                 return (
@@ -109,13 +116,18 @@ function Shell() {
                     key={i.to}
                     to={i.to}
                     onClick={() => setOpen(false)}
+                    title={mini ? i.label : undefined}
+                    aria-label={mini ? i.label : undefined}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground",
+                      "group relative flex min-h-9 items-center gap-3 rounded-lg text-[13.5px] font-medium transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-sidebar-ring",
+                      mini ? "justify-center px-0 py-2" : "px-3 py-2",
                       active && "bg-sidebar-accent text-sidebar-accent-foreground",
                     )}
                   >
-                    <i.icon className="h-[18px] w-[18px] shrink-0" />
-                    <span className={cn(collapsed && "lg:hidden")}>{i.label}</span>
+                    {active && <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-sidebar-primary" />}
+                    <i.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-sidebar-primary" : "text-sidebar-foreground/75 group-hover:text-sidebar-accent-foreground")} />
+                    {!mini && <span className="truncate">{i.label}</span>}
                   </Link>
                 );
               })}
@@ -123,15 +135,22 @@ function Shell() {
           );
         })}
       </div>
-      <div className="border-t border-sidebar-border p-3">
-         <div className={cn(collapsed && "lg:hidden")}><div className="truncate text-sm font-medium text-sidebar-accent-foreground">{profile.full_name ?? profile.email}</div>
-         <div className="truncate text-[11px] text-sidebar-foreground/60">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></div>
-        <button onClick={signOut} className="mt-2 flex items-center gap-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-accent-foreground">
-           <LogOut className="h-3.5 w-3.5" /> <span className={cn(collapsed && "lg:hidden")}>Sign out</span>
-        </button>
+      <div className={cn("shrink-0 border-t border-sidebar-border p-3", mini && "flex justify-center")}>
+        {mini ? (
+          <button onClick={signOut} aria-label="Sign out" title="Sign out" className="grid h-9 w-9 place-items-center rounded-lg text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut className="h-4 w-4" /></button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground ring-1 ring-brass/40">{initials(profile.full_name ?? profile.email ?? "")}</span>
+            <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-sidebar-accent-foreground">{profile.full_name ?? profile.email}</div>
+              <div className="truncate text-[11px] text-sidebar-foreground/65">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></div>
+            <button onClick={signOut} aria-label="Sign out" title="Sign out" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut className="h-4 w-4" /></button>
+          </div>
+        )}
       </div>
     </nav>
   );
+  const items = NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.perm || permissions.has(i.perm)) })).filter((g) => g.items.length);
+  const groupFor = items.find((g) => g.items.some((i) => path === i.to || path.startsWith(i.to + "/")))?.group;
 
   const blocked = !profile.is_active
     ? "Your account has been deactivated. Contact your administrator."
@@ -141,33 +160,56 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className={cn("sticky top-0 hidden h-screen print:!hidden shrink-0 border-r transition-[width] lg:block", collapsed ? "w-16" : "w-64")}>{nav}</aside>
+      <aside className={cn("sticky top-0 hidden h-screen shrink-0 transition-[width] duration-200 print:!hidden lg:block", collapsed ? "w-[72px]" : "w-64")}>{renderNav(collapsed)}</aside>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-64 border-0 p-0">
+        <SheetContent side="left" className="w-[280px] max-w-[85vw] border-0 p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          {nav}
+          {renderNav(false)}
         </SheetContent>
       </Sheet>
-       <div className="min-w-0 flex-1">
-         <div className="sticky top-0 z-20 flex h-16 print:hidden items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6">
-           <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu" className="lg:hidden"><Menu className="h-5 w-5" /></Button>
-           <Button variant="ghost" size="icon" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden lg:inline-flex">{collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}</Button>
-           <h1 className="flex-1 truncate text-base font-semibold">{titleFor(path)}</h1>
-           <DropdownMenu>
-             <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted">
-               <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">{initials(profile.full_name ?? profile.email ?? "")}</span>
-               <span className="hidden max-w-40 truncate text-sm font-medium sm:block">{profile.full_name ?? profile.email}</span>
-               <ChevronDown className="h-4 w-4 text-muted-foreground" />
-             </DropdownMenuTrigger>
-             <DropdownMenuContent align="end" className="w-56">
-               <DropdownMenuLabel><div className="truncate">{profile.full_name ?? profile.email}</div><div className="truncate text-xs font-normal text-muted-foreground">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></DropdownMenuLabel>
-               <DropdownMenuSeparator />
-               <DropdownMenuItem onSelect={() => navigate({ to: "/settings/company" })}>Company settings</DropdownMenuItem>
-               <DropdownMenuItem onSelect={signOut}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
-             </DropdownMenuContent>
-           </DropdownMenu>
-        </div>
-         <main className="mx-auto max-w-[1600px] p-4 md:p-5 lg:p-6">
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput placeholder="Jump to a page…" />
+        <CommandList>
+          <CommandEmpty>No matching page.</CommandEmpty>
+          {items.map((g) => (
+            <CommandGroup key={g.group} heading={g.group}>
+              {g.items.map((i) => (
+                <CommandItem key={i.to} value={`${g.group} ${i.label}`} onSelect={() => { setSearchOpen(false); navigate({ to: i.to }); }}>
+                  <i.icon className="h-4 w-4 text-muted-foreground" />{i.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ))}
+        </CommandList>
+      </CommandDialog>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-card/90 px-3 backdrop-blur supports-[backdrop-filter]:bg-card/75 print:hidden sm:gap-3 md:h-16 md:px-6">
+          <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu" className="h-11 w-11 lg:hidden"><Menu className="h-5 w-5" /></Button>
+          <Link to="/dashboard" className="shrink-0 lg:hidden" aria-label="KK GROUP ERP home"><img src={brandMark.url} alt="KK Groups" className="h-8 w-auto object-contain" /></Link>
+          <Button variant="ghost" size="icon" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} className="hidden text-muted-foreground lg:inline-flex">{collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}</Button>
+          <div className="min-w-0 flex-1">
+            {groupFor && <div className="hidden text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground md:block">{groupFor}</div>}
+            <h1 className="truncate text-sm font-semibold tracking-tight md:text-[15px]">{titleFor(path)}</h1>
+          </div>
+          <button onClick={() => setSearchOpen(true)} className="hidden h-9 w-60 items-center gap-2 rounded-lg border bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:flex">
+            <Search className="h-4 w-4" /><span className="flex-1 text-left">Go to page…</span><kbd className="rounded border bg-muted px-1.5 font-mono text-[10px]">⌘K</kbd>
+          </button>
+          <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} aria-label="Go to page" className="h-11 w-11 md:hidden"><Search className="h-5 w-5" /></Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex min-h-11 items-center gap-2 rounded-lg px-1.5 hover:bg-muted md:min-h-9" aria-label="Account menu">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{initials(profile.full_name ?? profile.email ?? "")}</span>
+              <span className="hidden max-w-40 truncate text-sm font-medium xl:block">{profile.full_name ?? profile.email}</span>
+              <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel><div className="truncate">{profile.full_name ?? profile.email}</div><div className="truncate text-xs font-normal text-muted-foreground">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => navigate({ to: "/settings/company" })}><Settings className="h-4 w-4" />Company settings</DropdownMenuItem>
+              <DropdownMenuItem onSelect={signOut}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
+         <main className="mx-auto w-full max-w-[1600px] px-4 py-5 md:px-6 lg:px-8 lg:py-7">
           {blocked ? <div className="rounded-md border bg-card p-6 text-sm">{blocked}</div> : <Outlet />}
         </main>
       </div>
