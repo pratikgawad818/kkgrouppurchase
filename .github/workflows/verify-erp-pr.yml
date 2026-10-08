@@ -22,5 +22,7 @@ jobs:
           node-version: "24"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Generate typed TanStack routes and production bundle
+        run: npm run build
       - name: TypeScript check
         run: npx tsc --noEmit --project tsconfig.json
