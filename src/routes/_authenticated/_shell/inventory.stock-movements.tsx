@@ -24,7 +24,7 @@ function Ledger() {
     queryKey: ["stock-ledger"],
     queryFn: async () => {
       const { data, error } = await supabase.from("inventory_transactions")
-        .select("id,created_at,tx_date,tx_type,quantity_in,quantity_out,unit_cost,total_cost,balance_after,grn_id,warehouse_id,project_id,building_id,remarks,items(code,name,units_of_measure(code)),warehouses(name),projects(name),buildings(name),goods_receipt_notes(grn_number),stock_transfers(transfer_number),stock_adjustments(adjustment_number),profiles(full_name)")
+        .select("id,created_at,tx_date,tx_type,quantity_in,quantity_out,unit_cost,total_cost,balance_after,grn_id,material_issue_id,material_return_id,warehouse_id,project_id,building_id,remarks,items(code,name,units_of_measure(code)),warehouses(name),projects(name),buildings(name),goods_receipt_notes(grn_number),stock_transfers(transfer_number),stock_adjustments(adjustment_number),material_issues(issue_number),material_returns(return_number,issue_id),profiles(full_name)")
         .order("id", { ascending: false }).limit(3000);
       if (error) throw error;
       return data ?? [];
@@ -36,7 +36,7 @@ function Ledger() {
   const s = search.trim().toLowerCase();
   const rows = all.filter((x) => (!f.wh || x.warehouse_id === f.wh) && (!f.project || x.project_id === f.project) && (!f.building || x.building_id === f.building) &&
     (!f.type || x.tx_type === f.type) && (!f.from || x.tx_date >= f.from) && (!f.to || x.tx_date <= f.to) &&
-    (!s || [x.items?.name, x.items?.code, x.goods_receipt_notes?.grn_number, x.stock_transfers?.transfer_number, x.stock_adjustments?.adjustment_number].some((v) => v?.toLowerCase().includes(s))));
+    (!s || [x.items?.name, x.items?.code, x.goods_receipt_notes?.grn_number, x.stock_transfers?.transfer_number, x.stock_adjustments?.adjustment_number, x.material_issues?.issue_number, x.material_returns?.return_number].some((v) => v?.toLowerCase().includes(s))));
   const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
   return (
     <>
@@ -60,7 +60,7 @@ function Ledger() {
                 <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40" title={x.remarks ?? undefined}>
                   <td className="px-4 py-3 text-xs">{fmtDateTime(x.created_at)}</td>
                   <td className="px-4 py-3">{x.items?.name}</td><td className="px-4 py-3">{TX_LABEL[x.tx_type]}</td>
-                  <td className="px-4 py-3 font-medium tabular-nums text-xs">{x.grn_id ? <Link className="text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: x.grn_id }}>{x.goods_receipt_notes?.grn_number}</Link> : x.stock_transfers?.transfer_number ?? x.stock_adjustments?.adjustment_number ?? "—"}</td>
+                  <td className="px-4 py-3 font-medium tabular-nums text-xs">{x.grn_id ? <Link className="text-primary hover:underline" to="/inventory/goods-received/$id" params={{ id: x.grn_id }}>{x.goods_receipt_notes?.grn_number}</Link> : x.material_issue_id ? <Link className="text-primary hover:underline" to="/inventory/material-issues/$id" params={{ id: x.material_issue_id }}>{x.material_issues?.issue_number}</Link> : x.material_return_id ? <Link className="text-primary hover:underline" to="/inventory/material-issues/$id" params={{ id: x.material_returns?.issue_id ?? "" }}>{x.material_returns?.return_number}</Link> : x.stock_transfers?.transfer_number ?? x.stock_adjustments?.adjustment_number ?? "—"}</td>
                   <td className="px-4 py-3">{x.warehouses?.name}</td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums text-success">{Number(x.quantity_in) ? num(x.quantity_in) : ""}</td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums text-destructive">{Number(x.quantity_out) ? num(x.quantity_out) : ""}</td>
