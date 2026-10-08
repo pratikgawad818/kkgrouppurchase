@@ -85,6 +85,20 @@
       "when": 1791448053025,
       "tag": "0011_sync_floors_with_planned_floors",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791448054025,
+      "tag": "0012_three_director_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791448055025,
+      "tag": "0013_company_scoped_director_votes",
+      "breakpoints": true
     }
   ]
 }
