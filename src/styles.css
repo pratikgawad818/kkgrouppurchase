@@ -259,3 +259,12 @@
   .doc-table td:last-child > div, .doc-table td:last-child { gap: 0.5rem; }
   .doc-table td button { min-height: 2.75rem; }
 }
+@media (max-width: 639px) {
+  .doc-table tfoot { display: block; }
+  .doc-table tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; padding: 0.75rem 1rem; border-radius: calc(var(--radius) + 4px); background: var(--color-muted); }
+  .doc-table tfoot td { display: block; padding: 0 !important; border: 0 !important; }
+  .doc-table td input, .doc-table td select, .doc-table td textarea { max-width: 100%; margin-left: 0 !important; min-height: 2.75rem; }
+  .doc-table td > div { justify-content: flex-start !important; flex-wrap: wrap; }
+  .doc-table.max-h-72, .doc-table[class*="max-h-"] { overflow-y: auto !important; }
+  .doc-table[class*="max-h-"] tbody tr:last-child { margin-bottom: 0; }
+}

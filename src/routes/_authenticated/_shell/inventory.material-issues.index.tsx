@@ -152,7 +152,7 @@ function MaterialIssues() {
           </div>
           {warehouseId && <div className="mt-3">
             <Input aria-label="Filter store materials" className="mb-2" placeholder="Search materials in selected store" value={findMaterial} onChange={e=>setFindMaterial(e.target.value)} />
-            <div className="max-h-72 overflow-y-auto rounded-md border">
+            <div className="doc-table max-h-72 overflow-y-auto rounded-md border max-sm:max-h-[60vh]">
               {!materials.length ? <p className="p-4 text-sm text-muted-foreground">No available stock found in this store.</p> :
               <table className="w-full text-sm">
                 <thead className="sticky top-0 border-b bg-muted/90 text-xs"><tr><th className="p-2 text-left">Material</th><th className="p-2 text-right">Available</th><th className="p-2 text-right">Avg. cost</th><th className="p-2 text-right">Issue qty</th></tr></thead>
