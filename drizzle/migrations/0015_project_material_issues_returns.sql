@@ -349,7 +349,7 @@ RETURNS TABLE (
     JOIN public.material_issue_items i ON i.issue_id=h.id
     GROUP BY h.project_id,h.building_id,i.material_id
   ),
-  returns AS (
+  returned_stock AS (
     SELECT h.project_id,h.building_id,i.material_id,
       sum(i.quantity) AS qty,sum(i.total_cost) AS value
     FROM public.material_returns h
@@ -362,7 +362,7 @@ RETURNS TABLE (
       coalesce(i.material_id,r.material_id) AS mid,
       coalesce(i.qty,0) AS issued_q, coalesce(i.value,0) AS issued_v,
       coalesce(r.qty,0) AS returned_q, coalesce(r.value,0) AS returned_v
-    FROM issues i FULL JOIN returns r ON
+    FROM issues i FULL JOIN returned_stock r ON
       i.project_id=r.project_id
       AND i.building_id IS NOT DISTINCT FROM r.building_id
       AND i.material_id=r.material_id
