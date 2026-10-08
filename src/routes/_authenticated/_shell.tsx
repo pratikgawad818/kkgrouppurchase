@@ -41,6 +41,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/warehouses", label: "Warehouses", icon: Warehouse, perm: "warehouses.view" },
     { to: "/inventory/stock", label: "Stock", icon: Layers, perm: "inventory.view" },
     { to: "/inventory/stock-movements", label: "Stock Movements", icon: ArrowLeftRight, perm: "inventory.view" },
+    { to: "/inventory/material-issues", label: "Material Issues & Returns", icon: Package, perm: "inventory.view" },
+    { to: "/inventory/material-consumption", label: "Project Consumption", icon: BookOpen, perm: "inventory.view" },
   ] },
   { group: "Finance", items: [
     { to: "/finance/vendor-invoices", label: "Vendor Invoices", icon: Receipt, perm: "vendor_invoice.view" },
