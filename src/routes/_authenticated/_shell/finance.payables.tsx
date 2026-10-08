@@ -46,10 +46,10 @@ function Payables() {
     <>
       <PageHeader title="Accounts Payable" subtitle="Only approved vendor invoices are payable. Purchase orders and goods receipts are not counted here." />
       <div className="mb-3 flex flex-wrap gap-2">
-        <select className={cn(selectCls, "w-48")} value={f.vendor} onChange={(e) => set("vendor", e.target.value)}><option value="">All vendors</option>{uniq(all, (x) => x.vendor_id).map((x) => <option key={x.vendor_id} value={x.vendor_id}>{x.vendors?.company_name}</option>)}</select>
-        <select className={cn(selectCls, "w-44")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
-        <select className={cn(selectCls, "w-36")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
-        <select className={cn(selectCls, "w-40")} value={f.due} onChange={(e) => set("due", e.target.value)}><option value="">All outstanding</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="7">Due in 7 days</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-48 sm:flex-none")} value={f.vendor} onChange={(e) => set("vendor", e.target.value)}><option value="">All vendors</option>{uniq(all, (x) => x.vendor_id).map((x) => <option key={x.vendor_id} value={x.vendor_id}>{x.vendors?.company_name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.due} onChange={(e) => set("due", e.target.value)}><option value="">All outstanding</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="7">Due in 7 days</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select>
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
         <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -61,7 +61,7 @@ function Payables() {
           <Stat label="Paid" value={String(scoped.filter((x) => x.status === "paid").length)} />
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-md border bg-card lg:col-span-2">
+          <div className="doc-table rounded-xl border bg-card shadow-card lg:col-span-2">
             <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Net payable</th><th className="px-4 py-3 text-right">Paid + adjusted</th><th className="px-4 py-3 text-right">Balance</th><th className="px-4 py-3">Status</th></tr></thead>
               <tbody>

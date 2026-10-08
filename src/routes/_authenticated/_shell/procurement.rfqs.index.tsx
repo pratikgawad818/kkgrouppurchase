@@ -35,14 +35,14 @@ function RfqList() {
     <>
       <PageHeader title="RFQs" subtitle="Create RFQs from an approved purchase request." />
       <div className="mb-3 flex flex-wrap gap-2">
-        <Input className="w-56" placeholder="Search RFQ number" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
+        <Input className="h-11 w-full sm:h-9 sm:w-56" placeholder="Search RFQ number" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
         <select className="h-9 rounded-md border bg-background px-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value as RfqStatus | ""); setPage(0); }}>
           <option value="">All statuses</option>
           {Object.entries(RFQ_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+        <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">RFQ</th><th className="px-4 py-3">PR</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Response due</th><th className="px-4 py-3">Responses</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>

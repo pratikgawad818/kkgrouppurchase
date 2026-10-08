@@ -42,16 +42,16 @@ function Ledger() {
     <>
       <PageHeader title="Stock Movements" subtitle="Entries are permanent — corrections are posted as new entries." />
       <div className="mb-3 flex flex-wrap gap-2">
-        <div className="w-60"><SearchBox value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="Material, GRN, transfer, adjustment" /></div>
-        <select className={cn(selectCls, "w-40")} value={f.wh} onChange={(e) => set("wh", e.target.value)}><option value="">All stores</option>{uniq(all, (x) => x.warehouse_id).map((x) => <option key={x.warehouse_id} value={x.warehouse_id}>{x.warehouses?.name}</option>)}</select>
-        <select className={cn(selectCls, "w-40")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id!} value={x.project_id!}>{x.projects?.name}</option>)}</select>
-        <select className={cn(selectCls, "w-40")} value={f.building} onChange={(e) => set("building", e.target.value)}><option value="">All buildings</option>{uniq(all, (x) => x.building_id).map((x) => <option key={x.building_id!} value={x.building_id!}>{x.buildings?.name}</option>)}</select>
-        <select className={cn(selectCls, "w-40")} value={f.type} onChange={(e) => set("type", e.target.value)}><option value="">All types</option>{(Object.keys(TX_LABEL) as InvTxType[]).map((k) => <option key={k} value={k}>{TX_LABEL[k]}</option>)}</select>
+        <div className="w-full sm:w-60"><SearchBox value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="Material, GRN, transfer, adjustment" /></div>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.wh} onChange={(e) => set("wh", e.target.value)}><option value="">All stores</option>{uniq(all, (x) => x.warehouse_id).map((x) => <option key={x.warehouse_id} value={x.warehouse_id}>{x.warehouses?.name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id!} value={x.project_id!}>{x.projects?.name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.building} onChange={(e) => set("building", e.target.value)}><option value="">All buildings</option>{uniq(all, (x) => x.building_id).map((x) => <option key={x.building_id!} value={x.building_id!}>{x.buildings?.name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.type} onChange={(e) => set("type", e.target.value)}><option value="">All types</option>{(Object.keys(TX_LABEL) as InvTxType[]).map((k) => <option key={k} value={k}>{TX_LABEL[k]}</option>)}</select>
         <Input type="date" className="h-9 w-40" value={f.from} onChange={(e) => set("from", e.target.value)} aria-label="From date" />
         <Input type="date" className="h-9 w-40" value={f.to} onChange={(e) => set("to", e.target.value)} aria-label="To date" />
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+        <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">When</th><th className="px-4 py-3">Material</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Reference</th><th className="px-4 py-3">Store</th><th className="px-4 py-3 text-right">In</th><th className="px-4 py-3 text-right">Out</th><th className="px-4 py-3 text-right">Balance</th><th className="px-4 py-3 text-right">Value</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Building</th><th className="px-4 py-3">By</th></tr></thead>
             <tbody>

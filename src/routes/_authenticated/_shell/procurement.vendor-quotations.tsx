@@ -23,7 +23,7 @@ function Register() {
     <>
       <PageHeader title="Vendor Quotations" subtitle="Quotations are recorded from each RFQ." />
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+        <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Quote ref</th><th className="px-4 py-3">RFQ</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Valid until</th><th className="px-4 py-3 text-right">Grand total</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>

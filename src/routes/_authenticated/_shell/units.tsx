@@ -52,13 +52,13 @@ function Units() {
             <option value="">All statuses</option>
             {Object.entries(UNIT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
-          <input className="h-9 w-40 rounded-md border bg-card px-3 text-sm" placeholder="Search unit no." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input aria-label="Search unit number" className="h-11 w-full rounded-lg border bg-card px-3 text-sm sm:h-9 sm:w-40" placeholder="Search unit no." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Button onClick={() => setEdit("new")}><Plus className="h-4 w-4" /> Add Unit</Button>
       </div>
 
       {tab === "units" ? (
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
           {rows.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">No units match these filters.</div> : (
             <table className="w-full text-sm">
               <thead><tr className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">{["Unit", "Project", "Tower / Floor", "Type", "Carpet Area", "Final Price", "Status"].map((h) => <th key={h} className="px-5 py-3">{h}</th>)}</tr></thead>

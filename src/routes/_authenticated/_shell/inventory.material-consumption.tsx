@@ -87,7 +87,7 @@ function MaterialConsumption() {
       </section>}
       {rows.length===0 ? <p className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
         No posted material issue/return consumption found for these filters.
-      </p> : <div className="overflow-x-auto rounded-xl border bg-card">
+      </p> : <><p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div role="region" aria-label="Project consumption" tabIndex={0} className="overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full min-w-[890px] text-sm">
           <thead className="border-b bg-muted/30 text-xs"><tr>
             <th className="p-3 text-left">Project</th><th className="p-3 text-left">Building</th>

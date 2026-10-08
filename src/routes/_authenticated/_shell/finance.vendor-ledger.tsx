@@ -52,8 +52,8 @@ function Ledger() {
     <>
       <PageHeader title="Vendor Ledger" subtitle="Credit = approved bills (net of TDS). Debit = recorded payments and advances. Purchase orders are commitments and are shown separately." />
       <div className="mb-3 flex flex-wrap gap-2">
-        <select className={cn(selectCls, "w-64")} value={vendor} onChange={(e) => setVendor(e.target.value)}><option value="">Select vendor</option>{vendors.data?.map((x) => <option key={x.id} value={x.id}>{x.company_name}</option>)}</select>
-        <select className={cn(selectCls, "w-36")} value={fy} onChange={(e) => setFy(e.target.value)}>{years.map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-64 sm:flex-none")} value={vendor} onChange={(e) => setVendor(e.target.value)}><option value="">Select vendor</option>{vendors.data?.map((x) => <option key={x.id} value={x.id}>{x.company_name}</option>)}</select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={fy} onChange={(e) => setFy(e.target.value)}>{years.map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
       </div>
       {!vendor ? <p className="text-sm text-muted-foreground">Choose a vendor to see their account.</p> : q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -63,7 +63,7 @@ function Ledger() {
           <Stat label="Unadjusted advances" value={inr(q.data?.advLeft)} />
           <Stat label="Open PO commitments" value={inr((q.data?.pos ?? []).reduce((s, x) => s + Number(x.grand_total), 0))} hint={`${q.data?.pos.length ?? 0} POs — not payable`} />
         </div>
-        <div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap"><table className="w-full text-sm">
+        <p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap" role="region" aria-label="Vendor ledger" tabIndex={0}><table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Document</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Details</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
           <tbody>
             <tr className="border-b bg-muted/20"><td className="px-4 py-3" colSpan={6}>Opening balance</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(opening)}</td></tr>
