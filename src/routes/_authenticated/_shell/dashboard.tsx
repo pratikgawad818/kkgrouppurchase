@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, Building2, ClipboardList, Clock, IndianRupee, Package, Plus, ShoppingCart, Store, Users, Wallet, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -296,6 +296,16 @@ function Dashboard() {
   const [fy, setFy] = useState(current);
   const [projectId, setProjectId] = useState("");
   const [buildingId, setBuildingId] = useState("");
+  useEffect(() => {
+    const saved = window.localStorage.getItem("kk-dashboard-project");
+    if (saved) setProjectId(saved);
+  }, []);
+  function selectProject(id: string) {
+    setProjectId(id);
+    setBuildingId("");
+    if (id) window.localStorage.setItem("kk-dashboard-project", id);
+    else window.localStorage.removeItem("kk-dashboard-project");
+  }
 
   const q = useQuery({
     queryKey: ["dashboard", projectId, buildingId],
@@ -320,8 +330,10 @@ function Dashboard() {
   if (q.error) return <div className="text-sm text-destructive">{q.error.message}</div>;
   const d = q.data!;
   const scoped = projectId ? d.projects.filter((p) => p.id === projectId) : d.projects;
+  const selectedProject = d.projects.find((p) => p.id === projectId);
+  const scopedBuildings = projectId ? d.buildings.filter((b) => b.project_id === projectId) : d.buildings;
   const active = scoped.filter((p) => ["under_construction", "near_completion"].includes(p.status)).length;
-  const building = d.buildings.find((b) => b.id === buildingId);
+  const building = scopedBuildings.find((b) => b.id === buildingId);
   const budget = building ? Number(building.budget) : scoped.reduce((s, p) => s + Number(p.budget), 0);
   const sel = "h-9 rounded-md border bg-background px-2 text-sm";
 
@@ -335,17 +347,25 @@ function Dashboard() {
             <select className={sel} value={fy} onChange={(e) => setFy(Number(e.target.value))} aria-label="Financial year">
               {[current + 1, current, current - 1, current - 2].map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}
             </select>
-            <select className={sel} value={projectId} onChange={(e) => { setProjectId(e.target.value); setBuildingId(""); }} aria-label="Project">
+            <select className={sel} value={projectId} onChange={(e) => selectProject(e.target.value)} aria-label="Project">
               <option value="">All projects</option>
               {d.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <select className={sel} value={buildingId} onChange={(e) => setBuildingId(e.target.value)} aria-label="Building" disabled={!projectId}>
               <option value="">All buildings</option>
-              {d.buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              {scopedBuildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </>
         }
       />
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current workspace</p>
+          <p className="mt-1 text-base font-semibold">{selectedProject?.name ?? "All projects"}</p>
+          <p className="text-xs text-muted-foreground">{selectedProject ? `${selectedProject.code} · ${scopedBuildings.length} buildings` : `${d.projects.length} projects across KK GROUP`}</p>
+        </div>
+        {selectedProject && <Link to="/projects" className="text-sm font-medium text-primary hover:underline">View projects</Link>}
+      </div>
       <Overview canMoney={can("financial.view")} canStock={can("inventory.view")} canPr={can("purchase_request.view")} canPo={can("purchase_order.view")} canAp={can("payable.view")} />
       {can("purchase_request.view") && <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />}
       {can("purchase_order.view") && <PoSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
