@@ -69,7 +69,7 @@ function StockPage() {
             <tbody>
               {rows.length === 0 && <tr><td colSpan={7} className="p-4 text-xs text-muted-foreground">No stock yet. Stock appears after goods are received against a purchase order.</td></tr>}
               {rows.map((x) => { const st = status(x); return (
-                <tr key={x.warehouse_id + x.material_id} className="border-b last:border-0">
+                <tr key={x.warehouse_id + x.material_id} className="border-b last:border-0 hover:bg-muted/40">
                   <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
                   <td className="px-4 py-3">{x.warehouses?.name}</td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
@@ -118,7 +118,7 @@ function TransferDialog({ stock, warehouses, onClose }: { stock: StockRow[]; war
         </div>
         {from && (avail.length === 0 ? <div className="text-xs text-muted-foreground">No stock in this store.</div> : (
           <table className="w-full text-sm"><tbody>{avail.map((x) => (
-            <tr key={x.material_id} className="border-b last:border-0">
+            <tr key={x.material_id} className="border-b last:border-0 hover:bg-muted/40">
               <td className="p-1.5">{x.items?.name}</td><td className="p-1.5 text-right font-mono text-xs">avail {num(x.quantity_on_hand)}</td>
               <td className="p-1.5"><Input type="number" min={0} max={x.quantity_on_hand} className="h-8 w-24" value={qty[x.material_id] ?? ""} onChange={(e) => setQty({ ...qty, [x.material_id]: e.target.value })} /></td>
             </tr>))}</tbody></table>

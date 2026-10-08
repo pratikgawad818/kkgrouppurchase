@@ -26,7 +26,7 @@ export const TX_LABEL: Record<InvTxType, string> = {
   opening_stock: "Opening stock", goods_receipt: "Goods receipt", transfer_in: "Transfer in", transfer_out: "Transfer out", damage: "Damage", adjustment: "Adjustment", material_issue: "Material issue", material_return: "Material return", purchase_return: "Purchase return",
 };
 
-export const selectCls = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
+export const selectCls = "h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm shadow-sm";
 
 export type GrnStatus = Database["public"]["Enums"]["grn_status"];
 export const GRN_STATUS: Record<GrnStatus, { label: string; cls: string }> = {

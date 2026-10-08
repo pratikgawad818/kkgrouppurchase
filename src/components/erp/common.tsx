@@ -20,7 +20,7 @@ export function PageHeader({ title, subtitle, actions, crumbs }: { title: string
 export function UnitStatusBadge({ status, className }: { status: UnitStatus; className?: string }) {
   const s = UNIT_STATUS[status];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-0.5 text-[11px] font-medium", TONE_CLASSES[s.tone]?.badge, className)}>
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium", TONE_CLASSES[s.tone]?.badge, className)}>
       <span className={cn("h-1.5 w-1.5 rounded-full", TONE_CLASSES[s.tone]?.dot)} />
       {s.label}
     </span>
@@ -28,7 +28,7 @@ export function UnitStatusBadge({ status, className }: { status: UnitStatus; cla
 }
 
 export function Pill({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cn("inline-flex items-center rounded-sm border bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground", className)}>{children}</span>;
+  return <span className={cn("inline-flex items-center rounded-full border bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground", className)}>{children}</span>;
 }
 
 export function Stat({ label, value, hint, className }: { label: string; value: ReactNode; hint?: ReactNode; className?: string }) {
@@ -44,7 +44,7 @@ export function Stat({ label, value, hint, className }: { label: string; value: 
 export function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-0.5 truncate text-sm">{children ?? "—"}</div>
     </div>
   );
@@ -62,7 +62,7 @@ export function Progress({ value }: { value: number }) {
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">{children}</div>;
+  return <div className="rounded-xl border border-dashed bg-muted/30 px-6 py-16 text-center text-sm text-muted-foreground">{children}</div>;
 }
 
 export function Loading() {
@@ -73,6 +73,7 @@ export function SearchBox({ value, onChange, placeholder = "Search" }: { value: 
   return <div className="relative w-full max-w-sm"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-8" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></div>;
 }
 
+// Records keep their is_demo flag in the database; the label is hidden because the company treats these records as real.
 export function DemoBadge() {
-  return <span className="rounded-sm border border-primary/25 bg-primary/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">Demo</span>;
+  return null;
 }
