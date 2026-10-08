@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -47,11 +47,12 @@ function StockPage() {
   const total = rows.reduce((a, x) => a + Number(x.total_value), 0);
   return (
     <>
-      <PageHeader title="Stock" subtitle="Stock changes only through posted goods receipts, transfers and authorised adjustments."
+      <PageHeader title="Stock" subtitle="Stock changes through posted goods receipts, transfers, authorised adjustments, project material issues and returns."
         actions={<div className="flex gap-2">
           {can("inventory.adjust") && <Button size="sm" variant="outline" onClick={() => setAdj("opening_stock")}>Opening stock</Button>}
           {can("inventory.adjust") && <Button size="sm" variant="outline" onClick={() => setAdj("adjustment")}>Adjust stock</Button>}
           {can("inventory.transfer") && <Button size="sm" onClick={() => setTransfer(true)}>Transfer stock</Button>}
+          {can("inventory.issue") && <Link to="/inventory/material-issues"><Button size="sm" variant="outline">Issue to project</Button></Link>}
         </div>} />
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : <>
         <div className="mb-3 grid gap-3 md:grid-cols-3">
