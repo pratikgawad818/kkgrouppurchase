@@ -167,6 +167,170 @@ export type Database = {
           { foreignKeyName: "vendor_delivery_challan_items_po_item_id_fkey"; columns: ["po_item_id"]; isOneToOne: false; referencedRelation: "purchase_order_items"; referencedColumns: ["id"] },
         ]
       }
+      material_issues: {
+        Row: {
+          id: string
+          issue_number: string
+          company_id: string
+          warehouse_id: string
+          project_id: string
+          building_id: string | null
+          issued_to: string
+          purpose: string
+          issue_date: string
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          issue_number: string
+          company_id: string
+          warehouse_id: string
+          project_id: string
+          building_id?: string | null
+          issued_to: string
+          purpose: string
+          issue_date?: string
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          issue_number?: string
+          company_id?: string
+          warehouse_id?: string
+          project_id?: string
+          building_id?: string | null
+          issued_to?: string
+          purpose?: string
+          issue_date?: string
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "material_issues_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_issues_warehouse_id_fkey"; columns: ["warehouse_id"]; isOneToOne: false; referencedRelation: "warehouses"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_issues_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_issues_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_issues_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      material_issue_items: {
+        Row: {
+          id: string
+          issue_id: string
+          material_id: string
+          quantity: number
+          unit_cost: number
+          total_cost: number
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          material_id: string
+          quantity: number
+          unit_cost: number
+          total_cost: number
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          material_id?: string
+          quantity?: number
+          unit_cost?: number
+          total_cost?: number
+        }
+        Relationships: [
+          { foreignKeyName: "material_issue_items_issue_id_fkey"; columns: ["issue_id"]; isOneToOne: false; referencedRelation: "material_issues"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_issue_items_material_id_fkey"; columns: ["material_id"]; isOneToOne: false; referencedRelation: "items"; referencedColumns: ["id"] },
+        ]
+      }
+      material_returns: {
+        Row: {
+          id: string
+          return_number: string
+          issue_id: string
+          company_id: string
+          warehouse_id: string
+          project_id: string
+          building_id: string | null
+          returned_by: string
+          reason: string
+          return_date: string
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          return_number: string
+          issue_id: string
+          company_id: string
+          warehouse_id: string
+          project_id: string
+          building_id?: string | null
+          returned_by: string
+          reason: string
+          return_date?: string
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          return_number?: string
+          issue_id?: string
+          company_id?: string
+          warehouse_id?: string
+          project_id?: string
+          building_id?: string | null
+          returned_by?: string
+          reason?: string
+          return_date?: string
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "material_returns_issue_id_fkey"; columns: ["issue_id"]; isOneToOne: false; referencedRelation: "material_issues"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_returns_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_returns_warehouse_id_fkey"; columns: ["warehouse_id"]; isOneToOne: false; referencedRelation: "warehouses"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_returns_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_returns_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_returns_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      material_return_items: {
+        Row: {
+          id: string
+          return_id: string
+          issue_item_id: string
+          material_id: string
+          quantity: number
+          unit_cost: number
+          total_cost: number
+        }
+        Insert: {
+          id?: string
+          return_id: string
+          issue_item_id: string
+          material_id: string
+          quantity: number
+          unit_cost: number
+          total_cost: number
+        }
+        Update: {
+          id?: string
+          return_id?: string
+          issue_item_id?: string
+          material_id?: string
+          quantity?: number
+          unit_cost?: number
+          total_cost?: number
+        }
+        Relationships: [
+          { foreignKeyName: "material_return_items_return_id_fkey"; columns: ["return_id"]; isOneToOne: false; referencedRelation: "material_returns"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_return_items_issue_item_id_fkey"; columns: ["issue_item_id"]; isOneToOne: false; referencedRelation: "material_issue_items"; referencedColumns: ["id"] },
+          { foreignKeyName: "material_return_items_material_id_fkey"; columns: ["material_id"]; isOneToOne: false; referencedRelation: "items"; referencedColumns: ["id"] },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -798,6 +962,10 @@ export type Database = {
       inventory_transactions: {
         Row: {
           adjustment_id: string | null
+          material_issue_id: string | null
+          material_issue_item_id: string | null
+          material_return_id: string | null
+          material_return_item_id: string | null
           balance_after: number
           building_id: string | null
           company_id: string
@@ -820,6 +988,10 @@ export type Database = {
         }
         Insert: {
           adjustment_id?: string | null
+          material_issue_id: string | null
+          material_issue_item_id: string | null
+          material_return_id: string | null
+          material_return_item_id: string | null
           balance_after: number
           building_id?: string | null
           company_id: string
@@ -842,6 +1014,10 @@ export type Database = {
         }
         Update: {
           adjustment_id?: string | null
+          material_issue_id?: string | null
+          material_issue_item_id?: string | null
+          material_return_id?: string | null
+          material_return_item_id?: string | null
           balance_after?: number
           building_id?: string | null
           company_id?: string
@@ -863,6 +1039,10 @@ export type Database = {
           warehouse_id?: string
         }
         Relationships: [
+          { foreignKeyName: "inventory_transactions_material_issue_id_fkey"; columns: ["material_issue_id"]; isOneToOne: false; referencedRelation: "material_issues"; referencedColumns: ["id"] },
+          { foreignKeyName: "inventory_transactions_material_issue_item_id_fkey"; columns: ["material_issue_item_id"]; isOneToOne: false; referencedRelation: "material_issue_items"; referencedColumns: ["id"] },
+          { foreignKeyName: "inventory_transactions_material_return_id_fkey"; columns: ["material_return_id"]; isOneToOne: false; referencedRelation: "material_returns"; referencedColumns: ["id"] },
+          { foreignKeyName: "inventory_transactions_material_return_item_id_fkey"; columns: ["material_return_item_id"]; isOneToOne: false; referencedRelation: "material_return_items"; referencedColumns: ["id"] },
           {
             foreignKeyName: "inventory_transactions_adjustment_id_fkey"
             columns: ["adjustment_id"]
@@ -4031,6 +4211,45 @@ export type Database = {
       cancel_vendor_delivery_challan: {
         Args: { _id: string; _reason: string }
         Returns: undefined
+      }
+      record_material_issue: {
+        Args: {
+          _warehouse_id: string
+          _project_id: string
+          _building_id: string | null
+          _issued_to: string
+          _purpose: string
+          _items: Json
+        }
+        Returns: string
+      }
+      record_material_return: {
+        Args: {
+          _issue_id: string
+          _returned_by: string
+          _reason: string
+          _items: Json
+        }
+        Returns: string
+      }
+      project_material_consumption: {
+        Args: { _project_id?: string | null }
+        Returns: {
+          project_id: string
+          project_name: string
+          building_id: string | null
+          building_name: string | null
+          material_id: string
+          material_code: string
+          material_name: string
+          unit_code: string
+          issued_quantity: number
+          returned_quantity: number
+          net_quantity: number
+          issued_value: number
+          returned_value: number
+          net_value: number
+        }[]
       }
       acct: { Args: { _code: string; _company: string }; Returns: string }
       apply_vendor_advance: {
