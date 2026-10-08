@@ -111,7 +111,7 @@ function PoDetail() {
           </>}
           {po.status === "approved" && can("purchase_order.create") && <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate("sent")}>Mark as sent</Button>}
           {canReceive && <Button size="sm" onClick={() => setReceiveOpen(true)}>Receive goods</Button>}
-          {["partially_received", "fully_received"].includes(po.status) && can("purchase_order.approve") && <Button size="sm" variant="outline" onClick={() => setDlg("closed")}>Close PO</Button>}
+          {["partially_received", "partially_accepted", "fully_received"].includes(po.status) && can("purchase_order.approve") && <Button size="sm" variant="outline" onClick={() => setDlg("closed")}>Close PO</Button>}
           {["draft", "pending_approval", "approved", "rejected", "sent"].includes(po.status) && grns.length === 0 && can("purchase_order.cancel") && <Button size="sm" variant="ghost" onClick={() => setDlg("cancelled")}>Cancel</Button>}
           <Button size="sm" variant="ghost" onClick={() => window.print()}>Print</Button>
           <Button size="sm" variant="ghost" onClick={() => { const t = document.title; document.title = po.po_number; window.print(); document.title = t; }}>Download PDF</Button>
