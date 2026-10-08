@@ -135,7 +135,7 @@ CREATE TRIGGER material_return_items_immutable BEFORE UPDATE OR DELETE ON public
 -- issue/return FKs, so write source-linked ledger entries directly here.
 CREATE OR REPLACE FUNCTION public.post_material_stock(
   _kind text, _company uuid, _warehouse uuid, _material uuid, _project uuid, _building uuid,
-  _qty numeric, _source_cost numeric, _issue uuid, _issue_item uuid, _return uuid, _return_item uuid
+  _qty numeric, _source_cost numeric, _issue uuid, _issue_item uuid, _return uuid, _return_item uuid, _document_value numeric
 ) RETURNS numeric LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE stock record; cost numeric; remaining numeric; weighted numeric; inbound numeric; outbound numeric;
 BEGIN
@@ -143,6 +143,7 @@ BEGIN
     RAISE EXCEPTION 'Quantity must be positive with at most three decimals';
   END IF;
   IF _kind NOT IN ('issue','return') THEN RAISE EXCEPTION 'Invalid stock movement'; END IF;
+  IF _document_value IS NULL OR _document_value < 0 THEN RAISE EXCEPTION 'Invalid stock document valuation'; END IF;
   SELECT * INTO stock FROM public.warehouse_stock
     WHERE warehouse_id=_warehouse AND material_id=_material FOR UPDATE;
   IF _kind = 'issue' THEN
@@ -183,13 +184,13 @@ BEGIN
   ) VALUES (
     _company,public.ist_today(),
     CASE WHEN _kind='issue' THEN 'material_issue'::public.inventory_tx_type ELSE 'material_return'::public.inventory_tx_type END,
-    _warehouse,_material,_project,_building,inbound,outbound,cost,round(_qty*cost,2),remaining,auth.uid(),
+    _warehouse,_material,_project,_building,inbound,outbound,cost,_document_value,remaining,auth.uid(),
     _issue,_issue_item,_return,_return_item,
     CASE WHEN _kind='issue' THEN 'Issued for project work' ELSE 'Unused material returned to store' END
   );
   RETURN cost;
 END $$;
-REVOKE ALL ON FUNCTION public.post_material_stock(text,uuid,uuid,uuid,uuid,uuid,numeric,numeric,uuid,uuid,uuid,uuid)
+REVOKE ALL ON FUNCTION public.post_material_stock(text,uuid,uuid,uuid,uuid,uuid,numeric,numeric,uuid,uuid,uuid,uuid,numeric)
   FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION public.record_material_issue(
@@ -245,7 +246,7 @@ BEGIN
       VALUES(new_id,material,qty,stock.weighted_avg_cost,round(qty*stock.weighted_avg_cost,2))
       RETURNING id INTO detail;
     PERFORM public.post_material_stock('issue',w.company_id,_warehouse_id,material,_project_id,_building_id,qty,
-       stock.weighted_avg_cost,new_id,detail,NULL,NULL);
+       stock.weighted_avg_cost,new_id,detail,NULL,NULL,round(qty*stock.weighted_avg_cost,2));
     count_lines := count_lines + 1;
   END LOOP;
   PERFORM public.log_event('material_issue_posted','Material Issue',issue_no,new_id,NULL,NULL,
@@ -259,7 +260,7 @@ GRANT EXECUTE ON FUNCTION public.record_material_issue(uuid,uuid,uuid,text,text,
 CREATE OR REPLACE FUNCTION public.record_material_return(
   _issue_id uuid,_returned_by text,_reason text,_items jsonb
 ) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE original record; line jsonb; src record; qty numeric; returned numeric;
+DECLARE original record; line jsonb; src record; qty numeric; returned numeric; credit_value numeric;
         return_id uuid; detail uuid; return_no text; count_lines integer := 0;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.has_permission(auth.uid(),'inventory.return') THEN
@@ -302,11 +303,15 @@ BEGIN
       RAISE EXCEPTION 'Cannot return %. Only % remain on this original issue line',
         qty,src.quantity - returned;
     END IF;
+    -- Cumulative rounding prevents multiple small returns from crediting
+    -- more than the original issue line (e.g. two 1-unit returns at ₹0.005).
+    credit_value := least(src.total_cost,round((returned+qty)*src.unit_cost,2))
+      - least(src.total_cost,round(returned*src.unit_cost,2));
     INSERT INTO public.material_return_items(return_id,issue_item_id,material_id,quantity,unit_cost,total_cost)
-      VALUES(return_id,src.id,src.material_id,qty,src.unit_cost,round(qty*src.unit_cost,2))
+      VALUES(return_id,src.id,src.material_id,qty,src.unit_cost,credit_value)
       RETURNING id INTO detail;
     PERFORM public.post_material_stock('return',original.company_id,original.warehouse_id,src.material_id,
-      original.project_id,original.building_id,qty,src.unit_cost,NULL,NULL,return_id,detail);
+      original.project_id,original.building_id,qty,src.unit_cost,NULL,NULL,return_id,detail,credit_value);
     count_lines := count_lines + 1;
   END LOOP;
   PERFORM public.log_event('material_return_posted','Material Return',return_no,return_id,NULL,NULL,
