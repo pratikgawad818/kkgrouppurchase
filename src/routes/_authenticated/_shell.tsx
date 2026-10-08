@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Banknote, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
+import { ArrowLeftRight, Banknote, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -23,6 +23,9 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/projects", label: "Projects", icon: Building2 },
     { to: "/buildings", label: "Buildings", icon: Building },
     { to: "/units", label: "Property Inventory", icon: Boxes },
+  ] },
+  { group: "Approvals", items: [
+    { to: "/approvals", label: "Director Approvals", icon: ShieldCheck },
   ] },
   { group: "Procurement", items: [
     { to: "/procurement/purchase-requests", label: "Purchase Requests", icon: ClipboardList, perm: "purchase_request.view" },
