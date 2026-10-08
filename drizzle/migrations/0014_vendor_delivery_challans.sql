@@ -159,6 +159,29 @@ END $$;
 REVOKE ALL ON FUNCTION public.cancel_vendor_delivery_challan(uuid,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.cancel_vendor_delivery_challan(uuid,text) TO authenticated;
 
+-- A PO with a live supplier dispatch document must not be cancelled until
+-- those dispatch documents are cancelled or resolved.
+CREATE OR REPLACE FUNCTION public.prevent_po_cancel_with_active_challans()
+RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $
+BEGIN
+  IF NEW.status = 'cancelled' AND OLD.status IS DISTINCT FROM NEW.status
+     AND EXISTS (
+       SELECT 1 FROM public.vendor_delivery_challans dc
+       WHERE dc.po_id=NEW.id AND dc.status='registered'
+     ) THEN
+    RAISE EXCEPTION 'Cancel active supplier delivery challans before cancelling this PO';
+  END IF;
+  RETURN NEW;
+END $;
+CREATE TRIGGER prevent_po_cancel_with_active_challans
+BEFORE UPDATE OF status ON public.purchase_orders
+FOR EACH ROW EXECUTE FUNCTION public.prevent_po_cancel_with_active_challans();
+
+-- The deprecated four-argument GRN RPC from the original Phase 4 migration
+-- lacks the newer integrity guards. The frontend uses the five-argument RPC.
+REVOKE EXECUTE ON FUNCTION public.create_goods_receipt(uuid,uuid,jsonb,jsonb)
+  FROM PUBLIC, authenticated;
+
 -- Preserve the existing five-argument GRN API. When a challan is supplied,
 -- validate every material and its remaining dispatch quantity under a row lock.
 -- Legacy unmatched GRNs remain visible; the new user interface requires a registered challan.
