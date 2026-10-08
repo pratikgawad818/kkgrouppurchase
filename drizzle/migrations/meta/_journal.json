@@ -99,6 +99,13 @@
       "when": 1791448055025,
       "tag": "0013_company_scoped_director_votes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791448056025,
+      "tag": "0014_vendor_delivery_challans",
+      "breakpoints": true
     }
   ]
 }
