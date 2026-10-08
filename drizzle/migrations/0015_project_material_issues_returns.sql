@@ -84,7 +84,7 @@ FROM (VALUES
  ('project_manager','inventory.return'),
  ('director','inventory.issue'),
  ('director','inventory.return')
-) AS grants(role_name,permission_code)
+) AS role_grants(role_name,permission_code)
 ON CONFLICT DO NOTHING;
 
 ALTER TABLE public.material_issues ENABLE ROW LEVEL SECURITY;
