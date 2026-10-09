@@ -91,3 +91,19 @@ test("zero ordered quantities cannot produce fabricated PO commitments", () => {
   assert.equal(totals.estimatedOpenLineValue, 0);
   assert.equal(totals.openLines, 0);
 });
+
+
+test("dashboard outstanding PO value never treats damaged receipt as accepted stock", () => {
+  const line = {
+    ordered_quantity: 10,
+    received_quantity: 8, // 3 pieces damaged or rejected, only 5 accepted
+    accepted_quantity: 5,
+    short_closed_quantity: 1,
+    line_total: 1000,
+  };
+  const totals = purchaseOrderLineValues([line]);
+  assert.equal(totals.acceptedLineValue, 500);
+  assert.equal(totals.estimatedOpenLineValue, 400);
+  assert.equal(totals.openLines, 1);
+  assert.equal(totals.acceptancePercent, 56);
+});
