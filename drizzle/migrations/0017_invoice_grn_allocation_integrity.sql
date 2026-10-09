@@ -87,16 +87,16 @@ BEGIN
   PERFORM g.id
     FROM goods_receipt_notes g
     WHERE g.id IN (
-      SELECT DISTINCT gi.grn_id FROM goods_receipt_items gi
-      WHERE gi.id IN (
+      SELECT DISTINCT locked_grn_item.grn_id FROM goods_receipt_items locked_grn_item
+      WHERE locked_grn_item.id IN (
         SELECT (line.value->>'grn_item_id')::uuid
         FROM jsonb_array_elements(_items) AS line(value)
       )
     )
     ORDER BY g.id FOR SHARE;
-  PERFORM gi.id
-    FROM goods_receipt_items gi
-    WHERE gi.id IN (
+  PERFORM locked_grn_item.id
+    FROM goods_receipt_items locked_grn_item
+    WHERE locked_grn_item.id IN (
       SELECT (line.value->>'grn_item_id')::uuid
       FROM jsonb_array_elements(_items) AS line(value)
     )
