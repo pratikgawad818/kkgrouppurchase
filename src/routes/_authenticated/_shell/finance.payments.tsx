@@ -16,6 +16,7 @@ import { PAGE } from "@/lib/fy";
 import { useCan, useMe } from "@/lib/session";
 import { badge, openVendorDoc, PAYMENT_MODES, PAYMENT_STATUS, today, uploadVendorDoc, type PaymentKind } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { availableAfterScheduled, inspectPaymentSchedule } from "@/lib/payment-preflight";
 
 const META = "Schedule, approve and record vendor payments and advances.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/payments")({
@@ -109,20 +110,42 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
     queryKey: ["pay-open", vendor], enabled: kind === "invoice" && !!vendor,
     queryFn: async () => {
       const [i, a] = await Promise.all([
-        supabase.from("vendor_invoices").select("id,invoice_number,vendor_invoice_number,due_date,balance_due,project_id").eq("vendor_id", vendor).in("status", ["approved", "partially_paid"]).order("due_date"),
-        supabase.from("vendor_payment_allocations").select("invoice_id,amount,vendor_payments!inner(status)").in("vendor_payments.status", ["scheduled", "approved"]),
+        supabase.from("vendor_invoices").select("id,invoice_number,vendor_invoice_number,due_date,balance_due,project_id").eq("vendor_id", vendor).in("status", ["approved", "partially_paid"]).order("due_date").limit(1001),
+        supabase.from("vendor_payment_allocations").select("invoice_id,amount,vendor_payments!inner(status)").in("vendor_payments.status", ["scheduled", "approved"]).limit(1001),
       ]);
+      if (i.error) throw i.error;
+      if (a.error) throw a.error;
+      if ((i.data?.length ?? 0) > 1000 || (a.data?.length ?? 0) > 1000) {
+        throw new Error("Payment availability exceeds the current 1,000-row verification limit. Ask Accounts to review the complete payment register before scheduling.");
+      }
       const pending = new Map<string, number>();
       for (const x of a.data ?? []) pending.set(x.invoice_id, (pending.get(x.invoice_id) ?? 0) + Number(x.amount));
-      return (i.data ?? []).map((x) => ({ ...x, payable: Number(x.balance_due) - (pending.get(x.id) ?? 0) }));
+      return (i.data ?? []).map((x) => {
+        const payable = availableAfterScheduled(Number(x.balance_due), pending.get(x.id) ?? 0);
+        if (payable === null) throw new Error(`Cannot determine the available balance for invoice ${x.invoice_number}.`);
+        return { ...x, payable };
+      });
     },
   });
   useEffect(() => { setAlloc({}); }, [vendor]);
-  const total = kind === "advance" ? Number(h.amount || 0) : Object.values(alloc).reduce((s, v) => s + Number(v || 0), 0);
+  const invoicePreflight = inspectPaymentSchedule(alloc, inv.data ?? [],
+    kind === "invoice" && !!vendor && inv.isSuccess && !inv.isFetching && !inv.error);
+  const advanceAmount = h.amount.trim();
+  const validAdvance = /^\\d+(?:\\.\\d{1,2})?$/.test(advanceAmount) &&
+    Number(advanceAmount) > 0 && Number.isFinite(Number(advanceAmount)) &&
+    !!h.remarks.trim();
+  const total = kind === "advance" ? (validAdvance ? Number(advanceAmount) : 0) : invoicePreflight.total;
+  const canSchedule = !!vendor && !save.isPending && !base.isLoading && !base.error &&
+    (kind === "advance" ? validAdvance : invoicePreflight.errors.length === 0);
   const save = useMutation({
     mutationFn: async () => {
-      const allocations = Object.entries(alloc).filter(([, v]) => Number(v) > 0).map(([invoice_id, amount]) => ({ invoice_id, amount: Number(amount) }));
-      const { error } = await supabase.rpc("schedule_vendor_payment", { _header: { kind, vendor_id: vendor, ...h }, _allocations: allocations });
+      if (!vendor || base.isLoading || base.error) throw new Error("Vendor information is not available. Refresh before scheduling.");
+      if (kind === "advance" && !validAdvance) throw new Error("Enter a positive advance amount (up to two decimals) and a purpose.");
+      if (kind === "invoice" && invoicePreflight.errors.length) throw new Error(invoicePreflight.errors.join(" "));
+      const { error } = await supabase.rpc("schedule_vendor_payment", {
+        _header: { kind, vendor_id: vendor, ...h },
+        _allocations: kind === "invoice" ? invoicePreflight.allocations : [],
+      });
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Payment scheduled"); onDone(); onClose(); },
@@ -142,7 +165,13 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
             <Field label="Project (optional)"><select className={selectCls} value={h.project_id} onChange={(e) => setH({ ...h, project_id: e.target.value })}><option value="">—</option>{base.data?.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           </>}
         </div>
-        {kind === "invoice" && vendor && (inv.isLoading ? <Loading /> : (
+        {base.error && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">Vendor/bank details could not be loaded: {errMsg(base.error)}</p>}
+        {kind === "invoice" && vendor && (inv.isLoading ? <Loading /> : inv.error ? (
+          <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            <p>Invoice balances or pending payment reservations could not be verified: {errMsg(inv.error)}</p>
+            <Button size="sm" variant="outline" className="mt-2" onClick={() => inv.refetch()}>Retry availability check</Button>
+          </div>
+        ) : (
           <div className="doc-table max-h-64 overflow-auto rounded-md border max-sm:max-h-[55vh]"><table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Payable now</th><th className="px-4 py-3 text-right">Pay</th></tr></thead>
             <tbody>
@@ -152,8 +181,12 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
             </tbody>
           </table></div>
         ))}
+        {kind === "invoice" && vendor && !inv.isLoading && !inv.error && invoicePreflight.errors.length > 0 && Object.values(alloc).some(v => v.trim()) &&
+          <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+            {invoicePreflight.errors.map((message, i) => <p key={i}>{message}</p>)}
+          </div>}
         <Field label={kind === "advance" ? "Purpose (required)" : "Remarks"}><Textarea rows={2} value={h.remarks} onChange={(e) => setH({ ...h, remarks: e.target.value })} /></Field>
-        <DialogFooter><span className="mr-auto text-sm">Total <span className="font-mono font-semibold">{inr(total)}</span></span><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!vendor || total <= 0 || save.isPending} onClick={() => save.mutate()}>Schedule</Button></DialogFooter>
+        <DialogFooter><span className="mr-auto text-sm">Total <span className="font-mono font-semibold">{inr(total)}</span></span><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!canSchedule || total <= 0} onClick={() => save.mutate()}>Schedule</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
