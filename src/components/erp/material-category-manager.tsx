@@ -4,6 +4,7 @@ import { FolderPlus, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { requireSingleCompanyId } from "@/lib/company-scope";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -105,13 +106,13 @@ export function MaterialCategoryManager({
           .update(common).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { data: company, error: companyError } = await supabase.from("companies")
-          .select("id").limit(1).single();
+        const { data: companies, error: companyError } = await supabase.from("companies")
+          .select("id").limit(2);
         if (companyError) throw companyError;
-        if (!company) throw new Error("Company is unavailable.");
+        const companyId = requireSingleCompanyId(companies);
         const { error } = await supabase.from("item_categories").insert({
           ...common,
-          company_id: company.id,
+          company_id: companyId,
           parent_id: form.parent_id || null,
         });
         if (error) throw error;
