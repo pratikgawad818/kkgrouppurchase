@@ -62,7 +62,14 @@ Using `BEGIN; ... migration 0017; SET LOCAL ROLE authenticated; ... ROLLBACK;` o
 
 **Isolation verified:** Original `save_vendor_invoice` function MD5 `7a48030b7135dea1d5a3019fd5270ca8` remains unchanged; index absent; migration 0017 not registered; existing invoice headers **6**, invoice lines **6**, GRN items **7**; test document prefixes `QA-%` absent; sample GRN availability restored to **10.000**. The disposable test entries, audit records and document counter updates were rolled back.
 
-**Limitation:** These are sequential tests in one PostgreSQL transaction. They do **not** simulate two simultaneous database sessions contending on the same GRN item. True concurrency and GRN cancellation interleavings require a separate disposable **staging** database with two connections. Offline GitHub CI still cannot prove concurrent row-lock behaviour.
+**Additional isolated concurrency validation:** GitHub Actions now provisions a disposable PostgreSQL 16 database with synthetic purchasing, receipt and invoice records, installs the *same corrected migration*, and runs a two-connection test using `psycopg`:
+
+- Two simultaneous saves compete for 10 accepted GRN units. One commits 7; the other is observed waiting on a PostgreSQL row lock and then fails to invoice another 7, leaving exactly 3 unallocated.
+- A concurrent GRN header `UPDATE` is observed waiting for the first invoice's `FOR SHARE` lock; the simulated header update is then rolled back and the invoice quantity remains consistent.
+
+Both real two-session isolation tests passed. See `scripts/db/test_invoice_0017_concurrency.py`, `scripts/db/fixtures/invoice_0017_disposable.sql`, and the `invoice-allocation-concurrency` CI job.
+
+**Remaining limitation:** This synthetic fixture does **not** implement the full ERP's GRN cancellation RPC, financial journal, audit triggers, RLS, authenticated identity provider, or actual concurrent production load. The presence of the lock is verified, but full GRN cancellation business behavior and invoice-vs-invoice status-transition races still require integration tests with a production-like staging clone. GitHub SQL parser alone cannot prove PL/pgSQL behavior; the staging test now invokes and tests the function itself.
 
 ## Required integration tests on a disposable staging database
 
