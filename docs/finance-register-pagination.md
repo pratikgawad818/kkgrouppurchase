@@ -5,3 +5,9 @@
 **Improvement:** Both screens now read invoice rows with stable-ID secondary sorting in 250-row pages using `count: "exact"`. The helper verifies each page has the expected size, the count is stable, record IDs are unique, and total records do not exceed a 10,000-row browser safety limit. On uncertainty, the screen reports an error, not misleading totals, and offers Retry.
 
 **Remaining limitations:** Multiple HTTP pages are not one PostgreSQL snapshot. Use database-side company-scoped aggregates for formal accounting or high-concurrency use. Other financial views may still have truncation and swallowed-error risks. This PR changes only source and CI; no live database write or Lovable publication.
+
+## Vendor Ledger follow-up (PR #27)
+
+The Vendor Ledger previously ignored failed payment, advance-adjustment and PO queries, and its single-response requests could truncate without notice. It now uses the same exact-count paginated verification for vendors, invoices, recorded payments, advance adjustments and approved/in-progress POs. A missing/partial dataset suppresses the balance display with a retryable error. Closed, short-closed and fully received orders are excluded from the active PO face-value reference. The PO face value is **not** a remaining-delivery commitment calculation; that needs line-level reporting.
+
+No database mutation or publication was made. For formal finance reporting a server-side consistent snapshot and reconciled ledger remain required.

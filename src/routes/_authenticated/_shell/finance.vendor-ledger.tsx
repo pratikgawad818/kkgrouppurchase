@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { loadCompleteRows } from "@/lib/complete-register";
 import { Loading, PageHeader, Stat } from "@/components/erp/common";
 import { errMsg, fmtDate, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
@@ -21,23 +22,37 @@ function Ledger() {
   const sp = Route.useSearch();
   const [vendor, setVendor] = useState(sp.vendor ?? "");
   const [fy, setFy] = useState(String(fyOf(new Date())));
-  const vendors = useQuery({ queryKey: ["ledger-vendors"], queryFn: async () => (await supabase.from("vendors").select("id,company_name,gstin,mobile,email,payment_terms_days").order("company_name")).data ?? [] });
+  const vendors = useQuery({
+    queryKey: ["ledger-vendors"],
+    queryFn: () => loadCompleteRows(async (start, end) => await supabase.from("vendors")
+      .select("id,company_name,gstin,mobile,email,payment_terms_days", { count: "exact" })
+      .order("company_name").order("id").range(start, end)),
+  });
   const q = useQuery({
     queryKey: ["ledger", vendor], enabled: !!vendor,
     queryFn: async () => {
       const [i, p, a, po] = await Promise.all([
-        supabase.from("vendor_invoices").select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,net_payable,tds_amount,status").eq("vendor_id", vendor).in("status", ["approved", "partially_paid", "paid"]),
-        supabase.from("vendor_payments").select("id,payment_number,payment_date,amount,kind,reference").eq("vendor_id", vendor).eq("status", "recorded"),
-        supabase.from("vendor_advance_adjustments").select("amount,created_at,vendor_payments!inner(payment_number,vendor_id),vendor_invoices(invoice_number)").eq("vendor_payments.vendor_id", vendor),
-        supabase.from("purchase_orders").select("id,po_number,grand_total,status").eq("vendor_id", vendor).not("status", "in", "(draft,cancelled,rejected)"),
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
+          .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,net_payable,tds_amount,status", { count: "exact" })
+          .eq("vendor_id", vendor).in("status", ["approved", "partially_paid", "paid"]).order("id").range(start, end)),
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_payments")
+          .select("id,payment_number,payment_date,amount,kind,reference", { count: "exact" })
+          .eq("vendor_id", vendor).eq("status", "recorded").order("id").range(start, end)),
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_advance_adjustments")
+          .select("id,amount,created_at,vendor_payments!inner(payment_number,vendor_id),vendor_invoices(invoice_number)", { count: "exact" })
+          .eq("vendor_payments.vendor_id", vendor).order("id").range(start, end)),
+        loadCompleteRows(async (start, end) => await supabase.from("purchase_orders")
+          .select("id,po_number,grand_total,status", { count: "exact" })
+          .eq("vendor_id", vendor)
+          .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
+          .order("id").range(start, end)),
       ]);
-      if (i.error) throw i.error;
       const rows: Row[] = [
-        ...(i.data ?? []).map((x) => ({ date: x.vendor_invoice_date, doc: x.invoice_number, kind: "Invoice", link: { to: "/finance/vendor-invoices/$id" as const, id: x.id }, debit: 0, credit: Number(x.net_payable), note: `Bill ${x.vendor_invoice_number}${Number(x.tds_amount) ? ` · TDS ${inr(x.tds_amount)}` : ""}` })),
-        ...(p.data ?? []).map((x) => ({ date: x.payment_date, doc: x.payment_number, kind: x.kind === "advance" ? "Advance paid" : "Payment", debit: Number(x.amount), credit: 0, note: x.reference ?? "" })),
-        ...(a.data ?? []).map((x) => ({ date: x.created_at.slice(0, 10), doc: x.vendor_payments.payment_number, kind: "Advance adjusted", debit: 0, credit: 0, note: `${inr(x.amount)} against ${x.vendor_invoices?.invoice_number}` })),
+        ...i.map((x) => ({ date: x.vendor_invoice_date, doc: x.invoice_number, kind: "Invoice", link: { to: "/finance/vendor-invoices/$id" as const, id: x.id }, debit: 0, credit: Number(x.net_payable), note: `Bill ${x.vendor_invoice_number}${Number(x.tds_amount) ? ` · TDS ${inr(x.tds_amount)}` : ""}` })),
+        ...p.map((x) => ({ date: x.payment_date, doc: x.payment_number, kind: x.kind === "advance" ? "Advance paid" : "Payment", debit: Number(x.amount), credit: 0, note: x.reference ?? "" })),
+        ...a.map((x) => ({ date: x.created_at.slice(0, 10), doc: x.vendor_payments.payment_number, kind: "Advance adjusted", debit: 0, credit: 0, note: `${inr(x.amount)} against ${x.vendor_invoices?.invoice_number}` })),
       ].sort((a, b) => a.date.localeCompare(b.date));
-      return { rows, pos: po.data ?? [], advLeft: (p.data ?? []).filter((x) => x.kind === "advance").reduce((s, x) => s + Number(x.amount), 0) - (a.data ?? []).reduce((s, x) => s + Number(x.amount), 0) };
+      return { rows, pos: po, advLeft: p.filter((x) => x.kind === "advance").reduce((s, x) => s + Number(x.amount), 0) - a.reduce((s, x) => s + Number(x.amount), 0) };
     },
   });
   const v = vendors.data?.find((x) => x.id === vendor);
@@ -55,13 +70,14 @@ function Ledger() {
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-64 sm:flex-none")} value={vendor} onChange={(e) => setVendor(e.target.value)}><option value="">Select vendor</option>{vendors.data?.map((x) => <option key={x.id} value={x.id}>{x.company_name}</option>)}</select>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={fy} onChange={(e) => setFy(e.target.value)}>{years.map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
       </div>
-      {!vendor ? <p className="text-sm text-muted-foreground">Choose a vendor to see their account.</p> : q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
+      {vendors.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Cannot verify the complete supplier list: {errMsg(vendors.error)} <button className="font-semibold underline" onClick={() => vendors.refetch()}>Retry</button></div> :
+      !vendor ? <p className="text-sm text-muted-foreground">Choose a vendor to see their account.</p> : q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Vendor balances cannot be verified: {errMsg(q.error)} <button className="font-semibold underline" onClick={() => q.refetch()}>Retry</button></div> : (<>
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Stat label="Vendor" value={<span className="text-base">{v?.company_name}</span>} hint={`GSTIN ${v?.gstin ?? "—"}`} />
           <Stat label="Opening balance" value={inr(opening)} hint={fyLabel(fyN)} />
           <Stat label="Outstanding (payable)" value={inr(closing)} hint={closing < 0 ? "Vendor owes us (advance)" : undefined} />
           <Stat label="Unadjusted advances" value={inr(q.data?.advLeft)} />
-          <Stat label="Open PO commitments" value={inr((q.data?.pos ?? []).reduce((s, x) => s + Number(x.grand_total), 0))} hint={`${q.data?.pos.length ?? 0} POs — not payable`} />
+          <Stat label="Active PO face value" value={inr((q.data?.pos ?? []).reduce((s, x) => s + Number(x.grand_total), 0))} hint={`${q.data?.pos.length ?? 0} active POs · original values, not remaining quantities`} />
         </div>
         <p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap" role="region" aria-label="Vendor ledger" tabIndex={0}><table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Document</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Details</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
