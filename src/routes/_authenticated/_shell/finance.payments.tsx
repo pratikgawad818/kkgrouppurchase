@@ -131,11 +131,11 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
   const invoicePreflight = inspectPaymentSchedule(alloc, inv.data ?? [],
     kind === "invoice" && !!vendor && inv.isSuccess && !inv.isFetching && !inv.error);
   const advanceAmount = h.amount.trim();
-  const validAdvance = /^\\d+(?:\\.\\d{1,2})?$/.test(advanceAmount) &&
+  const validAdvance = /^\d+(?:\.\d{1,2})?$/.test(advanceAmount) &&
     Number(advanceAmount) > 0 && Number.isFinite(Number(advanceAmount)) &&
     !!h.remarks.trim();
   const total = kind === "advance" ? (validAdvance ? Number(advanceAmount) : 0) : invoicePreflight.total;
-  const canSchedule = !!vendor && !save.isPending && !base.isLoading && !base.error &&
+  const canSchedule = !!vendor && !base.isLoading && !base.error &&
     (kind === "advance" ? validAdvance : invoicePreflight.errors.length === 0);
   const save = useMutation({
     mutationFn: async () => {
@@ -186,7 +186,7 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
             {invoicePreflight.errors.map((message, i) => <p key={i}>{message}</p>)}
           </div>}
         <Field label={kind === "advance" ? "Purpose (required)" : "Remarks"}><Textarea rows={2} value={h.remarks} onChange={(e) => setH({ ...h, remarks: e.target.value })} /></Field>
-        <DialogFooter><span className="mr-auto text-sm">Total <span className="font-mono font-semibold">{inr(total)}</span></span><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!canSchedule || total <= 0} onClick={() => save.mutate()}>Schedule</Button></DialogFooter>
+        <DialogFooter><span className="mr-auto text-sm">Total <span className="font-mono font-semibold">{inr(total)}</span></span><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!canSchedule || total <= 0 || save.isPending} onClick={() => save.mutate()}>Schedule</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
