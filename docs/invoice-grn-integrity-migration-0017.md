@@ -10,7 +10,11 @@ The current server-side `run_invoice_match` compares each invoice line to a snap
 
 ## Proposed database controls in `0017_invoice_grn_allocation_integrity.sql`
 
-1. Fail migration rather than auto-delete or merge historical invoice items if any invoice contains the same `grn_item_id` more than once.
+1. Fail migration rather than auto-delete or merge historical invoice items if existing allocations are unsafe:
+   - Same `grn_item_id` repeated inside one invoice.
+   - Active invoice line source references disagree with the selected GRN item.
+   - Active invoice quantities already exceed accepted GRN quantities.
+   - Active invoice lines point to GRNs that are not posted.
 2. Unique index on `vendor_invoice_items(invoice_id,grn_item_id)`, preventing duplicate use within one bill.
 3. Replace `save_vendor_invoice` using the last version from 0009 while adding:
    - Reject duplicate GRN item references within one input payload.
@@ -19,13 +23,14 @@ The current server-side `run_invoice_match` compares each invoice line to a snap
    - Reject nonpositive item quantities rather than silently ignoring checked lines.
 4. Preserve existing vendor bill normalisation/duplicate checks, record numbers, invoice totals, tax, TDS, event history and security-definer access checks.
 
-**Business-policy decision:** The new function will **not allow saving an invoice line for more units than have been accepted and are uninvoiced**. An authorised reviewer can still handle rate/tax exceptions using the existing server match and exception approval workflow, but quantity-overbilling must be corrected at the GRN/bill before an invoice is saved. Confirm this policy with management before deploying.
+**Business-policy decision approved:** The new function will **not allow saving an invoice line for more units than have been accepted and are uninvoiced**, including director exception cases. An authorised reviewer can still handle rate/tax exceptions using the existing server match and exception approval workflow, but quantity-overbilling must be corrected at the GRN/bill before an invoice is saved. This approval is not deployment approval; production rollout still needs separate written permission.
 
 ## Mandatory read-only preflight
 
-Run `scripts/db/preflight-invoice-grn-allocations.sql` in the **correct project database** using an authorised database operator. Three result sets should contain **zero rows** before rollout:
+Run `scripts/db/preflight-invoice-grn-allocations.sql` in the **correct project database** using an authorised database operator. Four result sets should contain **zero rows** before rollout:
 
 - Repeated use of the same GRN item in one vendor invoice.
+- Active invoice line source-reference mismatches against the actual GRN item.
 - Active invoice quantities exceeding accepted GRN quantities in aggregate.
 - Active invoices linked to a cancelled or otherwise unposted GRN.
 

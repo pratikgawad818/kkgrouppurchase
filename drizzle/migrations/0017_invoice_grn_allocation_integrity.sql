@@ -1,8 +1,8 @@
 -- Database-only hardening. Do NOT deploy without review of live data and
 -- an approved maintenance window. SQL grammar checks do not test PL/pgSQL.
 --
--- If historical duplicate invoice GRN allocations exist, fail clearly rather
--- than deleting financial records or inventing reconciliation.
+-- If historical invoice/GRN allocations are already unsafe, fail clearly
+-- rather than deleting financial records or inventing reconciliation.
 DO $preflight$
 BEGIN
   IF EXISTS (
@@ -10,6 +10,40 @@ BEGIN
     GROUP BY invoice_id, grn_item_id HAVING COUNT(*) > 1
   ) THEN
     RAISE EXCEPTION 'Duplicate GRN lines in historical invoices. Reconcile before installing the unique guard.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.vendor_invoice_items vii
+    JOIN public.vendor_invoices vi ON vi.id = vii.invoice_id
+    JOIN public.goods_receipt_items gi ON gi.id = vii.grn_item_id
+    WHERE vi.status NOT IN ('rejected','cancelled')
+      AND (vii.grn_id <> gi.grn_id OR vii.po_item_id <> gi.po_item_id OR vii.material_id <> gi.material_id)
+  ) THEN
+    RAISE EXCEPTION 'Active invoice lines contain mismatched GRN, PO item or material references. Reconcile before installing allocation guards.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.goods_receipt_items gi
+    JOIN public.vendor_invoice_items vii ON vii.grn_item_id = gi.id
+    JOIN public.vendor_invoices vi ON vi.id = vii.invoice_id
+    WHERE vi.status NOT IN ('rejected','cancelled')
+    GROUP BY gi.id, gi.accepted_quantity
+    HAVING sum(vii.quantity) > gi.accepted_quantity
+  ) THEN
+    RAISE EXCEPTION 'Active invoice quantities exceed accepted GRN quantities. Reconcile before installing allocation guards.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.vendor_invoice_items vii
+    JOIN public.vendor_invoices vi ON vi.id = vii.invoice_id
+    JOIN public.goods_receipt_items gi ON gi.id = vii.grn_item_id
+    JOIN public.goods_receipt_notes g ON g.id = gi.grn_id
+    WHERE vi.status NOT IN ('rejected','cancelled') AND g.status <> 'posted'
+  ) THEN
+    RAISE EXCEPTION 'Active invoice lines reference unposted or cancelled GRNs. Reconcile before installing allocation guards.';
   END IF;
 END
 $preflight$;
@@ -47,9 +81,9 @@ BEGIN
     HAVING count(*) > 1
   ) THEN RAISE EXCEPTION 'One GRN line cannot be invoiced twice in the same vendor bill'; END IF;
 
-  -- Lock GRN headers before receipt lines, in a stable order. This serialises
-  -- concurrent saves for the same accepted quantity and conflicts with a
-  -- concurrent GRN cancellation/posting (which locks headers first).
+  -- Lock GRN headers before receipt lines, in a stable order. Item locks
+  -- serialise competing saves for the same accepted quantity; header locks
+  -- conflict with concurrent GRN cancellation/posting.
   PERFORM g.id
     FROM goods_receipt_notes g
     WHERE g.id IN (
@@ -93,6 +127,7 @@ BEGIN
     IF gi IS NULL OR gi.g_po <> po.id THEN RAISE EXCEPTION 'GRN line does not belong to this purchase order'; END IF;
     IF gi.g_status <> 'posted' THEN RAISE EXCEPTION 'Only posted goods receipts can be invoiced'; END IF;
     SELECT * INTO poi FROM purchase_order_items WHERE id = gi.po_item_id;
+    IF poi IS NULL OR poi.po_id <> po.id THEN RAISE EXCEPTION 'GRN line purchase order item is inconsistent'; END IF;
     q := (it->>'quantity')::numeric; r := (it->>'rate')::numeric;
     tr := coalesce((it->>'tax_rate_percent')::numeric, 0); tt := coalesce(it->>'tax_type', poi.tax_type);
     IF q IS NULL OR q <= 0 THEN RAISE EXCEPTION 'Invoice line quantity must be positive'; END IF;
