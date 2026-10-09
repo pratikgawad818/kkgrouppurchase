@@ -124,6 +124,8 @@ jobs:
         run: node --test scripts/tests/company-scope.test.mjs
       - name: Test complete finance register pagination and truncation detection
         run: node --test scripts/tests/complete-register.test.mjs
+      - name: Test director vote queries and scoped batching
+        run: node --test scripts/tests/approval-queue.test.mjs
       - name: Test stale-chunk recovery without a browser
         run: node --test scripts/tests/stale-chunk-recovery.test.mjs
       - name: Generate typed TanStack routes and production bundle
