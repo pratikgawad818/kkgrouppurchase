@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/format";
+import { VIEWER_NAV } from "@/lib/management-overview";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -22,12 +23,13 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; perm?:
 const NAV: { group: string; items: NavItem[] }[] = [
   { group: "Overview", items: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/management", label: "Management Overview", icon: ChartNoAxesCombined, perm: "inventory.view" },
     { to: "/projects", label: "Projects", icon: Building2 },
     { to: "/buildings", label: "Buildings", icon: Building },
     { to: "/units", label: "Property Inventory", icon: Boxes },
   ] },
   { group: "Approvals", items: [
-    { to: "/approvals", label: "Director Approvals", icon: ShieldCheck },
+    { to: "/approvals", label: "Director Approvals", icon: ShieldCheck, perm: "purchase_order.approve" },
   ] },
   { group: "Procurement", items: [
     { to: "/procurement/follow-ups", label: "Follow-up Center", icon: CalendarClock, perm: "purchase_order.view" },
@@ -100,6 +102,8 @@ function Shell() {
   if (me.isLoading) return <Loading />;
   if (me.error) return <div className="p-8 text-sm text-destructive">Could not load your profile: {me.error.message}</div>;
   const { profile, roles, permissions } = me.data!;
+  const managementViewer = roles.length === 1 && roles[0] === "auditor";
+  const canSeeNav = (item: NavItem) => (!item.perm || permissions.has(item.perm)) && (!managementViewer || VIEWER_NAV.has(item.to));
 
   const renderNav = (mini: boolean) => (
     <nav aria-label="Main navigation" className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -112,7 +116,7 @@ function Shell() {
       </div>
       <div className={cn("flex-1 overflow-y-auto py-3", mini ? "px-2" : "px-3")}>
         {NAV.map((g) => {
-          const items = g.items.filter((i) => !i.perm || permissions.has(i.perm));
+          const items = g.items.filter(canSeeNav);
           if (!items.length) return null;
           return (
             <div key={g.group} className="mb-2">
@@ -157,7 +161,7 @@ function Shell() {
       </div>
     </nav>
   );
-  const items = NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.perm || permissions.has(i.perm)) })).filter((g) => g.items.length);
+  const items = NAV.map((g) => ({ ...g, items: g.items.filter(canSeeNav) })).filter((g) => g.items.length);
   const groupFor = items.find((g) => g.items.some((i) => path === i.to || path.startsWith(i.to + "/")))?.group;
 
   const blocked = !profile.is_active

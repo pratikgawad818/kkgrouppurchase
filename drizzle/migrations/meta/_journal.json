@@ -134,6 +134,13 @@
       "when": 1791448060025,
       "tag": "0018_payment_allocation_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791540000000,
+      "tag": "0019_management_viewer_scope",
+      "breakpoints": true
     }
   ]
 }
