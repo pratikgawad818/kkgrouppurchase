@@ -28,7 +28,7 @@ CREATE TABLE vendor_invoices (
  company_id uuid NOT NULL, vendor_id uuid NOT NULL,
  po_id uuid NOT NULL, project_id uuid NOT NULL, building_id uuid,
  vendor_invoice_number text NOT NULL, vendor_invoice_date date NOT NULL,
- created_by uuid NOT NULL,
+ due_date date, created_by uuid NOT NULL,
  status invoice_status NOT NULL DEFAULT 'draft',
  subtotal numeric NOT NULL DEFAULT 0, tax_total numeric NOT NULL DEFAULT 0,
  cgst numeric NOT NULL DEFAULT 0, sgst numeric NOT NULL DEFAULT 0,
