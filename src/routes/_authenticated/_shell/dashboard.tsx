@@ -311,6 +311,7 @@ function QuickActions({ can }: { can: (p: string) => boolean }) {
   const actions = [
     can("purchase_request.create") && { to: "/procurement/purchase-requests/new", label: "New purchase request", icon: Plus },
     can("rfq.view") && { to: "/procurement/rfqs", label: "RFQs & quotations", icon: ClipboardList },
+    can("purchase_order.view") && { to: "/procurement/follow-ups", label: "Supplier follow-ups", icon: ClipboardList },
     can("grn.view") && { to: "/inventory/goods-received", label: "Receive goods", icon: Package },
     can("vendor_invoice.view") && { to: "/finance/vendor-invoices", label: "Vendor invoices", icon: Wallet },
     { to: "/units", label: "Flats inventory", icon: Building2 },
