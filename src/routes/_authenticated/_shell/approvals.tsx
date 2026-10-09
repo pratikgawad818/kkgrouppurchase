@@ -5,11 +5,12 @@ import { CheckCircle2, Clock3, Copy, ExternalLink, MessageCircle, ShieldCheck, X
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { voteFetchChunks } from "@/lib/approval-queue";
+import { approvalPage, voteFetchChunks } from "@/lib/approval-queue";
 import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loading, PageHeader } from "@/components/erp/common";
+import { Pager } from "@/components/erp/pager";
 import { errMsg, inr } from "@/lib/format";
 import { approvalMessage, whatsappDraftUrl } from "@/lib/approval-notifications";
 
@@ -32,6 +33,7 @@ function DirectorApprovals() {
   const me = useMe();
   const qc = useQueryClient();
   const [reason, setReason] = useState<Record<string, string>>({});
+  const [page, setPage] = useState(0);
   const isDirector = me.data?.roles.includes("director") ?? false;
   const isAdmin = me.data?.permissions.has("users.manage") ?? false;
   const q = useQuery({
@@ -88,6 +90,8 @@ function DirectorApprovals() {
     onSuccess: () => { toast.success("Decision recorded"); qc.invalidateQueries({ queryKey: ["director-approvals"] }); qc.invalidateQueries({ queryKey: ["po"] }); qc.invalidateQueries({ queryKey: ["vendor-payments"] }); },
     onError: e => toast.error(errMsg(e)),
   });
+  const pending = (q.data?.requests ?? []).filter(r => !search.id || (r.id === search.id && r.kind === search.kind));
+  const visible = approvalPage(pending, page);
   if (me.isLoading) return <Loading />;
   if (me.error) return <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Your permissions could not be verified: {errMsg(me.error)}</div>;
   if (!isDirector && !isAdmin) return <div className="mx-auto max-w-lg rounded-xl border bg-card p-6"><ShieldCheck className="mb-3 h-7 w-7" /><h1 className="text-lg font-semibold">Restricted access</h1><p className="mt-2 text-sm text-muted-foreground">Only directors can vote. Administrators can prepare notification links without gaining voting rights.</p></div>;
@@ -95,8 +99,8 @@ function DirectorApprovals() {
     <PageHeader title="Director Approvals" subtitle={isAdmin && !isDirector ? "Share secure WhatsApp review links with all three directors." : "Review each request and approve using your own account. Three independent approvals are required."} />
     <div className="mb-5 rounded-xl border bg-card p-4 text-sm"><ShieldCheck className="mr-2 inline h-5 w-5 text-primary" />WhatsApp links only open the secured ERP page. Every director signs in with their own account. Sharing a link never approves a payment or PO.</div>
     {isAdmin && <div className="mb-5 rounded-xl border bg-card p-4 text-sm"><MessageCircle className="mr-2 inline h-5 w-5" />Manual notification mode: tapping WhatsApp opens a prefilled message; you must press Send yourself. Automatic WhatsApp sending will require the new business number and official API configuration. Create three Director accounts with their own phone numbers in <a href="/settings/users" className="font-semibold underline">Users & Roles</a>.</div>}
-    {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Director approvals could not be verified: {errMsg(q.error)} <Button variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : !q.data?.requests.filter(r => !search.id || (r.id === search.id && r.kind === search.kind)).length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">No pending approvals for this request. It may have been completed or cancelled.</div> :
-    <div className="space-y-4">{q.data.requests.filter(r => !search.id || (r.id === search.id && r.kind === search.kind)).map(r => {
+    {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Director approvals could not be verified: {errMsg(q.error)} <Button variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : !pending.length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">No pending approvals for this request. It may have been completed or cancelled.</div> :
+    <div className="space-y-4">{visible.items.map(r => {
       const votes = q.data.votes.filter(v => v.entity_type === r.kind && v.entity_id === r.id);
       const approved = votes.filter(v => v.decision === "approved").length;
       const mine = votes.find(v => v.actor_id === me.data?.profile.id);
@@ -116,6 +120,8 @@ function DirectorApprovals() {
         {isDirector && (mine ? <p className="mt-4 rounded-lg bg-muted p-3 text-sm">Your decision: {mine.decision} · {new Date(mine.created_at).toLocaleString()}</p> : !canVote ? <p className="mt-4 text-sm text-muted-foreground">You cannot approve a request you created.</p> :
         <div className="mt-4 space-y-3"><Textarea placeholder="Comment or rejection reason" value={reason[r.id] ?? ""} onChange={e => setReason(prev => ({ ...prev, [r.id]: e.target.value }))} /><div className="flex flex-col-reverse gap-3 sm:flex-row"><Button className="min-h-11 flex-1" disabled={action.isPending} onClick={() => { if (window.confirm(`Approve ${r.number} for ${inr(r.amount)}?`)) action.mutate({ request:r, decision:"approved" }); }}><CheckCircle2 className="mr-2 h-4 w-4" />Approve</Button>{r.kind === "purchase_order" && <Button className="min-h-11 flex-1" variant="outline" disabled={action.isPending || !(reason[r.id] ?? "").trim()} onClick={() => { if (window.confirm(`Reject ${r.number}?`)) action.mutate({ request:r, decision:"rejected" }); }}><XCircle className="mr-2 h-4 w-4" />Reject</Button>}</div></div>)}
       </section>;
-    })}</div>}
+    })}
+    <Pager page={visible.page} total={visible.total} size={15} onPage={setPage} />
+    </div>}
   </div>;
 }
