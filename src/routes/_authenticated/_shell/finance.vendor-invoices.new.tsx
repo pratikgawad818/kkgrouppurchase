@@ -85,11 +85,13 @@ function NewInvoice() {
       if (error) throw error;
       const avail = await Promise.all((data ?? []).map((g) => supabase.rpc("grn_item_available", { _grn_item: g.id, _exclude_invoice: (editId ?? null) as string })));
       return (data ?? []).map((g, i) => {
-        if (avail[i].error) throw new Error(`Could not check uninvoiced accepted quantity for ${g.goods_receipt_notes.grn_number}: ${errMsg(avail[i].error)}`);
-        if (avail[i].data === null || !Number.isFinite(Number(avail[i].data))) {
+        const check = avail[i];
+        if (!check) throw new Error(`GRN quantity check did not return a result for ${g.goods_receipt_notes.grn_number}.`);
+        if (check.error) throw new Error(`Could not check uninvoiced accepted quantity for ${g.goods_receipt_notes.grn_number}: ${errMsg(check.error)}`);
+        if (check.data == null || !Number.isFinite(Number(check.data))) {
           throw new Error(`Available accepted quantity is missing for ${g.goods_receipt_notes.grn_number}. Refresh the GRN check before saving.`);
         }
-        return { ...g, available: Number(avail[i].data) };
+        return { ...g, available: Number(check.data) };
       });
     },
   });
