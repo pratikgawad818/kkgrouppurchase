@@ -38,7 +38,6 @@ export function summarizeManagement(
 
 export const VIEWER_NAV_PATHS = [
   "/management",
-  "/dashboard",
   "/inventory/stock",
   "/inventory/material-consumption",
   "/inventory/stock-movements",

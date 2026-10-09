@@ -31,6 +31,7 @@ test("a partial or invalid money value cannot silently make a reassuring summary
 
 test("management viewer links are read-only destinations, not admin or approval screens", () => {
   assert.ok(VIEWER_NAV.has("/management"));
+  assert.equal(VIEWER_NAV.has("/dashboard"), false);
   for (const forbidden of ["/approvals","/settings/users","/inventory/material-issues/new","/finance/vendor-invoices/new"]) {
     assert.equal(VIEWER_NAV.has(forbidden), false);
   }

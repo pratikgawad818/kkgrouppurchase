@@ -89,6 +89,13 @@ function Shell() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  // Only the explicitly read-only management viewer gets the simplified landing.
+  // Other operators and multi-role staff keep their normal dashboard.
+  useEffect(() => {
+    if (path === "/dashboard" && me.data?.roles.length === 1 && me.data.roles[0] === "auditor") {
+      navigate({ to: "/management", replace: true });
+    }
+  }, [path, me.data?.roles, navigate]);
   useEffect(() => setCollapsed(window.localStorage.getItem("kk-sidebar-collapsed") === "1"), []);
   function toggleCollapsed() { setCollapsed((value) => { window.localStorage.setItem("kk-sidebar-collapsed", value ? "0" : "1"); return !value; }); }
 
