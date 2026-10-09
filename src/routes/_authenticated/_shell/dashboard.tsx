@@ -321,6 +321,7 @@ function QuickActions({ can }: { can: (p: string) => boolean }) {
     can("purchase_order.view") && { to: "/procurement/supplier-rate-history", label: "Supplier price history", icon: Store },
     can("financial.view") && { to: "/reports/project-cost-control", label: "Project cost control", icon: IndianRupee },
     can("grn.view") && { to: "/inventory/goods-received", label: "Receive goods", icon: Package },
+    can("inventory.view") && { to: "/inventory/reorder-planning", label: "Low stock & reorder", icon: AlertTriangle },
     can("vendor_invoice.view") && { to: "/finance/vendor-invoices", label: "Vendor invoices", icon: Wallet },
     { to: "/units", label: "Flats inventory", icon: Building2 },
   ].filter(Boolean) as { to: string; label: string; icon: typeof Plus }[];
