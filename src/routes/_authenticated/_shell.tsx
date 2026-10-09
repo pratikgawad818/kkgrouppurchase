@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -44,6 +44,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/vendors", label: "Vendors", icon: Store, perm: "vendors.view" },
     { to: "/warehouses", label: "Warehouses", icon: Warehouse, perm: "warehouses.view" },
     { to: "/inventory/stock", label: "Stock", icon: Layers, perm: "inventory.view" },
+    { to: "/inventory/reorder-planning", label: "Low Stock & Reorder", icon: AlertTriangle, perm: "inventory.view" },
     { to: "/inventory/stock-movements", label: "Stock Movements", icon: ArrowLeftRight, perm: "inventory.view" },
     { to: "/inventory/material-issues", label: "Material Issues & Returns", icon: Package, perm: "inventory.view" },
     { to: "/inventory/material-consumption", label: "Project Consumption", icon: BookOpen, perm: "inventory.view" },
