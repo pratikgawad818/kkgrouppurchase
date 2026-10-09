@@ -98,19 +98,88 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-// After a new publish, an already-open tab may request old code chunks that no
-// longer exist ("Importing a module script failed"). Reload once to fetch the
-// current version instead of leaving a blank screen.
-const STALE_CHUNK_RECOVERY = `(function(){
-  var KEY='kk-chunk-reload';
-  function isChunkError(m){m=String(m||'');return /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Unable to preload CSS/i.test(m);}
-  function recover(){
-    try{var last=+sessionStorage.getItem(KEY)||0;if(Date.now()-last<10000)return;sessionStorage.setItem(KEY,String(Date.now()));}catch(e){}
+// A stale deployed JavaScript/CSS chunk can fail before React hydrates. The
+// inline handler must work without React and must never endlessly auto-reload.
+const STALE_CHUNK_RECOVERY = `(function () {
+  var ERROR_PATTERN = /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Unable to preload CSS|Loading chunk [0-9]+ failed|ChunkLoadError/i;
+  var RETRY_WINDOW = 5 * 60 * 1000;
+  var recoveryStarted = false;
+
+  function isChunkError(message) {
+    return ERROR_PATTERN.test(String(message || ""));
+  }
+
+  function showRecoveryNotice() {
+    function mount() {
+      if (document.getElementById("kk-chunk-recovery")) return;
+
+      var backdrop = document.createElement("div");
+      backdrop.id = "kk-chunk-recovery";
+      backdrop.setAttribute("role", "alert");
+      backdrop.style.cssText = "position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:24px;background:#f8fafc;color:#0f172a;font:15px/1.5 system-ui,sans-serif";
+
+      var card = document.createElement("div");
+      card.style.cssText = "width:min(100%,420px);background:white;border:1px solid #cbd5e1;border-radius:14px;padding:28px;box-shadow:0 14px 40px #0f172a14";
+
+      var heading = document.createElement("h1");
+      heading.textContent = "The latest version could not load";
+      heading.style.cssText = "font-size:20px;font-weight:700;margin:0 0 8px";
+
+      var detail = document.createElement("p");
+      detail.textContent = "The app was updated, but your browser could not load a page file. Check your connection, then try reloading. If the problem persists, contact your ERP administrator.";
+      detail.style.cssText = "margin:0 0 18px;color:#475569";
+
+      var action = document.createElement("button");
+      action.type = "button";
+      action.textContent = "Reload page";
+      action.style.cssText = "min-height:44px;padding:10px 18px;border:0;border-radius:8px;background:#1d4ed8;color:white;font:600 14px system-ui,sans-serif;cursor:pointer";
+      action.addEventListener("click", function () { window.location.reload(); });
+
+      card.appendChild(heading);
+      card.appendChild(detail);
+      card.appendChild(action);
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+      action.focus();
+    }
+
+    if (document.body) mount();
+    else document.addEventListener("DOMContentLoaded", mount, { once: true });
+  }
+
+  function retryOnce(event) {
+    if (event && event.type === "vite:preloadError" && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+    if (recoveryStarted) return;
+    recoveryStarted = true;
+
+    // One automatic retry per route per five minutes. Persistent failures
+    // show a recovery message instead of an infinite reload loop.
+    var key = "kk-chunk-retry:" + window.location.pathname;
+    try {
+      var lastAttempt = Number(window.sessionStorage.getItem(key)) || 0;
+      if (Date.now() - lastAttempt < RETRY_WINDOW) {
+        showRecoveryNotice();
+        return;
+      }
+      window.sessionStorage.setItem(key, String(Date.now()));
+    } catch (error) {
+      // With storage blocked, no cross-reload guard is possible; fail safely.
+      showRecoveryNotice();
+      return;
+    }
     window.location.reload();
   }
-  window.addEventListener('vite:preloadError',function(e){e.preventDefault();recover();});
-  window.addEventListener('error',function(e){if(isChunkError(e&&e.message))recover();},true);
-  window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;if(isChunkError(r&&r.message||r))recover();});
+
+  window.addEventListener("vite:preloadError", retryOnce);
+  window.addEventListener("error", function (event) {
+    if (isChunkError(event && event.message)) retryOnce();
+  }, true);
+  window.addEventListener("unhandledrejection", function (event) {
+    var reason = event && event.reason;
+    if (isChunkError(reason && reason.message || reason)) retryOnce();
+  });
 })();`;
 
 function RootShell({ children }: { children: ReactNode }) {
