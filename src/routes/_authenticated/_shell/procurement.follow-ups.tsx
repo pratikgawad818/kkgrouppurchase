@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { PageHeader, Loading, SearchBox, Stat, Empty } from "@/components/erp/common";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr } from "@/lib/format";
-import { PO_STATUS, selectCls } from "@/lib/po";
+import { selectCls, type PoStatus } from "@/lib/po";
 import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
-import { today as todayIst } from "@/lib/finance";
+import { today as todayIst, type InvoiceStatus } from "@/lib/finance";
 import { useCan } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import {
@@ -20,8 +20,8 @@ import {
   type DeliveryPriority,
 } from "@/lib/procurement-followup";
 
-const OPEN_PO_STATUSES = ["pending_approval", ...ACTIVE_DELIVERY_PO_STATUSES];
-const INVOICE_STATES = ["exception", "pending_review", "approved", "partially_paid"];
+const OPEN_PO_STATUSES: PoStatus[] = ["pending_approval", ...ACTIVE_DELIVERY_PO_STATUSES];
+const INVOICE_STATES: InvoiceStatus[] = ["exception", "pending_review", "approved", "partially_paid"];
 const PRIORITY: Record<DeliveryPriority, { label: string; cls: string; hint: string }> = {
   overdue: { label: "Overdue", cls: "border-destructive/30 bg-destructive/10 text-destructive", hint: "Contact supplier immediately" },
   due_soon: { label: "Due within 7 days", cls: "border-amber-300 bg-amber-50 text-amber-900", hint: "Confirm dispatch and site readiness" },
