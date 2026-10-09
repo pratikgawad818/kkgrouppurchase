@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { AlertTriangle, ArrowUpRight, ClipboardList, PackageX, ShoppingCart, Truck, Warehouse } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, PackageX, ShoppingCart, Truck, Warehouse } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Empty, Loading, PageHeader, SearchBox, Stat } from "@/components/erp/common";
@@ -119,7 +119,7 @@ function ReorderPlanning() {
     }),
   });
 
-  if (me.isLoading || (canStock && stockQ.isLoading)) return <Loading />;
+  if (me.isLoading || (canStock && (stockQ.isLoading || storesQ.isLoading || (canMaterials && materialsQ.isLoading) || (canPO && posQ.isLoading)))) return <Loading />;
   if (!canStock) return <>
     <PageHeader title="Low Stock & Reorder Planning" />
     <Empty>Your account does not have permission to view warehouse stock.</Empty>
@@ -173,7 +173,7 @@ function ReorderPlanning() {
     inbound: scoped.filter(x => x.state === "await_inbound").length,
     overdue: scoped.filter(x => x.hasOverdueInbound).length,
   };
-  const sourcesBusy = (canPO && posQ.isLoading) || storesQ.isLoading || (canMaterials && materialsQ.isLoading);
+
   const capped = stockQ.data?.capped || storesQ.data?.capped || (canMaterials && materialsQ.data?.capped) || (canPO && posQ.data?.capped);
 
   const change = (setter: (value: string) => void, value: string) => { setter(value); setPage(0); };
@@ -223,15 +223,14 @@ function ReorderPlanning() {
       A source reached the {MAX_ROWS.toLocaleString("en-IN")}-record review limit. Totals may be incomplete; confirm pending POs and warehouse stock before raising new requests.
     </div>}
 
-    {sourcesBusy && <Loading />}
     <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
       <button type="button" className="text-left" onClick={() => changeState("out_of_stock")}><Stat label="Out of stock" value={counts.out} hint="No available stock at that store" className="hover:border-destructive/40" /></button>
-      <button type="button" className="text-left" onClick={() => changeState("order_review")}><Stat label="Reorder review" value={counts.reorder} hint="Known incoming remains insufficient" className="hover:border-amber-400" /></button>
+      <button type="button" className="text-left" onClick={() => changeState("order_review")}><Stat label="Reorder review" value={counts.reorder} hint={canTrustPos ? "Known incoming remains insufficient" : "PO visibility is incomplete"} className="hover:border-amber-400" /></button>
       <button type="button" className="text-left" onClick={() => changeState("await_inbound")}><Stat label="Incoming may cover" value={counts.inbound} hint="Confirm dispatch & goods receipt" className="hover:border-primary/40" /></button>
       <Stat label="Past-due PO deliveries" value={canTrustPos ? counts.overdue : "—"} hint="Linked to monitored stock lines" />
     </div>
 
-    {!filtered.length && !sourcesBusy ? <Empty>No configured low-stock lines match these filters. Materials without a store record are reviewed separately below.</Empty> :
+    {!filtered.length ? <Empty>No configured low-stock lines match these filters. Materials without a store record are reviewed separately below.</Empty> :
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {pageRows.map(row => <ReorderCard key={row.key} line={row} canPO={canPO} poDataReady={canTrustPos} />)}
       </div>}
