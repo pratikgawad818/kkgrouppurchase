@@ -34,6 +34,41 @@ export type DeliverySnapshot = {
   daysUntilDue: number | null;
 };
 
+/** Estimate PO MATERIAL line values, excluding unallocated PO-level charges.
+ * This is NOT an amount payable to the vendor.
+ */
+export function purchaseOrderLineValues(lines: FollowupPoLine[]) {
+  let openLines = 0;
+  let committedLineValue = 0;
+  let acceptedLineValue = 0;
+  let openLineValue = 0;
+
+  for (const item of lines) {
+    const ordered = Math.max(0, Number(item.ordered_quantity) || 0);
+    if (!ordered) continue;
+    const shortClosed = Math.min(ordered, Math.max(0, Number(item.short_closed_quantity) || 0));
+    const committed = ordered - shortClosed;
+    const accepted = Math.min(committed, Math.max(0, Number(item.accepted_quantity) || 0));
+    const remaining = Math.max(0, committed - accepted);
+    const lineValue = Math.max(0, Number(item.line_total) || 0);
+
+    committedLineValue += lineValue * committed / ordered;
+    acceptedLineValue += lineValue * accepted / ordered;
+    openLineValue += lineValue * remaining / ordered;
+    if (remaining > 0.000_001) openLines++;
+  }
+
+  return {
+    openLines,
+    totalLines: lines.length,
+    acceptedLineValue: Math.round(acceptedLineValue * 100) / 100,
+    estimatedOpenLineValue: Math.round(openLineValue * 100) / 100,
+    acceptancePercent: committedLineValue > 0
+      ? Math.max(0, Math.min(100, Math.round(acceptedLineValue / committedLineValue * 100)))
+      : 100,
+  };
+}
+
 /** Calendar days, using ISO dates, not the viewer's local time zone. */
 export function calendarDaysBetween(startIso: string, endIso: string): number {
   const a = Date.parse(startIso.slice(0, 10) + "T00:00:00Z");
@@ -44,26 +79,8 @@ export function calendarDaysBetween(startIso: string, endIso: string): number {
 export function deliverySnapshot(po: FollowupPo, todayIso: string): DeliverySnapshot | null {
   if (!ACTIVE_DELIVERY_PO_STATUSES.some(status => status === po.status)) return null;
 
-  let openLines = 0;
-  let openValue = 0;
-  let activeCommitmentValue = 0;
-
-  for (const item of po.purchase_order_items) {
-    const ordered = Math.max(0, Number(item.ordered_quantity) || 0);
-    if (!ordered) continue;
-    const shortClosed = Math.min(ordered, Math.max(0, Number(item.short_closed_quantity) || 0));
-    const committed = ordered - shortClosed;
-    const accepted = Math.min(committed, Math.max(0, Number(item.accepted_quantity) || 0));
-    const remaining = Math.max(0, committed - accepted);
-    const lineValue = Math.max(0, Number(item.line_total) || 0);
-
-    // Short-closed units are no longer contractually deliverable.
-    activeCommitmentValue += lineValue * committed / ordered;
-    openValue += lineValue * remaining / ordered;
-    if (remaining > 0.000_001) openLines++;
-  }
-
-  if (!openLines) return null;
+  const values = purchaseOrderLineValues(po.purchase_order_items);
+  if (!values.openLines) return null;
   const daysUntilDue = po.expected_delivery_date
     ? calendarDaysBetween(todayIso, po.expected_delivery_date)
     : null;
@@ -73,12 +90,10 @@ export function deliverySnapshot(po: FollowupPo, todayIso: string): DeliverySnap
 
   return {
     priority,
-    openLines,
-    totalLines: po.purchase_order_items.length,
-    estimatedOpenLineValue: Math.round(openValue * 100) / 100,
-    acceptancePercent: activeCommitmentValue > 0
-      ? Math.max(0, Math.min(100, Math.round((1 - openValue / activeCommitmentValue) * 100)))
-      : 0,
+    openLines: values.openLines,
+    totalLines: values.totalLines,
+    estimatedOpenLineValue: values.estimatedOpenLineValue,
+    acceptancePercent: values.acceptancePercent,
     daysUntilDue,
   };
 }
