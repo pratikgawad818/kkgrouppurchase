@@ -54,14 +54,14 @@ function ProjectCostControl() {
     queryKey: ["project-cost-control", "projects"],
     enabled: canFinancial,
     staleTime: 60_000,
-    queryFn: async () => {
+    queryFn: () => loadPages(async offset => {
       const { data, error } = await supabase.from("projects")
         .select("id,code,name,status,budget,estimated_cost")
-        .order("name")
-        .limit(MAX_ROWS + 1);
+        .order("id")
+        .range(offset, offset + BATCH - 1);
       if (error) throw error;
-      return { rows: data ?? [], capped: (data?.length ?? 0) >= MAX_ROWS };
-    },
+      return data ?? [];
+    }),
   });
 
   const posQ = useQuery({
@@ -262,8 +262,8 @@ function ProjectCostCard({ row, showPo, showMaterials, showPayables }: {
       <div><dt className="text-xs text-muted-foreground">Approved unpaid bills²</dt><dd className="mt-1 font-semibold tabular-nums">{showPayables ? inr(row.approvedUnpaidInvoices) : "—"}</dd></div>
     </dl>
     <div className="mt-4 flex flex-wrap gap-4 border-t pt-3 text-xs font-medium">
-      <Link to="/inventory/material-consumption" className="text-primary hover:underline">Material usage →</Link>
-      <Link to="/procurement/follow-ups" className="text-primary hover:underline">Delivery follow-up →</Link>
+      {showMaterials && <Link to="/inventory/material-consumption" className="text-primary hover:underline">Material usage →</Link>}
+      {showPo && <Link to="/procurement/follow-ups" className="text-primary hover:underline">Delivery follow-up →</Link>}
     </div>
   </article>;
 }
