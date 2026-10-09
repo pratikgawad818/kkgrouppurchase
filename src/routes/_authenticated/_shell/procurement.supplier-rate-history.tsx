@@ -51,7 +51,7 @@ function SupplierRates() {
   async function fetchBatch(offset: number) {
     const { data, error } = await supabase.from("purchase_orders")
       .select("id,po_number,po_date,status,project_id,vendor_id,projects(name),vendors(company_name),purchase_order_items(material_id,unit_id,rate,ordered_quantity,discount_amount,items(code,name),units_of_measure(code))")
-      .in("status", PO_STATES).order("id")
+      .in("status", PO_STATES).order("created_at", { ascending: false }).order("id")
       .range(offset, offset + BATCH - 1);
     if (error) throw error;
     return data ?? [];
@@ -109,7 +109,7 @@ function SupplierRates() {
 
     {q.data?.possiblyIncomplete && <div role="status" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
       <TriangleAlert className="mr-1 inline h-4 w-4" aria-hidden />
-      At least {LIMIT.toLocaleString("en-IN")} awarded POs exist. This report shows only a recent dataset slice, so apparent lowest/highest rates may not represent full history. Use individual PO records before purchasing.
+      At least {LIMIT.toLocaleString("en-IN")} awarded POs exist. This report shows only the latest awarded POs, so apparent lowest/highest rates may not represent full history. Use individual PO records before purchasing.
     </div>}
 
     <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
