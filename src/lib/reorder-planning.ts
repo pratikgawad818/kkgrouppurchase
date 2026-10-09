@@ -194,7 +194,7 @@ export function planReorders(
     const incoming = rounded(incomingOrders.reduce((sum, x) => sum + x.qty, 0));
     const projectedIfDelivered = rounded(Math.max(0, onHand) + incoming);
     const coverageSufficient = projectedIfDelivered > reorderPoint;
-    const suggestedTopUp = coverageSufficient ? 0 : max > reorderPoint
+    const suggestedTopUp = purchaseOrders === null ? null : coverageSufficient ? 0 : max > reorderPoint
       ? rounded(Math.max(0, max - projectedIfDelivered)) : null;
     const unknownLocationInbound = unallocatedByMaterial.get(materialId) ?? [];
 
