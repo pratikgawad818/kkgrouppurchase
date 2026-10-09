@@ -99,7 +99,7 @@ export function inspectVendorInvoice(
     if (!nonnegativeAmount(line.tax_rate_percent) || tax > 100) {
       errors.push(`Enter a GST percentage between 0 and 100 for ${label}.`);
     } else {
-      if (Number.isFinite(rate)) taxAmount += Math.round(qty * rate * tax) / 10000;
+      if (Number.isFinite(rate)) taxAmount += Math.round(qty * rate * tax) / 100;
       if (Number.isFinite(line.po_tax) && Math.abs(tax - line.po_tax) > 0.009) changedTaxes++;
     }
   }
