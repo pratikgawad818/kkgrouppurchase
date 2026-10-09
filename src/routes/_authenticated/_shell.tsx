@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Banknote, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
+import { ArrowLeftRight, Banknote, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -30,6 +30,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/approvals", label: "Director Approvals", icon: ShieldCheck },
   ] },
   { group: "Procurement", items: [
+    { to: "/procurement/follow-ups", label: "Follow-up Center", icon: CalendarClock, perm: "purchase_order.view" },
     { to: "/procurement/purchase-requests", label: "Purchase Requests", icon: ClipboardList, perm: "purchase_request.view" },
     { to: "/procurement/rfqs", label: "RFQs & Quotations", icon: FileText, perm: "rfq.view" },
     { to: "/procurement/vendor-quotations", label: "Vendor Quotations", icon: FileText, perm: "quotation.view" },
