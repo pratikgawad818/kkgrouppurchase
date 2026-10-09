@@ -151,5 +151,6 @@ INSERT INTO vendor_payment_allocations (payment_id,invoice_id) VALUES
 
 -- Required for SELECT policy evaluation with simulated authenticated sessions.
 GRANT USAGE ON SCHEMA public,auth TO authenticated;
-GRANT SELECT ON profiles,user_roles,projects,purchase_orders,vendor_payments TO authenticated;
+GRANT SELECT ON profiles,user_roles,projects,purchase_orders,vendor_payments,
+  purchase_order_approvals,qa_journal_calls,qa_balance_refreshes TO authenticated;
 GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
