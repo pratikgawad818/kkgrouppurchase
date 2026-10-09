@@ -19,3 +19,20 @@ export function voteFetchChunks(
   }
   return batches;
 }
+
+/** Never render thousands of approval cards on one screen. */
+export function approvalPage<T>(
+  rows: ReadonlyArray<T>,
+  requestedPage: number,
+  pageSize = 15,
+): { items: T[]; page: number; total: number } {
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1) {
+    throw new Error("Invalid approvals page size.");
+  }
+  const total = rows.length;
+  const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+  const page = Number.isSafeInteger(requestedPage)
+    ? Math.max(0, Math.min(requestedPage, lastPage))
+    : 0;
+  return { items: rows.slice(page * pageSize, (page + 1) * pageSize), page, total };
+}

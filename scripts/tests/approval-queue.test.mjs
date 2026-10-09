@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { voteFetchChunks } from "../../src/lib/approval-queue.ts";
+import { approvalPage, voteFetchChunks } from "../../src/lib/approval-queue.ts";
 
 test("empty approval queue does not query historical director votes", () => {
   assert.deepEqual(voteFetchChunks([]), []);
@@ -26,4 +26,15 @@ test("rejects invalid batching and malformed missing IDs", () => {
     assert.throws(() => voteFetchChunks([], size), /batch size/);
   }
   assert.throws(() => voteFetchChunks([{ kind: "purchase_order", id: "" }]), /no document identifier/);
+});
+
+test("approval queue pagination keeps mobile pages bounded and clamps stale page after a decision", () => {
+  const data = Array.from({ length: 52 }, (_, i) => `PO-${i}`);
+  assert.deepEqual(approvalPage(data, 0), { items: data.slice(0, 15), page: 0, total: 52 });
+  assert.deepEqual(approvalPage(data, 2), { items: data.slice(30, 45), page: 2, total: 52 });
+  assert.deepEqual(approvalPage(data, 9), { items: data.slice(45), page: 3, total: 52 });
+  assert.deepEqual(approvalPage([], 5), { items: [], page: 0, total: 0 });
+  assert.equal(approvalPage(data, -1).page, 0);
+  assert.equal(approvalPage(data, NaN).page, 0);
+  assert.throws(() => approvalPage(data, 0, 0), /page size/);
 });
