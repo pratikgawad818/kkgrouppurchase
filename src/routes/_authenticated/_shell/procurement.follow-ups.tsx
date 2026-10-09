@@ -146,7 +146,7 @@ function ProcurementFollowUps() {
           </p>}
           <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-5">
             {canPo && <>
-              <Link to="/procurement/purchase-orders"><Stat label="POs awaiting approval" value={poError ? "—" : pendingApproval.length} hint="Director decisions needed" className="hover:border-primary/40" /></Link>
+              <a href="#pending-po-approvals"><Stat label="POs awaiting approval" value={poError ? "—" : pendingApproval.length} hint="Director decisions needed" className="hover:border-primary/40" /></a>
               <button type="button" className="text-left" onClick={() => { setPriority("overdue"); setPage(0); }}>
                 <Stat label="Overdue deliveries" value={poError ? "—" : delayed.length} hint={poError ? undefined : `${inr(delayed.reduce((n, x) => n + x.snapshot.estimatedOpenLineValue, 0))} open line value¹`} className="hover:border-destructive/40" />
               </button>
@@ -157,7 +157,7 @@ function ProcurementFollowUps() {
                 <Stat label="Delivery dates missing" value={poError ? "—" : unscheduled.length} hint="Confirm a date with suppliers" className="hover:border-amber-400" />
               </button>
             </>}
-            {canInvoice && <Link to="/finance/vendor-invoices" search={{ status: "exception" }}><Stat label="Invoice match exceptions" value={invoiceError ? "—" : exceptions.length} hint="Review PO / GRN differences" className="hover:border-destructive/40" /></Link>}
+            {canInvoice && <a href="#invoice-exceptions"><Stat label="Invoice match exceptions" value={invoiceError ? "—" : exceptions.length} hint="Review PO / GRN differences" className="hover:border-destructive/40" /></a>}
             {canPayable && <Link to="/finance/payables"><Stat label="Overdue approved bills" value={invoiceError ? "—" : inr(overdueValue)} hint={invoiceError ? undefined : `${overduePayables.length} invoices unpaid`} className="hover:border-amber-400" /></Link>}
           </div>
 
@@ -216,7 +216,7 @@ function ProcurementFollowUps() {
               </p>
             </section>
 
-            <section className="mb-8 rounded-xl border bg-card p-4 sm:p-5">
+            <section id="pending-po-approvals" className="mb-8 scroll-mt-24 rounded-xl border bg-card p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div><h3 className="flex items-center gap-2 font-semibold"><ClipboardCheck className="h-4 w-4 text-primary" />POs awaiting director approval</h3><p className="text-xs text-muted-foreground">Purchases should not proceed before three distinct director approvals.</p></div>
                 <Link className="text-sm font-medium text-primary hover:underline" to="/procurement/purchase-orders">Open PO register →</Link>
@@ -229,7 +229,7 @@ function ProcurementFollowUps() {
             </section>
           </>}
 
-          {canInvoice && !invoiceError && <section className="mb-8">
+          {canInvoice && !invoiceError && <section id="invoice-exceptions" className="mb-8 scroll-mt-24">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div><h3 className="flex items-center gap-2 text-base font-semibold"><FileWarning className="h-5 w-5 text-amber-600" />Invoice matching exceptions</h3>
                 <p className="text-xs text-muted-foreground">Resolve quantity, rate or tax differences against the PO and posted GRNs before approval.</p></div>
