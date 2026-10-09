@@ -17,7 +17,7 @@ export type SetupStep = {
 };
 
 export function setupSteps(counts: SetupCounts): SetupStep[] {
-  return [
+  const steps: Omit<SetupStep, "completed">[] = [
     {
       key: "projects",
       label: "Create a project",
@@ -53,7 +53,8 @@ export function setupSteps(counts: SetupCounts): SetupStep[] {
       to: "/warehouses",
       permission: "warehouses.manage",
     },
-  ].map(step => ({ ...step, completed: Number(counts[step.key]) > 0 }));
+  ];
+  return steps.map(step => ({ ...step, completed: Number(counts[step.key]) > 0 }));
 }
 
 export function setupCompletion(counts: SetupCounts): { completed: number; total: number; ready: boolean } {
