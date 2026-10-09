@@ -91,6 +91,8 @@ function DirectorApprovals() {
     onError: e => toast.error(errMsg(e)),
   });
   const pending = (q.data?.requests ?? []).filter(r => !search.id || (r.id === search.id && r.kind === search.kind));
+  const votesByRequest = q.data?.votes ?? [];
+  const directors = q.data?.directors ?? [];
   const visible = approvalPage(pending, page);
   if (me.isLoading) return <Loading />;
   if (me.error) return <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Your permissions could not be verified: {errMsg(me.error)}</div>;
@@ -101,7 +103,7 @@ function DirectorApprovals() {
     {isAdmin && <div className="mb-5 rounded-xl border bg-card p-4 text-sm"><MessageCircle className="mr-2 inline h-5 w-5" />Manual notification mode: tapping WhatsApp opens a prefilled message; you must press Send yourself. Automatic WhatsApp sending will require the new business number and official API configuration. Create three Director accounts with their own phone numbers in <a href="/settings/users" className="font-semibold underline">Users & Roles</a>.</div>}
     {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Director approvals could not be verified: {errMsg(q.error)} <Button variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : !pending.length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">No pending approvals for this request. It may have been completed or cancelled.</div> :
     <div className="space-y-4">{visible.items.map(r => {
-      const votes = q.data.votes.filter(v => v.entity_type === r.kind && v.entity_id === r.id);
+      const votes = votesByRequest.filter(v => v.entity_type === r.kind && v.entity_id === r.id);
       const approved = votes.filter(v => v.decision === "approved").length;
       const mine = votes.find(v => v.actor_id === me.data?.profile.id);
       const canVote = isDirector && !mine && r.createdBy !== me.data?.profile.id;
@@ -111,7 +113,7 @@ function DirectorApprovals() {
         <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2"><div className="min-w-0"><dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Project</dt><dd className="truncate font-medium">{r.project}</dd></div><div className="min-w-0"><dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Vendor</dt><dd className="truncate font-medium">{r.vendor}</dd></div></dl>
         <div className="mt-4 grid grid-cols-3 gap-2">{[0,1,2].map(i => <div key={i} className={"rounded-lg border p-2 text-center text-xs font-medium " + (i < approved ? "border-st-available/30 bg-st-available/5 text-st-available" : "text-muted-foreground")}>{i < approved ? <CheckCircle2 aria-hidden className="mx-auto mb-1 h-5 w-5 text-st-available" /> : <Clock3 className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />}{i < approved ? "Approved" : "Pending"}</div>)}</div>
         <a href={linkFor(r)} className="mt-4 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">Review full details <ExternalLink className="h-3.5 w-3.5" /></a>
-        {isAdmin && <div className="mt-4 rounded-xl border p-3"><p className="mb-2 text-sm font-semibold">Notify each director on WhatsApp</p>{q.data.directors.length !== 3 && <p className="mb-2 text-xs text-destructive">Exactly three active director accounts are required. Found {q.data.directors.length}.</p>}{q.data.directors.length === 0 && <p className="text-xs text-muted-foreground">Invite directors under Users & Roles first.</p>}{q.data.directors.map(d => {
+        {isAdmin && <div className="mt-4 rounded-xl border p-3"><p className="mb-2 text-sm font-semibold">Notify each director on WhatsApp</p>{directors.length !== 3 && <p className="mb-2 text-xs text-destructive">Exactly three active director accounts are required. Found {directors.length}.</p>}{directors.length === 0 && <p className="text-xs text-muted-foreground">Invite directors under Users & Roles first.</p>}{directors.map(d => {
           const message = approvalMessage({ kind:r.kind, id:r.id, number:r.number, project:r.project, vendor:r.vendor, amount:r.amount }, window.location.origin);
           const wa = whatsappDraftUrl(d.phone ?? "", message);
           const already = votes.some(v => v.actor_id === d.id);
