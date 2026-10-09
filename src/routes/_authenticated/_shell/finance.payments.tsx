@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { loadCompleteRows } from "@/lib/complete-register";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +17,7 @@ import { PAGE } from "@/lib/fy";
 import { useCan, useMe } from "@/lib/session";
 import { badge, openVendorDoc, PAYMENT_MODES, PAYMENT_STATUS, today, uploadVendorDoc, type PaymentKind } from "@/lib/finance";
 import { cn } from "@/lib/utils";
-import { availableAfterScheduled, inspectPaymentSchedule } from "@/lib/payment-preflight";
+import { availableAfterScheduled, checkedAdvanceUsage, inspectAdvanceAdjustment, inspectPaymentSchedule, remainingAdvanceAmount } from "@/lib/payment-preflight";
 
 const META = "Schedule, approve and record vendor payments and advances.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/payments")({
@@ -38,14 +39,21 @@ function Payments() {
   const q = useQuery({
     queryKey: ["vendor-payments"],
     queryFn: async () => {
-      const [p, a] = await Promise.all([
-        supabase.from("vendor_payments").select("*, vendors(company_name), company_bank_accounts(account_name), vendor_payment_allocations(amount, vendor_invoices(invoice_number))").order("created_at", { ascending: false }).limit(2000),
-        supabase.from("vendor_advance_adjustments").select("advance_payment_id, amount"),
+      const [payments, adjustments] = await Promise.all([
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_payments")
+          .select("*, vendors(company_name), company_bank_accounts(account_name), vendor_payment_allocations(amount, vendor_invoices(invoice_number))", { count: "exact" })
+          .order("created_at", { ascending: false }).order("id", { ascending: false }).range(start, end)),
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_advance_adjustments")
+          .select("id,advance_payment_id,amount", { count: "exact" }).order("id").range(start, end)),
       ]);
-      if (p.error) throw p.error;
-      const used = new Map<string, number>();
-      for (const x of a.data ?? []) used.set(x.advance_payment_id, (used.get(x.advance_payment_id) ?? 0) + Number(x.amount));
-      return { rows: p.data ?? [], used };
+      const used = checkedAdvanceUsage(adjustments);
+      for (const payment of payments) {
+        if (payment.kind === "advance" && payment.status === "recorded" &&
+            remainingAdvanceAmount(Number(payment.amount), used.get(payment.id) ?? 0) === null) {
+          throw new Error(`Advance adjustment history is inconsistent for payment ${payment.payment_number}. Contact Accounts before making changes.`);
+        }
+      }
+      return { rows: payments, used };
     },
   });
   const refresh = () => { ["vendor-payments", "payables", "vendor-invoices", "vi", "ledger"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
@@ -56,14 +64,14 @@ function Payments() {
       <PageHeader title="Vendor Payments" subtitle="Scheduled → Approved (Director) → Recorded with bank reference. Only recorded payments reduce payables."
         actions={can("payment.schedule") && <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => setSchedule("invoice")}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => setSchedule("advance")}>Vendor advance</Button></div>} />
       <div className="mb-3"><select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="">All statuses</option>{Object.entries(PAYMENT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
-      {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
+      {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Payment history or advance adjustments could not be verified: {errMsg(q.error)} <Button className="ml-2" variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : (<>
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap"><table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Number</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Against</th><th className="px-4 py-3">Mode / ref</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th></tr></thead>
           <tbody>
             {pageRows.length === 0 && <tr><td colSpan={9} className="p-4 text-xs text-muted-foreground">No payments yet.</td></tr>}
             {pageRows.map((p) => {
               const mine = p.created_by === me.data?.profile.id;
-              const left = Number(p.amount) - (q.data?.used.get(p.id) ?? 0);
+              const left = remainingAdvanceAmount(Number(p.amount), q.data?.used.get(p.id) ?? 0) ?? 0;
               return (
                 <tr key={p.id} className="border-b last:border-0 align-top">
                   <td className="px-4 py-3 font-medium tabular-nums">{p.payment_number}</td><td className="px-4 py-3">{p.kind === "advance" ? "Advance" : "Invoice"}</td><td className="px-4 py-3">{fmtDate(p.payment_date)}</td>
@@ -112,18 +120,23 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
   const inv = useQuery({
     queryKey: ["pay-open", vendor], enabled: kind === "invoice" && !!vendor,
     queryFn: async () => {
-      const [i, a] = await Promise.all([
-        supabase.from("vendor_invoices").select("id,invoice_number,vendor_invoice_number,due_date,balance_due,project_id").eq("vendor_id", vendor).in("status", ["approved", "partially_paid"]).order("due_date").limit(1001),
-        supabase.from("vendor_payment_allocations").select("invoice_id,amount,vendor_payments!inner(status)").in("vendor_payments.status", ["scheduled", "approved"]).limit(1001),
+      const [invoices, reservations] = await Promise.all([
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
+          .select("id,invoice_number,vendor_invoice_number,due_date,balance_due,project_id", { count: "exact" })
+          .eq("vendor_id", vendor).in("status", ["approved", "partially_paid"])
+          .order("due_date").order("id").range(start, end)),
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_payment_allocations")
+          .select("id,invoice_id,amount,vendor_payments!inner(status,vendor_id)", { count: "exact" })
+          .in("vendor_payments.status", ["scheduled", "approved"])
+          .eq("vendor_payments.vendor_id", vendor).order("id").range(start, end)),
       ]);
-      if (i.error) throw i.error;
-      if (a.error) throw a.error;
-      if ((i.data?.length ?? 0) > 1000 || (a.data?.length ?? 0) > 1000) {
-        throw new Error("Payment availability exceeds the current 1,000-row verification limit. Ask Accounts to review the complete payment register before scheduling.");
-      }
       const pending = new Map<string, number>();
-      for (const x of a.data ?? []) pending.set(x.invoice_id, (pending.get(x.invoice_id) ?? 0) + Number(x.amount));
-      return (i.data ?? []).map((x) => {
+      for (const entry of reservations) {
+        const amt = Number(entry.amount);
+        if (!Number.isFinite(amt) || amt <= 0) throw new Error("Pending payment reservations contain an invalid amount.");
+        pending.set(entry.invoice_id, (pending.get(entry.invoice_id) ?? 0) + amt);
+      }
+      return invoices.map((x) => {
         const payable = availableAfterScheduled(Number(x.balance_due), pending.get(x.id) ?? 0);
         if (payable === null) throw new Error(`Cannot determine the available balance for invoice ${x.invoice_number}.`);
         return { ...x, payable };
@@ -230,10 +243,19 @@ function AdjustDialog({ id, vendor_id, left, onClose, onDone }: { id: string; ve
   const [amount, setAmount] = useState("");
   const inv = useQuery({
     queryKey: ["adj-open", vendor_id],
-    queryFn: async () => (await supabase.from("vendor_invoices").select("id,invoice_number,balance_due").eq("vendor_id", vendor_id).in("status", ["approved", "partially_paid"])).data ?? [],
+    queryFn: () => loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
+      .select("id,invoice_number,balance_due", { count: "exact" })
+      .eq("vendor_id", vendor_id).in("status", ["approved", "partially_paid"]).order("id").range(start, end)),
   });
+  const selectedInvoice = inv.data?.find(x => x.id === invoice);
+  const preflight = inspectAdvanceAdjustment(amount, left, selectedInvoice?.balance_due, inv.isSuccess && !inv.isFetching && !!selectedInvoice);
   const m = useMutation({
-    mutationFn: async () => { const { error } = await supabase.rpc("apply_vendor_advance", { _advance_id: id, _invoice_id: invoice, _amount: Number(amount) }); if (error) throw error; },
+    mutationFn: async () => {
+      const checked = inspectAdvanceAdjustment(amount, left, selectedInvoice?.balance_due, inv.isSuccess && !inv.isFetching && !!selectedInvoice);
+      if (checked.error) throw new Error(checked.error);
+      const { error } = await supabase.rpc("apply_vendor_advance", { _advance_id: id, _invoice_id: invoice, _amount: checked.amount });
+      if (error) throw error;
+    },
     onSuccess: () => { toast.success("Advance adjusted"); onDone(); onClose(); },
     onError: (e) => toast.error(errMsg(e)),
   });
@@ -241,9 +263,12 @@ function AdjustDialog({ id, vendor_id, left, onClose, onDone }: { id: string; ve
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader><DialogTitle>Adjust advance against invoice</DialogTitle><DialogDescription>Unadjusted advance: {inr(left)}</DialogDescription></DialogHeader>
-        <Field label="Invoice"><select className={selectCls} value={invoice} onChange={(e) => setInvoice(e.target.value)}><option value="">Select</option>{inv.data?.map((x) => <option key={x.id} value={x.id}>{x.invoice_number} · balance {inr(x.balance_due)}</option>)}</select></Field>
-        <Field label="Amount"><Input type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
-        <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!invoice || !(Number(amount) > 0) || m.isPending} onClick={() => m.mutate()}>Adjust</Button></DialogFooter>
+        {inv.isLoading && <Loading />}
+        {inv.error && <div role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">Invoice balances could not be verified: {errMsg(inv.error)} <Button variant="outline" size="sm" onClick={() => inv.refetch()}>Retry</Button></div>}
+        <Field label="Invoice"><select className={selectCls} value={invoice} disabled={inv.isLoading || !!inv.error} onChange={(e) => setInvoice(e.target.value)}><option value="">Select</option>{inv.data?.map((x) => <option key={x.id} value={x.id}>{x.invoice_number} · balance {inr(x.balance_due)}</option>)}</select></Field>
+        <Field label="Amount"><Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+        {amount.trim() && preflight.error && <p role="alert" className="text-xs text-destructive">{preflight.error}</p>}
+        <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!invoice || !!preflight.error || m.isPending} onClick={() => m.mutate()}>Adjust</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -11,3 +11,13 @@
 The Vendor Ledger previously ignored failed payment, advance-adjustment and PO queries, and its single-response requests could truncate without notice. It now uses the same exact-count paginated verification for vendors, invoices, recorded payments, advance adjustments and approved/in-progress POs. A missing/partial dataset suppresses the balance display with a retryable error. Closed, short-closed and fully received orders are excluded from the active PO face-value reference. The PO face value is **not** a remaining-delivery commitment calculation; that needs line-level reporting.
 
 No database mutation or publication was made. For formal finance reporting a server-side consistent snapshot and reconciled ledger remain required.
+
+## Vendor Payments integrity follow-up — PR #28
+
+- Payment history and advance adjustment records now use verified, paginated reads with exact row counts rather than one capped query. A retrieval error blocks display and offers Retry.
+- Advance adjustment sums use integer paise and inconsistent amounts are rejected rather than showing misleading negative balances.
+- Scheduled-payment availability checks are vendor-scoped, include all approved invoice reservations in verified pages, and fail closed when incomplete.
+- Advance-to-invoice applications require a verified invoice selection, positive amount with two-decimal precision, and sufficient remaining advance and invoice balances. The server's apply_vendor_advance RPC continues to enforce transactional correctness.
+- Automated tests cover amount precision, overadjustment and data corruption. No SQL migration, database reset, auto WhatsApp sending or live deployment was performed.
+
+Remaining: PostgREST's multiple page calls are not a transactionally consistent database snapshot; database-side reporting is necessary for accounting sign-off. Proof file uploads also need a separate lifecycle and orphan-cleanup review.

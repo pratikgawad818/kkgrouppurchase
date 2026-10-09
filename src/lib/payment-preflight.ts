@@ -97,3 +97,58 @@ export function inspectPaymentSchedule(
 
   return { allocations, total: totalPaise / 100, errors };
 }
+
+
+/** Reject an inconsistent ledger instead of displaying a fabricated negative/zero advance. */
+export function remainingAdvanceAmount(recordedAmount: number, adjustedAmount: number): number | null {
+  const original = toPaise(String(recordedAmount));
+  const applied = toPaise(String(adjustedAmount));
+  if (original === null || applied === null || applied > original) return null;
+  return (original - applied) / 100;
+}
+
+/** Sum adjustment amounts as integer paise to avoid floating-point drift. */
+export function checkedAdvanceUsage(
+  adjustments: ReadonlyArray<{ advance_payment_id: string; amount: number }>,
+): Map<string, number> {
+  const sums = new Map<string, number>();
+  for (const adjustment of adjustments) {
+    const paise = toPaise(String(adjustment.amount));
+    if (!adjustment.advance_payment_id || paise === null || paise <= 0) {
+      throw new Error("Advance adjustment history has an invalid entry.");
+    }
+    const next = (sums.get(adjustment.advance_payment_id) ?? 0) + paise;
+    if (!Number.isSafeInteger(next)) {
+      throw new Error("Advance adjustment amounts exceed the supported range.");
+    }
+    sums.set(adjustment.advance_payment_id, next);
+  }
+  return new Map([...sums].map(([id, value]) => [id, value / 100]));
+}
+
+export function inspectAdvanceAdjustment(
+  entered: string,
+  advanceAvailable: number,
+  invoiceBalance: number | null | undefined,
+  availabilityComplete: boolean,
+): { amount: number; error: string | null } {
+  if (!availabilityComplete || invoiceBalance == null) {
+    return { amount: 0, error: "Select an invoice and verify the latest balances before adjusting an advance." };
+  }
+  const requested = toPaise(entered);
+  if (requested === null || requested <= 0) {
+    return { amount: 0, error: "Enter a positive adjustment in rupees and paise (maximum two decimal places)." };
+  }
+  const advance = toPaise(String(advanceAvailable));
+  const invoice = toPaise(String(invoiceBalance));
+  if (advance === null || invoice === null) {
+    return { amount: 0, error: "Advance or invoice balance is unavailable. Refresh before continuing." };
+  }
+  if (requested > advance) {
+    return { amount: 0, error: `The advance has only ₹${(advance / 100).toFixed(2)} remaining.` };
+  }
+  if (requested > invoice) {
+    return { amount: 0, error: `The invoice has only ₹${(invoice / 100).toFixed(2)} outstanding.` };
+  }
+  return { amount: requested / 100, error: null };
+}
