@@ -42,6 +42,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Test procurement follow-up calculations
         run: node --test scripts/tests/procurement-followup.test.mjs
+      - name: Test stale-chunk recovery without a browser
+        run: node --test scripts/tests/stale-chunk-recovery.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check
