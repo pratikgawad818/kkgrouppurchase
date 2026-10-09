@@ -83,6 +83,8 @@ jobs:
         run: node --test scripts/tests/reorder-planning.test.mjs
       - name: Test vendor-invoice GRN and three-way match preflight
         run: node --test scripts/tests/invoice-preflight.test.mjs
+      - name: Test safe vendor payment scheduling preflight
+        run: node --test scripts/tests/payment-preflight.test.mjs
       - name: Test stale-chunk recovery without a browser
         run: node --test scripts/tests/stale-chunk-recovery.test.mjs
       - name: Generate typed TanStack routes and production bundle
