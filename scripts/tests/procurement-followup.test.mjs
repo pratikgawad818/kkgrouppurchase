@@ -5,6 +5,7 @@ import {
   deliverySnapshot,
   isOverdueApprovedInvoice,
   needsInvoiceMatchReview,
+  purchaseOrderLineValues,
 } from "../../src/lib/procurement-followup.ts";
 
 const base = {
@@ -69,4 +70,24 @@ test("only unpaid approved/partially-paid and past-due invoices are overdue paya
   assert.equal(isOverdueApprovedInvoice({ ...b, status: "exception" }, "2026-10-09"), false);
   assert.equal(isOverdueApprovedInvoice({ ...b, due_date: "2026-10-09" }, "2026-10-09"), false);
   assert.equal(isOverdueApprovedInvoice({ ...b, balance_due: 0 }, "2026-10-09"), false);
+});
+
+test("purchase order register only values accepted materials and outstanding commitment", () => {
+  const totals = purchaseOrderLineValues([
+    { ordered_quantity: 10, accepted_quantity: 4, short_closed_quantity: 2, line_total: 1000 },
+    { ordered_quantity: 10, accepted_quantity: 10, short_closed_quantity: 0, line_total: 500 },
+  ]);
+  assert.equal(totals.acceptedLineValue, 900); // 400 + 500
+  assert.equal(totals.estimatedOpenLineValue, 400); // 4 of the 10 units remain
+  assert.equal(totals.openLines, 1);
+  assert.equal(totals.totalLines, 2);
+});
+
+test("zero ordered quantities cannot produce fabricated PO commitments", () => {
+  const totals = purchaseOrderLineValues([
+    { ordered_quantity: 0, accepted_quantity: 123, short_closed_quantity: 0, line_total: 200000 },
+  ]);
+  assert.equal(totals.acceptedLineValue, 0);
+  assert.equal(totals.estimatedOpenLineValue, 0);
+  assert.equal(totals.openLines, 0);
 });
