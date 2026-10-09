@@ -36,7 +36,33 @@ Run `scripts/db/preflight-invoice-grn-allocations.sql` in the **correct project 
 
 If any rows appear, record and resolve them with Accounts. **Never automatically delete or edit booked financial transactions.**
 
-Take a restorable backup, record existing function definition/hash, confirm migration history through 0016, and deploy 0017 transactionally in an agreed maintenance window. Verify the new unique index and function definition are live. Production access was *not* used in development.
+Take a restorable backup, record existing function definition/hash, confirm migration history through 0016, and deploy 0017 transactionally in an agreed maintenance window. Verify the new unique index and function definition are live. The connected Lovable Cloud database was used for expressly authorised **rollback-only functional tests** on 9 October 2026. No migration was permanently installed.
+
+## Rollback-only functional results — 9 October 2026
+
+**Migration 0017 is still NOT deployed.** A first rollback-only installation passed SQL execution but did not invoke the new function. Calling `save_vendor_invoice` revealed a real runtime defect: its locking block used `gi` as a table alias where `gi` was also a PL/pgSQL RECORD variable. The variable had not been assigned, causing `record "gi" is not assigned yet`.
+
+Follow-up GitHub fix: use `locked_grn_item` consistently for the nested GRN item query, locked item query and `ORDER BY`. Because migration 0017 was never installed, fixing the existing migration file in the source repository does not rewrite an applied migration.
+
+Using `BEGIN; ... migration 0017; SET LOCAL ROLE authenticated; ... ROLLBACK;` on the connected database, the corrected migration passed **13 functional checks**:
+
+1. A valid draft invoice for 4 of 10 accepted units saves; 6 remain.
+2. A second invoice asking for 7 when only 6 remain is rejected.
+3. Two rows referencing the same GRN item in one invoice are rejected.
+4. Editing the draft from 4 to 5 accepted units succeeds, with no double count.
+5. Editing that draft to 11 (when only 10 accepted) is rejected.
+6. A GRN item belonging to a different PO is rejected.
+7. Zero invoice quantity is rejected.
+8. All failed attempts leave the valid draft quantity unchanged.
+9. A second valid draft can be created in the rollback-only test.
+10. `invoice_transition(..., 'submit', ...)` proceeds to `pending_review` for matching amounts.
+11. Editing an already submitted invoice is rejected.
+12. The unique index rejects a direct duplicate `(invoice_id,grn_item_id)` insert (SQLSTATE 23505).
+13. An authenticated actor without an ERP profile/permission cannot create an invoice.
+
+**Isolation verified:** Original `save_vendor_invoice` function MD5 `7a48030b7135dea1d5a3019fd5270ca8` remains unchanged; index absent; migration 0017 not registered; existing invoice headers **6**, invoice lines **6**, GRN items **7**; test document prefixes `QA-%` absent; sample GRN availability restored to **10.000**. The disposable test entries, audit records and document counter updates were rolled back.
+
+**Limitation:** These are sequential tests in one PostgreSQL transaction. They do **not** simulate two simultaneous database sessions contending on the same GRN item. True concurrency and GRN cancellation interleavings require a separate disposable **staging** database with two connections. Offline GitHub CI still cannot prove concurrent row-lock behaviour.
 
 ## Required integration tests on a disposable staging database
 
@@ -56,4 +82,4 @@ Offline SQL parsing in GitHub CI only proves outer statement grammar. It **does 
 
 ## User instruction
 
-Do not call Lovable AI, spend credits, publish, or execute a DB migration until the user gives permission. This draft PR intentionally does none of those things.
+Do not call Lovable AI, spend credits, publish, or execute a DB migration until the user gives permission. The source fix remains reviewable; production DB deployment still requires a separate explicit user approval. No Lovable AI credits have been used.
