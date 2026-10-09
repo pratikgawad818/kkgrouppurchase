@@ -98,10 +98,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// After a new publish, an already-open tab may request old code chunks that no
+// longer exist ("Importing a module script failed"). Reload once to fetch the
+// current version instead of leaving a blank screen.
+const STALE_CHUNK_RECOVERY = `(function(){
+  var KEY='kk-chunk-reload';
+  function isChunkError(m){m=String(m||'');return /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Unable to preload CSS/i.test(m);}
+  function recover(){
+    try{var last=+sessionStorage.getItem(KEY)||0;if(Date.now()-last<10000)return;sessionStorage.setItem(KEY,String(Date.now()));}catch(e){}
+    window.location.reload();
+  }
+  window.addEventListener('vite:preloadError',function(e){e.preventDefault();recover();});
+  window.addEventListener('error',function(e){if(isChunkError(e&&e.message))recover();},true);
+  window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;if(isChunkError(r&&r.message||r))recover();});
+})();`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: STALE_CHUNK_RECOVERY }} />
         <HeadContent />
       </head>
       <body>

@@ -29,6 +29,7 @@ import { Route as AuthenticatedShellFinanceVendorLedgerRouteImport } from './rou
 import { Route as AuthenticatedShellInventoryMaterialConsumptionRouteImport } from './routes/_authenticated/_shell/inventory.material-consumption'
 import { Route as AuthenticatedShellInventoryStockRouteImport } from './routes/_authenticated/_shell/inventory.stock'
 import { Route as AuthenticatedShellInventoryStockMovementsRouteImport } from './routes/_authenticated/_shell/inventory.stock-movements'
+import { Route as AuthenticatedShellProcurementFollowUpsRouteImport } from './routes/_authenticated/_shell/procurement.follow-ups'
 import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } from './routes/_authenticated/_shell/procurement.vendor-quotations'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
@@ -163,6 +164,12 @@ const AuthenticatedShellInventoryStockMovementsRoute =
   AuthenticatedShellInventoryStockMovementsRouteImport.update({
     id: '/inventory/stock-movements',
     path: '/inventory/stock-movements',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProcurementFollowUpsRoute =
+  AuthenticatedShellProcurementFollowUpsRouteImport.update({
+    id: '/procurement/follow-ups',
+    path: '/procurement/follow-ups',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellProcurementVendorQuotationsRoute =
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/inventory/material-consumption': typeof AuthenticatedShellInventoryMaterialConsumptionRoute
   '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
+  '/procurement/follow-ups': typeof AuthenticatedShellProcurementFollowUpsRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
@@ -373,6 +381,7 @@ export interface FileRoutesByTo {
   '/inventory/material-consumption': typeof AuthenticatedShellInventoryMaterialConsumptionRoute
   '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
+  '/procurement/follow-ups': typeof AuthenticatedShellProcurementFollowUpsRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
@@ -420,6 +429,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/inventory/material-consumption': typeof AuthenticatedShellInventoryMaterialConsumptionRoute
   '/_authenticated/_shell/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/_authenticated/_shell/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
+  '/_authenticated/_shell/procurement/follow-ups': typeof AuthenticatedShellProcurementFollowUpsRoute
   '/_authenticated/_shell/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
@@ -466,6 +476,7 @@ export interface FileRouteTypes {
     | '/inventory/material-consumption'
     | '/inventory/stock'
     | '/inventory/stock-movements'
+    | '/procurement/follow-ups'
     | '/procurement/vendor-quotations'
     | '/settings/company'
     | '/settings/finance'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/inventory/material-consumption'
     | '/inventory/stock'
     | '/inventory/stock-movements'
+    | '/procurement/follow-ups'
     | '/procurement/vendor-quotations'
     | '/settings/company'
     | '/settings/finance'
@@ -556,6 +568,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/inventory/material-consumption'
     | '/_authenticated/_shell/inventory/stock'
     | '/_authenticated/_shell/inventory/stock-movements'
+    | '/_authenticated/_shell/procurement/follow-ups'
     | '/_authenticated/_shell/procurement/vendor-quotations'
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/finance'
@@ -729,6 +742,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory/stock-movements'
       fullPath: '/inventory/stock-movements'
       preLoaderRoute: typeof AuthenticatedShellInventoryStockMovementsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/procurement/follow-ups': {
+      id: '/_authenticated/_shell/procurement/follow-ups'
+      path: '/procurement/follow-ups'
+      fullPath: '/procurement/follow-ups'
+      preLoaderRoute: typeof AuthenticatedShellProcurementFollowUpsRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/procurement/vendor-quotations': {
@@ -918,6 +938,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellInventoryMaterialConsumptionRoute: typeof AuthenticatedShellInventoryMaterialConsumptionRoute
   AuthenticatedShellInventoryStockRoute: typeof AuthenticatedShellInventoryStockRoute
   AuthenticatedShellInventoryStockMovementsRoute: typeof AuthenticatedShellInventoryStockMovementsRoute
+  AuthenticatedShellProcurementFollowUpsRoute: typeof AuthenticatedShellProcurementFollowUpsRoute
   AuthenticatedShellProcurementVendorQuotationsRoute: typeof AuthenticatedShellProcurementVendorQuotationsRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsFinanceRoute: typeof AuthenticatedShellSettingsFinanceRoute
@@ -965,6 +986,8 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellInventoryStockRoute: AuthenticatedShellInventoryStockRoute,
   AuthenticatedShellInventoryStockMovementsRoute:
     AuthenticatedShellInventoryStockMovementsRoute,
+  AuthenticatedShellProcurementFollowUpsRoute:
+    AuthenticatedShellProcurementFollowUpsRoute,
   AuthenticatedShellProcurementVendorQuotationsRoute:
     AuthenticatedShellProcurementVendorQuotationsRoute,
   AuthenticatedShellSettingsCompanyRoute:
