@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowUpRight, AlertTriangle, ChartNoAxesCombined, ClipboardList, PackageCheck, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { PageHeader, Empty, Loading, Progress, Stat, SearchBox } from "@/components/erp/common";
+import { PageHeader, Empty, Loading, Stat, SearchBox } from "@/components/erp/common";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, inr } from "@/lib/format";
 import { useMe } from "@/lib/session";
@@ -242,7 +242,7 @@ function MaterialShare({ row, available }: { row: CostProjectTotals; available: 
   if (pct === null) return <span className="text-xs text-muted-foreground">Budget not set</span>;
   return <div className="min-w-28">
     <div className="mb-1 flex justify-between gap-2 text-xs"><span className={cn("font-semibold tabular-nums", pct > 100 && "text-destructive")}>{pct.toLocaleString("en-IN")}%</span>{pct > 100 && <span className="text-destructive">Exceeds baseline</span>}</div>
-    <Progress value={pct} />
+    <div aria-hidden className="h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full", pct > 100 ? "bg-destructive" : "bg-primary")} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} /></div>
   </div>;
 }
 
