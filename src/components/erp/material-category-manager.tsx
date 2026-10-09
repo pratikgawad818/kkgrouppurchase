@@ -39,11 +39,9 @@ const INITIAL_FORM: CategoryForm = {
 export function MaterialCategoryManager({
   open,
   onOpenChange,
-  startCreating = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  startCreating?: boolean;
 }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Category | null>(null);
@@ -236,9 +234,6 @@ export function MaterialCategoryManager({
               </Button>
             </div>
           </form>
-        )}
-        {startCreating && !showEditor && (categories.data?.length ?? 0) === 0 && (
-          <p className="sr-only">Create a category before adding materials.</p>
         )}
       </DialogContent>
     </Dialog>
