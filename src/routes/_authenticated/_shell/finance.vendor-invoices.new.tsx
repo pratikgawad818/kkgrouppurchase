@@ -12,6 +12,7 @@ import { selectCls } from "@/lib/po";
 import { TAX_RATES } from "@/lib/rfq";
 import { addDays, today, uploadVendorDoc, type FinanceSettings } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { inspectVendorInvoice } from "@/lib/invoice-preflight";
 
 const META = "Enter a vendor bill against a purchase order and its goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/new")({
@@ -42,6 +43,7 @@ function NewInvoice() {
         supabase.from("vendor_invoice_items").select("*").eq("invoice_id", editId!),
       ]);
       if (i.error) throw i.error;
+      if (it.error) throw it.error;
       return { inv: i.data, items: it.data ?? [] };
     },
   });
@@ -82,7 +84,15 @@ function NewInvoice() {
         .eq("goods_receipt_notes.po_id", po).eq("goods_receipt_notes.status", "posted");
       if (error) throw error;
       const avail = await Promise.all((data ?? []).map((g) => supabase.rpc("grn_item_available", { _grn_item: g.id, _exclude_invoice: (editId ?? null) as string })));
-      return (data ?? []).map((g, i) => ({ ...g, available: Number(avail[i]?.data ?? 0) }));
+      return (data ?? []).map((g, i) => {
+        const check = avail[i];
+        if (!check) throw new Error(`GRN quantity check did not return a result for ${g.goods_receipt_notes.grn_number}.`);
+        if (check.error) throw new Error(`Could not check uninvoiced accepted quantity for ${g.goods_receipt_notes.grn_number}: ${errMsg(check.error)}`);
+        if (check.data == null || !Number.isFinite(Number(check.data))) {
+          throw new Error(`Available accepted quantity is missing for ${g.goods_receipt_notes.grn_number}. Refresh the GRN check before saving.`);
+        }
+        return { ...g, available: Number(check.data) };
+      });
     },
   });
   useEffect(() => {
@@ -103,7 +113,10 @@ function NewInvoice() {
   const grnNumbers = [...new Set(lines.map((l) => l.grn_number))];
   const shown = lines.filter((l) => !grnFilter || l.grn_number === grnFilter);
   const upd = (id: string, patch: Partial<Line>) => setLines((ls) => ls.map((l) => (l.grn_item_id === id ? { ...l, ...patch } : l)));
-  const active = lines.filter((l) => l.include && Number(l.quantity) > 0);
+  // Do not silently omit checked lines with an invalid or empty quantity.
+  // The preflight reports them and blocks the save.
+  const active = lines.filter((l) => l.include);
+  const preflight = inspectVendorInvoice(active, h);
   const sub = active.reduce((a, l) => a + Number(l.quantity) * Number(l.rate), 0);
   const tax = active.reduce((a, l) => a + Number(l.quantity) * Number(l.rate) * Number(l.tax_rate_percent) / 100, 0);
   const extra = Number(h.freight || 0) + Number(h.other_charges || 0);
@@ -113,7 +126,13 @@ function NewInvoice() {
 
   const save = useMutation({
     mutationFn: async (submit: boolean) => {
-      for (const l of active) if (Number(l.quantity) > l.available) throw new Error(`Cannot invoice ${l.quantity} of ${l.material} — only ${l.available} accepted and not yet invoiced`);
+      // The server remains authoritative; this catches client entry mistakes
+      // before document upload or submission and never overrides 3-way matching.
+      if (!po || !grn.data || grn.isFetching || grn.error || base.error || existing.error) {
+        throw new Error("Goods-receipt availability could not be verified. Refresh the form before saving.");
+      }
+      const checked = inspectVendorInvoice(active, h);
+      if (checked.errors.length) throw new Error(checked.errors.join(" "));
       const attachment_path = file ? await uploadVendorDoc("invoices", file) : "";
       const { data, error } = await supabase.rpc("save_vendor_invoice", {
         _id: (editId ?? null) as string,
@@ -129,15 +148,18 @@ function NewInvoice() {
   });
 
   if (base.isLoading || (editId && existing.isLoading)) return <Loading />;
-  const canSave = po && h.vendor_invoice_number.trim() && h.vendor_invoice_date && active.length > 0;
+  if (base.error || existing.error) return <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+    Could not load the purchase order or invoice data: {errMsg(base.error || existing.error)}. Please retry before editing.
+  </div>;
+  const canSave = !!po && !!grn.data && !grn.isFetching && !grn.error && preflight.errors.length === 0;
   return (
     <>
       <PageHeader title={editId ? `Edit ${existing.data?.inv.invoice_number}` : "New vendor invoice"} subtitle="Select vendor → purchase order → goods receipts. Only accepted, not-yet-invoiced quantity can be billed." />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 rounded-md border bg-card p-4 lg:col-span-2">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Vendor"><select className={selectCls} value={vendor} disabled={!!editId} onChange={(e) => { setVendor(e.target.value); setPo(""); }}><option value="">Select vendor</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.company_name}</option>)}</select></Field>
-            <Field label="Purchase order"><select className={selectCls} value={po} disabled={!!editId || !vendor} onChange={(e) => setPo(e.target.value)}><option value="">Select PO</option>{pos.filter((p) => p.vendor_id === vendor).map((p) => <option key={p.id} value={p.id}>{p.po_number} · {fmtDate(p.po_date)} · {inr(p.grand_total)}</option>)}</select></Field>
+            <Field label="Vendor"><select className={selectCls} value={vendor} disabled={!!editId} onChange={(e) => { setVendor(e.target.value); setPo(""); setLines([]); setGrnFilter(""); }}><option value="">Select vendor</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.company_name}</option>)}</select></Field>
+            <Field label="Purchase order"><select className={selectCls} value={po} disabled={!!editId || !vendor} onChange={(e) => { setPo(e.target.value); setLines([]); setGrnFilter(""); }}><option value="">Select PO</option>{pos.filter((p) => p.vendor_id === vendor).map((p) => <option key={p.id} value={p.id}>{p.po_number} · {fmtDate(p.po_date)} · {inr(p.grand_total)}</option>)}</select></Field>
             <Field label="Vendor bill number"><Input value={h.vendor_invoice_number} onChange={(e) => setH({ ...h, vendor_invoice_number: e.target.value })} placeholder="As printed on the bill" /></Field>
             <Field label="Bill date"><Input type="date" value={h.vendor_invoice_date} onChange={(e) => setH({ ...h, vendor_invoice_date: e.target.value })} /></Field>
             <Field label="Due date"><Input type="date" value={h.due_date} onChange={(e) => setH({ ...h, due_date: e.target.value })} /></Field>
@@ -162,7 +184,13 @@ function NewInvoice() {
             <div className="text-sm font-medium">Invoice lines from goods receipts</div>
             <select className={cn(selectCls, "w-48")} value={grnFilter} onChange={(e) => setGrnFilter(e.target.value)}><option value="">All GRNs</option>{grnNumbers.map((g) => <option key={g}>{g}</option>)}</select>
           </div>
-          {grn.isLoading ? <Loading /> : (
+          {grn.isLoading ? <Loading /> : grn.error ? (
+            <div role="alert" className="m-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <p className="font-semibold">GRN availability could not be verified</p>
+              <p className="mt-1">{errMsg(grn.error)}</p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => grn.refetch()}>Retry GRN check</Button>
+            </div>
+          ) : (
             <div className="doc-table overflow-x-auto"><table className="w-full text-sm">
               <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3"></th><th className="px-4 py-3">GRN</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Available</th><th className="px-4 py-3 text-right">Invoice qty</th><th className="px-4 py-3 text-right">PO rate</th><th className="px-4 py-3 text-right">Bill rate</th><th className="px-4 py-3">GST %</th><th className="px-4 py-3 text-right">Amount</th></tr></thead>
               <tbody>
@@ -188,6 +216,19 @@ function NewInvoice() {
         </div>
       )}
 
+      {po && grn.data && (
+        <div className="mt-4 space-y-2" aria-live="polite">
+          {preflight.errors.length > 0 && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            <p className="font-semibold">Resolve these issues before saving</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5">{preflight.errors.map((message, index) => <li key={index}>{message}</li>)}</ul>
+          </div>}
+          {preflight.advisories.length > 0 && <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <p className="font-semibold">Items to review before matching</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5">{preflight.advisories.map((message, index) => <li key={index}>{message}</li>)}</ul>
+            <p className="mt-2 text-xs">These are early warnings, not a 3-way match result. Saving and submitting still invokes the server's matching and approval workflow.</p>
+          </div>}
+        </div>
+      )}
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 rounded-md border bg-card p-4 lg:col-span-2">
           <div className="grid gap-3 sm:grid-cols-2">
