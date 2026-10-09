@@ -40,6 +40,8 @@ jobs:
         run: node scripts/check-public-env.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Test procurement follow-up calculations
+        run: node --test scripts/tests/procurement-followup.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check
