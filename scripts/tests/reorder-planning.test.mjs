@@ -132,3 +132,11 @@ test("accepted plus short-closed quantities are never counted as incoming again"
   assert.equal(openPoQuantity({ material_id: "cement", ordered_quantity: 10, accepted_quantity: 10, short_closed_quantity: 6 }), 0);
   assert.equal(openPoQuantity({ material_id: "cement", ordered_quantity: 10, accepted_quantity: -1, short_closed_quantity: -2 }), 10);
 });
+
+
+test("without PO-view permission the suggested order quantity is unavailable, never a guessed buy", () => {
+  const r = planReorders([cement], [wh1], [{ warehouse_id: "wh1", material_id: "cement", quantity_on_hand: 2 }],
+    null, "2026-10-09");
+  assert.equal(r.lines.length, 1);
+  assert.equal(r.lines[0].suggestedTopUp, null);
+});
