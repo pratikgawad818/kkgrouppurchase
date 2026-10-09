@@ -31,6 +31,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   ] },
   { group: "Procurement", items: [
     { to: "/procurement/follow-ups", label: "Follow-up Center", icon: CalendarClock, perm: "purchase_order.view" },
+    { to: "/procurement/supplier-rate-history", label: "Supplier Rate History", icon: Store, perm: "purchase_order.view" },
     { to: "/procurement/purchase-requests", label: "Purchase Requests", icon: ClipboardList, perm: "purchase_request.view" },
     { to: "/procurement/rfqs", label: "RFQs & Quotations", icon: FileText, perm: "rfq.view" },
     { to: "/procurement/vendor-quotations", label: "Vendor Quotations", icon: FileText, perm: "quotation.view" },
