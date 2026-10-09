@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Stat, Loading } from "@/components/erp/common";
 import { fmtDateTime, PROJECT_STATUS_LABEL } from "@/lib/format";
 import { useCan } from "@/lib/session";
+import { ACTIVE_DELIVERY_PO_STATUSES, purchaseOrderLineValues } from "@/lib/procurement-followup";
+import { today as todayIst } from "@/lib/finance";
 
 export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — KK GROUP ERP" }, { name: "description", content: "Procurement, inventory, vendor and project overview." }, { property: "og:title", content: "Dashboard — KK GROUP ERP" }, { property: "og:description", content: "Procurement, inventory, vendor and project overview." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -62,28 +64,32 @@ function PoSummary({ fy, projectId, buildingId }: { fy: number; projectId: strin
   const q = useQuery({
     queryKey: ["pos", "summary", fy, projectId, buildingId],
     queryFn: async () => {
-      let r = supabase.from("purchase_orders").select("status,grand_total,purchase_order_items(ordered_quantity,received_quantity,line_total)").gte("po_date", `${fy}-04-01`).lte("po_date", `${fy + 1}-03-31`).limit(5000);
+      let r = supabase.from("purchase_orders").select("status,grand_total,purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total)").gte("po_date", `${fy}-04-01`).lte("po_date", `${fy + 1}-03-31`).limit(5000);
       if (projectId) r = r.eq("project_id", projectId);
       if (buildingId) r = r.eq("building_id", buildingId);
       const { data, error } = await r;
       if (error) throw error;
       const rows = data ?? [];
       const c = (st: string) => rows.filter((x) => x.status === st).length;
-      let pendingValue = 0;
-      for (const x of rows) if (["approved", "sent", "partially_received", "partially_accepted"].includes(x.status))
-        for (const i of x.purchase_order_items) pendingValue += Number(i.ordered_quantity) ? Number(i.line_total) * (Number(i.ordered_quantity) - Number(i.received_quantity)) / Number(i.ordered_quantity) : 0;
+      // Undelivered PO line commitments are based on ACCEPTED stock, not raw
+      // received units (which can include damaged/rejected goods). Short-closed
+      // quantities are no longer due from the vendor.
+      const pendingValue = rows
+        .filter((po) => ACTIVE_DELIVERY_PO_STATUSES.some((status) => status === po.status))
+        .reduce((sum, po) => sum + purchaseOrderLineValues(po.purchase_order_items).estimatedOpenLineValue, 0);
       return { total: rows.length, pending: c("pending_approval"), approved: c("approved"), sent: c("sent"), partial: c("partially_received") + c("partially_accepted"), full: c("fully_received"), pendingValue };
     },
   });
   const d = q.data;
-  const card = (label: string, value: React.ReactNode) => <Link to="/procurement/purchase-orders"><Stat label={label} value={value ?? "—"} className="hover:border-primary/40 hover:shadow-md" /></Link>;
+  const card = (label: string, value: React.ReactNode, hint?: string) => <Link to="/procurement/purchase-orders"><Stat label={label} value={value ?? "—"} hint={hint} className="hover:border-primary/40 hover:shadow-md" /></Link>;
   return (
     <section className="mt-8">
       <h2 className="mb-3 flex items-baseline gap-2 text-[15px] font-semibold tracking-tight">Purchase Orders <span className="font-normal text-muted-foreground">· {d?.total ?? 0} in {fyLabel(fy)}</span></h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {card("Pending approval", d?.pending)}{card("Approved", d?.approved)}{card("Sent", d?.sent)}
-        {card("Partially received", d?.partial)}{card("Fully received", d?.full)}{card("Pending receipt value", d ? inr(d.pendingValue) : undefined)}
+        {card("Partially received", d?.partial)}{card("Fully received", d?.full)}{card("Open PO line value¹", d ? inr(d.pendingValue) : undefined, "Undelivered accepted-material commitment")}
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">¹ Estimated outstanding material line value after accepted GRNs and short-closures. Excludes PO-level charges and discounts; it is not a vendor payable.</p>
     </section>
   );
 }
@@ -97,7 +103,7 @@ function GrnSummary({ fy, projectId, buildingId }: { fy: number; projectId: stri
       if (buildingId) r = r.eq("building_id", buildingId);
       const { data, error } = await r;
       if (error) throw error;
-      const m = new Date().toISOString().slice(0, 7);
+      const m = todayIst().slice(0, 7);
       const rows = data ?? [];
       return { fy: rows.length, month: rows.filter((x) => x.received_date.startsWith(m)).length, drafts: rows.filter((x) => x.status === "draft").length, recent: rows.slice(0, 5) };
     },
