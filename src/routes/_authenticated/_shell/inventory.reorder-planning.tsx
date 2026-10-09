@@ -132,6 +132,7 @@ function ReorderPlanning() {
   </>;
 
   const stockRows = stockQ.data?.rows ?? [];
+  const hiddenMetadataRows = stockRows.filter(x => !x.items || !x.warehouses).length;
   // Embedded item/store metadata remains useful for store operators without
   // master-data browsing permissions. Their RLS-visible stock is all we use.
   const derivedMaterials = new Map<string, PlanningMaterial>();
@@ -217,6 +218,9 @@ function ReorderPlanning() {
       {posQ.error && <div>Open POs: {errMsg(posQ.error)}</div>}
       {storesQ.error && <div>Store directory: {errMsg(storesQ.error)}</div>}
       {materialsQ.error && <div>Material directory: {errMsg(materialsQ.error)}</div>}
+    </div>}
+    {hiddenMetadataRows > 0 && <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      {hiddenMetadataRows} visible stock line(s) have inaccessible material or store metadata. Alerts may be incomplete for your role; ask an administrator to check access.
     </div>}
     {capped && <div role="status" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
       <AlertTriangle className="mr-1 inline h-4 w-4" aria-hidden />
