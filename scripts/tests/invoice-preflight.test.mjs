@@ -95,3 +95,19 @@ test("unselected or empty GRN invoices are blocked from saving", () => {
   assert.match(inspectVendorInvoice([], header).errors.join(" "), /Select at least one/);
   assert.match(inspectVendorInvoice([line({ include: false })], header).errors.join(" "), /Select at least one/);
 });
+
+test("rejects invalid calendar dates rather than accepting ISO-shaped strings", () => {
+  for (const date of ["2026-02-29", "2026-04-31", "2026-13-01", "2026-00-12", "garbage"]) {
+    const result = inspectVendorInvoice([line()], { ...header, vendor_invoice_date: date });
+    assert.match(result.errors.join(" "), /valid supplier bill date/, date);
+  }
+  assert.deepEqual(inspectVendorInvoice([line()], { ...header, vendor_invoice_date: "2024-02-29" }).errors, []);
+});
+
+test("rejects invalid optional due dates while allowing no due date", () => {
+  for (const date of ["2026-02-30", "2026-99-01", "tomorrow"]) {
+    const result = inspectVendorInvoice([line()], { ...header, due_date: date });
+    assert.match(result.errors.join(" "), /valid due date/, date);
+  }
+  assert.deepEqual(inspectVendorInvoice([line()], { ...header, due_date: "" }).errors, []);
+});

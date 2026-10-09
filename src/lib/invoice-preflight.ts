@@ -37,6 +37,13 @@ function precisionWithin(value: string, places: number): boolean {
   return !!decimal && (decimal[1]?.length ?? 0) <= places;
 }
 
+/** Validate actual calendar dates, not just YYYY-MM-DD string shape. */
+function validIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
+}
+
 function nonnegativeAmount(value: string): boolean {
   return value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) >= 0 && precisionWithin(value, 2);
 }
@@ -56,11 +63,13 @@ export function inspectVendorInvoice(
   let zeroRated = 0;
 
   if (!header.vendor_invoice_number.trim()) errors.push("Enter the supplier's bill number.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(header.vendor_invoice_date)) {
+  if (!validIsoDate(header.vendor_invoice_date)) {
     errors.push("Enter a valid supplier bill date.");
   }
-  if (header.due_date && /^\d{4}-\d{2}-\d{2}$/.test(header.due_date) &&
-      header.due_date < header.vendor_invoice_date) {
+  if (header.due_date && !validIsoDate(header.due_date)) {
+    errors.push("Enter a valid due date.");
+  } else if (header.due_date && validIsoDate(header.vendor_invoice_date) &&
+             header.due_date < header.vendor_invoice_date) {
     advisories.push("Due date is before the bill date. Confirm the supplier's terms.");
   }
   if (!selected.length) errors.push("Select at least one accepted GRN line.");
