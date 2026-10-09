@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,7 +51,8 @@ function PoList() {
   const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
   return (
     <>
-      <PageHeader title="Purchase Orders" subtitle="Create POs from an RFQ that is Ready for Purchase Order." />
+      <PageHeader title="Purchase Orders" subtitle="Create POs from an RFQ that is Ready for Purchase Order."
+        actions={<Button asChild size="sm" variant="outline"><Link to="/procurement/follow-ups">Supplier follow-ups</Link></Button>} />
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="w-full sm:w-64"><SearchBox value={search} onChange={(v) => { setSearch(v); setPage(0); }} placeholder="PO, vendor, material, project, RFQ" /></div>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={f.status} onChange={(e) => set("status", e.target.value)}>
