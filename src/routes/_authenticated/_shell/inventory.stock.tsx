@@ -48,7 +48,8 @@ function StockPage() {
   return (
     <>
       <PageHeader title="Stock" subtitle="Stock changes through posted goods receipts, transfers, authorised adjustments, project material issues and returns."
-        actions={<div className="flex gap-2">
+        actions={<div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline"><Link to="/inventory/reorder-planning">Reorder planning</Link></Button>
           {can("inventory.adjust") && <Button size="sm" variant="outline" onClick={() => setAdj("opening_stock")}>Opening stock</Button>}
           {can("inventory.adjust") && <Button size="sm" variant="outline" onClick={() => setAdj("adjustment")}>Adjust stock</Button>}
           {can("inventory.transfer") && <Button size="sm" onClick={() => setTransfer(true)}>Transfer stock</Button>}
