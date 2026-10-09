@@ -4,6 +4,8 @@ import { useState } from "react";
 import { CheckCircle2, Clock3, Copy, ExternalLink, MessageCircle, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { voteFetchChunks } from "@/lib/approval-queue";
 import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,30 +38,41 @@ function DirectorApprovals() {
     queryKey: ["director-approvals", isAdmin, me.data?.profile.company_id],
     enabled: isDirector || isAdmin,
     queryFn: async () => {
-      const [po, payments, votes] = await Promise.all([
-        supabase.from("purchase_orders").select("id,po_number,grand_total,status,project_id,created_by,projects(name),vendors(company_name)").eq("status", "pending_approval").order("created_at", { ascending: false }).limit(200),
-        supabase.from("vendor_payments").select("id,payment_number,amount,status,project_id,created_by,projects(name),vendors(company_name)").eq("status", "scheduled").order("created_at", { ascending: false }).limit(200),
-        supabase.from("director_approval_votes").select("entity_type,entity_id,actor_id,decision,created_at").limit(2000),
+      const [po, payments] = await Promise.all([
+        loadCompleteRows(async (start, end) => await supabase.from("purchase_orders")
+          .select("id,po_number,grand_total,status,project_id,created_by,projects(name),vendors(company_name)", { count: "exact" })
+          .eq("status", "pending_approval").order("created_at", { ascending: false })
+          .order("id", { ascending: false }).range(start, end)),
+        loadCompleteRows(async (start, end) => await supabase.from("vendor_payments")
+          .select("id,payment_number,amount,status,project_id,created_by,projects(name),vendors(company_name)", { count: "exact" })
+          .eq("status", "scheduled").order("created_at", { ascending: false })
+          .order("id", { ascending: false }).range(start, end)),
       ]);
-      if (po.error) throw po.error;
-      if (payments.error) throw payments.error;
-      if (votes.error) throw votes.error;
       const requests: Request[] = [
-        ...(po.data ?? []).map(x => ({ id: x.id, kind: "purchase_order" as const, number: x.po_number, amount: Number(x.grand_total), status: x.status, projectId: x.project_id, project: x.projects?.name ?? "Project", vendor: x.vendors?.company_name ?? "Vendor", createdBy: x.created_by })),
-        ...(payments.data ?? []).map(x => ({ id: x.id, kind: "vendor_payment" as const, number: x.payment_number, amount: Number(x.amount), status: x.status, projectId: x.project_id, project: x.projects?.name ?? "Company-wide", vendor: x.vendors?.company_name ?? "Vendor", createdBy: x.created_by })),
+        ...po.map(x => ({ id: x.id, kind: "purchase_order" as const, number: x.po_number, amount: Number(x.grand_total), status: x.status, projectId: x.project_id, project: x.projects?.name ?? "Project", vendor: x.vendors?.company_name ?? "Vendor", createdBy: x.created_by })),
+        ...payments.map(x => ({ id: x.id, kind: "vendor_payment" as const, number: x.payment_number, amount: Number(x.amount), status: x.status, projectId: x.project_id, project: x.projects?.name ?? "Company-wide", vendor: x.vendors?.company_name ?? "Vendor", createdBy: x.created_by })),
       ];
+      const voteBatches = voteFetchChunks(requests);
+      const voteResults = await Promise.all(voteBatches.map(batch =>
+        loadCompleteRows(async (start, end) => await supabase.from("director_approval_votes")
+          .select("id,entity_type,entity_id,actor_id,decision,created_at", { count: "exact" })
+          .eq("entity_type", batch.kind).in("entity_id", batch.ids).order("id").range(start, end))
+      ));
+      const votes: Vote[] = voteResults.flat();
       let directors: { id: string; full_name: string | null; phone: string | null }[] = [];
-      if (isAdmin && me.data?.profile.company_id) {
-        const [p, roles] = await Promise.all([
-          supabase.from("profiles").select("id,full_name,phone,is_active").eq("company_id", me.data.profile.company_id).eq("is_active", true),
-          supabase.from("user_roles").select("user_id").eq("role", "director"),
+      const companyId = me.data?.profile.company_id;
+      if (isAdmin && companyId) {
+        const [profiles, roles] = await Promise.all([
+          loadCompleteRows(async (start, end) => await supabase.from("profiles")
+            .select("id,full_name,phone,is_active", { count: "exact" })
+            .eq("company_id", companyId).eq("is_active", true).order("id").range(start, end)),
+          loadCompleteRows(async (start, end) => await supabase.from("user_roles")
+            .select("id,user_id", { count: "exact" }).eq("role", "director").order("id").range(start, end)),
         ]);
-        if (p.error) throw p.error;
-        if (roles.error) throw roles.error;
-        const directorIds = new Set((roles.data ?? []).map(r => r.user_id));
-        directors = (p.data ?? []).filter(x => directorIds.has(x.id));
+        const directorIds = new Set(roles.map(r => r.user_id));
+        directors = profiles.filter(x => directorIds.has(x.id));
       }
-      return { requests, votes: (votes.data ?? []) as Vote[], directors };
+      return { requests, votes, directors };
     },
   });
   const action = useMutation({
@@ -76,12 +89,13 @@ function DirectorApprovals() {
     onError: e => toast.error(errMsg(e)),
   });
   if (me.isLoading) return <Loading />;
+  if (me.error) return <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Your permissions could not be verified: {errMsg(me.error)}</div>;
   if (!isDirector && !isAdmin) return <div className="mx-auto max-w-lg rounded-xl border bg-card p-6"><ShieldCheck className="mb-3 h-7 w-7" /><h1 className="text-lg font-semibold">Restricted access</h1><p className="mt-2 text-sm text-muted-foreground">Only directors can vote. Administrators can prepare notification links without gaining voting rights.</p></div>;
   return <div className="mx-auto max-w-3xl pb-20">
     <PageHeader title="Director Approvals" subtitle={isAdmin && !isDirector ? "Share secure WhatsApp review links with all three directors." : "Review each request and approve using your own account. Three independent approvals are required."} />
     <div className="mb-5 rounded-xl border bg-card p-4 text-sm"><ShieldCheck className="mr-2 inline h-5 w-5 text-primary" />WhatsApp links only open the secured ERP page. Every director signs in with their own account. Sharing a link never approves a payment or PO.</div>
     {isAdmin && <div className="mb-5 rounded-xl border bg-card p-4 text-sm"><MessageCircle className="mr-2 inline h-5 w-5" />Manual notification mode: tapping WhatsApp opens a prefilled message; you must press Send yourself. Automatic WhatsApp sending will require the new business number and official API configuration. Create three Director accounts with their own phone numbers in <a href="/settings/users" className="font-semibold underline">Users & Roles</a>.</div>}
-    {q.isLoading ? <Loading /> : q.error ? <p className="text-sm text-destructive">{errMsg(q.error)}</p> : !q.data?.requests.filter(r => !search.id || (r.id === search.id && r.kind === search.kind)).length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">No pending approvals for this request. It may have been completed or cancelled.</div> :
+    {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Director approvals could not be verified: {errMsg(q.error)} <Button variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : !q.data?.requests.filter(r => !search.id || (r.id === search.id && r.kind === search.kind)).length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">No pending approvals for this request. It may have been completed or cancelled.</div> :
     <div className="space-y-4">{q.data.requests.filter(r => !search.id || (r.id === search.id && r.kind === search.kind)).map(r => {
       const votes = q.data.votes.filter(v => v.entity_type === r.kind && v.entity_id === r.id);
       const approved = votes.filter(v => v.decision === "approved").length;
