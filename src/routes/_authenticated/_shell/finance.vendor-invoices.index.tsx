@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { loadCompleteRows } from "@/lib/complete-register";
 import { Button } from "@/components/ui/button";
 import { Loading, PageHeader, SearchBox } from "@/components/erp/common";
 import { Pager } from "@/components/erp/pager";
@@ -29,11 +30,9 @@ function InvoiceList() {
   const q = useQuery({
     queryKey: ["vendor-invoices"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendor_invoices")
-        .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,due_date,grand_total,net_payable,balance_due,status,match_status,vendor_id,project_id,po_id,vendors(company_name),projects(name),purchase_orders(po_number)")
-        .order("created_at", { ascending: false }).limit(2000);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
+        .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,due_date,grand_total,net_payable,balance_due,status,match_status,vendor_id,project_id,po_id,vendors(company_name),projects(name),purchase_orders(po_number)", { count: "exact" })
+        .order("created_at", { ascending: false }).order("id", { ascending: false }).range(start, end));
     },
   });
   const all = q.data ?? [];
@@ -55,7 +54,7 @@ function InvoiceList() {
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
       </div>
-      {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
+      {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">The invoice list is unavailable because the complete register could not be verified: {errMsg(q.error)} <button className="ml-2 font-semibold underline" onClick={() => q.refetch()}>Retry</button></div> : (<>
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Vendor bill</th><th className="px-4 py-3">Bill date</th><th className="px-4 py-3">Due</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">PO</th><th className="px-4 py-3">Project</th><th className="px-4 py-3 text-right">Invoice total</th><th className="px-4 py-3 text-right">Balance due</th><th className="px-4 py-3">Match</th><th className="px-4 py-3">Status</th></tr></thead>

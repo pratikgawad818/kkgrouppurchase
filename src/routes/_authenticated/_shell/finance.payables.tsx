@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { loadCompleteRows } from "@/lib/complete-register";
 import { Loading, PageHeader, Stat } from "@/components/erp/common";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr } from "@/lib/format";
@@ -22,11 +23,10 @@ function Payables() {
   const q = useQuery({
     queryKey: ["payables"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendor_invoices")
-        .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,due_date,net_payable,amount_paid,advance_adjusted,balance_due,status,vendor_id,project_id,vendors(company_name),projects(name)")
-        .in("status", ["approved", "partially_paid", "paid"]).order("due_date", { ascending: true }).limit(3000);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
+        .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,due_date,net_payable,amount_paid,advance_adjusted,balance_due,status,vendor_id,project_id,vendors(company_name),projects(name)", { count: "exact" })
+        .in("status", ["approved", "partially_paid", "paid"])
+        .order("due_date", { ascending: true }).order("id", { ascending: true }).range(start, end));
     },
   });
   const all = q.data ?? [];
@@ -51,7 +51,7 @@ function Payables() {
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.due} onChange={(e) => set("due", e.target.value)}><option value="">All outstanding</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="7">Due in 7 days</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select>
       </div>
-      {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : (<>
+      {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Payable totals are unavailable because the complete invoice register could not be verified: {errMsg(q.error)} <button className="ml-2 font-semibold underline" onClick={() => q.refetch()}>Retry</button></div> : (<>
         <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Total outstanding" value={inr(sum(open))} hint={`${open.length} bills`} />
           <Stat label="Due today" value={inr(sum(dueToday))} hint={`${dueToday.length} bills`} />
