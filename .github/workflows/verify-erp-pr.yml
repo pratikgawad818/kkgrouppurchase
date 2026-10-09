@@ -76,6 +76,39 @@ jobs:
       - name: Test duplicate payments, role scope and concurrent allocation locking
         run: python scripts/db/test_payment_0018_integrity.py
 
+  director-approval-acceptance:
+    name: Director approval workflow (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: directors_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d directors_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      DIRECTORS_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/directors_qa
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated PostgreSQL test client
+        run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Verify real director vote, PO and payment transition migrations
+        run: python scripts/db/test_director_0012_0013_acceptance.py
+
   migration-syntax:
     name: Validate SQL migrations (offline)
     runs-on: ubuntu-latest
