@@ -72,7 +72,7 @@ def save(conn: psycopg.Connection, item_id: str, quantity: int, number: str) -> 
 
 
 def as_actor(conn: psycopg.Connection) -> None:
-    conn.execute("SET LOCAL qa.actor = %s", (ACTOR,))
+    conn.execute("SELECT set_config('qa.actor', %s, true)", (ACTOR,))
 
 
 def await_lock(name: str, done: threading.Event, limit: float = 8.0) -> None:
