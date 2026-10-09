@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
       - name: Install PostgreSQL parser
         run: python -m pip install "pglast>=6,<8"
-      - name: Parse SQL 0012–0015 and check Drizzle journal
+      - name: Parse SQL 0012-0017 and check Drizzle journal
         run: python scripts/db/check_migration_sql.py
 
   typecheck:

@@ -120,6 +120,13 @@
       "when": 1791448058025,
       "tag": "0016_harden_approval_inventory_acl",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791448059025,
+      "tag": "0017_invoice_grn_allocation_integrity",
+      "breakpoints": true
     }
   ]
 }
