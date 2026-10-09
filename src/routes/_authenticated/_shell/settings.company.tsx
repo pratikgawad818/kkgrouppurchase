@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Building2, FileCheck2, Image as ImageIcon, MapPin, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { requireSingleCompanyId } from "@/lib/company-scope";
 import { Loading } from "@/components/erp/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,9 +62,10 @@ function Company() {
   const query = useQuery({
     queryKey: ["company"],
     queryFn: async () => {
-      const result = await supabase.from("companies").select("*").limit(1).single();
+      const result = await supabase.from("companies").select("*").limit(2);
       if (result.error) throw result.error;
-      return result.data;
+      requireSingleCompanyId(result.data);
+      return result.data![0];
     },
   });
 
@@ -99,6 +101,7 @@ function Company() {
   });
 
   if (query.isLoading) return <Loading />;
+  if (query.error) return <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Unable to load company settings: {query.error.message}</div>;
   if (!query.data) return null;
   const editable = can("company.manage");
   const setValue = (key: keyof CompanyForm, value: string) => setForm((current) => ({ ...current, [key]: value }));

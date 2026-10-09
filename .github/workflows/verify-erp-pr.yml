@@ -120,6 +120,8 @@ jobs:
         run: node --test scripts/tests/payment-preflight.test.mjs
       - name: Test clean-slate first-run ERP setup
         run: node --test scripts/tests/erp-onboarding.test.mjs
+      - name: Test safe single-company master selection
+        run: node --test scripts/tests/company-scope.test.mjs
       - name: Test stale-chunk recovery without a browser
         run: node --test scripts/tests/stale-chunk-recovery.test.mjs
       - name: Generate typed TanStack routes and production bundle
