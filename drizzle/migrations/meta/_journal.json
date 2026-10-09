@@ -127,6 +127,13 @@
       "when": 1791448059025,
       "tag": "0017_invoice_grn_allocation_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791448060025,
+      "tag": "0018_payment_allocation_integrity",
+      "breakpoints": true
     }
   ]
 }
