@@ -87,20 +87,20 @@ BEGIN
   PERFORM g.id
     FROM goods_receipt_notes g
     WHERE g.id IN (
-      SELECT DISTINCT gi.grn_id FROM goods_receipt_items gi
-      WHERE gi.id IN (
+      SELECT DISTINCT locked_grn_item.grn_id FROM goods_receipt_items locked_grn_item
+      WHERE locked_grn_item.id IN (
         SELECT (line.value->>'grn_item_id')::uuid
         FROM jsonb_array_elements(_items) AS line(value)
       )
     )
     ORDER BY g.id FOR SHARE;
-  PERFORM gi.id
-    FROM goods_receipt_items gi
-    WHERE gi.id IN (
+  PERFORM locked_grn_item.id
+    FROM goods_receipt_items locked_grn_item
+    WHERE locked_grn_item.id IN (
       SELECT (line.value->>'grn_item_id')::uuid
       FROM jsonb_array_elements(_items) AS line(value)
     )
-    ORDER BY gi.id FOR UPDATE;
+    ORDER BY locked_grn_item.id FOR UPDATE;
   SELECT id, invoice_number, status INTO dup FROM vendor_invoices
     WHERE company_id = po.company_id AND vendor_id = po.vendor_id AND norm_bill_no(vendor_invoice_number) = norm_bill_no(_header->>'vendor_invoice_number')
       AND status NOT IN ('rejected','cancelled') AND (_id IS NULL OR id <> _id) LIMIT 1;
