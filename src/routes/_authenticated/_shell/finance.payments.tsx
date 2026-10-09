@@ -103,6 +103,9 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
         supabase.from("company_bank_accounts").select("id,account_name,bank_name").eq("status", "active"),
         supabase.from("projects").select("id,name").order("name"),
       ]);
+      if (v.error) throw v.error;
+      if (b.error) throw b.error;
+      if (p.error) throw p.error;
       return { vendors: v.data ?? [], banks: b.data ?? [], projects: p.data ?? [] };
     },
   });
