@@ -61,9 +61,9 @@ CREATE TABLE vendor_payment_allocations (
 );
 CREATE SEQUENCE qa_payment_numbers;
 CREATE FUNCTION public.next_fy_doc_number(_doc text, _prefix text)
-RETURNS text LANGUAGE sql VOLATILE AS $
+RETURNS text LANGUAGE sql VOLATILE AS $qa_next_number$
  SELECT _prefix||'-QA-'||nextval('qa_payment_numbers')::text
-$;
+$qa_next_number$;
 CREATE TABLE qa_journal_calls (
   source_id uuid NOT NULL, source text NOT NULL, payload jsonb NOT NULL
 );
