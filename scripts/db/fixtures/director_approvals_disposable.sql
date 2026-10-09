@@ -45,7 +45,7 @@ CREATE TABLE goods_receipt_notes (
 CREATE TABLE vendor_payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), payment_number text NOT NULL, company_id uuid NOT NULL,
   vendor_id uuid NOT NULL, project_id uuid, created_by uuid NOT NULL,
-  kind payment_kind NOT NULL, amount numeric NOT NULL, status payment_status NOT NULL,
+  kind payment_kind NOT NULL, amount numeric NOT NULL, status payment_status NOT NULL DEFAULT 'scheduled',
   payment_date date NOT NULL, payment_mode text NOT NULL DEFAULT 'neft',
   bank_account_id uuid, reference text, proof_path text, remarks text,
   updated_at timestamptz NOT NULL DEFAULT now(),
