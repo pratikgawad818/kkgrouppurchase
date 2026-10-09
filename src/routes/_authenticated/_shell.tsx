@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Banknote, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
+import { ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -48,6 +48,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/inventory/material-consumption", label: "Project Consumption", icon: BookOpen, perm: "inventory.view" },
   ] },
   { group: "Finance", items: [
+    { to: "/reports/project-cost-control", label: "Project Cost Control", icon: ChartNoAxesCombined, perm: "financial.view" },
     { to: "/finance/vendor-invoices", label: "Vendor Invoices", icon: Receipt, perm: "vendor_invoice.view" },
     { to: "/finance/payables", label: "Accounts Payable", icon: Wallet, perm: "payable.view" },
     { to: "/finance/payments", label: "Vendor Payments", icon: Banknote, perm: "payment.view" },
