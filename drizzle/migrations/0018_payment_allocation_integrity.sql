@@ -107,7 +107,7 @@ BEGIN
   END IF;
   INSERT INTO vendor_payment_events(payment_id, action, acted_by, new_status) VALUES (pid, 'scheduled', auth.uid(), 'scheduled');
   RETURN pid;
-END $function$
+END $function$;
 
 
 CREATE OR REPLACE FUNCTION public.payment_transition(_id uuid, _action text, _comment text, _details jsonb)
@@ -173,5 +173,5 @@ BEGIN
   INSERT INTO vendor_payment_events(payment_id, action, acted_by, comment, previous_status, new_status)
   VALUES (_id, _action, auth.uid(), nullif(trim(_comment),''), prev, nxt);
   RETURN nxt;
-END $function$
+END $function$;
 
