@@ -5,7 +5,7 @@
  * DISTINCT accounting stages; NEVER add them into a single "project spend"
  * number because they overlap. This report is NOT a project P&L.
  */
-import { ACTIVE_DELIVERY_PO_STATUSES, purchaseOrderLineValues, type FollowupPoLine } from "./procurement-followup";
+import { ACTIVE_DELIVERY_PO_STATUSES, purchaseOrderLineValues, type FollowupPoLine } from "./procurement-followup.ts";
 
 export type CostProject = {
   id: string;
