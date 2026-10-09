@@ -10,6 +10,39 @@ permissions:
   contents: read
 
 jobs:
+  invoice-allocation-concurrency:
+    name: Invoice/GRN locking (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: invoice_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d invoice_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      INVOICE_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/invoice_qa
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated PostgreSQL test client
+        run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Run two-connection invoice allocation and GRN locking tests
+        run: python scripts/db/test_invoice_0017_concurrency.py
+
   migration-syntax:
     name: Validate SQL migrations (offline)
     runs-on: ubuntu-latest
