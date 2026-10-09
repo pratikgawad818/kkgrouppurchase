@@ -12,6 +12,7 @@ CREATE TYPE po_action AS ENUM ('created','submitted','approved','rejected','sent
 CREATE TYPE po_status AS ENUM ('draft','pending_approval','approved','rejected','sent','partially_received','partially_accepted','fully_received','short_closed','closed','cancelled');
 CREATE TYPE payment_status AS ENUM ('scheduled','approved','recorded','cancelled');
 CREATE TYPE payment_kind AS ENUM ('invoice','advance');
+CREATE TYPE invoice_status AS ENUM ('draft','pending_review','exception','approved','rejected','partially_paid','paid','cancelled');
 
 CREATE TABLE profiles (
   id uuid PRIMARY KEY, company_id uuid NOT NULL, is_active boolean NOT NULL DEFAULT true
@@ -21,6 +22,13 @@ CREATE TABLE user_roles (
   UNIQUE (user_id, role)
 );
 CREATE TABLE projects (id uuid PRIMARY KEY, company_id uuid NOT NULL);
+CREATE TABLE vendors (id uuid PRIMARY KEY, company_id uuid NOT NULL, status text NOT NULL);
+CREATE TABLE company_bank_accounts (id uuid PRIMARY KEY, company_id uuid NOT NULL, status text NOT NULL);
+CREATE TABLE vendor_invoices (
+  id uuid PRIMARY KEY, invoice_number text NOT NULL, vendor_id uuid NOT NULL,
+  company_id uuid NOT NULL, project_id uuid NOT NULL, status invoice_status NOT NULL,
+  balance_due numeric NOT NULL
+);
 CREATE TABLE purchase_orders (
   id uuid PRIMARY KEY, po_number text NOT NULL, company_id uuid NOT NULL,
   project_id uuid NOT NULL, status po_status NOT NULL, created_by uuid NOT NULL,
@@ -39,14 +47,23 @@ CREATE TABLE vendor_payments (
   vendor_id uuid NOT NULL, project_id uuid, created_by uuid NOT NULL,
   kind payment_kind NOT NULL, amount numeric NOT NULL, status payment_status NOT NULL,
   payment_date date NOT NULL, payment_mode text NOT NULL DEFAULT 'neft',
-  reference text, proof_path text, updated_at timestamptz NOT NULL DEFAULT now(),
+  bank_account_id uuid, reference text, proof_path text, remarks text,
+  updated_at timestamptz NOT NULL DEFAULT now(),
   approved_by uuid, approved_at timestamptz, recorded_by uuid, recorded_at timestamptz
 );
 CREATE TABLE vendor_payment_events (
   payment_id uuid NOT NULL, action text NOT NULL, acted_by uuid,
   comment text, previous_status payment_status, new_status payment_status NOT NULL
 );
-CREATE TABLE vendor_payment_allocations (payment_id uuid, invoice_id uuid);
+CREATE TABLE vendor_payment_allocations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), payment_id uuid NOT NULL,
+  invoice_id uuid NOT NULL, amount numeric NOT NULL
+);
+CREATE SEQUENCE qa_payment_numbers;
+CREATE FUNCTION public.next_fy_doc_number(_doc text, _prefix text)
+RETURNS text LANGUAGE sql VOLATILE AS $
+ SELECT _prefix||'-QA-'||nextval('qa_payment_numbers')::text
+$;
 CREATE TABLE qa_journal_calls (
   source_id uuid NOT NULL, source text NOT NULL, payload jsonb NOT NULL
 );
@@ -116,6 +133,19 @@ INSERT INTO user_roles (user_id,role) VALUES
 INSERT INTO projects VALUES
  ('20000000-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'),
  ('20000000-0000-4000-8000-000000000002','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1');
+INSERT INTO vendors VALUES
+ ('50000000-0000-4000-8000-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','active'),
+ ('50000000-0000-4000-8000-000000000002','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','active');
+INSERT INTO company_bank_accounts VALUES
+ ('70000000-0000-4000-8000-000000000011','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','active'),
+ ('70000000-0000-4000-8000-000000000012','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','active');
+INSERT INTO vendor_invoices VALUES
+ ('60000000-0000-4000-8000-000000000001','QA-INV-A','50000000-0000-4000-8000-000000000001',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','20000000-0000-4000-8000-000000000001','approved',1250),
+ ('60000000-0000-4000-8000-000000000002','QA-INV-A2','50000000-0000-4000-8000-000000000001',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','20000000-0000-4000-8000-000000000001','approved',500),
+ ('60000000-0000-4000-8000-000000000003','QA-INV-B','50000000-0000-4000-8000-000000000002',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','20000000-0000-4000-8000-000000000002','approved',750);
 INSERT INTO purchase_orders
  (id,po_number,company_id,project_id,status,created_by,delivery_warehouse_id)
 VALUES
@@ -146,11 +176,12 @@ VALUES
  ('40000000-0000-4000-8000-000000000003','PM-B','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
   '50000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002',
   '10000000-0000-4000-8000-000000000014','invoice',750,'scheduled','2026-10-09');
-INSERT INTO vendor_payment_allocations (payment_id,invoice_id) VALUES
- ('40000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001');
+INSERT INTO vendor_payment_allocations (payment_id,invoice_id,amount) VALUES
+ ('40000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001',1250);
 
 -- Required for SELECT policy evaluation with simulated authenticated sessions.
 GRANT USAGE ON SCHEMA public,auth TO authenticated;
 GRANT SELECT ON profiles,user_roles,projects,purchase_orders,vendor_payments,
-  purchase_order_approvals,qa_journal_calls,qa_balance_refreshes TO authenticated;
+  purchase_order_approvals,qa_journal_calls,qa_balance_refreshes,
+  vendor_payment_allocations,vendor_invoices,vendors,company_bank_accounts TO authenticated;
 GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;

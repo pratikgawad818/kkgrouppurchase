@@ -29,3 +29,8 @@ The Python driver rejects any DSN not targeting the exact database name `directo
 | Deployment | GitHub CI | Lovable publish and production smoke checks, only with explicit permission |
 
 **Go-live decision:** Not ready for real payments until real account + browser + reconciliation gates pass. Do not use Lovable credits or touch the production database while running this suite.
+
+
+## Final payment migration combined acceptance
+
+The follow-up extends this same isolated suite to install the **complete, actual migration 0018** after 0012/0013, not a standalone or copied function. It exercises schedule -> three independent approvals -> record -> journal-writer spy using the combined latest SQL. Checks reservation overbooking, cross-vendor invoice and cross-company bank account guards. The genuine full accounting journal and the app browser still require separate acceptance.

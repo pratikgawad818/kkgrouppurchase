@@ -45,7 +45,11 @@ def install() -> None:
     with connect("directors-qa-setup") as c:
         c.autocommit = True
         c.execute((ROOT / "scripts/db/fixtures/director_approvals_disposable.sql").read_text())
-        for filename in ("0012_three_director_approvals.sql", "0013_company_scoped_director_votes.sql"):
+        for filename in (
+            "0012_three_director_approvals.sql",
+            "0013_company_scoped_director_votes.sql",
+            "0018_payment_allocation_integrity.sql",
+        ):
             c.execute((ROOT / "drizzle/migrations" / filename).read_text())
         assert c.execute("SELECT to_regclass('public.director_approval_votes')").fetchone()[0]
         assert c.execute(
@@ -169,7 +173,7 @@ def test_payments_require_three_votes_and_cash_post_only_after_record() -> None:
         as_actor(c, DIRS_A[0])
         assert payment(c, PAY_A, "approve") == "scheduled"
         rejected(c, "duplicate key", lambda: payment(c, PAY_A, "approve"))
-        rejected(c, "Only an active director of this company", lambda: payment(c, PAY_B, "approve"))
+        rejected(c, "Payment not accessible", lambda: payment(c, PAY_B, "approve"))
         as_actor(c, DIRS_A[1])
         assert payment(c, PAY_A, "approve") == "scheduled"
         assert c.execute(
@@ -222,6 +226,52 @@ def test_vote_rls_scoped_to_own_company_for_directors_and_admins() -> None:
     print("PASS: authenticated director-vote RLS restricts readers by company and role")
 
 
+
+def test_final_payment_scheduling_guards_work_with_real_director_flow() -> None:
+    """The latest schedule RPC must reserve balances without bypassing company scope."""
+    with connect("qa-combined-scheduling") as c:
+        as_actor(c, PURCHASER_A)
+        def schedule(invoice_id: str, amount: float, **fields) -> str:
+            header = {
+                "kind": "invoice",
+                "vendor_id": "50000000-0000-4000-8000-000000000001",
+                "project_id": "20000000-0000-4000-8000-000000000001",
+                "payment_date": "2026-10-09",
+                "payment_mode": "neft",
+                "bank_account_id": "70000000-0000-4000-8000-000000000011",
+                **fields,
+            }
+            return str(c.execute(
+                "SELECT public.schedule_vendor_payment(%s::jsonb,%s::jsonb)",
+                (json.dumps(header), json.dumps([{"invoice_id": invoice_id, "amount": amount}])),
+            ).fetchone()[0])
+        created = schedule("60000000-0000-4000-8000-000000000002", 200)
+        assert c.execute(
+            "SELECT status,amount FROM vendor_payments WHERE id=%s::uuid", (created,)
+        ).fetchone() == ("scheduled", 200)
+        rejected(c, "only 300 left to pay", lambda: schedule("60000000-0000-4000-8000-000000000002", 301))
+        rejected(c, "Invoice is not accessible", lambda: schedule("60000000-0000-4000-8000-000000000003", 10))
+        rejected(c, "Bank account does not belong", lambda: schedule(
+            "60000000-0000-4000-8000-000000000002", 1,
+            bank_account_id="70000000-0000-4000-8000-000000000012"
+        ))
+        as_actor(c, DIRS_A[0])
+        assert payment(c, created, "approve") == "scheduled"
+        as_actor(c, DIRS_A[1])
+        assert payment(c, created, "approve") == "scheduled"
+        as_actor(c, DIRS_A[2])
+        assert payment(c, created, "approve") == "approved"
+        assert c.execute(
+            "SELECT count(*) FROM qa_journal_calls WHERE source_id=%s::uuid", (created,)
+        ).fetchone()[0] == 0
+        as_actor(c, ACCOUNTANT_A)
+        assert payment(c, created, "record", details={"reference": "QA-COMBINED-UTR"}) == "recorded"
+        assert c.execute(
+            "SELECT count(*) FROM qa_journal_calls WHERE source_id=%s::uuid", (created,)
+        ).fetchone()[0] == 1
+        c.rollback()
+    print("PASS: migration 0018 scheduling + 0013 three-director vote + recorded posting boundary")
+
 if __name__ == "__main__":
     install()
     test_three_director_po_vote_and_company_boundaries()
@@ -229,4 +279,5 @@ if __name__ == "__main__":
     test_rejection_reason_and_resubmission_discards_old_votes()
     test_payments_require_three_votes_and_cash_post_only_after_record()
     test_vote_rls_scoped_to_own_company_for_directors_and_admins()
-    print("PASS: actual 0012/0013 Director Approval migrations; isolated acceptance suite")
+    test_final_payment_scheduling_guards_work_with_real_director_flow()
+    print("PASS: actual 0012/0013/0018 approval and payment transitions; isolated acceptance suite")
