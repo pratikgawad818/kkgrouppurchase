@@ -44,6 +44,8 @@ jobs:
         run: node --test scripts/tests/procurement-followup.test.mjs
       - name: Test project cost control and non-additive accounting stages
         run: node --test scripts/tests/project-cost-control.test.mjs
+      - name: Test awarded supplier rate history
+        run: node --test scripts/tests/supplier-rate-history.test.mjs
       - name: Test stale-chunk recovery without a browser
         run: node --test scripts/tests/stale-chunk-recovery.test.mjs
       - name: Generate typed TanStack routes and production bundle
