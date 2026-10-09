@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Building2, ClipboardList, Clock, IndianRupee, Package, Plus, ShoppingCart, Store, Users, Wallet, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FirstRunSetup } from "@/components/erp/first-run-setup";
 import { supabase } from "@/integrations/supabase/client";
 import { Stat, Loading } from "@/components/erp/common";
 import { fmtDateTime, PROJECT_STATUS_LABEL } from "@/lib/format";
@@ -359,18 +360,32 @@ function Dashboard() {
       const pq = supabase.from("projects").select("id,name,code,status,budget,estimated_cost").order("name");
       let bq = supabase.from("buildings").select("id,name,project_id,budget");
       if (projectId) bq = bq.eq("project_id", projectId);
-      const [p, b, v, i, w, a] = await Promise.all([
+      const [p, b, v, i, w, categories, a] = await Promise.all([
         pq,
         bq,
         supabase.from("vendors").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("items").select("id", { count: "exact", head: true }).eq("status", "active"),
         projectId ? supabase.from("warehouses").select("id", { count: "exact", head: true }).eq("status", "active").eq("project_id", projectId) : supabase.from("warehouses").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("item_categories").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("audit_logs").select("id,action,entity,entity_id,created_at").order("created_at", { ascending: false }).limit(8),
       ]);
-      for (const r of [p, b, v, i, w, a]) if (r.error) throw r.error;
-      return { projects: p.data ?? [], buildings: b.data ?? [], vendors: v.count ?? 0, materials: i.count ?? 0, warehouses: w.count ?? 0, audit: a.data ?? [] };
+      for (const r of [p, b, v, i, w, categories, a]) if (r.error) throw r.error;
+      return { projects: p.data ?? [], buildings: b.data ?? [], vendors: v.count ?? 0, materials: i.count ?? 0, categories: categories.count ?? 0, warehouses: w.count ?? 0, audit: a.data ?? [] };
     },
   });
+
+  // A clean-slate data reset can leave a previously selected project ID in
+  // localStorage. Clear it rather than filtering an empty dashboard forever.
+  useEffect(() => {
+    if (!q.data) return;
+    if (projectId && !q.data.projects.some(project => project.id === projectId)) {
+      setProjectId("");
+      setBuildingId("");
+      window.localStorage.removeItem("kk-dashboard-project");
+    } else if (buildingId && !q.data.buildings.some(building => building.id === buildingId)) {
+      setBuildingId("");
+    }
+  }, [q.data, projectId, buildingId]);
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <div className="text-sm text-destructive">{q.error.message}</div>;
@@ -410,6 +425,7 @@ function Dashboard() {
           </select>
         </div>
       </div>
+      <FirstRunSetup counts={{ projects: d.projects.length, categories: d.categories, materials: d.materials, vendors: d.vendors, warehouses: d.warehouses }} can={can} />
       <QuickActions can={can} />
       <Overview canMoney={can("financial.view")} canStock={can("inventory.view")} canPr={can("purchase_request.view")} canPo={can("purchase_order.view")} canAp={can("payable.view")} projectId={projectId} buildingId={buildingId} />
       {(can("purchase_request.view") || can("purchase_order.view") || can("grn.view")) && <div className="mt-10 flex items-center gap-3"><h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Procurement pipeline</h2><span className="h-px flex-1 bg-border" /></div>}
