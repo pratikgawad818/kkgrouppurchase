@@ -60,11 +60,12 @@ function DirectorApprovals() {
       ));
       const votes: Vote[] = voteResults.flat();
       let directors: { id: string; full_name: string | null; phone: string | null }[] = [];
-      if (isAdmin && me.data?.profile.company_id) {
+      const companyId = me.data?.profile.company_id;
+      if (isAdmin && companyId) {
         const [profiles, roles] = await Promise.all([
           loadCompleteRows(async (start, end) => await supabase.from("profiles")
             .select("id,full_name,phone,is_active", { count: "exact" })
-            .eq("company_id", me.data.profile.company_id).eq("is_active", true).order("id").range(start, end)),
+            .eq("company_id", companyId).eq("is_active", true).order("id").range(start, end)),
           loadCompleteRows(async (start, end) => await supabase.from("user_roles")
             .select("id,user_id", { count: "exact" }).eq("role", "director").order("id").range(start, end)),
         ]);
