@@ -31,7 +31,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local environment and credentials
-.env
+# Lovable-managed .env contains ONLY public Supabase URL/project ID and the
+# publishable/anon key. It must be eligible for source sync and published builds.
+# Never add a service-role key, sb_secret_ key, JWT signing secret, or DB password.
+# Run "node scripts/check-public-env.mjs --require" before committing .env.
+# Keep all other env variants private to the developer or deployment platform.
 .env.*
 !.env.example
+.env.local
+.env.*.local
