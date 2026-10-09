@@ -17,3 +17,5 @@
 - RFQ status and vendor awards change only through rfq_transition / rfq_mark_vendor_declined / record_vendor_selection database functions, so the PR → RFQ → quotation → selection trail stays auditable.
 - Purchase order, goods receipt and stock changes happen only through po_transition / create_po_from_selection / create_goods_receipt / post_goods_receipt / cancel_goods_receipt / set_grn_disposition / short_close_po_line / execute_stock_transfer / create_stock_adjustment database functions; the stock ledger (inventory_transactions) is append-only, so every material movement traces to its source document.
 - Vendor invoice, payment and advance status changes and all journal postings happen only through save_vendor_invoice / invoice_transition / schedule_vendor_payment / payment_transition / apply_vendor_advance; finance tables have no direct write policies and journals are append-only, so PO = commitment, GRN = receipt, approved invoice = payable, recorded payment = cash movement.
+
+- Keep the managed `.env` (publishable backend URL/key only) tracked and never gitignore it; the published build reads it at build time and the site goes blank without it.
