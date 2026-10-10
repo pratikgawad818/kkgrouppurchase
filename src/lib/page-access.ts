@@ -1,4 +1,4 @@
-import { VIEWER_NAV } from "./management-overview";
+import { VIEWER_NAV } from "./management-overview.ts";
 
 /**
  * UI authorization boundary for authenticated routes. Do not rely on sidebar
