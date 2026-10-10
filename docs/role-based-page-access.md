@@ -46,3 +46,21 @@ The original schema's `projects.view_all` authorization was not company-scoped; 
 It also prevents direct authenticated client inserts of the `super_admin` role. A dedicated disposable PostgreSQL suite tests independent company administrators, assigned-site readers, read-only management users, cross-company reads/updates, role grants and project assignments.
 
 **Rollout warning:** This migration has not been applied to the live Supabase instance. It must follow 0019, be reviewed with the active schema and actual staff/company records, and be staged with rollback/backup procedures. It improves the named policies, but does not certify all historical ERP table policies, document storage, or accounting workflows. Never equate a hidden page with secured database data.
+
+## Migration 0021 — operational records and attachment isolation
+
+Review found older SELECT policies checked `payment.view`, `vendors.view`, `materials.view`, `inventory.view` or `ledger.view` without also checking **company membership**. Consequently, knowing another tenant's API endpoint could expose supplier bank details, item masters, payment proofs and even journals despite hidden navigation.
+
+Source-only `0021_tenant_operations_storage_acl.sql` fixes the named policies for:
+- Vendor and material masters, categories, units of measure, related vendor-category links and central/project warehouses (including write policies).
+- Stock-transfer headers and lines.
+- Vendor payments, payment allocations, advance adjustments and lifecycle events.
+- Chart-of-accounts and journals (including journal lines).
+- Audit log rows, restricting to originating staff's company, with unattributed system logs excluded until audit logs acquire a reliable company ID.
+- Vendor-document storage: invoice and payment attachments are readable only if **linked** to a permitted record. Unlinked uploads are denied read until linked; other buckets are not granted.
+
+It also trims historic `auditor` role grants to the Management Viewer whitelist, removing excess purchase request, RFQ, quotation-compare and journal permissions.
+
+A new extension of the company RLS CI suite exercises the actual migration on two synthetic companies, a management viewer, a store operator, files, vendor/stock/payment rows, ledger data and direct unauthorized writes.
+
+**Review before deployment:** SQL must be applied **after 0019 and 0020**, transactionally in staging, then verified with real staff roles. Existing unattached invoice proofs may cease to be retrievable by staff until relinked to a recorded invoice/payment; service-role recovery remains possible. This migration covers the named policies, not every Supabase function, storage bucket, cron job, or historical ledger export. The live production DB was not changed.
