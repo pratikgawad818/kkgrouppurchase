@@ -148,6 +148,13 @@
       "when": 1791637200000,
       "tag": "0020_company_staff_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791723600000,
+      "tag": "0021_tenant_operations_storage_acl",
+      "breakpoints": true
     }
   ]
 }

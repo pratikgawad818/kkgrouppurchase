@@ -143,9 +143,138 @@ def test_direct_cross_company_staff_and_project_writes_fail():
     print("PASS: direct cross-company writes and client-side super-admin grants are blocked by RLS")
 
 
+
+def install_operations_scope():
+    with db() as conn:
+        conn.autocommit = True
+        conn.execute((ROOT / "scripts/db/fixtures/operations_scope_disposable.sql").read_text())
+        conn.execute((ROOT / "drizzle/migrations/0021_tenant_operations_storage_acl.sql").read_text())
+    print("PASS: real migration 0021 installs with existing 0020 company scoping")
+
+
+def test_business_master_data_isolation():
+    tests = {
+        "vendor_categories": ("50000000-0000-4000-8000-000000000001", "50000000-0000-4000-8000-000000000011"),
+        "vendors": ("51000000-0000-4000-8000-000000000001", "51000000-0000-4000-8000-000000000011"),
+        "units_of_measure": ("52000000-0000-4000-8000-000000000001", "52000000-0000-4000-8000-000000000011"),
+        "item_categories": ("53000000-0000-4000-8000-000000000001", "53000000-0000-4000-8000-000000000011"),
+        "items": ("54000000-0000-4000-8000-000000000001", "54000000-0000-4000-8000-000000000011"),
+        "stock_transfers": ("56000000-0000-4000-8000-000000000001", "56000000-0000-4000-8000-000000000011"),
+        "stock_transfer_items": ("57000000-0000-4000-8000-000000000001", "57000000-0000-4000-8000-000000000011"),
+        "vendor_payments": ("58000000-0000-4000-8000-000000000001", "58000000-0000-4000-8000-000000000011"),
+        "vendor_payment_allocations": ("58100000-0000-4000-8000-000000000001", "58100000-0000-4000-8000-000000000011"),
+        "vendor_advance_adjustments": ("58200000-0000-4000-8000-000000000001", "58200000-0000-4000-8000-000000000011"),
+        "vendor_payment_events": ("58300000-0000-4000-8000-000000000001", "58300000-0000-4000-8000-000000000011"),
+        "accounts": ("60000000-0000-4000-8000-000000000001", "60000000-0000-4000-8000-000000000011"),
+        "journal_entries": ("61000000-0000-4000-8000-000000000001", "61000000-0000-4000-8000-000000000011"),
+        "journal_lines": ("61100000-0000-4000-8000-000000000001", "61100000-0000-4000-8000-000000000011"),
+    }
+    with db() as conn:
+        actor(conn, ADMIN_A)
+        for table, (a, _) in tests.items():
+            assert ids(conn,table) == {a}, table
+        assert ids(conn,"warehouses") == {
+            "55000000-0000-4000-8000-000000000001",
+            "55000000-0000-4000-8000-000000000002"
+        }
+        assert conn.execute("SELECT count(*) FROM public.vendor_category_links").fetchone()[0] == 1
+        assert ids(conn, "audit_logs") == {"62000000-0000-4000-8000-000000000001"}
+        conn.rollback()
+    with db() as conn:
+        actor(conn, ADMIN_B)
+        for table, (_, b) in tests.items():
+            assert ids(conn,table) == {b}, table
+        assert ids(conn,"warehouses") == {"55000000-0000-4000-8000-000000000011"}
+        assert ids(conn,"audit_logs") == {"62000000-0000-4000-8000-000000000011"}
+        conn.rollback()
+    print("PASS: no cross-company vendors, materials, transfers, payments, journals or audit rows")
+
+
+def test_boss_read_only_and_removed_legacy_permissions():
+    with db() as conn:
+        actor(conn, BOSS_A)
+        for permission in ["rfq.view","quotation.view","quotation.compare","ledger.view","purchase_request.view"]:
+            assert conn.execute("SELECT public.has_permission(auth.uid(),%s)",(permission,)).fetchone()[0] is False, permission
+        for permission in ["inventory.view","materials.view","payable.view","payment.view","financial.view"]:
+            assert conn.execute("SELECT public.has_permission(auth.uid(),%s)",(permission,)).fetchone()[0] is True, permission
+        assert ids(conn,"vendors") == {"51000000-0000-4000-8000-000000000001"}
+        assert ids(conn,"items") == {"54000000-0000-4000-8000-000000000001"}
+        assert ids(conn,"vendor_payments") == {"58000000-0000-4000-8000-000000000001"}
+        assert ids(conn,"accounts") == set()
+        assert ids(conn,"journal_entries") == set()
+        assert ids(conn,"audit_logs") == set()
+        assert conn.execute(
+            "UPDATE public.vendors SET company_name='Tamper' WHERE id=%s::uuid",
+            ("51000000-0000-4000-8000-000000000001",)
+        ).rowcount == 0
+        conn.rollback()
+    with db() as conn:
+        actor(conn, SITE_A)
+        assert ids(conn,"stock_transfers") == {"56000000-0000-4000-8000-000000000001"}
+        assert ids(conn,"vendors") == set()
+        assert ids(conn,"vendor_payments") == set()
+        conn.rollback()
+    print("PASS: boss gets only authorized read-only material/payment views; site staff lack finance")
+
+
+def test_attached_vendor_documents_are_company_restricted():
+    with db() as conn:
+        actor(conn, ADMIN_A)
+        visible = {row[0] for row in conn.execute("SELECT name FROM storage.objects").fetchall()}
+        assert visible == {"invoices/invoice-a.pdf","payments/pay-a.pdf"}, visible
+        conn.rollback()
+    with db() as conn:
+        actor(conn, ADMIN_B)
+        visible = {row[0] for row in conn.execute("SELECT name FROM storage.objects").fetchall()}
+        assert visible == {"invoices/invoice-b.pdf","payments/pay-b.pdf"}, visible
+        conn.rollback()
+    with db() as conn:
+        actor(conn, BOSS_A)
+        visible = {row[0] for row in conn.execute("SELECT name FROM storage.objects").fetchall()}
+        assert visible == {"invoices/invoice-a.pdf","payments/pay-a.pdf"}, visible
+        conn.rollback()
+    with db() as conn:
+        actor(conn, SITE_A)
+        assert conn.execute("SELECT count(*) FROM storage.objects").fetchone()[0] == 0
+        conn.rollback()
+    print("PASS: signed-file lookup cannot expose foreign/unlinked invoices or payment proofs")
+
+
+def test_business_mutations_enforce_company_even_with_manager_permission():
+    with db() as conn:
+        actor(conn, ADMIN_A)
+        denied(conn,lambda: conn.execute(
+            "INSERT INTO public.vendors(id,company_id,company_name) VALUES "
+            "(gen_random_uuid(),%s::uuid,'foreign vendor')",(COMPANY_B,)
+        ))
+        denied(conn,lambda: conn.execute(
+            "INSERT INTO public.items(id,company_id,name) VALUES "
+            "(gen_random_uuid(),%s::uuid,'foreign material')",(COMPANY_B,)
+        ))
+        denied(conn,lambda: conn.execute(
+            "INSERT INTO public.warehouses(id,company_id,name) VALUES "
+            "(gen_random_uuid(),%s::uuid,'foreign store')",(COMPANY_B,)
+        ))
+        assert conn.execute(
+            "UPDATE public.vendors SET company_name='tampered' WHERE company_id=%s::uuid",
+            (COMPANY_B,)
+        ).rowcount == 0
+        assert conn.execute(
+            "DELETE FROM public.items WHERE company_id=%s::uuid",(COMPANY_B,)
+        ).rowcount == 0
+        conn.rollback()
+    print("PASS: company boundary blocks direct vendor, material and store writes")
+
+
 if __name__ == "__main__":
     setup()
     test_company_admin_cannot_read_cross_company_data()
     test_assigned_site_worker_and_boss_do_not_get_admin_visibility()
     test_direct_cross_company_staff_and_project_writes_fail()
     print("PASS: migration 0020 company membership / project staff RLS on disposable PostgreSQL")
+    install_operations_scope()
+    test_business_master_data_isolation()
+    test_boss_read_only_and_removed_legacy_permissions()
+    test_attached_vendor_documents_are_company_restricted()
+    test_business_mutations_enforce_company_even_with_manager_permission()
+    print("PASS: migration 0021 vendor/material/payment/storage ACL on disposable PostgreSQL")

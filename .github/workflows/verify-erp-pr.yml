@@ -77,7 +77,7 @@ jobs:
         run: python scripts/db/test_payment_0018_integrity.py
 
   company-rls-acceptance:
-    name: Company and role isolation (disposable PostgreSQL)
+    name: Company, role and finance isolation (disposable PostgreSQL)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     services:
@@ -106,7 +106,7 @@ jobs:
           python-version: "3.12"
       - name: Install isolated PostgreSQL client
         run: python -m pip install "psycopg[binary]>=3.2,<4"
-      - name: Test staff, project and company RLS isolation
+      - name: Test staff, company, stock, payments and storage RLS isolation
         run: python scripts/db/test_company_0020_rls.py
 
   director-approval-acceptance:
@@ -155,7 +155,7 @@ jobs:
           python-version: "3.12"
       - name: Install PostgreSQL parser
         run: python -m pip install "pglast>=6,<8"
-      - name: Parse SQL 0012-0020 and check Drizzle journal
+      - name: Parse SQL 0012-0021 and check Drizzle journal
         run: python scripts/db/check_migration_sql.py
 
   typecheck:
