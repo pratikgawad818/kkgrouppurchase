@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/format";
-import { VIEWER_NAV } from "@/lib/management-overview";
+import { canAccessPage } from "@/lib/page-access";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -110,7 +110,10 @@ function Shell() {
   if (me.error) return <div className="p-8 text-sm text-destructive">Could not load your profile: {me.error.message}</div>;
   const { profile, roles, permissions } = me.data!;
   const managementViewer = roles.length === 1 && roles[0] === "auditor";
-  const canSeeNav = (item: NavItem) => (!item.perm || permissions.has(item.perm)) && (!managementViewer || VIEWER_NAV.has(item.to));
+  const access = { roles, permissions };
+  const canSeeNav = (item: NavItem) => canAccessPage(item.to, access);
+  const canSeePage = canAccessPage(path, access);
+  const home = managementViewer ? "/management" : "/dashboard";
 
   const renderNav = (mini: boolean) => (
     <nav aria-label="Main navigation" className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -204,7 +207,7 @@ function Shell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-card/90 px-3 backdrop-blur supports-[backdrop-filter]:bg-card/75 print:hidden sm:gap-3 md:h-16 md:px-6">
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu" className="h-11 w-11 lg:hidden"><Menu className="h-5 w-5" /></Button>
-          <Link to="/dashboard" className="shrink-0 lg:hidden" aria-label="KK GROUP ERP home"><img src={brandMark.url} alt="KK Groups" className="h-8 w-auto object-contain" /></Link>
+          <Link to={home} className="shrink-0 lg:hidden" aria-label="KK GROUP ERP home"><img src={brandMark.url} alt="KK Groups" className="h-8 w-auto object-contain" /></Link>
           <Button variant="ghost" size="icon" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} className="hidden text-muted-foreground lg:inline-flex">{collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}</Button>
           <div className="min-w-0 flex-1">
             {groupFor && <div className="hidden text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground md:block">{groupFor}</div>}
@@ -223,13 +226,18 @@ function Shell() {
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel><div className="truncate">{profile.full_name ?? profile.email}</div><div className="truncate text-xs font-normal text-muted-foreground">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => navigate({ to: "/settings/company" })}><Settings className="h-4 w-4" />Company settings</DropdownMenuItem>
+              {canAccessPage("/settings/company", access) && <DropdownMenuItem onSelect={() => navigate({ to: "/settings/company" })}><Settings className="h-4 w-4" />Company settings</DropdownMenuItem>}
               <DropdownMenuItem onSelect={signOut}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
          <main className="mx-auto w-full max-w-[1600px] px-4 py-5 md:px-6 lg:px-8 lg:py-7">
-          {blocked ? <div className="rounded-md border bg-card p-6 text-sm">{blocked}</div> : <Outlet />}
+          {blocked ? <div className="rounded-md border bg-card p-6 text-sm">{blocked}</div> : !canSeePage ?
+            <div role="alert" className="mx-auto max-w-2xl rounded-xl border bg-card p-6 shadow-card">
+              <h2 className="text-lg font-semibold">Access restricted</h2>
+              <p className="mt-2 text-sm text-muted-foreground">Your assigned role does not permit access to this page. Ask your administrator if your responsibilities have changed.</p>
+              <Button asChild className="mt-4" variant="outline"><Link to={home}>Go to your dashboard</Link></Button>
+            </div> : <Outlet />}
         </main>
       </div>
     </div>

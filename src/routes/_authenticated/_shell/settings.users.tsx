@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { inviteStaff, updateStaffAccess } from "@/lib/admin.functions";
 import { PageHeader, Loading, Pill } from "@/components/erp/common";
 import { ROLE_LABEL, type AppRole } from "@/lib/format";
+import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,9 @@ function RoleSelect({ value, onChange, disabled, allowNone }: { value: string; o
 }
 
 function UsersPage() {
+  const me = useMe();
+  const companyId = me.data?.profile.company_id;
+  const permitted = !!me.data?.permissions.has("users.manage");
   const qc = useQueryClient();
   const run = useServerFn(updateStaffAccess);
   const invite = useServerFn(inviteStaff);
@@ -43,15 +47,21 @@ function UsersPage() {
   const [inv, setInv] = useState(blankInvite);
 
   const q = useQuery({
-    queryKey: ["users"],
+    queryKey: ["users", companyId],
+    enabled: !!companyId && permitted,
     queryFn: async () => {
-      const [p, r] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,email,phone,department,designation,is_active").order("full_name"),
-        supabase.from("user_roles").select("user_id,role"),
-      ]);
-      if (p.error) throw p.error;
-      if (r.error) throw r.error;
-      return p.data.map((x) => ({ ...x, roles: r.data.filter((y) => y.user_id === x.id).map((y) => y.role as AppRole) })) as Staff[];
+      if (!companyId) throw new Error("An active company is required.");
+      const { data: profiles, error: profileError } = await supabase.from("profiles")
+        .select("id,full_name,email,phone,department,designation,is_active")
+        .eq("company_id", companyId).order("full_name");
+      if (profileError) throw profileError;
+      if (!profiles?.length) return [] as Staff[];
+      const { data: roles, error: rolesError } = await supabase.from("user_roles")
+        .select("user_id,role").in("user_id", profiles.map(x => x.id));
+      if (rolesError) throw rolesError;
+      return profiles.map((x) => ({
+        ...x, roles: (roles ?? []).filter((y) => y.user_id === x.id).map(y => y.role as AppRole),
+      })) as Staff[];
     },
   });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["users"] }); qc.invalidateQueries({ queryKey: ["me"] }); };
@@ -73,8 +83,11 @@ function UsersPage() {
   }
   const isSuper = !!staff?.roles.includes("super_admin");
 
+  if (me.isLoading) return <Loading />;
+  if (me.error) return <div role="alert" className="text-sm text-destructive">Could not verify your account permissions.</div>;
+  if (!permitted || !companyId) return <div role="alert" className="text-sm text-destructive">Staff administration is not available to this account.</div>;
   if (q.isLoading) return <Loading />;
-  if (q.error) return <div className="text-sm text-destructive">{q.error.message}</div>;
+  if (q.error) return <div role="alert" className="text-sm text-destructive">{q.error.message}</div>;
   return (
     <>
       <PageHeader title="Users & Permissions" subtitle="Create staff accounts, assign roles and control access" actions={<Button size="sm" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4" />Invite staff</Button>} />

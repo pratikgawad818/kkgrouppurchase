@@ -161,6 +161,8 @@ jobs:
         run: node --test scripts/tests/approval-queue.test.mjs
       - name: Test management cost categories and viewer navigation restrictions
         run: node --test scripts/tests/management-overview.test.mjs
+      - name: Test role based pages and direct URL restrictions
+        run: node --test scripts/tests/page-access.test.mjs
       - name: Test stale-chunk recovery without a browser
         run: node --test scripts/tests/stale-chunk-recovery.test.mjs
       - name: Generate typed TanStack routes and production bundle
