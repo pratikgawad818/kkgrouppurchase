@@ -76,6 +76,39 @@ jobs:
       - name: Test duplicate payments, role scope and concurrent allocation locking
         run: python scripts/db/test_payment_0018_integrity.py
 
+  company-rls-acceptance:
+    name: Company and role isolation (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: company_rls_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d company_rls_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      COMPANY_RLS_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/company_rls_qa
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated PostgreSQL client
+        run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Test staff, project and company RLS isolation
+        run: python scripts/db/test_company_0020_rls.py
+
   director-approval-acceptance:
     name: Director approval workflow (disposable PostgreSQL)
     runs-on: ubuntu-latest
@@ -122,7 +155,7 @@ jobs:
           python-version: "3.12"
       - name: Install PostgreSQL parser
         run: python -m pip install "pglast>=6,<8"
-      - name: Parse SQL 0012-0019 and check Drizzle journal
+      - name: Parse SQL 0012-0020 and check Drizzle journal
         run: python scripts/db/check_migration_sql.py
 
   typecheck:

@@ -37,3 +37,12 @@ An account with multiple roles receives the **union of explicit permissions**; o
 Changing profile details and role assignments currently uses multiple HTTP requests rather than one transaction. Concurrency and rollback protection for these administrator writes should be moved into an audited server-side transaction before broad staff rollout.
 
 The existing **three-director PO/payment quorum** remains unchanged. This PR does not change live data, user accounts, Supabase schema, Lovable credits or publication.
+
+
+## Pending company and project RLS migration 0020
+
+The original schema's `projects.view_all` authorization was not company-scoped; some profile, company, company-bank, and user-role policies also granted reads/updates based only on a global permission name. Migration `0020_company_staff_scope.sql` adds active actor/company membership enforcement to these policies and limits project access to projects within the actor's company (plus existing project assignments).
+
+It also prevents direct authenticated client inserts of the `super_admin` role. A dedicated disposable PostgreSQL suite tests independent company administrators, assigned-site readers, read-only management users, cross-company reads/updates, role grants and project assignments.
+
+**Rollout warning:** This migration has not been applied to the live Supabase instance. It must follow 0019, be reviewed with the active schema and actual staff/company records, and be staged with rollback/backup procedures. It improves the named policies, but does not certify all historical ERP table policies, document storage, or accounting workflows. Never equate a hidden page with secured database data.
