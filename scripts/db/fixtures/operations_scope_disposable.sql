@@ -1,6 +1,10 @@
 -- Post-0020 disposal fixture: recreate the operational tables/policies relevant
 -- to the original broad-permission information disclosure risks.
 CREATE SCHEMA storage;
+CREATE FUNCTION public.is_active_user(_uid uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+  SELECT EXISTS(SELECT 1 FROM public.profiles WHERE id=_uid AND is_active)
+$;
 CREATE TABLE public.role_permissions (role text NOT NULL, permission_code text NOT NULL, PRIMARY KEY(role,permission_code));
 CREATE OR REPLACE FUNCTION public.has_permission(_uid uuid,_code text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
