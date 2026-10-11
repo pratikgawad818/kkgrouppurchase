@@ -10,6 +10,8 @@ ALTER TABLE public.warehouse_stock
   ALTER COLUMN weighted_avg_cost SET DEFAULT 0,
   ALTER COLUMN total_value SET DEFAULT 0;
 ALTER TABLE public.inventory_transactions
+  ALTER COLUMN tx_date SET DEFAULT current_date;
+ALTER TABLE public.inventory_transactions
   ADD COLUMN grn_id uuid,
   ADD COLUMN grn_item_id uuid,
   ADD COLUMN transfer_id uuid,
