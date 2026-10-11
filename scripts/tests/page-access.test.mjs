@@ -85,3 +85,9 @@ test("WhatsApp test page is restricted to actual super administrators", () => {
   assert.equal(canAccessPage("/settings/whatsapp", subject("auditor","users.manage")), false);
   assert.equal(canAccessPage("/settings/whatsapp", subject("super_admin","vendors.view")), false);
 });
+
+test("small expenses report is read-only for management and editable only inside superadmin's page",()=>{
+  assert.equal(canAccessPage("/finance/small-expenses", owner),true);
+  assert.equal(canAccessPage("/finance/small-expenses", subject("auditor","financial.view")),true);
+  assert.equal(canAccessPage("/finance/small-expenses", subject("store_manager","inventory.view")),false);
+});

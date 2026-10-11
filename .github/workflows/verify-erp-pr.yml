@@ -232,6 +232,8 @@ jobs:
         run: node --test scripts/tests/whatsapp-sandbox.test.mjs
       - name: Test manual supplier WhatsApp draft content and routing
         run: node --test scripts/tests/supplier-whatsapp-drafts.test.mjs
+      - name: Verify small-expense calculations
+        run: node --test scripts/tests/small-expenses.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check

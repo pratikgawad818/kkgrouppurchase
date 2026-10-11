@@ -52,6 +52,54 @@ export type Database = {
           },
         ]
       }
+      site_small_expenses: {
+        Row: {
+          id: string; company_id: string; entry_key: string; project_id: string | null;
+          building_id: string | null; spent_on: string; category: string;
+          amount: number; payment_method: string; paid_to: string;
+          description: string; receipt_reference: string | null;
+          status: "recorded" | "voided"; created_by: string; created_at: string;
+          voided_by: string | null; voided_at: string | null; void_reason: string | null
+        }
+        Insert: {
+          id?: string; company_id: string; entry_key: string; project_id?: string | null;
+          building_id?: string | null; spent_on: string; category: string; amount: number;
+          payment_method: string; paid_to: string; description: string;
+          receipt_reference?: string | null; status?: "recorded" | "voided";
+          created_by: string; created_at?: string; voided_by?: string | null;
+          voided_at?: string | null; void_reason?: string | null
+        }
+        Update: {
+          id?: string; company_id?: string; entry_key?: string; project_id?: string | null;
+          building_id?: string | null; spent_on?: string; category?: string; amount?: number;
+          payment_method?: string; paid_to?: string; description?: string;
+          receipt_reference?: string | null; status?: "recorded" | "voided";
+          created_by?: string; created_at?: string; voided_by?: string | null;
+          voided_at?: string | null; void_reason?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "site_small_expenses_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] },
+          { foreignKeyName: "site_small_expenses_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "site_small_expenses_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
+        ]
+      }
+      site_small_expense_events: {
+        Row: {
+          id: string; company_id: string; expense_id: string; action: "recorded" | "voided";
+          actor_id: string; reason: string | null; created_at: string
+        }
+        Insert: {
+          id?: string; company_id: string; expense_id: string; action: "recorded" | "voided";
+          actor_id: string; reason?: string | null; created_at?: string
+        }
+        Update: {
+          id?: string; company_id?: string; expense_id?: string; action?: "recorded" | "voided";
+          actor_id?: string; reason?: string | null; created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "site_small_expense_events_expense_id_fkey"; columns: ["expense_id"]; isOneToOne: false; referencedRelation: "site_small_expenses"; referencedColumns: ["id"] },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -4420,6 +4468,14 @@ export type Database = {
       }
     }
     Functions: {
+      record_site_small_expense: {
+        Args: { _entry_key: string; _project_id: string | null; _building_id: string | null; _spent_on: string;
+          _category: string; _amount: number; _payment_method: string; _paid_to: string;
+          _description: string; _receipt_reference: string | null }
+        Returns: string
+      }
+      void_site_small_expense: { Args: { _expense_id: string; _reason: string }; Returns: string }
+
       acct: { Args: { _code: string; _company: string }; Returns: string }
       apply_vendor_advance: {
         Args: { _advance_id: string; _amount: number; _invoice_id: string }

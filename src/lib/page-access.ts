@@ -51,6 +51,7 @@ const rules: readonly Rule[] = [
   { pattern: /^\/finance\/payables\/?$/, any: ["payable.view"] },
   { pattern: /^\/finance\/payments\/?$/, any: ["payment.view"] },
   { pattern: /^\/finance\/vendor-ledger\/?$/, any: ["ledger.view"] },
+  { pattern: /^\/finance\/small-expenses\/?$/, any: ["financial.view"] },
 
   { pattern: /^\/settings\/users\/?$/, any: ["users.manage"] },
   { pattern: /^\/settings\/company\/?$/, any: ["company.view", "company.manage"] },
