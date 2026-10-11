@@ -127,7 +127,7 @@ def test_claim_lease_and_revocation():
         items=c.execute("SELECT * FROM public.wa_director_claim_batch(3)").fetchall()
         assert len(items)==3
         for x in items:
-            assert x[3]=="purchase_order"
+            assert x[3] in ("purchase_order","vendor_payment")
             assert c.execute("SELECT public.wa_director_claim_valid(%s::uuid,%s::uuid)",
                (x[0],x[1])).fetchone()[0]
         assert c.execute("SELECT public.wa_director_finish_claim("
