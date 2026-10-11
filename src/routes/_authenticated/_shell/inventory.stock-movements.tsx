@@ -26,10 +26,15 @@ function Ledger() {
   const q = useQuery({
     queryKey: ["stock-ledger"],
     queryFn: async () => {
-      return loadCompleteRows(async (start,end) => await supabase.from("inventory_transactions")
-        .select("id,created_at,tx_date,tx_type,quantity_in,quantity_out,unit_cost,total_cost,balance_after,grn_id,material_issue_id,material_return_id,warehouse_id,project_id,building_id,remarks,items(code,name,units_of_measure(code)),warehouses(name),projects(name),buildings(name),goods_receipt_notes(grn_number),stock_transfers(transfer_number),stock_adjustments(adjustment_number),material_issues(issue_number),material_returns(return_number,issue_id),profiles(full_name)", { count: "exact" })
-        .order("created_at", { ascending: false }).order("id", { ascending: false })
-        .range(start,end), { pageSize: 250, maxRows: 10000 });
+      return loadCompleteRows(async (start,end) => {
+        const { data, count, error } = await supabase.from("inventory_transactions")
+          .select("id,created_at,tx_date,tx_type,quantity_in,quantity_out,unit_cost,total_cost,balance_after,grn_id,material_issue_id,material_return_id,warehouse_id,project_id,building_id,remarks,items(code,name,units_of_measure(code)),warehouses(name),projects(name),buildings(name),goods_receipt_notes(grn_number),stock_transfers(transfer_number),stock_adjustments(adjustment_number),material_issues(issue_number),material_returns(return_number,issue_id),profiles(full_name)", { count: "exact" })
+          .order("created_at", { ascending: false }).order("id", { ascending: false })
+          .range(start,end);
+        // Transaction IDs are numeric in the existing DB; convert only the
+        // in-memory row identity used for duplicate-safe complete paging.
+        return { data: data?.map(row => ({ ...row, id: String(row.id) })) ?? null, count, error };
+      }, { pageSize: 250, maxRows: 10000 });
     },
   });
   const all = q.data ?? [];

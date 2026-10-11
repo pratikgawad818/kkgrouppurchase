@@ -30,3 +30,5 @@ register but can still be costly; large business datasets require a dedicated
 server-side filtered ledger/report endpoint with stable pagination and exact
 counts. Frontend CI does not measure actual mobile/network latency, so an
 authenticated staging browser test remains necessary.
+
+The numeric stock-transaction primary key is normalized to a string **only in the read-only client paging result**, preserving existing database IDs and ledger ordering.
