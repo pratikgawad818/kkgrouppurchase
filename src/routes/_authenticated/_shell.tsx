@@ -91,6 +91,17 @@ function Shell() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const navigating = useRouterState({ select: (s) => s.isLoading });
+  const [showNavigationProgress, setShowNavigationProgress] = useState(false);
+  useEffect(() => {
+    if (!navigating) {
+      setShowNavigationProgress(false);
+      return;
+    }
+    // Avoid a distracting flash for routes that open nearly instantly.
+    const timer = window.setTimeout(() => setShowNavigationProgress(true), 180);
+    return () => window.clearTimeout(timer);
+  }, [navigating]);
   // Only the explicitly read-only management viewer gets the simplified landing.
   // Other operators and multi-role staff keep their normal dashboard.
   useEffect(() => {
@@ -139,6 +150,8 @@ function Shell() {
                   <Link
                     key={i.to}
                     to={i.to}
+                    preload="intent"
+                    preloadDelay={120}
                     onClick={() => setOpen(false)}
                     title={mini ? i.label : undefined}
                     aria-label={mini ? i.label : undefined}
@@ -232,6 +245,10 @@ function Shell() {
               <DropdownMenuItem onSelect={signOut}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {showNavigationProgress && <div role="progressbar" aria-label="Loading page"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-primary/15">
+            <div className="h-full w-1/3 bg-primary motion-safe:animate-pulse" />
+          </div>}
         </header>
          <main className="mx-auto w-full max-w-[1600px] px-4 py-5 md:px-6 lg:px-8 lg:py-7">
           {blocked ? <div className="rounded-md border bg-card p-6 text-sm">{blocked}</div> : !canSeePage ?

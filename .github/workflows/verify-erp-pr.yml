@@ -356,6 +356,8 @@ jobs:
         run: node --test scripts/tests/small-expenses.test.mjs
       - name: Test material building-wise usage and physical stock reconciliation
         run: node --test scripts/tests/material-usage-tracker.test.mjs
+      - name: Test verified-user cache reuse and safe auth transitions
+        run: node --test scripts/tests/verified-user-cache.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check

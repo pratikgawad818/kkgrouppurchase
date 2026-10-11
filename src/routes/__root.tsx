@@ -8,12 +8,13 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { invalidateVerifiedRouteUser } from "@/lib/verified-auth";
 
 function NotFoundComponent() {
   return (
@@ -200,12 +201,34 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const lastAuthUser = useRef<string | null>(null);
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED") {
+        // Verification remains fresh, without refetching 40+ ERP screens.
+        invalidateVerifiedRouteUser();
+        return;
+      }
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      invalidateVerifiedRouteUser();
+
+      if (event === "SIGNED_OUT") {
+        lastAuthUser.current = null;
+        // Never leave data from the previous operator cached on this device.
+        queryClient.clear();
+      } else {
+        const currentId = session?.user.id ?? null;
+        if (lastAuthUser.current !== currentId) {
+          // The first sign-in or a different account must not reuse company data.
+          queryClient.clear();
+          lastAuthUser.current = currentId;
+        } else {
+          // Changes to the profile should not refetch every RFQ, PO and stock page.
+          void queryClient.invalidateQueries({ queryKey: ["me"] });
+        }
+      }
+      void router.invalidate();
     });
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);

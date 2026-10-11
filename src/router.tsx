@@ -9,7 +9,11 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    // Sidebar hover/focus preloads route chunks for a snappier click.
+    // Individual TanStack Query screens still enforce their own freshness.
+    defaultPreloadStaleTime: 15_000,
+    defaultPendingMs: 180,
+    defaultPendingMinMs: 200,
   });
 
   return router;
