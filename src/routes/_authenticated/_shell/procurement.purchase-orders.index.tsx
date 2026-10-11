@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Loading, PageHeader, SearchBox } from "@/components/erp/common";
@@ -22,6 +22,7 @@ function PoList() {
   const [search, setSearch] = useState("");
   const [f, setF] = useState({ status: "" as "" | PoStatus, vendor: "", project: "", building: "", fy: "", from: "", to: "" });
   const [page, setPage] = useState(0);
+  const deferredSearch = useDeferredValue(search);
   const q = useQuery({
     queryKey: ["pos"],
     queryFn: async () => {
@@ -38,13 +39,15 @@ function PoList() {
   const vendors = uniq(all.filter((x) => x.vendors), (x) => x.vendor_id);
   const projects = uniq(all.filter((x) => x.projects), (x) => x.project_id);
   const buildings = uniq(all.filter((x) => x.building_id && (!f.project || x.project_id === f.project)), (x) => x.building_id!);
-  const s = search.trim().toLowerCase();
-  const val = (x: (typeof all)[number]) => purchaseOrderLineValues(x.purchase_order_items);
-  const rows = all.filter((x) =>
+  const rows = useMemo(() => {
+    const s = deferredSearch.trim().toLowerCase();
+    return all.filter((x) =>
     (!f.status || x.status === f.status) && (!f.vendor || x.vendor_id === f.vendor) && (!f.project || x.project_id === f.project) &&
     (!f.building || x.building_id === f.building) && (!f.fy || fyOf(x.po_date) === Number(f.fy)) &&
     (!f.from || x.po_date >= f.from) && (!f.to || x.po_date <= f.to) &&
     (!s || [x.po_number, x.vendors?.company_name, x.projects?.name, x.rfqs?.rfq_number, ...x.purchase_order_items.map((i) => i.items?.name)].some((v) => v?.toLowerCase().includes(s))));
+  }, [all, f, deferredSearch]);
+  const val = (x: (typeof all)[number]) => purchaseOrderLineValues(x.purchase_order_items);
   const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
   return (
     <>
