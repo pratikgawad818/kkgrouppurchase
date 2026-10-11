@@ -133,7 +133,7 @@ def setup():
         # Unlike the narrow operations fixture, the *real* has_permission
         # function grants active super_admin actors every permission. Its
         # signature/body were inspected read-only in the existing ERP DB.
-        conn.execute("""CREATE OR REPLACE FUNCTION public.has_permission(_user_id uuid,_code text)
+        conn.execute("""CREATE OR REPLACE FUNCTION public.has_permission(_uid uuid,_code text)
           RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
           SET search_path=public AS $qa_role$
           SELECT EXISTS(
@@ -141,7 +141,7 @@ def setup():
             JOIN public.profiles p ON p.id=ur.user_id AND p.is_active
             LEFT JOIN public.role_permissions rp
               ON rp.role=ur.role AND rp.permission_code=_code
-            WHERE ur.user_id=_user_id
+            WHERE ur.user_id=_uid
               AND (ur.role='super_admin' OR rp.permission_code IS NOT NULL)
           ) $qa_role$""")
         install(conn,"0021","tenant_operations_storage_acl")
