@@ -57,6 +57,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/finance/payables", label: "Accounts Payable", icon: Wallet, perm: "payable.view" },
     { to: "/finance/payments", label: "Vendor Payments", icon: Banknote, perm: "payment.view" },
     { to: "/finance/vendor-ledger", label: "Vendor Ledger", icon: BookOpen, perm: "ledger.view" },
+    { to: "/finance/small-expenses", label: "Small Expenses", icon: Wallet, perm: "financial.view" },
   ] },
   { group: "Administration", items: [
     { to: "/settings/users", label: "Users & Roles", icon: Users, perm: "users.manage" },

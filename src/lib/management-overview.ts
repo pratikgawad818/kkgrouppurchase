@@ -44,5 +44,6 @@ export const VIEWER_NAV_PATHS = [
   "/reports/project-cost-control",
   "/finance/payables",
   "/finance/payments",
+  "/finance/small-expenses",
 ] as const;
 export const VIEWER_NAV = new Set<string>(VIEWER_NAV_PATHS);

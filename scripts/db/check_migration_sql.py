@@ -27,6 +27,7 @@ EXPECTED = [
     "0020_company_staff_scope",
     "0021_tenant_operations_storage_acl",
     "0022_whatsapp_consent_outbox",
+    "0023_small_expenses",
 ]
 
 
@@ -35,7 +36,7 @@ def run() -> None:
     tags = [entry["tag"] for entry in entries]
     assert all(tag in tags for tag in EXPECTED), "An ERP migration is missing from the Drizzle journal"
     indexes = [tags.index(tag) for tag in EXPECTED]
-    assert indexes == sorted(indexes), "Migrations 0012–0022 are not in deployment order"
+    assert indexes == sorted(indexes), "Migrations 0012–0023 are not in deployment order"
     assert len(set(tags)) == len(tags), "Duplicate migration tag in journal"
     if any(not entry["breakpoints"] for entry in entries if entry["tag"] in EXPECTED):
         raise AssertionError("Missing Drizzle statement breakpoints")
