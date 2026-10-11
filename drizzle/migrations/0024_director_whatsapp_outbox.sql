@@ -309,7 +309,7 @@ CREATE FUNCTION public.wa_director_finish_claim(
 ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE affected record;
 BEGIN
- IF _status NOT IN ('accepted','rejected','unknown') THEN RAISE EXCEPTION 'Invalid result status'; END IF;
+ IF _status NOT IN ('accepted','rejected','unknown','skipped') THEN RAISE EXCEPTION 'Invalid result status'; END IF;
  IF _status='accepted' AND (coalesce(_wamid,'') NOT LIKE 'wamid.%' OR char_length(_wamid)>300)
  THEN RAISE EXCEPTION 'Meta acceptance requires a valid wamid'; END IF;
  UPDATE public.director_wa_outbox
