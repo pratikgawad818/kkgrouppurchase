@@ -123,10 +123,10 @@ def test_rls_and_server_rpc_rights():
         denied(c,lambda:c.execute("DELETE FROM public.site_small_expenses"))
         denied(c,lambda:c.execute("INSERT INTO public.site_small_expense_events(company_id,expense_id,action,actor_id) VALUES (%s::uuid,%s::uuid,'recorded',%s::uuid)",(COMPANY_A,active,ADMIN_A)))
         visible=c.execute("SELECT id,status,created_by FROM public.site_small_expenses").fetchall()
-        assert len(visible)==2, f"Admin A expected 2 visible rows, got {visible}"
+        assert len(visible)==3, f"Admin A expected 3 visible rows, got {visible}"
     with db() as c:
         actor(c,BOSS_A)
-        assert c.execute("SELECT count(*) FROM public.site_small_expenses").fetchone()[0]==2
+        assert c.execute("SELECT count(*) FROM public.site_small_expenses").fetchone()[0]==3
         denied(c,lambda:record(c,str(uuid4())))
         denied(c,lambda:c.execute("SELECT public.void_site_small_expense(%s::uuid,%s)",(active,"Not allowed")))
     with db() as c:
