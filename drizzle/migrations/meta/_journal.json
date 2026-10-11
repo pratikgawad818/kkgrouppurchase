@@ -155,6 +155,13 @@
       "when": 1791723600000,
       "tag": "0021_tenant_operations_storage_acl",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791780000000,
+      "tag": "0022_whatsapp_consent_outbox",
+      "breakpoints": true
     }
   ]
 }
