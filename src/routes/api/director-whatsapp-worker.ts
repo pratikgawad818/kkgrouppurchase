@@ -11,15 +11,15 @@ export const Route = createFileRoute("/api/director-whatsapp-worker")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.KK_DIRECTOR_WA_WORKER_SECRET ?? "";
+        const expected = process.env["KK_DIRECTOR_WA_WORKER_SECRET"] ?? "";
         const provided = request.headers.get("x-kk-director-worker-secret") ?? "";
         const a = Buffer.from(expected), b = Buffer.from(provided);
         if (a.length < 32 || b.length !== a.length || !timingSafeEqual(a,b)) {
           return Response.json({ error: "Unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
         }
         const config = directorWaConfig(process.env);
-        const url = process.env.SUPABASE_URL;
-        const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const url = process.env["SUPABASE_URL"];
+        const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
         if (!config.ready || !url || !key) {
           return Response.json({ enabled: false, message: "Verified sender and service credentials required" },
             { status: 503, headers: { "Cache-Control": "no-store" } });

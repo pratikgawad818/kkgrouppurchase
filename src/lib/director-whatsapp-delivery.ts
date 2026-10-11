@@ -13,24 +13,24 @@ export type DirectorNotice = {
 type Env = Readonly<Record<string, string | undefined>>;
 
 export function directorWaConfig(env: Env) {
-  const id = env.KK_DIRECTOR_WA_CLOUD_PHONE_ID ?? "";
-  const waba = env.KK_DIRECTOR_WA_WABA_ID ?? "";
-  const token = env.KK_DIRECTOR_WA_ACCESS_TOKEN ?? "";
-  const origin = env.KK_DIRECTOR_WA_APPROVAL_ORIGIN ?? "";
-  const template = env.KK_DIRECTOR_WA_TEMPLATE_NAME ?? "";
+  const id = env["KK_DIRECTOR_WA_CLOUD_PHONE_ID"] ?? "";
+  const waba = env["KK_DIRECTOR_WA_WABA_ID"] ?? "";
+  const token = env["KK_DIRECTOR_WA_ACCESS_TOKEN"] ?? "";
+  const origin = env["KK_DIRECTOR_WA_APPROVAL_ORIGIN"] ?? "";
+  const template = env["KK_DIRECTOR_WA_TEMPLATE_NAME"] ?? "";
   let validOrigin = false;
   try { const url = new URL(origin); validOrigin = url.protocol === "https:" && !!url.hostname && url.username === "" && url.password === "" && url.pathname === "/" && !url.search && !url.hash; }
   catch { validOrigin = false; }
   // App coexistence MUST be explicitly verified in Meta before any send.
   // The exact sender and WABA IDs must be independently allowlisted.
-  const ready = env.KK_DIRECTOR_WA_SEND_ENABLED === "true" &&
-    env.KK_DIRECTOR_WA_COEXISTENCE_VERIFIED === "true" &&
+  const ready = env["KK_DIRECTOR_WA_SEND_ENABLED"] === "true" &&
+    env["KK_DIRECTOR_WA_COEXISTENCE_VERIFIED"] === "true" &&
     /^\d{8,30}$/.test(id) && /^\d{8,30}$/.test(waba) &&
-    id === env.KK_DIRECTOR_WA_APPROVED_PHONE_ID &&
-    waba === env.KK_DIRECTOR_WA_APPROVED_WABA_ID &&
+    id === env["KK_DIRECTOR_WA_APPROVED_PHONE_ID"] &&
+    waba === env["KK_DIRECTOR_WA_APPROVED_WABA_ID"] &&
     token.length >= 20 && validOrigin &&
     /^[a-z][a-z0-9_]{2,127}$/.test(template) &&
-    env.KK_DIRECTOR_WA_TEMPLATE_APPROVED === "true";
+    env["KK_DIRECTOR_WA_TEMPLATE_APPROVED"] === "true";
   return { ready, id, waba, token, origin, template };
 }
 

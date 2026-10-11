@@ -40,7 +40,7 @@ function DirectorApprovals() {
   const [page, setPage] = useState(0);
   // Source rollout guard: keep the existing manual WhatsApp workflow usable
   // until 0024 and real staging/browser acceptance have been completed.
-  const alertsUiEnabled = import.meta.env.VITE_DIRECTOR_WA_UI_ENABLED === "true";
+  const alertsUiEnabled = import.meta.env["VITE_DIRECTOR_WA_UI_ENABLED"] === "true";
   const [optInEvidence, setOptInEvidence] = useState<Record<string,string>>({});
 
   const isDirector = me.data?.roles.includes("director") ?? false;
