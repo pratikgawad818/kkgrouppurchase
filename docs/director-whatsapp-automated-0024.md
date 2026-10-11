@@ -33,8 +33,9 @@ live Meta Business App connection has been authorized.**
    approved**. Definite 4xx rejections get `rejected` (except 408,409,429
    uncertain); unclear network/server outcomes become `unknown` and are
    **never automatically retried**. Expired claimed rows become `unknown`
-   rather than risk duplicate sends. A dedicated webhook/state verifier must
-   be implemented and tested before claiming delivered/read receipts.
+   rather than risk duplicate sends. Migration 0025 and the disabled-by-default
+   webhook add delivery/read receipts; see `director-whatsapp-receipts-0025.md`
+   for separate staging and activation requirements.
 6. The worker also queues up to **two** reminder stages after **24h and
    48h**, only following an earlier accepted stage and while the document
    remains awaiting this director's vote. A schedule must be configured on
@@ -78,7 +79,7 @@ Meta sending. Both default to off when unset.
 - Existing **manual WhatsApp drafts remain supported** during the transition.
 - Management Viewer has no access to consent details or notification phone
   snapshots. No invoice, payment, accounting or vendor data are changed.
-- The initial implementation does **NOT** assert delivery/read receipts;
-  webhook confirmation, opt-in evidence review, Meta utility-template approval,
+- The 0024 implementation alone does **NOT** assert delivery/read receipts;
+  0025 webhook activation, opt-in evidence review, Meta utility-template approval,
   live coexistence verification and real authenticated mobile browser testing
   remain explicit external activation gates.

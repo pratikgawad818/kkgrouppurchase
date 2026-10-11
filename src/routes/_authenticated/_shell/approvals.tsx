@@ -14,6 +14,7 @@ import { Pager } from "@/components/erp/pager";
 import { errMsg, inr } from "@/lib/format";
 import { approvalMessage, whatsappDraftUrl } from "@/lib/approval-notifications";
 import { parseApprovalReference } from "@/lib/director-whatsapp-reference";
+import { directorAlertLabel } from "@/lib/director-whatsapp-status";
 
 type Kind = "purchase_order" | "vendor_payment";
 type Request = { id: string; kind: Kind; number: string; amount: number; status: string; projectId: string | null; project: string; vendor: string; createdBy: string };
@@ -41,12 +42,13 @@ function DirectorApprovals() {
   // Source rollout guard: keep the existing manual WhatsApp workflow usable
   // until 0024 and real staging/browser acceptance have been completed.
   const alertsUiEnabled = import.meta.env["VITE_DIRECTOR_WA_UI_ENABLED"] === "true";
+  const receiptsUiEnabled = alertsUiEnabled && import.meta.env["VITE_DIRECTOR_WA_RECEIPTS_UI_ENABLED"] === "true";
   const [optInEvidence, setOptInEvidence] = useState<Record<string,string>>({});
 
   const isDirector = me.data?.roles.includes("director") ?? false;
   const isAdmin = me.data?.permissions.has("users.manage") ?? false;
   const q = useQuery({
-    queryKey: ["director-approvals", isAdmin, me.data?.profile.company_id, alertsUiEnabled],
+    queryKey: ["director-approvals", isAdmin, me.data?.profile.company_id, alertsUiEnabled, receiptsUiEnabled],
     enabled: isDirector || isAdmin,
     queryFn: async () => {
       const [po, payments] = await Promise.all([
@@ -85,6 +87,7 @@ function DirectorApprovals() {
       }
       let directorConsents: {director_id:string;status:string;phone_e164:string|null}[] = [];
       let directorAlerts: {id:string;director_id:string;entity_type:string;entity_id:string;status:string;stage:string;created_at:string;error_code:string|null}[] = [];
+      let deliveryReceipts: {id:string;delivery_status:string|null;delivery_error_code:string|null}[] = [];
       if (alertsUiEnabled && isAdmin && companyId) {
         [directorConsents,directorAlerts] = await Promise.all([
           loadCompleteRows(async (start,end) => await supabase.from("director_wa_consents")
@@ -94,8 +97,13 @@ function DirectorApprovals() {
             .select("id,director_id,entity_type,entity_id,status,stage,created_at,error_code", {count:"exact"})
             .eq("company_id",companyId).order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,end)),
         ]);
+        if (receiptsUiEnabled) {
+          deliveryReceipts = await loadCompleteRows(async (start,end) => await supabase.from("director_wa_outbox")
+            .select("id,delivery_status,delivery_error_code", {count:"exact"})
+            .eq("company_id",companyId).order("id").range(start,end));
+        }
       }
-      return { requests, votes, directors, directorConsents, directorAlerts };
+      return { requests, votes, directors, directorConsents, directorAlerts, deliveryReceipts };
     },
   });
   const consentAction = useMutation({
@@ -188,8 +196,10 @@ function DirectorApprovals() {
           </div>
           <div className="mt-2 space-y-1 text-xs">{directors.map(d=>{
             const last = directorAlerts.find(n=>n.director_id===d.id&&n.entity_type===r.kind&&n.entity_id===r.id);
-            return <p key={d.id}>{d.full_name||"Director"}: {last ? last.stage+" · "+(last.status==="accepted"?"Accepted by Meta (not delivery confirmed)":last.status) : "No queued alert"}</p>;
+            const receipt = q.data?.deliveryReceipts.find(n=>n.id===last?.id);
+            return <p key={d.id}>{d.full_name||"Director"}: {last ? last.stage+" · "+directorAlertLabel(last.status,receipt?.delivery_status,receipt?.delivery_error_code) : "No queued alert"}</p>;
           })}</div>
+          <p className="mt-2 text-xs text-muted-foreground">Delivery and read receipts describe the message. Each director must still sign in and record their decision.</p>
         </div>}
         {isAdmin && <div className="mt-4 rounded-xl border p-3"><p className="mb-2 text-sm font-semibold">Notify each director on WhatsApp</p>{directors.length !== 3 && <p className="mb-2 text-xs text-destructive">Exactly three active director accounts are required. Found {directors.length}.</p>}{directors.length === 0 && <p className="text-xs text-muted-foreground">Invite directors under Users & Roles first.</p>}{directors.map(d => {
           const message = approvalMessage({ kind:r.kind, id:r.id, number:r.number, project:r.project, vendor:r.vendor, amount:r.amount }, window.location.origin);

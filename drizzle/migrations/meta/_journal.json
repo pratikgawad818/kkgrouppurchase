@@ -176,6 +176,13 @@
       "when": 1791787200000,
       "tag": "0024_director_whatsapp_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791790800000,
+      "tag": "0025_director_whatsapp_receipts",
+      "breakpoints": true
     }
   ]
 }

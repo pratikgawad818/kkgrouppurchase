@@ -138,6 +138,8 @@ jobs:
       - run: python -m pip install "psycopg[binary]>=3.2,<4"
       - name: Test actual 0024 queue, consent and service-role leases
         run: python scripts/db/test_director_whatsapp_0024.py
+      - name: Test signed receipt persistence, ordering, early callback races and ACL
+        run: python scripts/db/test_director_whatsapp_0025.py
 
   director-approval-acceptance:
     name: Director approval workflow (disposable PostgreSQL)
@@ -398,6 +400,8 @@ jobs:
         run: node --test scripts/tests/pager-window.test.mjs
       - name: Test disabled-by-default Meta template sender and approval references
         run: node --test scripts/tests/director-whatsapp-delivery.test.mjs
+      - name: Test Meta webhook signature, sender scope and durable acknowledgement
+        run: node --test scripts/tests/director-whatsapp-webhook.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check

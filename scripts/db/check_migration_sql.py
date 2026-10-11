@@ -29,6 +29,7 @@ EXPECTED = [
     "0022_whatsapp_consent_outbox",
     "0023_small_expenses",
     "0024_director_whatsapp_outbox",
+    "0025_director_whatsapp_receipts",
 ]
 
 
