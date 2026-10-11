@@ -109,6 +109,36 @@ jobs:
       - name: Test staff, company, stock, payments and storage RLS isolation
         run: python scripts/db/test_company_0020_rls.py
 
+  director-wa-0024-acceptance:
+    name: Director WhatsApp queue and consent (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: director_wa_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d director_wa_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      DIRECTOR_WA_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/director_wa_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Test actual 0024 queue, consent and service-role leases
+        run: python scripts/db/test_director_whatsapp_0024.py
+
   director-approval-acceptance:
     name: Director approval workflow (disposable PostgreSQL)
     runs-on: ubuntu-latest
@@ -366,6 +396,8 @@ jobs:
         run: node --test scripts/tests/stock-ledger-register.test.mjs
       - name: Verify safe mobile pager calculations
         run: node --test scripts/tests/pager-window.test.mjs
+      - name: Test disabled-by-default Meta template sender and approval references
+        run: node --test scripts/tests/director-whatsapp-delivery.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check
