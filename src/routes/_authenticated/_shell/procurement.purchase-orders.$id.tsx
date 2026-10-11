@@ -12,6 +12,8 @@ import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PrintPo } from "@/components/erp/print-po";
+import { SupplierWhatsAppDraftButton } from "@/components/erp/supplier-whatsapp-draft";
+import { deliveryFollowupSupplierDraft, purchaseOrderSupplierDraft } from "@/lib/supplier-whatsapp-drafts";
 import { cn } from "@/lib/utils";
 
 const META = "Purchase order details, approval and goods receipts.";
@@ -112,6 +114,20 @@ function PoDetail() {
             <Button size="sm" variant="outline" onClick={() => setDlg("rejected")}>Reject</Button>
           </>}
           {po.status === "approved" && can("purchase_order.create") && <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate("sent")}>Mark as sent</Button>}
+          {["approved", "sent"].includes(po.status) && can("purchase_order.create") &&
+            <SupplierWhatsAppDraftButton label="WhatsApp PO" supplier={po.vendors?.company_name ?? "Supplier"}
+              mobile={po.vendors?.mobile} draft={purchaseOrderSupplierDraft({
+                number: po.po_number, project: po.projects?.name ?? "", location: po.warehouses?.name ?? null,
+                deliveryDate: po.expected_delivery_date,
+                materials: items.map(x => ({ name: x.items?.name ?? "Material", quantity: x.ordered_quantity,
+                  unit: x.units_of_measure?.code })),
+              })} />}
+          {["approved", "sent", "partially_received", "partially_accepted"].includes(po.status) && can("purchase_order.create") &&
+            <SupplierWhatsAppDraftButton label="Delivery reminder" supplier={po.vendors?.company_name ?? "Supplier"}
+              mobile={po.vendors?.mobile} draft={deliveryFollowupSupplierDraft({
+                number: po.po_number, project: po.projects?.name ?? "",
+                location: po.warehouses?.name ?? null, deliveryDate: po.expected_delivery_date, materials: [],
+              })} />}
           {canReceive && <Link to="/inventory/delivery-challans" search={{ po: id }}><Button size="sm" variant="outline">Register vendor challan</Button></Link>}
           {canReceive && <Button size="sm" onClick={() => setReceiveOpen(true)}>Receive goods</Button>}
           {["partially_received", "partially_accepted", "fully_received"].includes(po.status) && can("purchase_order.approve") && <Button size="sm" variant="outline" onClick={() => setDlg("closed")}>Close PO</Button>}

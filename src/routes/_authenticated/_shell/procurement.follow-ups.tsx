@@ -12,6 +12,8 @@ import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { today as todayIst, type InvoiceStatus } from "@/lib/finance";
 import { useCan } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { SupplierWhatsAppDraftButton } from "@/components/erp/supplier-whatsapp-draft";
+import { deliveryFollowupSupplierDraft } from "@/lib/supplier-whatsapp-drafts";
 import {
   ACTIVE_DELIVERY_PO_STATUSES,
   deliverySnapshot,
@@ -39,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/_shell/procurement/follow-
 function ProcurementFollowUps() {
   const can = useCan();
   const canPo = can("purchase_order.view");
+  const canDraft = can("purchase_order.create");
   const canInvoice = can("vendor_invoice.view");
   const canPayable = can("payable.view");
   const [project, setProject] = useState("");
@@ -55,7 +58,7 @@ function ProcurementFollowUps() {
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("purchase_orders")
-        .select("id,po_number,po_date,expected_delivery_date,grand_total,status,project_id,vendor_id,building_id,vendors(company_name),projects(name),buildings(name),purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total)")
+        .select("id,po_number,po_date,expected_delivery_date,grand_total,status,project_id,vendor_id,building_id,vendors(company_name,mobile),projects(name),buildings(name),purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total)")
         .in("status", OPEN_PO_STATUSES).order("created_at", { ascending: false }).limit(CAP + 1);
       if (error) throw error;
       return { rows: (data ?? []).slice(0, CAP), truncated: (data?.length ?? 0) > CAP };
@@ -189,13 +192,20 @@ function ProcurementFollowUps() {
                       <div><p className="text-xs text-muted-foreground">Accepted / committed²</p><p className="font-medium">{snapshot.acceptancePercent}%</p></div>
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">{PRIORITY[snapshot.priority].hint}</p>
+                    {canDraft && <div className="mt-3"><SupplierWhatsAppDraftButton label="WhatsApp delivery"
+                      supplier={po.vendors?.company_name ?? "Supplier"} mobile={po.vendors?.mobile}
+                      draft={deliveryFollowupSupplierDraft({
+                        number: po.po_number, project: po.projects?.name ?? "",
+                        location: po.buildings?.name ?? null, deliveryDate: po.expected_delivery_date,
+                        materials: [],
+                      })} /></div>}
                     <Link className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: po.id }}>Review purchase order <ArrowUpRight className="ml-1 h-4 w-4" /></Link>
                   </article>)}
                 </div>
                 <div className="hidden overflow-x-auto rounded-xl border bg-card lg:block">
                   <table className="w-full text-left text-sm">
                     <thead className="border-b bg-muted/40 text-xs text-muted-foreground"><tr>
-                      <th scope="col" className="p-3">Purchase order / supplier</th><th scope="col" className="p-3">Site</th><th scope="col" className="p-3">Delivery</th><th scope="col" className="p-3">Urgency</th><th scope="col" className="p-3 text-right">Open lines</th><th scope="col" className="p-3 text-right">Accepted²</th><th scope="col" className="p-3 text-right">Open line value¹</th>
+                      <th scope="col" className="p-3">Purchase order / supplier</th><th scope="col" className="p-3">Site</th><th scope="col" className="p-3">Delivery</th><th scope="col" className="p-3">Urgency</th><th scope="col" className="p-3 text-right">Open lines</th><th scope="col" className="p-3 text-right">Accepted²</th><th scope="col" className="p-3 text-right">Open line value¹</th><th scope="col" className="p-3">Contact</th>
                     </tr></thead>
                     <tbody>{pagedDeliveries.map(({ po, snapshot }) => <tr key={po.id} className="border-b last:border-0 hover:bg-muted/40">
                       <td className="p-3"><Link className="font-semibold text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: po.id }}>{po.po_number}</Link><div className="text-xs text-muted-foreground">{po.vendors?.company_name}</div></td>
@@ -205,6 +215,13 @@ function ProcurementFollowUps() {
                       <td className="p-3 text-right tabular-nums">{snapshot.openLines} / {snapshot.totalLines}</td>
                       <td className="p-3 text-right tabular-nums">{snapshot.acceptancePercent}%</td>
                       <td className="p-3 text-right font-semibold tabular-nums">{inr(snapshot.estimatedOpenLineValue)}</td>
+                      <td className="p-3">{canDraft ? <SupplierWhatsAppDraftButton label="WhatsApp"
+                        supplier={po.vendors?.company_name ?? "Supplier"} mobile={po.vendors?.mobile}
+                        draft={deliveryFollowupSupplierDraft({
+                          number: po.po_number, project: po.projects?.name ?? "",
+                          location: po.buildings?.name ?? null, deliveryDate: po.expected_delivery_date,
+                          materials: [],
+                        })} /> : "—"}</td>
                     </tr>)}</tbody>
                   </table>
                 </div>
