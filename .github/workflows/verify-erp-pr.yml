@@ -364,6 +364,8 @@ jobs:
         run: node --test scripts/tests/stock-register.test.mjs
       - name: Test complete stock movement history and filters
         run: node --test scripts/tests/stock-ledger-register.test.mjs
+      - name: Verify safe mobile pager calculations
+        run: node --test scripts/tests/pager-window.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check

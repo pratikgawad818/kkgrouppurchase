@@ -268,3 +268,19 @@
   .doc-table.max-h-72, .doc-table[class*="max-h-"] { overflow-y: auto !important; }
   .doc-table[class*="max-h-"] tbody tr:last-child { margin-bottom: 0; }
 }
+
+/* Touch screens: prevent small native controls from triggering iOS input zoom.
+   Desktop typography and control density are unchanged. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select:not([data-slot]) {
+    font-size: 16px;
+  }
+  select:not([data-slot]) {
+    min-height: 2.75rem;
+  }
+  .doc-table {
+    overscroll-behavior-x: contain;
+  }
+}
