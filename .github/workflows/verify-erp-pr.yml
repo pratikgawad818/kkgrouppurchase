@@ -142,6 +142,36 @@ jobs:
       - name: Verify real director vote, PO and payment transition migrations
         run: python scripts/db/test_director_0012_0013_acceptance.py
 
+  material-consumption-acceptance:
+    name: Material issues/returns 700→500→200 (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: material_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d material_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      MATERIAL_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/material_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Run material issue/return and consumption integration tests
+        run: python scripts/db/test_material_0015_stock_flow.py
+
   small-expenses-acceptance:
     name: Site small expenses (disposable PostgreSQL)
     runs-on: ubuntu-latest
