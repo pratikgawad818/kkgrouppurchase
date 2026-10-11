@@ -82,13 +82,13 @@ CREATE POLICY "Procurement views scoped draft" ON public.wa_notification_drafts 
 USING (public.actor_in_company(company_id) AND (
     (document_type='rfq'
       AND public.has_permission(auth.uid(),'rfq.send') AND EXISTS (
-        SELECT 1 FROM public.rfqs r WHERE r.id=document_id AND r.company_id=company_id
+        SELECT 1 FROM public.rfqs r WHERE r.id=document_id AND r.company_id=wa_notification_drafts.company_id
         AND public.can_access_project(auth.uid(),r.project_id)
       ))
     OR
     (document_type IN ('purchase_order','delivery_followup')
       AND public.has_permission(auth.uid(),'purchase_order.create') AND EXISTS (
-        SELECT 1 FROM public.purchase_orders po WHERE po.id=document_id AND po.company_id=company_id
+        SELECT 1 FROM public.purchase_orders po WHERE po.id=document_id AND po.company_id=wa_notification_drafts.company_id
         AND public.can_access_project(auth.uid(),po.project_id)
       ))
   ));
@@ -128,6 +128,9 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_t
     WHERE consent.vendor_id=_vendor_id AND consent.status='granted'
       AND consent.company_id=vendor.company_id
       AND public.actor_in_company(vendor.company_id)
+      AND (public.has_permission(auth.uid(),'vendors.manage')
+        OR public.has_permission(auth.uid(),'rfq.send')
+        OR public.has_permission(auth.uid(),'purchase_order.create'))
       AND consent.phone_e164=public.wa_normalize_mobile(vendor.mobile)
       AND consent.phone_e164 IS NOT NULL
   )
