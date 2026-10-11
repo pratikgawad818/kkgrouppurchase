@@ -1,5 +1,5 @@
 /** SERVER-ONLY director approval template sender. All send gates fail closed. */
-import { approvalReference } from "./director-whatsapp-reference";
+import { approvalReference } from "./director-whatsapp-reference.ts";
 
 export type DirectorNotice = {
   outbox_id: string;
