@@ -90,6 +90,19 @@ def setup():
         for code in permissions:
             conn.execute("INSERT INTO public.permissions(code,module,description,sort_order) VALUES(%s,'QA','Old code',100)",(code,))
         conn.execute("CREATE ROLE service_role NOLOGIN")
+        # 0019 references the pre-existing 0000-era project-access helper.
+        # 0020 immediately replaces this simulated baseline implementation.
+        conn.execute("""CREATE FUNCTION public.can_access_project(_user uuid,_project uuid)
+          RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+          SELECT EXISTS (
+            SELECT 1 FROM public.projects p
+            JOIN public.profiles actor ON actor.id=_user
+            WHERE p.id=_project AND p.company_id=actor.company_id AND actor.is_active
+              AND (public.has_permission(_user,'projects.view_all') OR EXISTS (
+                SELECT 1 FROM public.user_project_assignments a
+                WHERE a.user_id=_user AND a.project_id=_project
+              ))
+          ) $""")
 
         # Rehearse the real release ORDER, not separate ad hoc installations.
         install(conn,"0019","management_viewer_scope")
