@@ -78,3 +78,10 @@ test("navigation and direct URL authorization share the identical rules", () => 
   const store=subject("store_manager","inventory.view");
   assert.deepEqual(accessibleNavigation(nav,store).map(x=>x.to),["/dashboard","/inventory/stock"]);
 });
+
+test("WhatsApp test page is restricted to actual super administrators", () => {
+  assert.equal(canAccessPage("/settings/whatsapp", owner), true);
+  assert.equal(canAccessPage("/settings/whatsapp", subject("purchase_manager","users.manage")), false);
+  assert.equal(canAccessPage("/settings/whatsapp", subject("auditor","users.manage")), false);
+  assert.equal(canAccessPage("/settings/whatsapp", subject("super_admin","vendors.view")), false);
+});

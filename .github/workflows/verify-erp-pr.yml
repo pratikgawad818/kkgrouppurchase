@@ -198,6 +198,8 @@ jobs:
         run: node --test scripts/tests/page-access.test.mjs
       - name: Test stale-chunk recovery without a browser
         run: node --test scripts/tests/stale-chunk-recovery.test.mjs
+      - name: Test WhatsApp sandbox sandboxing and fixed template
+        run: node --test scripts/tests/whatsapp-sandbox.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check
