@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate } from "@/lib/format";
 import { RFQ_STATUS, type RfqStatus } from "@/lib/rfq";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/")({
   head: () => ({ meta: [{ title: "RFQs — KK GROUP ERP" }, { name: "description", content: "Requests for quotation sent to vendors." }, { property: "og:title", content: "RFQs — KK GROUP ERP" }, { property: "og:description", content: "Requests for quotation sent to vendors." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -18,14 +19,15 @@ const PAGE = 25;
 function RfqList() {
   const [status, setStatus] = useState<RfqStatus | "">("");
   const [search, setSearch] = useState("");
+  const settledSearch = useDebouncedValue(search);
   const [page, setPage] = useState(0);
   const q = useQuery({
-    queryKey: ["rfqs", status, search, page],
+    queryKey: ["rfqs", status, settledSearch, page],
     queryFn: async () => {
       let x = supabase.from("rfqs").select("id,rfq_number,rfq_date,response_due_date,status,projects(code,name),buildings(name),purchase_requests(pr_number),rfq_vendors(status)", { count: "exact" })
         .order("created_at", { ascending: false }).range(page * PAGE, page * PAGE + PAGE - 1);
       if (status) x = x.eq("status", status);
-      if (search.trim()) x = x.ilike("rfq_number", `%${search.trim()}%`);
+      if (settledSearch.trim()) x = x.ilike("rfq_number", `%${settledSearch.trim()}%`);
       const { data, error, count } = await x;
       if (error) throw error;
       return { rows: data ?? [], count: count ?? 0 };

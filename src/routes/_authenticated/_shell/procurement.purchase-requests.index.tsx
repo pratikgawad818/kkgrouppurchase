@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Empty, Loading, PageHeader, SearchBox } from "@/components/erp/common";
 import { errMsg, fmtDate, inr } from "@/lib/format";
 import { useCan } from "@/lib/session";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { PR_PRIORITY, PR_STATUS, type PrPriority, type PrStatus } from "@/lib/pr";
 
 const search = z.object({ status: z.string().optional(), due: z.string().optional() });
@@ -36,6 +37,7 @@ function PrList() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [text, setText] = useState("");
+  const settledText = useDebouncedValue(text);
   const [page, setPage] = useState(0);
   const cur = fyOf(new Date());
 
@@ -52,7 +54,7 @@ function PrList() {
   });
 
   const q = useQuery({
-    queryKey: ["prs", status, projectId, buildingId, priority, requester, fy, from, to, text, page, sp.due],
+    queryKey: ["prs", status, projectId, buildingId, priority, requester, fy, from, to, settledText, page, sp.due],
     queryFn: async () => {
       let r = supabase.from("purchase_requests").select("id,pr_number,request_date,required_by,estimated_total,priority,status,requested_by,projects(code,name),buildings(name)", { count: "exact" }).order("created_at", { ascending: false }).range(page * PAGE, page * PAGE + PAGE - 1);
       if (status) r = r.eq("status", status as PrStatus);
@@ -64,7 +66,7 @@ function PrList() {
       if (from) r = r.gte("request_date", from);
       if (to) r = r.lte("request_date", to);
       if (sp.due) { const d = new Date(); d.setDate(d.getDate() + 7); r = r.lte("required_by", d.toISOString().slice(0, 10)).in("status", ["draft", "pending_approval", "approved"]); }
-      const t = safeSearch(text);
+      const t = safeSearch(settledText);
       if (t) {
         const ors = [`pr_number.ilike.%${t}%`];
         const [mat, proj, ppl] = await Promise.all([
