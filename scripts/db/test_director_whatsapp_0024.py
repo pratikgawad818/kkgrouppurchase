@@ -145,6 +145,9 @@ def test_claim_lease_and_revocation():
         assert c.execute("SELECT count(*) FROM public.director_wa_outbox WHERE status='accepted'").fetchone()[0]==1
     with db() as c:
         as_actor(c,ADMIN_A)
+        # Create a guaranteed pending reminder target. Earlier queue claims
+        # are intentionally ordered by UUID within a shared timestamp.
+        assert prepare(c,"purchase_order","30000000-0000-4000-8000-000000000002")==3
         opt_in(c,DIRECTORS[0],False)
         assert c.execute("SELECT count(*) FROM public.director_wa_outbox "
           "WHERE director_id=%s::uuid AND status='queued'",(DIRECTORS[0],)).fetchone()[0]==0
