@@ -194,7 +194,7 @@ def test_company_rls():
         assert c.execute("SELECT count(*) FROM public.material_issues").fetchone()[0]==0
         assert c.execute("SELECT count(*) FROM public.goods_receipt_notes").fetchone()[0]==0
         assert c.execute("SELECT count(*) FROM public.project_material_consumption(NULL)").fetchone()[0]==0
-        assert c.execute("SELECT count(*) FROM public.warehouse_stock").fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM public.warehouse_stock").fetchone()[0]==0
         denied(c,lambda:receive(c,"00000000-0000-4000-8000-000000000001"))
         denied(c,lambda:challan(c,po=PO_A,number="CROSS-COMPANY"))
     print("PASS: company isolation on dispatch, receiving, stock and project report")
