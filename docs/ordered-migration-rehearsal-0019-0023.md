@@ -31,3 +31,9 @@ records. A staging **clone of the actual live DB with a verified restore** and
 operator/viewer browser test is still the last release gate.
 
 **No production migration run or Lovable Publish is authorized by this test.**
+
+The disposable runner mirrors the existing live `has_permission(uuid,text)`
+definition: an **active** super administrator can use any permission code.
+That behavior was confirmed via a read-only catalog lookup before installing
+the combined SQL. Without matching the real helper, the generic operations QA
+fixture would incorrectly deny Super Admin visibility into expense audit rows.
