@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
@@ -25,6 +25,7 @@ function InvoiceList() {
   const can = useCan();
   const sp = Route.useSearch();
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [f, setF] = useState({ status: sp.status ?? "", vendor: "", project: "", fy: "" });
   const [page, setPage] = useState(0);
   const q = useQuery({
@@ -38,11 +39,17 @@ function InvoiceList() {
   const all = q.data ?? [];
   const set = (k: keyof typeof f, v: string) => { setF({ ...f, [k]: v }); setPage(0); };
   const uniq = <T,>(arr: T[], key: (x: T) => string) => [...new Map(arr.map((x) => [key(x), x])).values()];
-  const s = search.trim().toLowerCase();
-  const rows = all.filter((x) => (!f.status || x.status === f.status) && (!f.vendor || x.vendor_id === f.vendor) && (!f.project || x.project_id === f.project) &&
-    (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)) &&
-    (!s || [x.invoice_number, x.vendor_invoice_number, x.vendors?.company_name, x.purchase_orders?.po_number].some((v) => v?.toLowerCase().includes(s))));
-  const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
+  const rows = useMemo(() => {
+    const s = deferredSearch.trim().toLowerCase();
+    return (q.data ?? []).filter(x =>
+      (!f.status || x.status === f.status) && (!f.vendor || x.vendor_id === f.vendor) &&
+      (!f.project || x.project_id === f.project) &&
+      (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)) &&
+      (!s || [x.invoice_number,x.vendor_invoice_number,x.vendors?.company_name,x.purchase_orders?.po_number]
+        .some(v => v?.toLowerCase().includes(s))));
+  }, [q.data, f, deferredSearch]);
+  const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
+  const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   return (
     <>
       <PageHeader title="Vendor Invoices" subtitle="Bills from vendors, checked against the purchase order and goods received before they become payable."
@@ -75,7 +82,7 @@ function InvoiceList() {
             </tbody>
           </table>
         </div>
-        <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
+        <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
       </>)}
     </>
   );

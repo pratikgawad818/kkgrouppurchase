@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,8 +57,12 @@ function Payments() {
     },
   });
   const refresh = () => { ["vendor-payments", "payables", "vendor-invoices", "vi", "ledger"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
-  const rows = (q.data?.rows ?? []).filter((x) => !status || x.status === status);
-  const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
+  const rows = useMemo(
+    () => (q.data?.rows ?? []).filter(x => !status || x.status === status),
+    [q.data, status],
+  );
+  const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
+  const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   return (
     <>
       <PageHeader title="Vendor Payments" subtitle="Scheduled → Approved (Director) → Recorded with bank reference. Only recorded payments reduce payables."
@@ -90,7 +94,7 @@ function Payments() {
             })}
           </tbody>
         </table></div>
-        <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
+        <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
       </>)}
       {schedule && <ScheduleDialog kind={schedule} initialVendor={sp.vendor} onClose={() => setSchedule(null)} onDone={refresh} />}
       {act && <ActDialog {...act} onClose={() => setAct(null)} onDone={refresh} />}
