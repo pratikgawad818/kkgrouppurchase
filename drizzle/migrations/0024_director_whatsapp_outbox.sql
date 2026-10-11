@@ -95,10 +95,10 @@ BEGIN
    RAISE EXCEPTION 'Invalid director alert';
  END IF;
  IF _kind='purchase_order' THEN
-   SELECT company_id,created_by,status,po_number AS number INTO doc
+   SELECT company_id,created_by,status::text AS status,po_number AS number INTO doc
    FROM public.purchase_orders WHERE id=_document;
  ELSE
-   SELECT company_id,created_by,status,payment_number AS number INTO doc
+   SELECT company_id,created_by,status::text AS status,payment_number AS number INTO doc
    FROM public.vendor_payments WHERE id=_document;
  END IF;
  IF NOT FOUND OR doc.company_id<>_company
