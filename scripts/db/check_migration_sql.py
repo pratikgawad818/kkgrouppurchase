@@ -10,7 +10,7 @@ import json
 import re
 from pathlib import Path
 
-from pglast import parse_sql
+from pglast import ast, parse_sql
 
 ROOT = Path(__file__).resolve().parents[2]
 JOURNAL = ROOT / "drizzle" / "migrations" / "meta" / "_journal.json"
@@ -79,6 +79,15 @@ def run() -> None:
                     raise AssertionError(f"0017: required quantity guard/lock missing: {clause}")
 
         print(f"PASS {tag}: {len(statements)} PostgreSQL statements parsed")
+
+    # Guard the user-facing DB inspection script: parser enforces SELECT-only.
+    # This cannot prove functions are non-mutating, so the script is also
+    # source-reviewed to use pg_catalog, to_regclass, and has_table_privilege.
+    preflight_path = ROOT / "scripts" / "db" / "preflight-release-0019-0023.sql"
+    preflight = parse_sql(preflight_path.read_text(encoding="utf-8"))
+    if not preflight or any(not isinstance(raw.stmt, ast.SelectStmt) for raw in preflight):
+        raise AssertionError("Release preflight must contain SELECT statements ONLY")
+    print(f"PASS release preflight: {len(preflight)} SELECT-only catalog queries")
 
     print(
         "Offline grammar and journal checks passed. "
