@@ -82,8 +82,11 @@ BEGIN
   IF current_company IS NULL OR NOT public.has_role(auth.uid(),'super_admin') THEN
     RAISE EXCEPTION 'Only an active company super administrator can record small expenses';
   END IF;
+  -- Use the business operating date in India, regardless of the
+  -- connection/DB session timezone (usually UTC in cloud hosting).
   IF _entry_key IS NULL OR _spent_on IS NULL OR
-    _spent_on>current_date OR _spent_on<current_date-interval '3 years' OR
+    _spent_on>(now() AT TIME ZONE 'Asia/Kolkata')::date
+    OR _spent_on<((now() AT TIME ZONE 'Asia/Kolkata')::date - interval '3 years')::date OR
     _category IS NULL OR _category NOT IN ('transport','tea_food','fuel','hardware','site_supplies','repairs','cleaning','labour_incidental','office','other')
     OR _amount IS NULL OR _amount <= 0 OR _amount > 50000 OR round(_amount,2)<>_amount
     OR _payment_method IS NULL OR _payment_method NOT IN ('cash','upi','bank','card','other')

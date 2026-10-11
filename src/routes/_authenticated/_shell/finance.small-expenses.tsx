@@ -43,6 +43,7 @@ function SmallExpenses() {
   const [form,setForm]=useState<Form>(createForm);
   const [entryKey,setEntryKey]=useState(()=>crypto.randomUUID());
   const [projectFilter,setProjectFilter]=useState("");
+  const [buildingFilter,setBuildingFilter]=useState("");
   const [categoryFilter,setCategoryFilter]=useState("");
   const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
@@ -111,11 +112,16 @@ function SmallExpenses() {
   const all=register.data??[];
   const rows=all.filter(x=>
     (!projectFilter||(projectFilter==="office"?!x.project_id:x.project_id===projectFilter))&&
+    (!buildingFilter||(buildingFilter==="general"?!x.building_id:x.building_id===buildingFilter))&&
     (!categoryFilter||x.category===categoryFilter)&&
     (!dateFrom||x.spent_on>=dateFrom)&&(!dateTo||x.spent_on<=dateTo));
   const total=summarizeSmallExpenses(rows);
   const filteredPage=Math.min(page,Math.max(0,Math.ceil(rows.length/PAGE)-1));
   const pageRows=rows.slice(filteredPage*PAGE,(filteredPage+1)*PAGE);
+  const buildingOptions=[...new Map(all
+    .filter(x=>!!x.building_id&&(!projectFilter||projectFilter==="office"||x.project_id===projectFilter))
+    .map(x=>[x.building_id!,{id:x.building_id!,name:x.buildings?.name??"Building",project:x.projects?.name??"Project"}]))
+    .values()].sort((a,b)=>(a.project+" "+a.name).localeCompare(b.project+" "+b.name));
   const setField=<K extends keyof Form>(key:K,value:Form[K])=>setForm(current=>({...current,[key]:value}));
 
   return <div className="pb-16">
@@ -137,11 +143,17 @@ function SmallExpenses() {
         <Stat label="Voided entries" value={total.voided} hint="Retained in audit history"/>
       </div>
       <div className="mb-3 flex flex-wrap gap-2">
-        <select aria-label="Project filter" className={selectCls} value={projectFilter} onChange={e=>{setProjectFilter(e.target.value);setPage(0);}}>
+        <select aria-label="Project filter" className={selectCls} value={projectFilter} onChange={e=>{setProjectFilter(e.target.value);setBuildingFilter("");setPage(0);}}>
           <option value="">All projects and office</option>
           <option value="office">General office (no project)</option>
           {[...new Map(all.filter(x=>x.project_id).map(x=>[x.project_id!,{id:x.project_id!,name:x.projects?.name??"Project"}])).values()]
             .map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <select aria-label="Building filter" className={selectCls} value={buildingFilter}
+          disabled={projectFilter==="office"} onChange={e=>{setBuildingFilter(e.target.value);setPage(0);}}>
+          <option value="">All buildings and general work</option>
+          <option value="general">General project work / no building</option>
+          {buildingOptions.map(x=><option key={x.id} value={x.id}>{x.project} / {x.name}</option>)}
         </select>
         <select aria-label="Category filter" className={selectCls} value={categoryFilter} onChange={e=>{setCategoryFilter(e.target.value);setPage(0);}}>
           <option value="">All categories</option>{Object.entries(SMALL_EXPENSE_CATEGORIES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
@@ -157,7 +169,18 @@ function SmallExpenses() {
         <div className="rounded-xl border bg-card p-4"><h3 className="text-sm font-semibold">Project totals</h3>
           <div className="mt-3 space-y-2 text-sm">{[...total.byProject.entries()].sort((a,b)=>b[1]-a[1]).map(([id,amount])=>
             <div key={id} className="flex justify-between gap-3"><span>{id==="office"?"General office":all.find(x=>x.project_id===id)?.projects?.name??"Project"}</span><strong>{inr(amount)}</strong></div>)}
-            {!total.byProject.size&&<p className="text-xs text-muted-foreground">No recorded expenses in these filters.</p>}</div></div>
+            {!total.byProject.size&&<p className="text-xs text-muted-foreground">No recorded expenses in these filters.</p>}</div>
+          {!!total.byBuilding.size&&<>
+            <h3 className="mb-2 mt-5 border-t pt-4 text-sm font-semibold">Building expenses</h3>
+            <div className="space-y-2 text-sm">{[...total.byBuilding.entries()].sort((a,b)=>b[1]-a[1]).map(([id,amount])=>{
+              const record=all.find(x=>x.building_id===id);
+              return <div key={id} className="flex justify-between gap-3">
+                <span>{record?.projects?.name??"Project"} / {record?.buildings?.name??"Building"}</span>
+                <strong>{inr(amount)}</strong>
+              </div>;
+            })}</div>
+          </>}
+        </div>
       </div>
       <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b bg-muted/30 text-xs"><tr>
