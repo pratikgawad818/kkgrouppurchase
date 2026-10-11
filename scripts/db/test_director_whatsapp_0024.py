@@ -31,6 +31,8 @@ def setup():
     with db() as c:
         c.autocommit=True
         c.execute((ROOT/"scripts/db/fixtures/director_approvals_disposable.sql").read_text())
+        # Mirror Supabase service_role, which bypasses RLS in the real API.
+        c.execute("ALTER ROLE service_role BYPASSRLS")
         c.execute("CREATE TABLE public.companies(id uuid PRIMARY KEY)")
         c.execute("INSERT INTO public.companies(id) VALUES(%s::uuid),(%s::uuid)",(A,B))
         c.execute("ALTER TABLE public.profiles ADD COLUMN phone text")
