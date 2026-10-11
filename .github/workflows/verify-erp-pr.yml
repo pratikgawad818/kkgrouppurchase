@@ -172,6 +172,36 @@ jobs:
       - name: Run material issue/return and consumption integration tests
         run: python scripts/db/test_material_0015_stock_flow.py
 
+  grn-material-end-to-end:
+    name: Challan → GRN → Cement building usage (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: grn_material_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d grn_material_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      MATERIAL_GRN_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/grn_material_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Exercise real goods receipt and issue-return SQL
+        run: python scripts/db/test_grn_challan_to_material_0015.py
+
   small-expenses-acceptance:
     name: Site small expenses (disposable PostgreSQL)
     runs-on: ubuntu-latest
