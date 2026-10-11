@@ -27,6 +27,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
@@ -49,9 +50,12 @@ function AuthPage() {
       }
       navigate({ to: "/dashboard", replace: true });
     };
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) afterSignIn();
-    });
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (data.session) afterSignIn();
+        else setCheckingSession(false);
+      })
+      .catch(() => setCheckingSession(false));
     const { data } = supabase.auth.onAuthStateChange((e, s) => {
       if (s && e !== "PASSWORD_RECOVERY") afterSignIn();
     });
@@ -60,6 +64,7 @@ function AuthPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     try {
       if (mode === "in") {
@@ -99,7 +104,12 @@ function AuthPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "in" ? "Procurement & Project Management ERP" : "We'll email you a link to set a new password."}
           </p>
-          {sent ? (
+          {checkingSession ? (
+            <div role="status" aria-live="polite" className="mt-6 flex items-center gap-3 rounded-md border bg-card p-4 text-sm text-muted-foreground">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary motion-reduce:animate-none" />
+              Checking your session…
+            </div>
+          ) : sent ? (
             <div className="mt-6 rounded-md border bg-card p-4 text-sm">If <b>{email}</b> is a staff account, a reset link is on its way.</div>
           ) : (
             <form onSubmit={submit} className="mt-6 space-y-4">
@@ -116,7 +126,7 @@ function AuthPage() {
               <Button type="submit" className="w-full" disabled={busy}>{busy ? "Please wait…" : mode === "in" ? "Sign in" : "Send reset link"}</Button>
             </form>
           )}
-          <button className="mt-6 text-sm text-primary underline-offset-4 hover:underline" onClick={() => { setMode(mode === "in" ? "forgot" : "in"); setSent(false); }}>
+          <button disabled={checkingSession || busy} className="mt-6 text-sm text-primary underline-offset-4 hover:underline disabled:opacity-50" onClick={() => { setMode(mode === "in" ? "forgot" : "in"); setSent(false); }}>
             {mode === "in" ? "Forgot password?" : "Back to sign in"}
           </button>
           <p className="mt-8 text-xs text-muted-foreground">Accounts are created by your administrator.</p>

@@ -91,6 +91,7 @@ function Shell() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const navigating = useRouterState({ select: (s) => s.isLoading });
   // Only the explicitly read-only management viewer gets the simplified landing.
   // Other operators and multi-role staff keep their normal dashboard.
   useEffect(() => {
@@ -139,6 +140,8 @@ function Shell() {
                   <Link
                     key={i.to}
                     to={i.to}
+                    preload="intent"
+                    preloadDelay={120}
                     onClick={() => setOpen(false)}
                     title={mini ? i.label : undefined}
                     aria-label={mini ? i.label : undefined}
@@ -207,7 +210,7 @@ function Shell() {
         </CommandList>
       </CommandDialog>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-card/90 px-3 backdrop-blur supports-[backdrop-filter]:bg-card/75 print:hidden sm:gap-3 md:h-16 md:px-6">
+        <header className="sticky top-0 z-20 relative flex h-14 items-center gap-2 border-b bg-card/90 px-3 backdrop-blur supports-[backdrop-filter]:bg-card/75 print:hidden sm:gap-3 md:h-16 md:px-6">
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Open menu" className="h-11 w-11 lg:hidden"><Menu className="h-5 w-5" /></Button>
           <Link to={home} className="shrink-0 lg:hidden" aria-label="KK GROUP ERP home"><img src={brandMark.url} alt="KK Groups" className="h-8 w-auto object-contain" /></Link>
           <Button variant="ghost" size="icon" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} className="hidden text-muted-foreground lg:inline-flex">{collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}</Button>
@@ -232,6 +235,10 @@ function Shell() {
               <DropdownMenuItem onSelect={signOut}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {navigating && <div role="progressbar" aria-label="Loading page"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-primary/15">
+            <div className="h-full w-1/3 bg-primary motion-safe:animate-pulse" />
+          </div>}
         </header>
          <main className="mx-auto w-full max-w-[1600px] px-4 py-5 md:px-6 lg:px-8 lg:py-7">
           {blocked ? <div className="rounded-md border bg-card p-6 text-sm">{blocked}</div> : !canSeePage ?
