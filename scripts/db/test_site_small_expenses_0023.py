@@ -43,7 +43,7 @@ def setup():
             SELECT 1 FROM public.user_roles r JOIN public.profiles p ON p.id=r.user_id
             WHERE r.user_id=_uid AND p.is_active AND
             ((r.role='company_admin' AND _code IN ('financial.view','projects.view_all'))
-              OR (r.role='auditor' AND _code='financial.view')))
+              OR (r.role='auditor' AND _code IN ('financial.view','projects.view_all'))))
           $$""")
         c.execute("INSERT INTO public.user_roles VALUES (%s::uuid,'super_admin'),(%s::uuid,'super_admin')",
                   (ADMIN_A,ADMIN_B))
