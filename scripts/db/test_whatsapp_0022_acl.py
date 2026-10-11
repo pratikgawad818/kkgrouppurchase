@@ -39,6 +39,7 @@ def setup():
     with db() as c:
         c.autocommit = True
         c.execute((ROOT / "scripts/db/fixtures/company_scope_disposable.sql").read_text())
+        c.execute("CREATE ROLE service_role NOLOGIN")
         c.execute((ROOT / "drizzle/migrations/0020_company_staff_scope.sql").read_text())
         c.execute('CREATE POLICY "View accessible projects" ON public.projects '
                   'FOR SELECT TO authenticated USING (public.can_access_project(auth.uid(),id))')
