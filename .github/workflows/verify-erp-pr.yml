@@ -360,6 +360,8 @@ jobs:
         run: node --test scripts/tests/verified-user-cache.test.mjs
       - name: Test deferred dashboard activation
         run: node --test scripts/tests/dashboard-viewport.test.mjs
+      - name: Verify stock completeness and rollup
+        run: node --test scripts/tests/stock-register.test.mjs
       - name: Generate typed TanStack routes and production bundle
         run: npm run build
       - name: TypeScript check

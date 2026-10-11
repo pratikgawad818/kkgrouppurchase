@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,10 @@ import { errMsg, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
 import { selectCls } from "@/lib/po";
 import { cn } from "@/lib/utils";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { Pager } from "@/components/erp/pager";
+import { PAGE } from "@/lib/fy";
+import { filteredStockSummary, stockLevel } from "@/lib/stock-register";
 
 const META = "Current stock by store and material, valued at weighted average cost.";
 export const Route = createFileRoute("/_authenticated/_shell/inventory/stock")({
@@ -22,29 +26,60 @@ function StockPage() {
   const can = useCan();
   const [search, setSearch] = useState("");
   const [wh, setWh] = useState("");
+  const [page, setPage] = useState(0);
   const [transfer, setTransfer] = useState(false);
   const [adj, setAdj] = useState<null | "adjustment" | "opening_stock">(null);
   const q = useQuery({
     queryKey: ["stock"],
+    queryFn: async () => loadCompleteRows(async (start, end) => {
+      const { data, count, error } = await supabase.from("warehouse_stock")
+        .select("warehouse_id,material_id,quantity_on_hand,weighted_avg_cost,total_value,warehouses(name,code),items(code,name,minimum_stock,reorder_level,units_of_measure(code))", { count: "exact" })
+        .order("warehouse_id").order("material_id").range(start, end);
+      return { data: data?.map(row => ({
+        ...row, id: row.warehouse_id + "/" + row.material_id,
+      })) ?? null, count, error };
+    }, { maxRows: 10000 }),
+  });
+  // Supplier/warehouse masters do not change when someone posts a stock transfer.
+  // Separate their cache from the inventory balance, and protect against
+  // PostgREST row limits instead of silently omitting adjustment choices.
+  const catalog = useQuery({
+    queryKey: ["stock-catalog"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const [s, w, m] = await Promise.all([
-        supabase.from("warehouse_stock").select("warehouse_id,material_id,quantity_on_hand,weighted_avg_cost,total_value,warehouses(name,code),items(code,name,minimum_stock,reorder_level,units_of_measure(code))").limit(2000),
-        supabase.from("warehouses").select("id,name,code").eq("status", "active").order("name"),
-        supabase.from("items").select("id,code,name,units_of_measure(code)").eq("status", "active").order("name").limit(2000),
+      const [warehouses, materials] = await Promise.all([
+        loadCompleteRows(async (start, end) => {
+          const { data, count, error } = await supabase.from("warehouses")
+            .select("id,name,code", { count: "exact" }).eq("status", "active")
+            .order("id").range(start, end);
+          return { data, count, error };
+        }, { maxRows: 10000 }),
+        loadCompleteRows(async (start, end) => {
+          const { data, count, error } = await supabase.from("items")
+            .select("id,code,name,units_of_measure(code)", { count: "exact" })
+            .eq("status", "active").order("id").range(start, end);
+          return { data, count, error };
+        }, { maxRows: 10000 }),
       ]);
-      if (s.error) throw s.error;
-      return { stock: s.data ?? [], warehouses: w.data ?? [], materials: m.data ?? [] };
+      return {
+        warehouses: [...warehouses].sort((a,b) => a.name.localeCompare(b.name)),
+        materials: [...materials].sort((a,b) => a.name.localeCompare(b.name)),
+      };
     },
   });
-  const s = search.trim().toLowerCase();
-  const rows = (q.data?.stock ?? []).filter((x) => (!wh || x.warehouse_id === wh) && (!s || [x.items?.name, x.items?.code].some((v) => v?.toLowerCase().includes(s))));
+  const result = useMemo(() => q.data
+    ? filteredStockSummary(q.data, wh, search)
+    : { rows: [], totalValue: 0, low: 0, out: 0 },
+    [q.data, wh, search]);
+  const rows = result.rows;
+  const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
+  const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   const status = (x: (typeof rows)[number]) => {
-    const qty = Number(x.quantity_on_hand);
-    if (qty <= 0) return { l: "Out of stock", c: "bg-destructive/10 text-destructive border-destructive/30" };
-    if (qty <= Number(x.items?.reorder_level ?? 0)) return { l: "Low", c: "bg-warning/15 text-warning-foreground border-warning/40" };
+    const level = stockLevel(x);
+    if (level === "out") return { l: "Out of stock", c: "bg-destructive/10 text-destructive border-destructive/30" };
+    if (level === "low") return { l: "Low", c: "bg-warning/15 text-warning-foreground border-warning/40" };
     return { l: "Normal", c: "bg-success/15 text-success border-success/40" };
   };
-  const total = rows.reduce((a, x) => a + Number(x.total_value), 0);
   return (
     <>
       <PageHeader title="Stock" subtitle="Stock changes through posted goods receipts, transfers, authorised adjustments, project material issues and returns."
@@ -55,22 +90,28 @@ function StockPage() {
           {can("inventory.transfer") && <Button size="sm" onClick={() => setTransfer(true)}>Transfer stock</Button>}
           {can("inventory.issue") && <Link to="/inventory/material-issues"><Button size="sm" variant="outline">Issue to project</Button></Link>}
         </div>} />
-      {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : <>
+      {q.isLoading || catalog.isLoading ? <Loading /> : q.error || catalog.error ?
+        <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">
+          Stock information is incomplete. No totals are shown. {errMsg(q.error ?? catalog.error)}
+          <Button variant="outline" size="sm" className="ml-2" onClick={() => {
+            void q.refetch(); void catalog.refetch();
+          }}>Retry</Button>
+        </div> : <>
         <div className="mb-3 grid gap-3 md:grid-cols-3">
-          <Stat label="Stock value" value={inr(total)} />
-          <Stat label="Low stock lines" value={rows.filter((x) => status(x).l === "Low").length} />
-          <Stat label="Out of stock lines" value={rows.filter((x) => status(x).l === "Out of stock").length} />
+          <Stat label="Stock value" value={inr(result.totalValue)} />
+          <Stat label="Low stock lines" value={result.low} />
+          <Stat label="Out of stock lines" value={result.out} />
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          <div className="w-full sm:w-64"><SearchBox value={search} onChange={setSearch} placeholder="Material" /></div>
-          <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-56 sm:flex-none")} value={wh} onChange={(e) => setWh(e.target.value)}><option value="">All stores</option>{q.data!.warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
+          <div className="w-full sm:w-64"><SearchBox value={search} onChange={(value) => { setSearch(value); setPage(0); }} placeholder="Material" /></div>
+          <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-56 sm:flex-none")} value={wh} onChange={(e) => { setWh(e.target.value); setPage(0); }}><option value="">All stores</option>{catalog.data!.warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
         </div>
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3">Store</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Reorder level</th><th className="px-4 py-3 text-right">Avg cost</th><th className="px-4 py-3 text-right">Value</th><th className="px-4 py-3">Status</th></tr></thead>
             <tbody>
               {rows.length === 0 && <tr><td colSpan={7} className="p-4 text-xs text-muted-foreground">No stock yet. Stock appears after goods are received against a purchase order.</td></tr>}
-              {rows.map((x) => { const st = status(x); return (
+              {pageRows.map((x) => { const st = status(x); return (
                 <tr key={x.warehouse_id + x.material_id} className="border-b last:border-0 hover:bg-muted/40">
                   <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
                   <td className="px-4 py-3">{x.warehouses?.name}</td>
@@ -83,8 +124,9 @@ function StockPage() {
             </tbody>
           </table>
         </div>
-        {adj && <AdjustDialog kind={adj} stock={q.data!.stock} materials={q.data!.materials} warehouses={q.data!.warehouses} onClose={() => setAdj(null)} />}
-        {transfer && <TransferDialog stock={q.data!.stock} warehouses={q.data!.warehouses} onClose={() => setTransfer(false)} />}
+        <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
+        {adj && <AdjustDialog kind={adj} stock={q.data!} materials={catalog.data!.materials} warehouses={catalog.data!.warehouses} onClose={() => setAdj(null)} />}
+        {transfer && <TransferDialog stock={q.data!} warehouses={catalog.data!.warehouses} onClose={() => setTransfer(false)} />}
       </>}
     </>
   );

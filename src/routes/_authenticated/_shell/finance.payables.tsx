@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { Loading, PageHeader, Stat } from "@/components/erp/common";
@@ -32,16 +32,35 @@ function Payables() {
   const all = q.data ?? [];
   const t = today(); const in7 = addDays(t, 7);
   const set = (k: keyof typeof f, v: string) => { setF({ ...f, [k]: v }); setPage(0); };
-  const scoped = all.filter((x) => (!f.vendor || x.vendor_id === f.vendor) && (!f.project || x.project_id === f.project) && (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)));
-  const open = scoped.filter((x) => x.status !== "paid");
-  const sum = (a: typeof all) => a.reduce((s, x) => s + Number(x.balance_due), 0);
-  const overdue = open.filter((x) => x.due_date && x.due_date < t);
-  const dueToday = open.filter((x) => x.due_date === t);
-  const due7 = open.filter((x) => x.due_date && x.due_date >= t && x.due_date <= in7);
-  const rows = scoped.filter((x) => !f.due || (f.due === "overdue" ? overdue.includes(x) : f.due === "today" ? dueToday.includes(x) : f.due === "7" ? due7.includes(x) : f.due === "paid" ? x.status === "paid" : f.due === "partial" ? x.status === "partially_paid" : x.status !== "paid"));
-  const byVendor = [...open.reduce((m, x) => m.set(x.vendor_id, { name: x.vendors?.company_name ?? "", amt: (m.get(x.vendor_id)?.amt ?? 0) + Number(x.balance_due), n: (m.get(x.vendor_id)?.n ?? 0) + 1 }), new Map<string, { name: string; amt: number; n: number }>()).entries()].sort((a, b) => b[1].amt - a[1].amt);
-  const uniq = <T,>(arr: T[], key: (x: T) => string) => [...new Map(arr.map((x) => [key(x), x])).values()];
-  const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
+  const { scoped, open, overdue, dueToday, due7, rows, byVendor } = useMemo(() => {
+    const scoped = all.filter(x => (!f.vendor || x.vendor_id === f.vendor) &&
+      (!f.project || x.project_id === f.project) &&
+      (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)));
+    const open = scoped.filter(x => x.status !== "paid");
+    const overdue = open.filter(x => x.due_date && x.due_date < t);
+    const dueToday = open.filter(x => x.due_date === t);
+    const due7 = open.filter(x => x.due_date && x.due_date >= t && x.due_date <= in7);
+    const overdueIds = new Set(overdue.map(x => x.id));
+    const dueTodayIds = new Set(dueToday.map(x => x.id));
+    const due7Ids = new Set(due7.map(x => x.id));
+    const rows = scoped.filter(x => !f.due ||
+      (f.due === "overdue" ? overdueIds.has(x.id) :
+       f.due === "today" ? dueTodayIds.has(x.id) :
+       f.due === "7" ? due7Ids.has(x.id) :
+       f.due === "paid" ? x.status === "paid" :
+       f.due === "partial" ? x.status === "partially_paid" : x.status !== "paid"));
+    const byVendor = [...open.reduce((m, x) => m.set(x.vendor_id, {
+      name: x.vendors?.company_name ?? "",
+      amt: (m.get(x.vendor_id)?.amt ?? 0) + Number(x.balance_due),
+      n: (m.get(x.vendor_id)?.n ?? 0) + 1,
+    }), new Map<string, { name: string; amt: number; n: number }>()).entries()]
+      .sort((a,b) => b[1].amt - a[1].amt);
+    return { scoped, open, overdue, dueToday, due7, rows, byVendor };
+  }, [q.data, f, t, in7]);
+  const sum = (a: typeof all) => a.reduce((s,x) => s + Number(x.balance_due), 0);
+  const uniq = <T,>(arr: T[], key: (x: T) => string) => [...new Map(arr.map(x => [key(x),x])).values()];
+  const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
+  const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   return (
     <>
       <PageHeader title="Accounts Payable" subtitle="Only approved vendor invoices are payable. Purchase orders and goods receipts are not counted here." />
@@ -76,7 +95,7 @@ function Payables() {
                   </tr>))}
               </tbody>
             </table></div>
-            <div className="p-2"><Pager page={page} total={rows.length} size={PAGE} onPage={setPage} /></div>
+            <div className="p-2"><Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} /></div>
           </div>
           <div className="rounded-md border bg-card p-4">
             <div className="mb-2 text-sm font-medium">Vendor-wise outstanding</div>
