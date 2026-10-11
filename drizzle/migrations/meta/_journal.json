@@ -169,6 +169,13 @@
       "when": 1791783600000,
       "tag": "0023_small_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791787200000,
+      "tag": "0024_director_whatsapp_outbox",
+      "breakpoints": true
     }
   ]
 }

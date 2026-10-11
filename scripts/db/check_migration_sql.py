@@ -28,6 +28,7 @@ EXPECTED = [
     "0021_tenant_operations_storage_acl",
     "0022_whatsapp_consent_outbox",
     "0023_small_expenses",
+    "0024_director_whatsapp_outbox",
 ]
 
 
