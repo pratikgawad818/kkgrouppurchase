@@ -35,3 +35,16 @@ reviewed in order. **Do not apply directly to production.** Require backup,
 staging, RLS and workflow acceptance, and type regeneration against the
 actual deployed schema. This PR does not touch live Supabase data, add
 payment integrations, publish, or spend Lovable credits.
+
+## Release-readiness improvement (India date and building reporting)
+
+- Expense date is validated against the **Asia/Kolkata business day** in SQL,
+  independent of the Supabase/PostgreSQL connection timezone. The UI already
+  uses the Indian date; this removes a midnight discrepancy.
+- Building filter narrows the expense register and filtered totals; project
+  selection resets an incompatible building filter.
+- The project summary now also shows **building-wise expense totals**. The
+  project total includes general project expenses and individual buildings;
+  building totals are a *breakdown*, not extra spending to add again.
+- Existing `0023` remains **not applied** in production. This change adjusts
+  the pending migration source before a future reviewed deployment.

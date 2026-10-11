@@ -97,6 +97,24 @@ def test_create_idempotent_and_void():
         assert c.execute("SELECT count(*) FROM public.site_small_expense_events").fetchone()[0]==2
     print("PASS: actual small expense SQL enforces amount/date/building/company, idempotency, void trail")
 
+def test_india_business_date_independent_of_session_timezone():
+    # Hosted database may use UTC or a non-Indian session timezone.
+    # A dated expense must respect Asia/Kolkata calendar day, not the session.
+    with db() as c:
+        c.execute("SET TIME ZONE 'America/Los_Angeles'")
+        actor(c, ADMIN_A)
+        india_today = c.execute(
+          "SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date").fetchone()[0]
+        permitted = str(uuid4())
+        expense_id = record(c, permitted, spent_on=india_today)
+        assert expense_id is not None
+        denied(c, lambda: record(c, str(uuid4()),
+             spent_on=india_today + timedelta(days=1)))
+        assert c.execute("SELECT count(*) FROM public.site_small_expenses "
+             "WHERE entry_key=%s::uuid", (permitted,)).fetchone()[0] == 1
+    print("PASS: expense date is India local date, independent of PostgreSQL session timezone")
+
+
 def test_rls_and_server_rpc_rights():
     with db() as c:
         actor(c,ADMIN_A)
@@ -127,5 +145,6 @@ def test_rls_and_server_rpc_rights():
 if __name__=="__main__":
     setup()
     test_create_idempotent_and_void()
+    test_india_business_date_independent_of_session_timezone()
     test_rls_and_server_rpc_rights()
     print("PASS: staging-only migration 0023 verified on disposable PostgreSQL")
