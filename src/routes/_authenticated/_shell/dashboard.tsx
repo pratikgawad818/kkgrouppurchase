@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, Building2, ClipboardList, Clock, IndianRupee, Package, Plus, ShoppingCart, Store, Users, Wallet, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FirstRunSetup } from "@/components/erp/first-run-setup";
@@ -10,6 +10,7 @@ import { fmtDateTime, PROJECT_STATUS_LABEL } from "@/lib/format";
 import { useCan } from "@/lib/session";
 import { ACTIVE_DELIVERY_PO_STATUSES, purchaseOrderLineValues } from "@/lib/procurement-followup";
 import { today as todayIst } from "@/lib/finance";
+import { watchDashboardSection } from "@/lib/dashboard-viewport";
 
 export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — KK GROUP ERP" }, { name: "description", content: "Procurement, inventory, vendor and project overview." }, { property: "og:title", content: "Dashboard — KK GROUP ERP" }, { property: "og:description", content: "Procurement, inventory, vendor and project overview." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -22,6 +23,27 @@ const inr = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDi
 
 function Pending({ label, phase }: { label: string; phase: number }) {
   return <div className="h-full rounded-xl border border-dashed bg-muted/30 p-4"><div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1.5 text-xs text-muted-foreground">Available from Phase {phase}</div></div>;
+}
+
+/** Load secondary queries near viewport rather than blocking dashboard first paint. */
+function DeferredDashboardSection({ label, minHeight=180, children }: {
+  label: string; minHeight?: number; children: ReactNode;
+}) {
+  const target=useRef<HTMLDivElement>(null);
+  const [active,setActive]=useState(false);
+  useEffect(()=>{
+    if(active||!target.current)return;
+    return watchDashboardSection(target.current,()=>setActive(true));
+  },[active]);
+  return <div ref={target} className="min-w-0" style={active?undefined:{minHeight}}>
+    {active?children:<div className="mt-8 flex min-h-32 flex-col items-start justify-center gap-2 rounded-xl border border-dashed bg-muted/20 p-4">
+      <p className="text-sm font-medium">{label}</p>
+      <button type="button" onClick={()=>setActive(true)}
+        className="text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:underline">
+        Load this section
+      </button>
+    </div>}
+  </div>;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -429,20 +451,30 @@ function Dashboard() {
       <QuickActions can={can} />
       <Overview canMoney={can("financial.view")} canStock={can("inventory.view")} canPr={can("purchase_request.view")} canPo={can("purchase_order.view")} canAp={can("payable.view")} projectId={projectId} buildingId={buildingId} />
       {(can("purchase_request.view") || can("purchase_order.view") || can("grn.view")) && <div className="mt-10 flex items-center gap-3"><h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Procurement pipeline</h2><span className="h-px flex-1 bg-border" /></div>}
-      {can("purchase_request.view") && <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />}
-      {can("purchase_order.view") && <PoSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
-      {can("grn.view") && <GrnSummary fy={fy} projectId={projectId} buildingId={buildingId} />}
+      {can("purchase_request.view") && <DeferredDashboardSection label="Purchase request summary">
+        <PrSummary fy={fy} projectId={projectId} buildingId={buildingId} canCreate={can("purchase_request.create")} />
+      </DeferredDashboardSection>}
+      {can("purchase_order.view") && <DeferredDashboardSection label="Purchase order summary">
+        <PoSummary fy={fy} projectId={projectId} buildingId={buildingId} />
+      </DeferredDashboardSection>}
+      {can("grn.view") && <DeferredDashboardSection label="Goods receipt summary">
+        <GrnSummary fy={fy} projectId={projectId} buildingId={buildingId} />
+      </DeferredDashboardSection>}
       <div className="mt-10 flex items-center gap-3"><h2 className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Stores, vendors & projects</h2><span className="h-px flex-1 bg-border" /></div>
       <div className="grid gap-x-6 xl:grid-cols-2">
+      <DeferredDashboardSection label="Inventory overview" minHeight={340}>
       <Section title="Inventory">
         <Link to="/materials"><Stat label="Total materials" value={<span className="flex items-center justify-between">{d.materials}<Package className="h-5 w-5 text-primary" /></span>} hint="Active material master" className="hover:border-primary/40 hover:shadow-md" /></Link>
         <Link to="/warehouses"><Stat label="Stores" value={<span className="flex items-center justify-between">{d.warehouses}<Warehouse className="h-5 w-5 text-primary" /></span>} hint={projectId ? "For selected project" : "All active stores"} className="hover:border-primary/40 hover:shadow-md" /></Link>
         {can("inventory.view") ? <InvCards /> : <><Pending label="Inventory value" phase={4} /><Pending label="Low / out of stock" phase={4} /></>}
       </Section>
+      </DeferredDashboardSection>
+      <DeferredDashboardSection label="Vendor and payables overview" minHeight={340}>
       <Section title="Vendors">
         <Link to="/vendors"><Stat label="Active vendors" value={<span className="flex items-center justify-between">{d.vendors}<Store className="h-5 w-5 text-primary" /></span>} hint="Supplier master" className="hover:border-primary/40 hover:shadow-md" /></Link>
         {can("payable.view") ? <ApCards /> : <><Pending label="Vendor payables" phase={5} /><Pending label="Overdue bills" phase={5} /><Pending label="Payments this month" phase={5} /></>}
       </Section>
+      </DeferredDashboardSection>
       <Section title="Projects">
         <Link to="/projects"><Stat label="Active projects" value={<span className="flex items-center justify-between">{active}<Building2 className="h-5 w-5 text-primary" /></span>} hint={`${scoped.length} total`} className="hover:border-primary/40 hover:shadow-md" /></Link>
         <Stat label="Buildings" value={building ? 1 : d.buildings.length} hint={projectId ? "In selected project" : "All projects"} />
