@@ -142,6 +142,36 @@ jobs:
       - name: Verify real director vote, PO and payment transition migrations
         run: python scripts/db/test_director_0012_0013_acceptance.py
 
+  small-expenses-acceptance:
+    name: Site small expenses (disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: site_expense_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d site_expense_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      SMALL_EXPENSE_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/site_expense_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Verify audited small expenses and company isolation
+        run: python scripts/db/test_site_small_expenses_0023.py
+
   whatsapp-consent-acceptance:
     name: WhatsApp consent and outbox ACL (disposable PostgreSQL)
     runs-on: ubuntu-latest
