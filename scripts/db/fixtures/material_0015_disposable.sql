@@ -104,7 +104,7 @@ $$;
 GRANT USAGE ON SCHEMA public,auth TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public,auth TO authenticated;
 GRANT SELECT ON public.companies,public.profiles,public.projects,public.buildings,public.warehouses,
- public.units_of_measure,public.items,public.warehouse_stock,public.inventory_transactions TO authenticated;
+ public.units_of_measure,public.items,public.warehouse_stock,public.inventory_transactions,public.qa_events TO authenticated;
 
 ALTER TABLE public.warehouse_stock ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Actor's authorized inventory" ON public.warehouse_stock FOR SELECT TO authenticated
