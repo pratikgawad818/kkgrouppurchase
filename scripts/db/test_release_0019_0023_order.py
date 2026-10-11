@@ -121,7 +121,7 @@ def setup():
         # In production legacy auditor permissions already exist BEFORE
         # 0019, whose INSERT is ON CONFLICT DO NOTHING. The operations QA
         # fixture adds legacy rows later; skip their synthetic duplicates.
-        auditor_head = "INSERT INTO role_permissions(role,permission_code)\\nSELECT 'auditor'"
+        auditor_head = "INSERT INTO role_permissions(role,permission_code)\nSELECT 'auditor'"
         auditor_start = fixture.index(auditor_head)
         auditor_end = fixture.index("]);", auditor_start)
         if auditor_start < 0 or auditor_end < 0:
