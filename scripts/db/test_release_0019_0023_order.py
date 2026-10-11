@@ -118,6 +118,17 @@ def setup():
             if fixture.count(marker) != 1:
                 raise AssertionError("Operations fixture changed: review ordered-release preconditions")
             fixture = fixture.replace(marker, "")
+        # In production legacy auditor permissions already exist BEFORE
+        # 0019, whose INSERT is ON CONFLICT DO NOTHING. The operations QA
+        # fixture adds legacy rows later; skip their synthetic duplicates.
+        auditor_head = "INSERT INTO role_permissions(role,permission_code)\\nSELECT 'auditor'"
+        auditor_start = fixture.index(auditor_head)
+        auditor_end = fixture.index("]);", auditor_start)
+        if auditor_start < 0 or auditor_end < 0:
+            raise AssertionError("Auditor fixture changed: verify legacy permissions")
+        auditor_block = fixture[auditor_start:auditor_end+3]
+        fixture = fixture.replace(auditor_block,
+            auditor_block.replace("]);", "]) ON CONFLICT DO NOTHING;"))
         conn.execute(fixture)
         install(conn,"0021","tenant_operations_storage_acl")
 
