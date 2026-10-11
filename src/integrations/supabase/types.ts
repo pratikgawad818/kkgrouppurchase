@@ -52,6 +52,18 @@ export type Database = {
           },
         ]
       }
+      director_wa_consents: {
+        Row: {director_id:string;company_id:string;status:"granted"|"revoked";phone_e164:string|null;evidence:string;recorded_by:string;recorded_at:string}
+        Insert: {director_id:string;company_id:string;status:"granted"|"revoked";phone_e164?:string|null;evidence:string;recorded_by:string;recorded_at?:string}
+        Update: {director_id?:string;company_id?:string;status?:"granted"|"revoked";phone_e164?:string|null;evidence?:string;recorded_by?:string;recorded_at?:string}
+        Relationships: []
+      }
+      director_wa_outbox: {
+        Row: {id:string;company_id:string;director_id:string;entity_type:"purchase_order"|"vendor_payment";entity_id:string;stage:"initial"|"reminder_1"|"reminder_2";phone_e164:string;status:"queued"|"claimed"|"accepted"|"rejected"|"unknown"|"skipped";claim_key:string|null;claimed_at:string|null;processed_at:string|null;message_id:string|null;error_code:string|null;created_at:string}
+        Insert: {id?:string;company_id:string;director_id:string;entity_type:"purchase_order"|"vendor_payment";entity_id:string;stage:"initial"|"reminder_1"|"reminder_2";phone_e164:string;status?:"queued"|"claimed"|"accepted"|"rejected"|"unknown"|"skipped";claim_key?:string|null;claimed_at?:string|null;processed_at?:string|null;message_id?:string|null;error_code?:string|null;created_at?:string}
+        Update: {id?:string;company_id?:string;director_id?:string;entity_type?:"purchase_order"|"vendor_payment";entity_id?:string;stage?:"initial"|"reminder_1"|"reminder_2";phone_e164?:string;status?:"queued"|"claimed"|"accepted"|"rejected"|"unknown"|"skipped";claim_key?:string|null;claimed_at?:string|null;processed_at?:string|null;message_id?:string|null;error_code?:string|null;created_at?:string}
+        Relationships: []
+      }
       site_small_expenses: {
         Row: {
           id: string; company_id: string; entry_key: string; project_id: string | null;
@@ -4468,6 +4480,8 @@ export type Database = {
       }
     }
     Functions: {
+      wa_set_director_consent: {Args:{_director:string;_granted:boolean;_evidence:string};Returns:string}
+      wa_prepare_director_notification: {Args:{_kind:string;_id:string};Returns:number}
       record_site_small_expense: {
         Args: { _entry_key: string; _project_id: string | null; _building_id: string | null; _spent_on: string;
           _category: string; _amount: number; _payment_method: string; _paid_to: string;
