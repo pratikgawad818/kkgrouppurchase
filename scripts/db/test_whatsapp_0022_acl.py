@@ -114,7 +114,10 @@ def test_consent_lifecycle():
         assert conn.execute("SELECT count(*) FROM public.wa_consent_events").fetchone()[0] == 1
         consent(conn, VA, False, "Supplier requested WhatsApp notifications stop now.")
         assert conn.execute("SELECT public.wa_has_current_consent(%s::uuid)", (VA,)).fetchone()[0] is False
-        assert conn.execute("SELECT previous_status,new_status FROM public.wa_consent_events ORDER BY created_at,id").fetchall()[-1][1] == "revoked"
+        transitions=conn.execute("SELECT previous_status,new_status FROM public.wa_consent_events").fetchall()
+        assert (None,"granted") in transitions
+        assert ("granted","revoked") in transitions
+        assert len(transitions)==2
     print("PASS: explicit consent, audit, opt-out; no implied grant")
 
 
