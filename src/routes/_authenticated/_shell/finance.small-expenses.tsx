@@ -56,7 +56,7 @@ function SmallExpenses() {
 
   const register=useQuery({
     queryKey:["small-expenses",companyId],enabled:permitted,staleTime:30_000,
-    queryFn:()=>loadCompleteRows(async (start,end)=>{
+    queryFn:()=>loadCompleteRows<any>(async (start,end)=>{
       const {data,count,error}=await untypedDb.from("site_small_expenses")
         .select("id,spent_on,project_id,building_id,category,amount,payment_method,paid_to,description,receipt_reference,status,created_at,void_reason,projects(name),buildings(name)",{count:"exact"})
         .eq("company_id",companyId!).order("id").range(start,end);

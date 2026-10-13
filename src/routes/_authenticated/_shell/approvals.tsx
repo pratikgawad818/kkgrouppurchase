@@ -90,10 +90,10 @@ function DirectorApprovals() {
       let directorAlerts: {id:string;director_id:string;entity_type:string;entity_id:string;status:string;stage:string;created_at:string;error_code:string|null}[] = [];
       if (alertsUiEnabled && isAdmin && companyId) {
         [directorConsents,directorAlerts] = await Promise.all([
-          loadCompleteRows(async (start,end) => await untypedDb.from("director_wa_consents")
+          loadCompleteRows<typeof directorConsents[number] & {id:string}>(async (start,end) => await untypedDb.from("director_wa_consents")
             .select("director_id,status,phone_e164,id:director_id", {count:"exact"})
             .eq("company_id",companyId).order("director_id").range(start,end)),
-          loadCompleteRows(async (start,end) => await untypedDb.from("director_wa_outbox")
+          loadCompleteRows<typeof directorAlerts[number]>(async (start,end) => await untypedDb.from("director_wa_outbox")
             .select("id,director_id,entity_type,entity_id,status,stage,created_at,error_code", {count:"exact"})
             .eq("company_id",companyId).order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,end)),
         ]);
