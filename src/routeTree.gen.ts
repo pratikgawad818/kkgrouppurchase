@@ -14,10 +14,12 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/_shell'
+import { Route as ApiDirectorWhatsappWorkerRouteImport } from './routes/api/director-whatsapp-worker'
 import { Route as AuthenticatedShellApprovalsRouteImport } from './routes/_authenticated/_shell/approvals'
 import { Route as AuthenticatedShellAuditRouteImport } from './routes/_authenticated/_shell/audit'
 import { Route as AuthenticatedShellBuildingsRouteImport } from './routes/_authenticated/_shell/buildings'
 import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
+import { Route as AuthenticatedShellManagementRouteImport } from './routes/_authenticated/_shell/management'
 import { Route as AuthenticatedShellMaterialsRouteImport } from './routes/_authenticated/_shell/materials'
 import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authenticated/_shell/projects'
 import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
@@ -25,15 +27,20 @@ import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authent
 import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
 import { Route as AuthenticatedShellFinancePayablesRouteImport } from './routes/_authenticated/_shell/finance.payables'
 import { Route as AuthenticatedShellFinancePaymentsRouteImport } from './routes/_authenticated/_shell/finance.payments'
+import { Route as AuthenticatedShellFinanceSmallExpensesRouteImport } from './routes/_authenticated/_shell/finance.small-expenses'
 import { Route as AuthenticatedShellFinanceVendorLedgerRouteImport } from './routes/_authenticated/_shell/finance.vendor-ledger'
 import { Route as AuthenticatedShellInventoryMaterialConsumptionRouteImport } from './routes/_authenticated/_shell/inventory.material-consumption'
+import { Route as AuthenticatedShellInventoryReorderPlanningRouteImport } from './routes/_authenticated/_shell/inventory.reorder-planning'
 import { Route as AuthenticatedShellInventoryStockRouteImport } from './routes/_authenticated/_shell/inventory.stock'
 import { Route as AuthenticatedShellInventoryStockMovementsRouteImport } from './routes/_authenticated/_shell/inventory.stock-movements'
 import { Route as AuthenticatedShellProcurementFollowUpsRouteImport } from './routes/_authenticated/_shell/procurement.follow-ups'
+import { Route as AuthenticatedShellProcurementSupplierRateHistoryRouteImport } from './routes/_authenticated/_shell/procurement.supplier-rate-history'
 import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } from './routes/_authenticated/_shell/procurement.vendor-quotations'
+import { Route as AuthenticatedShellReportsProjectCostControlRouteImport } from './routes/_authenticated/_shell/reports.project-cost-control'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
+import { Route as AuthenticatedShellSettingsWhatsappRouteImport } from './routes/_authenticated/_shell/settings.whatsapp'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIndexRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.index'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIdRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.$id'
 import { Route as AuthenticatedShellFinanceVendorInvoicesNewRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.new'
@@ -78,6 +85,12 @@ const AuthenticatedShellRoute = AuthenticatedShellRouteImport.update({
   id: '/_shell',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiDirectorWhatsappWorkerRoute =
+  ApiDirectorWhatsappWorkerRouteImport.update({
+    id: '/api/director-whatsapp-worker',
+    path: '/api/director-whatsapp-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedShellApprovalsRoute =
   AuthenticatedShellApprovalsRouteImport.update({
     id: '/approvals',
@@ -99,6 +112,12 @@ const AuthenticatedShellDashboardRoute =
   AuthenticatedShellDashboardRouteImport.update({
     id: '/dashboard',
     path: '/dashboard',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellManagementRoute =
+  AuthenticatedShellManagementRouteImport.update({
+    id: '/management',
+    path: '/management',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellMaterialsRoute =
@@ -142,6 +161,12 @@ const AuthenticatedShellFinancePaymentsRoute =
     path: '/finance/payments',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellFinanceSmallExpensesRoute =
+  AuthenticatedShellFinanceSmallExpensesRouteImport.update({
+    id: '/finance/small-expenses',
+    path: '/finance/small-expenses',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellFinanceVendorLedgerRoute =
   AuthenticatedShellFinanceVendorLedgerRouteImport.update({
     id: '/finance/vendor-ledger',
@@ -152,6 +177,12 @@ const AuthenticatedShellInventoryMaterialConsumptionRoute =
   AuthenticatedShellInventoryMaterialConsumptionRouteImport.update({
     id: '/inventory/material-consumption',
     path: '/inventory/material-consumption',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellInventoryReorderPlanningRoute =
+  AuthenticatedShellInventoryReorderPlanningRouteImport.update({
+    id: '/inventory/reorder-planning',
+    path: '/inventory/reorder-planning',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellInventoryStockRoute =
@@ -172,10 +203,22 @@ const AuthenticatedShellProcurementFollowUpsRoute =
     path: '/procurement/follow-ups',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellProcurementSupplierRateHistoryRoute =
+  AuthenticatedShellProcurementSupplierRateHistoryRouteImport.update({
+    id: '/procurement/supplier-rate-history',
+    path: '/procurement/supplier-rate-history',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellProcurementVendorQuotationsRoute =
   AuthenticatedShellProcurementVendorQuotationsRouteImport.update({
     id: '/procurement/vendor-quotations',
     path: '/procurement/vendor-quotations',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellReportsProjectCostControlRoute =
+  AuthenticatedShellReportsProjectCostControlRouteImport.update({
+    id: '/reports/project-cost-control',
+    path: '/reports/project-cost-control',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellSettingsCompanyRoute =
@@ -194,6 +237,12 @@ const AuthenticatedShellSettingsUsersRoute =
   AuthenticatedShellSettingsUsersRouteImport.update({
     id: '/settings/users',
     path: '/settings/users',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellSettingsWhatsappRoute =
+  AuthenticatedShellSettingsWhatsappRouteImport.update({
+    id: '/settings/whatsapp',
+    path: '/settings/whatsapp',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellFinanceVendorInvoicesIndexRoute =
@@ -321,10 +370,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/director-whatsapp-worker': typeof ApiDirectorWhatsappWorkerRoute
   '/approvals': typeof AuthenticatedShellApprovalsRoute
   '/audit': typeof AuthenticatedShellAuditRoute
   '/buildings': typeof AuthenticatedShellBuildingsRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/management': typeof AuthenticatedShellManagementRoute
   '/materials': typeof AuthenticatedShellMaterialsRoute
   '/projects': typeof AuthenticatedShellProjectsRoute
   '/units': typeof AuthenticatedShellUnitsRoute
@@ -332,15 +383,20 @@ export interface FileRoutesByFullPath {
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
+  '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
   '/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
   '/inventory/material-consumption': typeof AuthenticatedShellInventoryMaterialConsumptionRoute
+  '/inventory/reorder-planning': typeof AuthenticatedShellInventoryReorderPlanningRoute
   '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/procurement/follow-ups': typeof AuthenticatedShellProcurementFollowUpsRoute
+  '/procurement/supplier-rate-history': typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
+  '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/settings/whatsapp': typeof AuthenticatedShellSettingsWhatsappRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -366,10 +422,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/director-whatsapp-worker': typeof ApiDirectorWhatsappWorkerRoute
   '/approvals': typeof AuthenticatedShellApprovalsRoute
   '/audit': typeof AuthenticatedShellAuditRoute
   '/buildings': typeof AuthenticatedShellBuildingsRoute
   '/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/management': typeof AuthenticatedShellManagementRoute
   '/materials': typeof AuthenticatedShellMaterialsRoute
   '/projects': typeof AuthenticatedShellProjectsRoute
   '/units': typeof AuthenticatedShellUnitsRoute
@@ -377,15 +435,20 @@ export interface FileRoutesByTo {
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
+  '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
   '/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
   '/inventory/material-consumption': typeof AuthenticatedShellInventoryMaterialConsumptionRoute
+  '/inventory/reorder-planning': typeof AuthenticatedShellInventoryReorderPlanningRoute
   '/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/procurement/follow-ups': typeof AuthenticatedShellProcurementFollowUpsRoute
+  '/procurement/supplier-rate-history': typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
+  '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/settings/whatsapp': typeof AuthenticatedShellSettingsWhatsappRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -414,10 +477,12 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/_shell': typeof AuthenticatedShellRouteWithChildren
+  '/api/director-whatsapp-worker': typeof ApiDirectorWhatsappWorkerRoute
   '/_authenticated/_shell/approvals': typeof AuthenticatedShellApprovalsRoute
   '/_authenticated/_shell/audit': typeof AuthenticatedShellAuditRoute
   '/_authenticated/_shell/buildings': typeof AuthenticatedShellBuildingsRoute
   '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
+  '/_authenticated/_shell/management': typeof AuthenticatedShellManagementRoute
   '/_authenticated/_shell/materials': typeof AuthenticatedShellMaterialsRoute
   '/_authenticated/_shell/projects': typeof AuthenticatedShellProjectsRoute
   '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
@@ -425,15 +490,20 @@ export interface FileRoutesById {
   '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/_authenticated/_shell/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/_authenticated/_shell/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
+  '/_authenticated/_shell/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
   '/_authenticated/_shell/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
   '/_authenticated/_shell/inventory/material-consumption': typeof AuthenticatedShellInventoryMaterialConsumptionRoute
+  '/_authenticated/_shell/inventory/reorder-planning': typeof AuthenticatedShellInventoryReorderPlanningRoute
   '/_authenticated/_shell/inventory/stock': typeof AuthenticatedShellInventoryStockRoute
   '/_authenticated/_shell/inventory/stock-movements': typeof AuthenticatedShellInventoryStockMovementsRoute
   '/_authenticated/_shell/procurement/follow-ups': typeof AuthenticatedShellProcurementFollowUpsRoute
+  '/_authenticated/_shell/procurement/supplier-rate-history': typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   '/_authenticated/_shell/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
+  '/_authenticated/_shell/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/_authenticated/_shell/settings/whatsapp': typeof AuthenticatedShellSettingsWhatsappRoute
   '/_authenticated/_shell/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/_authenticated/_shell/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -461,10 +531,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/api/director-whatsapp-worker'
     | '/approvals'
     | '/audit'
     | '/buildings'
     | '/dashboard'
+    | '/management'
     | '/materials'
     | '/projects'
     | '/units'
@@ -472,15 +544,20 @@ export interface FileRouteTypes {
     | '/warehouses'
     | '/finance/payables'
     | '/finance/payments'
+    | '/finance/small-expenses'
     | '/finance/vendor-ledger'
     | '/inventory/material-consumption'
+    | '/inventory/reorder-planning'
     | '/inventory/stock'
     | '/inventory/stock-movements'
     | '/procurement/follow-ups'
+    | '/procurement/supplier-rate-history'
     | '/procurement/vendor-quotations'
+    | '/reports/project-cost-control'
     | '/settings/company'
     | '/settings/finance'
     | '/settings/users'
+    | '/settings/whatsapp'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
     | '/inventory/delivery-challans/$id'
@@ -506,10 +583,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/api/director-whatsapp-worker'
     | '/approvals'
     | '/audit'
     | '/buildings'
     | '/dashboard'
+    | '/management'
     | '/materials'
     | '/projects'
     | '/units'
@@ -517,15 +596,20 @@ export interface FileRouteTypes {
     | '/warehouses'
     | '/finance/payables'
     | '/finance/payments'
+    | '/finance/small-expenses'
     | '/finance/vendor-ledger'
     | '/inventory/material-consumption'
+    | '/inventory/reorder-planning'
     | '/inventory/stock'
     | '/inventory/stock-movements'
     | '/procurement/follow-ups'
+    | '/procurement/supplier-rate-history'
     | '/procurement/vendor-quotations'
+    | '/reports/project-cost-control'
     | '/settings/company'
     | '/settings/finance'
     | '/settings/users'
+    | '/settings/whatsapp'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
     | '/inventory/delivery-challans/$id'
@@ -553,10 +637,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/_shell'
+    | '/api/director-whatsapp-worker'
     | '/_authenticated/_shell/approvals'
     | '/_authenticated/_shell/audit'
     | '/_authenticated/_shell/buildings'
     | '/_authenticated/_shell/dashboard'
+    | '/_authenticated/_shell/management'
     | '/_authenticated/_shell/materials'
     | '/_authenticated/_shell/projects'
     | '/_authenticated/_shell/units'
@@ -564,15 +650,20 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/warehouses'
     | '/_authenticated/_shell/finance/payables'
     | '/_authenticated/_shell/finance/payments'
+    | '/_authenticated/_shell/finance/small-expenses'
     | '/_authenticated/_shell/finance/vendor-ledger'
     | '/_authenticated/_shell/inventory/material-consumption'
+    | '/_authenticated/_shell/inventory/reorder-planning'
     | '/_authenticated/_shell/inventory/stock'
     | '/_authenticated/_shell/inventory/stock-movements'
     | '/_authenticated/_shell/procurement/follow-ups'
+    | '/_authenticated/_shell/procurement/supplier-rate-history'
     | '/_authenticated/_shell/procurement/vendor-quotations'
+    | '/_authenticated/_shell/reports/project-cost-control'
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/finance'
     | '/_authenticated/_shell/settings/users'
+    | '/_authenticated/_shell/settings/whatsapp'
     | '/_authenticated/_shell/finance/vendor-invoices/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/new'
     | '/_authenticated/_shell/inventory/delivery-challans/$id'
@@ -600,6 +691,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiDirectorWhatsappWorkerRoute: typeof ApiDirectorWhatsappWorkerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -639,6 +731,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/director-whatsapp-worker': {
+      id: '/api/director-whatsapp-worker'
+      path: '/api/director-whatsapp-worker'
+      fullPath: '/api/director-whatsapp-worker'
+      preLoaderRoute: typeof ApiDirectorWhatsappWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/_shell/approvals': {
       id: '/_authenticated/_shell/approvals'
       path: '/approvals'
@@ -665,6 +764,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedShellDashboardRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/management': {
+      id: '/_authenticated/_shell/management'
+      path: '/management'
+      fullPath: '/management'
+      preLoaderRoute: typeof AuthenticatedShellManagementRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/materials': {
@@ -716,6 +822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellFinancePaymentsRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/finance/small-expenses': {
+      id: '/_authenticated/_shell/finance/small-expenses'
+      path: '/finance/small-expenses'
+      fullPath: '/finance/small-expenses'
+      preLoaderRoute: typeof AuthenticatedShellFinanceSmallExpensesRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/finance/vendor-ledger': {
       id: '/_authenticated/_shell/finance/vendor-ledger'
       path: '/finance/vendor-ledger'
@@ -728,6 +841,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory/material-consumption'
       fullPath: '/inventory/material-consumption'
       preLoaderRoute: typeof AuthenticatedShellInventoryMaterialConsumptionRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/inventory/reorder-planning': {
+      id: '/_authenticated/_shell/inventory/reorder-planning'
+      path: '/inventory/reorder-planning'
+      fullPath: '/inventory/reorder-planning'
+      preLoaderRoute: typeof AuthenticatedShellInventoryReorderPlanningRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/inventory/stock': {
@@ -751,11 +871,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellProcurementFollowUpsRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/procurement/supplier-rate-history': {
+      id: '/_authenticated/_shell/procurement/supplier-rate-history'
+      path: '/procurement/supplier-rate-history'
+      fullPath: '/procurement/supplier-rate-history'
+      preLoaderRoute: typeof AuthenticatedShellProcurementSupplierRateHistoryRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/procurement/vendor-quotations': {
       id: '/_authenticated/_shell/procurement/vendor-quotations'
       path: '/procurement/vendor-quotations'
       fullPath: '/procurement/vendor-quotations'
       preLoaderRoute: typeof AuthenticatedShellProcurementVendorQuotationsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/reports/project-cost-control': {
+      id: '/_authenticated/_shell/reports/project-cost-control'
+      path: '/reports/project-cost-control'
+      fullPath: '/reports/project-cost-control'
+      preLoaderRoute: typeof AuthenticatedShellReportsProjectCostControlRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/settings/company': {
@@ -777,6 +911,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/users'
       fullPath: '/settings/users'
       preLoaderRoute: typeof AuthenticatedShellSettingsUsersRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/settings/whatsapp': {
+      id: '/_authenticated/_shell/settings/whatsapp'
+      path: '/settings/whatsapp'
+      fullPath: '/settings/whatsapp'
+      preLoaderRoute: typeof AuthenticatedShellSettingsWhatsappRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/finance/vendor-invoices/': {
@@ -927,6 +1068,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellAuditRoute: typeof AuthenticatedShellAuditRoute
   AuthenticatedShellBuildingsRoute: typeof AuthenticatedShellBuildingsRoute
   AuthenticatedShellDashboardRoute: typeof AuthenticatedShellDashboardRoute
+  AuthenticatedShellManagementRoute: typeof AuthenticatedShellManagementRoute
   AuthenticatedShellMaterialsRoute: typeof AuthenticatedShellMaterialsRoute
   AuthenticatedShellProjectsRoute: typeof AuthenticatedShellProjectsRoute
   AuthenticatedShellUnitsRoute: typeof AuthenticatedShellUnitsRoute
@@ -934,15 +1076,20 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellWarehousesRoute: typeof AuthenticatedShellWarehousesRoute
   AuthenticatedShellFinancePayablesRoute: typeof AuthenticatedShellFinancePayablesRoute
   AuthenticatedShellFinancePaymentsRoute: typeof AuthenticatedShellFinancePaymentsRoute
+  AuthenticatedShellFinanceSmallExpensesRoute: typeof AuthenticatedShellFinanceSmallExpensesRoute
   AuthenticatedShellFinanceVendorLedgerRoute: typeof AuthenticatedShellFinanceVendorLedgerRoute
   AuthenticatedShellInventoryMaterialConsumptionRoute: typeof AuthenticatedShellInventoryMaterialConsumptionRoute
+  AuthenticatedShellInventoryReorderPlanningRoute: typeof AuthenticatedShellInventoryReorderPlanningRoute
   AuthenticatedShellInventoryStockRoute: typeof AuthenticatedShellInventoryStockRoute
   AuthenticatedShellInventoryStockMovementsRoute: typeof AuthenticatedShellInventoryStockMovementsRoute
   AuthenticatedShellProcurementFollowUpsRoute: typeof AuthenticatedShellProcurementFollowUpsRoute
+  AuthenticatedShellProcurementSupplierRateHistoryRoute: typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   AuthenticatedShellProcurementVendorQuotationsRoute: typeof AuthenticatedShellProcurementVendorQuotationsRoute
+  AuthenticatedShellReportsProjectCostControlRoute: typeof AuthenticatedShellReportsProjectCostControlRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsFinanceRoute: typeof AuthenticatedShellSettingsFinanceRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
+  AuthenticatedShellSettingsWhatsappRoute: typeof AuthenticatedShellSettingsWhatsappRoute
   AuthenticatedShellFinanceVendorInvoicesIdRoute: typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   AuthenticatedShellFinanceVendorInvoicesNewRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   AuthenticatedShellInventoryDeliveryChallansIdRoute: typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -970,6 +1117,7 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellAuditRoute: AuthenticatedShellAuditRoute,
   AuthenticatedShellBuildingsRoute: AuthenticatedShellBuildingsRoute,
   AuthenticatedShellDashboardRoute: AuthenticatedShellDashboardRoute,
+  AuthenticatedShellManagementRoute: AuthenticatedShellManagementRoute,
   AuthenticatedShellMaterialsRoute: AuthenticatedShellMaterialsRoute,
   AuthenticatedShellProjectsRoute: AuthenticatedShellProjectsRoute,
   AuthenticatedShellUnitsRoute: AuthenticatedShellUnitsRoute,
@@ -979,22 +1127,32 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
     AuthenticatedShellFinancePayablesRoute,
   AuthenticatedShellFinancePaymentsRoute:
     AuthenticatedShellFinancePaymentsRoute,
+  AuthenticatedShellFinanceSmallExpensesRoute:
+    AuthenticatedShellFinanceSmallExpensesRoute,
   AuthenticatedShellFinanceVendorLedgerRoute:
     AuthenticatedShellFinanceVendorLedgerRoute,
   AuthenticatedShellInventoryMaterialConsumptionRoute:
     AuthenticatedShellInventoryMaterialConsumptionRoute,
+  AuthenticatedShellInventoryReorderPlanningRoute:
+    AuthenticatedShellInventoryReorderPlanningRoute,
   AuthenticatedShellInventoryStockRoute: AuthenticatedShellInventoryStockRoute,
   AuthenticatedShellInventoryStockMovementsRoute:
     AuthenticatedShellInventoryStockMovementsRoute,
   AuthenticatedShellProcurementFollowUpsRoute:
     AuthenticatedShellProcurementFollowUpsRoute,
+  AuthenticatedShellProcurementSupplierRateHistoryRoute:
+    AuthenticatedShellProcurementSupplierRateHistoryRoute,
   AuthenticatedShellProcurementVendorQuotationsRoute:
     AuthenticatedShellProcurementVendorQuotationsRoute,
+  AuthenticatedShellReportsProjectCostControlRoute:
+    AuthenticatedShellReportsProjectCostControlRoute,
   AuthenticatedShellSettingsCompanyRoute:
     AuthenticatedShellSettingsCompanyRoute,
   AuthenticatedShellSettingsFinanceRoute:
     AuthenticatedShellSettingsFinanceRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
+  AuthenticatedShellSettingsWhatsappRoute:
+    AuthenticatedShellSettingsWhatsappRoute,
   AuthenticatedShellFinanceVendorInvoicesIdRoute:
     AuthenticatedShellFinanceVendorInvoicesIdRoute,
   AuthenticatedShellFinanceVendorInvoicesNewRoute:
@@ -1056,6 +1214,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiDirectorWhatsappWorkerRoute: ApiDirectorWhatsappWorkerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
