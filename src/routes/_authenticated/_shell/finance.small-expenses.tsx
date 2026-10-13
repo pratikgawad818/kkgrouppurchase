@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Plus, ReceiptText, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+// These backend objects are not yet installed in the live database (pending approved rollout), so they are absent from generated types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const untypedDb = supabase as any;
 import { useMe } from "@/lib/session";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { today as todayIst } from "@/lib/finance";
@@ -53,8 +56,8 @@ function SmallExpenses() {
 
   const register=useQuery({
     queryKey:["small-expenses",companyId],enabled:permitted,staleTime:30_000,
-    queryFn:()=>loadCompleteRows(async (start,end)=>{
-      const {data,count,error}=await supabase.from("site_small_expenses")
+    queryFn:()=>loadCompleteRows<any>(async (start,end)=>{
+      const {data,count,error}=await untypedDb.from("site_small_expenses")
         .select("id,spent_on,project_id,building_id,category,amount,payment_method,paid_to,description,receipt_reference,status,created_at,void_reason,projects(name),buildings(name)",{count:"exact"})
         .eq("company_id",companyId!).order("id").range(start,end);
       return {data,count,error};
@@ -81,7 +84,7 @@ function SmallExpenses() {
       if(form.paidTo.trim().length<2||form.description.trim().length<3)throw new Error("Enter the person paid and a meaningful description.");
       if(!form.spentOn||form.spentOn>todayIst())throw new Error("Select a valid date that is not in the future.");
       if(form.buildingId&&!form.projectId)throw new Error("Select a project for this building.");
-      const {data,error}=await supabase.rpc("record_site_small_expense",{
+      const {data,error}=await untypedDb.rpc("record_site_small_expense",{
         _entry_key:entryKey,_project_id:form.projectId||null,_building_id:form.buildingId||null,
         _spent_on:form.spentOn,_category:form.category,_amount:amount,_payment_method:form.method,
         _paid_to:form.paidTo.trim(),_description:form.description.trim(),
@@ -101,7 +104,7 @@ function SmallExpenses() {
     mutationFn:async()=>{
       if(!canWrite||!voidId)throw new Error("Not authorized.");
       if(voidReason.trim().length<5)throw new Error("Enter a clear void reason (at least 5 characters).");
-      const {error}=await supabase.rpc("void_site_small_expense",{_expense_id:voidId,_reason:voidReason.trim()});
+      const {error}=await untypedDb.rpc("void_site_small_expense",{_expense_id:voidId,_reason:voidReason.trim()});
       if(error)throw error;
     },
     onSuccess:async()=>{await qc.invalidateQueries({queryKey:["small-expenses"]});setVoidId(null);setVoidReason("");toast.success("Expense voided; original entry retained for audit");},
