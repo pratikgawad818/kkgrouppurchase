@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useDocTableLabels } from "@/components/erp/doc-table";
 import { Loading } from "@/components/erp/common";
+import { NotificationBell } from "@/components/erp/notification-bell";
 import { cn } from "@/lib/utils";
 import brandMark from "@/assets/kk-groups-full.png.asset.json";
 
@@ -234,6 +235,7 @@ function Shell() {
             <Search className="h-4 w-4" /><span className="flex-1 text-left">Go to page…</span><kbd className="rounded border bg-muted px-1.5 font-mono text-[10px]">⌘K</kbd>
           </button>
           <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} aria-label="Go to page" className="h-11 w-11 md:hidden"><Search className="h-5 w-5" /></Button>
+          <NotificationBell userId={profile.id} />
           <DropdownMenu>
             <DropdownMenuTrigger className="flex min-h-11 items-center gap-2 rounded-lg px-1.5 hover:bg-muted md:min-h-9" aria-label="Account menu">
               <span className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">{avatarUrl.data ? <img src={avatarUrl.data} alt="" className="h-full w-full object-cover" /> : initials(profile.full_name ?? profile.email ?? "")}</span>
