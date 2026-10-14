@@ -49,7 +49,6 @@ function UsersPage() {
   const run = useServerFn(updateStaffAccess);
   const invite = useServerFn(inviteStaff);
   const createAcct = useServerFn(createStaffAccount);
-  const isSuper = !!me.data?.roles.includes("super_admin");
   const [byUsername, setByUsername] = useState(true);
   const [staff, setStaff] = useState<Staff | null>(null);
   const [edit, setEdit] = useState({ role: "", active: true, phone: "", department: "", designation: "" });
