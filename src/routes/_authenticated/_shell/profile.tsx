@@ -82,7 +82,7 @@ function ProfilePage() {
     setSaving(true);
     try {
       await persist(f);
-      const curName = usernameOnly ? (p.email ?? "").split("@")[0] : "";
+      const curName = usernameOnly ? (p?.email ?? "").split("@")[0] : "";
       if (usernameOnly && uname.trim().toLowerCase() !== curName) {
         await renameUser({ data: { username: uname } });
         await qc.invalidateQueries({ queryKey: ["me"] });
