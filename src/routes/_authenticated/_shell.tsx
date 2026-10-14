@@ -179,7 +179,7 @@ function Shell() {
           <button onClick={signOut} aria-label="Sign out" title="Sign out" className="grid h-9 w-9 place-items-center rounded-lg text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut className="h-4 w-4" /></button>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground ring-1 ring-brass/40">{initials(profile.full_name ?? profile.email ?? "")}</span>
+            <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground ring-1 ring-brass/40">{avatarUrl.data ? <img src={avatarUrl.data} alt="" className="h-full w-full object-cover" /> : initials(profile.full_name ?? profile.email ?? "")}</span>
             <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-sidebar-accent-foreground">{profile.full_name ?? profile.email}</div>
               <div className="truncate text-[11px] text-sidebar-foreground/65">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></div>
             <button onClick={signOut} aria-label="Sign out" title="Sign out" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut className="h-4 w-4" /></button>
