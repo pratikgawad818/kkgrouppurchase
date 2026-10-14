@@ -6,7 +6,7 @@ import { Camera, Lock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { useServerFn } from "@tanstack/react-start";
-import { setMyRealEmail } from "@/lib/admin.functions";
+import { setMyRealEmail, changeMyUsername } from "@/lib/admin.functions";
 import { isSyntheticEmail } from "@/lib/staff-login";
 import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
@@ -23,6 +23,8 @@ function ProfilePage() {
   const me = useMe();
   const qc = useQueryClient();
   const attachEmail = useServerFn(setMyRealEmail);
+  const renameUser = useServerFn(changeMyUsername);
+  const [uname, setUname] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [f, setF] = useState({ full_name: "", email: "", phone: "", office_phone: "", dob: "", department: "", designation: "", avatar_url: "" });
   const [saving, setSaving] = useState(false);
@@ -33,6 +35,7 @@ function ProfilePage() {
     if (!p) return;
     setF({ full_name: p.full_name ?? "", email: isSyntheticEmail(p.email) ? "" : p.email ?? "", phone: p.phone ?? "", office_phone: p.office_phone ?? "", dob: p.dob ?? "",
       department: p.department ?? "", designation: p.designation ?? "", avatar_url: p.avatar_url ?? "" });
+    setUname(isSyntheticEmail(p.email) ? (p.email ?? "").split("@")[0]! : "");
   }, [p]);
   const avatar = useAvatarUrl(f.avatar_url || null);
 
@@ -79,6 +82,12 @@ function ProfilePage() {
     setSaving(true);
     try {
       await persist(f);
+      const curName = usernameOnly ? (p?.email ?? "").split("@")[0] : "";
+      if (usernameOnly && uname.trim().toLowerCase() !== curName) {
+        await renameUser({ data: { username: uname } });
+        await qc.invalidateQueries({ queryKey: ["me"] });
+        if (!f.email.trim()) { toast.success(`Saved. Sign in with username “${uname.trim().toLowerCase()}” from now on.`); return; }
+      }
       const email = f.email.trim();
       if (email && usernameOnly) {
         await attachEmail({ data: { email } });
@@ -122,6 +131,7 @@ function ProfilePage() {
 
         <form onSubmit={save} className="rounded-xl border bg-card p-5 shadow-card">
           <div className="grid gap-4 sm:grid-cols-2">
+            {usernameOnly && <Field label="Username"><Input value={uname} onChange={(e) => setUname(e.target.value)} required pattern="[A-Za-z0-9._\-]{3,32}" title="3–32 letters, numbers, dot, dash or underscore" autoCapitalize="none" /></Field>}
             <Field label="Full name"><Input value={f.full_name} onChange={set("full_name")} maxLength={120} required /></Field>
             <Field label="Email address"><Input type="email" value={f.email} onChange={set("email")} maxLength={255} /></Field>
             <Field label="PERSONAL PHONE NUMBER"><Input type="tel" value={f.phone} onChange={set("phone")} maxLength={20} /></Field>
