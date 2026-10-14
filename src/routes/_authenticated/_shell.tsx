@@ -201,7 +201,7 @@ function Shell() {
     <div className="flex min-h-screen bg-background">
       <aside className={cn("sticky top-0 hidden h-screen shrink-0 transition-[width] duration-200 print:!hidden lg:block", collapsed ? "w-[72px]" : "w-64")}>{renderNav(collapsed)}</aside>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-[280px] max-w-[85vw] border-0 p-0">
+        <SheetContent side="left" className="w-[280px] max-w-[85vw] border-0 p-0 [&>button]:grid [&>button]:h-9 [&>button]:w-9 [&>button]:place-items-center [&>button]:rounded-lg [&>button]:text-sidebar-accent-foreground [&>button]:opacity-100 [&>button]:data-[state=open]:bg-sidebar-accent [&>button]:top-3.5 [&>button]:right-3">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           {renderNav(false)}
         </SheetContent>
