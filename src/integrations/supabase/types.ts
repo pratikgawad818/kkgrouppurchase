@@ -349,6 +349,212 @@ export type Database = {
           },
         ]
       }
+      director_wa_consent_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          decision: string
+          director_id: string
+          id: string
+          recorded_by: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          decision: string
+          director_id: string
+          id?: string
+          recorded_by: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          decision?: string
+          director_id?: string
+          id?: string
+          recorded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_wa_consent_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_wa_consent_events_director_id_fkey"
+            columns: ["director_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_wa_consent_events_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      director_wa_consents: {
+        Row: {
+          company_id: string
+          director_id: string
+          evidence: string
+          phone_e164: string | null
+          recorded_at: string
+          recorded_by: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          director_id: string
+          evidence: string
+          phone_e164?: string | null
+          recorded_at?: string
+          recorded_by: string
+          status: string
+        }
+        Update: {
+          company_id?: string
+          director_id?: string
+          evidence?: string
+          phone_e164?: string | null
+          recorded_at?: string
+          recorded_by?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_wa_consents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_wa_consents_director_id_fkey"
+            columns: ["director_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_wa_consents_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      director_wa_outbox: {
+        Row: {
+          claim_key: string | null
+          claimed_at: string | null
+          company_id: string
+          created_at: string
+          director_id: string
+          entity_id: string
+          entity_type: string
+          error_code: string | null
+          id: string
+          message_id: string | null
+          phone_e164: string
+          processed_at: string | null
+          stage: string
+          status: string
+        }
+        Insert: {
+          claim_key?: string | null
+          claimed_at?: string | null
+          company_id: string
+          created_at?: string
+          director_id: string
+          entity_id: string
+          entity_type: string
+          error_code?: string | null
+          id?: string
+          message_id?: string | null
+          phone_e164: string
+          processed_at?: string | null
+          stage: string
+          status?: string
+        }
+        Update: {
+          claim_key?: string | null
+          claimed_at?: string | null
+          company_id?: string
+          created_at?: string
+          director_id?: string
+          entity_id?: string
+          entity_type?: string
+          error_code?: string | null
+          id?: string
+          message_id?: string | null
+          phone_e164?: string
+          processed_at?: string | null
+          stage?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_wa_outbox_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_wa_outbox_director_id_fkey"
+            columns: ["director_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      director_wa_outbox_events: {
+        Row: {
+          company_id: string
+          event_type: string
+          id: string
+          occurred_at: string
+          outbox_id: string
+        }
+        Insert: {
+          company_id: string
+          event_type: string
+          id?: string
+          occurred_at?: string
+          outbox_id: string
+        }
+        Update: {
+          company_id?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          outbox_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "director_wa_outbox_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "director_wa_outbox_events_outbox_id_fkey"
+            columns: ["outbox_id"]
+            isOneToOne: false
+            referencedRelation: "director_wa_outbox"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doc_number_counters: {
         Row: {
           doc: string
@@ -1533,10 +1739,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           company_id: string | null
           created_at: string
           department: string | null
           designation: string | null
+          dob: string | null
           email: string | null
           full_name: string | null
           id: string
@@ -1545,10 +1753,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           company_id?: string | null
           created_at?: string
           department?: string | null
           designation?: string | null
+          dob?: string | null
           email?: string | null
           full_name?: string | null
           id: string
@@ -1557,10 +1767,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           company_id?: string | null
           created_at?: string
           department?: string | null
           designation?: string | null
+          dob?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -2610,6 +2822,164 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "permissions"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      site_small_expense_events: {
+        Row: {
+          action: string
+          actor_id: string
+          company_id: string
+          created_at: string
+          expense_id: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          company_id: string
+          created_at?: string
+          expense_id: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          company_id?: string
+          created_at?: string
+          expense_id?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_small_expense_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expense_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expense_events_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "site_small_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_small_expenses: {
+        Row: {
+          amount: number
+          building_id: string | null
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string
+          description: string
+          entry_key: string
+          id: string
+          paid_to: string
+          payment_method: string
+          project_id: string | null
+          receipt_reference: string | null
+          spent_on: string
+          status: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          building_id?: string | null
+          category: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          description: string
+          entry_key: string
+          id?: string
+          paid_to: string
+          payment_method: string
+          project_id?: string | null
+          receipt_reference?: string | null
+          spent_on: string
+          status?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          building_id?: string | null
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          entry_key?: string
+          id?: string
+          paid_to?: string
+          payment_method?: string
+          project_id?: string | null
+          receipt_reference?: string | null
+          spent_on?: string
+          status?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_small_expenses_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expenses_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "site_small_expenses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expenses_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4264,6 +4634,251 @@ export type Database = {
           },
         ]
       }
+      wa_consent_events: {
+        Row: {
+          actor_id: string
+          company_id: string
+          created_at: string
+          evidence_note: string
+          id: string
+          new_status: string
+          phone_e164: string | null
+          previous_status: string | null
+          source: string
+          vendor_id: string
+        }
+        Insert: {
+          actor_id: string
+          company_id: string
+          created_at?: string
+          evidence_note: string
+          id?: string
+          new_status: string
+          phone_e164?: string | null
+          previous_status?: string | null
+          source: string
+          vendor_id: string
+        }
+        Update: {
+          actor_id?: string
+          company_id?: string
+          created_at?: string
+          evidence_note?: string
+          id?: string
+          new_status?: string
+          phone_e164?: string | null
+          previous_status?: string | null
+          source?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_consent_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_consent_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_consent_events_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_notification_drafts: {
+        Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          document_id: string
+          document_type: string
+          id: string
+          message_body: string
+          phone_e164: string
+          status: string
+          vendor_id: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          document_id: string
+          document_type: string
+          id?: string
+          message_body: string
+          phone_e164: string
+          status?: string
+          vendor_id: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          document_id?: string
+          document_type?: string
+          id?: string
+          message_body?: string
+          phone_e164?: string
+          status?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_notification_drafts_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_notification_drafts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_notification_drafts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_notification_drafts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_notification_events: {
+        Row: {
+          actor_id: string
+          company_id: string
+          event_type: string
+          id: string
+          notification_id: string
+          occurred_at: string
+          reason: string | null
+        }
+        Insert: {
+          actor_id: string
+          company_id: string
+          event_type: string
+          id?: string
+          notification_id: string
+          occurred_at?: string
+          reason?: string | null
+        }
+        Update: {
+          actor_id?: string
+          company_id?: string
+          event_type?: string
+          id?: string
+          notification_id?: string
+          occurred_at?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_notification_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_notification_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_notification_events_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "wa_notification_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_vendor_consents: {
+        Row: {
+          company_id: string
+          evidence_note: string
+          phone_e164: string | null
+          source: string
+          status: string
+          updated_at: string
+          vendor_id: string
+          verified_by: string
+        }
+        Insert: {
+          company_id: string
+          evidence_note: string
+          phone_e164?: string | null
+          source: string
+          status: string
+          updated_at?: string
+          vendor_id: string
+          verified_by: string
+        }
+        Update: {
+          company_id?: string
+          evidence_note?: string
+          phone_e164?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string
+          verified_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_vendor_consents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_vendor_consents_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_vendor_consents_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warehouse_stock: {
         Row: {
           material_id: string
@@ -4421,6 +5036,7 @@ export type Database = {
     }
     Functions: {
       acct: { Args: { _code: string; _company: string }; Returns: string }
+      actor_in_company: { Args: { _company_id: string }; Returns: boolean }
       apply_vendor_advance: {
         Args: { _advance_id: string; _amount: number; _invoice_id: string }
         Returns: undefined
@@ -4429,6 +5045,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_company_audit: { Args: { _origin: string }; Returns: boolean }
       cancel_goods_receipt: {
         Args: { _grn_id: string; _reason: string }
         Returns: undefined
@@ -4463,10 +5080,12 @@ export type Database = {
       ensure_profile: {
         Args: never
         Returns: {
+          avatar_url: string | null
           company_id: string | null
           created_at: string
           department: string | null
           designation: string | null
+          dob: string | null
           email: string | null
           full_name: string | null
           id: string
@@ -4682,6 +5301,21 @@ export type Database = {
         }
         Returns: string
       }
+      record_site_small_expense: {
+        Args: {
+          _amount: number
+          _building_id: string
+          _category: string
+          _description: string
+          _entry_key: string
+          _paid_to: string
+          _payment_method: string
+          _project_id: string
+          _receipt_reference: string
+          _spent_on: string
+        }
+        Returns: string
+      }
       record_vendor_selection: {
         Args: { _reason: string; _rfq_id: string; _selections: Json }
         Returns: number
@@ -4744,9 +5378,111 @@ export type Database = {
         Returns: undefined
       }
       update_finance_settings: { Args: { _settings: Json }; Returns: undefined }
+      update_my_profile: {
+        Args: {
+          _avatar_url: string
+          _department: string
+          _designation: string
+          _dob: string
+          _full_name: string
+          _phone: string
+        }
+        Returns: {
+          avatar_url: string | null
+          company_id: string | null
+          created_at: string
+          department: string | null
+          designation: string | null
+          dob: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean
+          phone: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       vi_can_view: { Args: { _invoice_id: string }; Returns: boolean }
       vi_refresh_balance: { Args: { _id: string }; Returns: undefined }
+      void_site_small_expense: {
+        Args: { _expense_id: string; _reason: string }
+        Returns: string
+      }
       vq_recompute: { Args: { _qid: string }; Returns: undefined }
+      wa_cancel_notification_draft: {
+        Args: { _draft_id: string; _reason: string }
+        Returns: string
+      }
+      wa_create_notification_draft: {
+        Args: {
+          _document_id: string
+          _document_type: string
+          _message: string
+          _vendor_id: string
+        }
+        Returns: string
+      }
+      wa_director_claim_batch: {
+        Args: { _max?: number }
+        Returns: {
+          document_id: string
+          kind: string
+          lease_id: string
+          notice_stage: string
+          number: string
+          outbox_id: string
+          phone: string
+        }[]
+      }
+      wa_director_claim_valid: {
+        Args: { _claim: string; _id: string }
+        Returns: boolean
+      }
+      wa_director_finish_claim: {
+        Args: {
+          _error: string
+          _id: string
+          _lease: string
+          _status: string
+          _wamid: string
+        }
+        Returns: boolean
+      }
+      wa_director_queue_reminders: { Args: never; Returns: number }
+      wa_has_current_consent: { Args: { _vendor_id: string }; Returns: boolean }
+      wa_normalize_mobile: { Args: { _mobile: string }; Returns: string }
+      wa_prepare_director_notification: {
+        Args: { _id: string; _kind: string }
+        Returns: number
+      }
+      wa_queue_director_document: {
+        Args: {
+          _company: string
+          _document: string
+          _kind: string
+          _stage: string
+        }
+        Returns: number
+      }
+      wa_record_vendor_consent: {
+        Args: {
+          _evidence: string
+          _granted: boolean
+          _source: string
+          _vendor_id: string
+        }
+        Returns: string
+      }
+      wa_set_director_consent: {
+        Args: { _director: string; _evidence: string; _granted: boolean }
+        Returns: string
+      }
     }
     Enums: {
       adjustment_kind: "adjustment" | "opening_stock"
