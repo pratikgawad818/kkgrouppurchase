@@ -155,10 +155,7 @@ function UsersPage() {
             </>) : (
               <div className="sm:col-span-2"><Label>Email</Label><Input type="email" required value={inv.email} onChange={(e) => setInv({ ...inv, email: e.target.value })} /></div>
             )}
-            <div><Label>Phone</Label><Input value={inv.phone} onChange={(e) => setInv({ ...inv, phone: e.target.value })} /></div>
-            <div><Label>Department</Label><Input value={inv.department} onChange={(e) => setInv({ ...inv, department: e.target.value })} /></div>
-            <div><Label>Designation</Label><Input value={inv.designation} onChange={(e) => setInv({ ...inv, designation: e.target.value })} /></div>
-            <div><Label>Role</Label><RoleSelect value={inv.role} onChange={(v) => setInv({ ...inv, role: v as Assignable })} /></div>
+            <div className="sm:col-span-2"><Label>Role</Label><RoleSelect value={inv.role} onChange={(v) => setInv({ ...inv, role: v as Assignable })} /></div>
             <DialogFooter className="sm:col-span-2"><Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button><Button type="submit" disabled={create.isPending}>{create.isPending ? "Saving…" : amSuper && byUsername ? "Create account" : "Send invitation"}</Button></DialogFooter>
           </form>
         </DialogContent>
