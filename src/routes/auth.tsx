@@ -1,4 +1,4 @@
-import { loginToEmail } from "@/lib/staff-login";
+import { signInWithUsername } from "@/lib/admin.functions";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -69,8 +69,14 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "in") {
-        const { error } = await supabase.auth.signInWithPassword({ email: loginToEmail(email), password });
-        if (error) throw error;
+        if (email.includes("@")) {
+          const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+          if (error) throw error;
+        } else {
+          const tokens = await signInWithUsername({ data: { username: email, password } });
+          const { error } = await supabase.auth.setSession(tokens);
+          if (error) throw error;
+        }
       } else {
         if (!email.includes("@")) throw new Error("Enter the email address saved in your profile. If you only have a username, sign in and add your email in My profile first.");
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + "/reset-password" });
