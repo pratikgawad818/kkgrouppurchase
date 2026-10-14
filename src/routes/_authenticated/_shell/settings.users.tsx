@@ -50,7 +50,7 @@ function UsersPage() {
   const invite = useServerFn(inviteStaff);
   const createAcct = useServerFn(createStaffAccount);
   const amSuper = !!me.data?.roles.includes("super_admin");
-  const [byUsername, setByUsername] = useState(true);
+  const byUsername = true;
   const [staff, setStaff] = useState<Staff | null>(null);
   const [edit, setEdit] = useState({ role: "", active: true, phone: "", department: "", designation: "" });
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -141,12 +141,6 @@ function UsersPage() {
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{amSuper && byUsername ? "Create staff account" : "Invite staff"}</DialogTitle><DialogDescription>{amSuper && byUsername ? "Set a username and password. To reset a password later, staff first add their email in My profile." : "They'll receive an email to set their password."}</DialogDescription></DialogHeader>
-          {amSuper && (
-            <div role="radiogroup" aria-label="Account type" className="grid grid-cols-2 gap-1 rounded-md border bg-muted/40 p-1 text-sm">
-              <button type="button" role="radio" aria-checked={byUsername} onClick={() => setByUsername(true)} className={`min-h-9 rounded px-2 ${byUsername ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>Username & password</button>
-              <button type="button" role="radio" aria-checked={!byUsername} onClick={() => setByUsername(false)} className={`min-h-9 rounded px-2 ${!byUsername ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>Email invitation</button>
-            </div>
-          )}
           <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
             <div className="sm:col-span-2"><Label>Full name</Label><Input required value={inv.fullName} onChange={(e) => setInv({ ...inv, fullName: e.target.value })} /></div>
             {amSuper && byUsername ? (<>
