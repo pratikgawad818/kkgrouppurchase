@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { Camera, Lock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
+import { useServerFn } from "@tanstack/react-start";
+import { setMyRealEmail } from "@/lib/admin.functions";
+import { isSyntheticEmail } from "@/lib/staff-login";
 import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
 import { PageHeader, Field, Loading, Pill } from "@/components/erp/common";
@@ -27,13 +30,13 @@ function ProfilePage() {
 
   useEffect(() => {
     if (!p) return;
-    setF({ full_name: p.full_name ?? "", email: p.email ?? "", phone: p.phone ?? "", office_phone: p.office_phone ?? "", dob: p.dob ?? "",
+    setF({ full_name: p.full_name ?? "", email: isSyntheticEmail(p.email) ? "" : p.email ?? "", phone: p.phone ?? "", office_phone: p.office_phone ?? "", dob: p.dob ?? "",
       department: p.department ?? "", designation: p.designation ?? "", avatar_url: p.avatar_url ?? "" });
   }, [p]);
   const avatar = useAvatarUrl(f.avatar_url || null);
 
   if (me.isLoading || !p) return <Loading />;
-  const uid = p.id; const currentEmail = p.email ?? "";
+  const uid = p.id; const usernameOnly = isSyntheticEmail(p.email); const currentEmail = usernameOnly ? "" : p.email ?? "";
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
   async function persist(next: typeof f) {
@@ -72,11 +75,16 @@ function ProfilePage() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!f.full_name.trim()) { toast.error("Name is required."); return; }
+    if (usernameOnly && !f.email.trim()) { /* fine: email optional */ }
     setSaving(true);
     try {
       await persist(f);
       const email = f.email.trim();
-      if (email && email !== currentEmail) {
+      if (email && usernameOnly) {
+        await attachEmail({ data: { email } });
+        await qc.invalidateQueries({ queryKey: ["me"] });
+        toast.success("Email added. You can now use “Forgot password?” on the sign-in page to get a reset link.");
+      } else if (email && email !== currentEmail) {
         const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo: window.location.origin + "/auth" });
         if (error) throw error;
         toast.success("Profile saved. Check both inboxes to confirm the new email address.");
@@ -122,6 +130,7 @@ function ProfilePage() {
             <Field label="Department"><Input value={f.department} onChange={set("department")} maxLength={100} /></Field>
             <Field label="Designation"><Input value={f.designation} onChange={set("designation")} maxLength={100} /></Field>
           </div>
+          {usernameOnly && <p className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">You sign in with a username. To change your password, first add your email address above and save — then use “Forgot password?” on the sign-in page and the reset link will be sent there.</p>}
           <p className="mt-3 text-xs text-muted-foreground">Changing your email sends a confirmation link; your sign-in email changes only after you confirm it.</p>
           <div className="mt-4 flex justify-end"><Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button></div>
         </form>
