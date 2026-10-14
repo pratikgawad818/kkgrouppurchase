@@ -1701,6 +1701,36 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       permissions: {
         Row: {
           code: string
@@ -5177,6 +5207,16 @@ export type Database = {
         Returns: string
       }
       norm_bill_no: { Args: { _t: string }; Returns: string }
+      notify_permission_holders: {
+        Args: {
+          _body: string
+          _exclude: string
+          _link: string
+          _perm: string
+          _title: string
+        }
+        Returns: undefined
+      }
       payment_transition: {
         Args: { _action: string; _comment: string; _details: Json; _id: string }
         Returns: Database["public"]["Enums"]["payment_status"]

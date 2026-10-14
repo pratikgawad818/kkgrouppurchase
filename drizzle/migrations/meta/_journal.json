@@ -204,6 +204,13 @@
       "when": 1791956300140,
       "tag": "0028_profile_username",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792002591679,
+      "tag": "0029_in_app_notifications",
+      "breakpoints": true
     }
   ]
 }
