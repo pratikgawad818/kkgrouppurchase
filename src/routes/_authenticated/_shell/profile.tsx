@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Camera, Lock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
+import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
 import { PageHeader, Field, Loading, Pill } from "@/components/erp/common";
 import { Button } from "@/components/ui/button";
@@ -15,19 +16,6 @@ export const Route = createFileRoute("/_authenticated/_shell/profile")({
   component: ProfilePage,
 });
 
-export function useAvatarUrl(path: string | null | undefined) {
-  return useQuery({
-    queryKey: ["avatar", path],
-    enabled: !!path,
-    staleTime: 50 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.storage.from("avatars").createSignedUrl(path!, 3600);
-      if (error) throw error;
-      return data.signedUrl;
-    },
-  });
-}
-
 function ProfilePage() {
   const me = useMe();
   const qc = useQueryClient();
@@ -35,7 +23,7 @@ function ProfilePage() {
   const [f, setF] = useState({ full_name: "", email: "", phone: "", dob: "", department: "", designation: "", avatar_url: "" });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const p = me.data?.profile as (typeof me.data extends undefined ? never : any) | undefined;
+  const p = me.data?.profile;
 
   useEffect(() => {
     if (!p) return;

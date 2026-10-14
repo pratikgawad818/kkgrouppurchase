@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarC
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
+import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
 import { canAccessPage } from "@/lib/page-access";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -234,7 +235,7 @@ function Shell() {
           <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} aria-label="Go to page" className="h-11 w-11 md:hidden"><Search className="h-5 w-5" /></Button>
           <DropdownMenu>
             <DropdownMenuTrigger className="flex min-h-11 items-center gap-2 rounded-lg px-1.5 hover:bg-muted md:min-h-9" aria-label="Account menu">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{initials(profile.full_name ?? profile.email ?? "")}</span>
+              <span className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">{avatarUrl.data ? <img src={avatarUrl.data} alt="" className="h-full w-full object-cover" /> : initials(profile.full_name ?? profile.email ?? "")}</span>
               <span className="hidden max-w-40 truncate text-sm font-medium xl:block">{profile.full_name ?? profile.email}</span>
               <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
             </DropdownMenuTrigger>
