@@ -80,6 +80,7 @@ const getMain = () => (typeof document === "undefined" ? null : document.body);
 
 function Shell() {
   const me = useMe();
+  const avatarUrl = useAvatarUrl(me.data?.profile.avatar_url ?? null);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
