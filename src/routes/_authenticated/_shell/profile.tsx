@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/_shell/profile")({
 function ProfilePage() {
   const me = useMe();
   const qc = useQueryClient();
+  const attachEmail = useServerFn(setMyRealEmail);
   const fileRef = useRef<HTMLInputElement>(null);
   const [f, setF] = useState({ full_name: "", email: "", phone: "", office_phone: "", dob: "", department: "", designation: "", avatar_url: "" });
   const [saving, setSaving] = useState(false);
@@ -75,7 +76,6 @@ function ProfilePage() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!f.full_name.trim()) { toast.error("Name is required."); return; }
-    if (usernameOnly && !f.email.trim()) { /* fine: email optional */ }
     setSaving(true);
     try {
       await persist(f);
