@@ -1,3 +1,4 @@
+import { loginToEmail } from "@/lib/staff-login";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -68,9 +69,10 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "in") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: loginToEmail(email), password });
         if (error) throw error;
       } else {
+        if (!email.includes("@")) throw new Error("Enter the email address saved in your profile. If you only have a username, sign in and add your email in My profile first.");
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + "/reset-password" });
         if (error) throw error;
         setSent(true);
@@ -114,8 +116,8 @@ function AuthPage() {
           ) : (
             <form onSubmit={submit} className="mt-6 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Label htmlFor="email">{mode === "in" ? "Username or email" : "Email"}</Label>
+                <Input id="email" type={mode === "in" ? "text" : "email"} autoCapitalize="none" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               {mode === "in" && (
                 <div className="space-y-1.5">

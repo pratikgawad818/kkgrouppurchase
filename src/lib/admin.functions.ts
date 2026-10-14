@@ -74,3 +74,49 @@ export const updateStaffAccess = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+export const createStaffAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    username: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,32}$/, "Username: 3–32 letters, numbers, dot, dash or underscore"),
+    password: z.string().min(8, "Password must be at least 8 characters").max(72),
+    fullName: z.string().trim().min(1).max(120),
+    phone: z.string().trim().max(20).optional().default(""),
+    department: z.string().trim().max(80).optional().default(""),
+    designation: z.string().trim().max(80).optional().default(""),
+    role: assignable,
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isSuper, error: roleError } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "super_admin" });
+    if (roleError || !isSuper) throw new Error("Only a Super Admin can create accounts with a username and password.");
+    const { data: me, error: profileError } = await context.supabase.from("profiles").select("company_id,is_active").eq("id", context.userId).single();
+    if (profileError || !me?.is_active || !me.company_id) throw new Error("Your account needs an active company.");
+    const { usernameToEmail } = await import("@/lib/staff-login");
+    const email = usernameToEmail(data.username);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({ email, password: data.password, email_confirm: true, user_metadata: { full_name: data.fullName, username: data.username } });
+    if (error) throw new Error(/already/i.test(error.message) ? "That username is already taken." : error.message);
+    const id = created.user.id;
+    const { error: pErr } = await supabaseAdmin.from("profiles").upsert({ id, email, full_name: data.fullName, phone: data.phone || null, department: data.department || null, designation: data.designation || null, company_id: me.company_id, is_active: true });
+    if (pErr) throw new Error(pErr.message);
+    const { error: rErr } = await supabaseAdmin.from("user_roles").insert({ user_id: id, role: data.role });
+    if (rErr) throw new Error(rErr.message);
+    return { ok: true };
+  });
+
+/** Username-only accounts have a non-deliverable sign-in email; let them attach their real one so password reset links can reach them. */
+export const setMyRealEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ email: z.string().trim().toLowerCase().email().max(255) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { isSyntheticEmail } = await import("@/lib/staff-login");
+    if (isSyntheticEmail(data.email)) throw new Error("Please enter a real email address.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: u, error: uErr } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    if (uErr || !u.user) throw new Error("Account not found.");
+    if (!isSyntheticEmail(u.user.email)) throw new Error("Your account already has an email address.");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, { email: data.email, email_confirm: true });
+    if (error) throw new Error(/already/i.test(error.message) ? "That email is already used by another account." : error.message);
+    const { error: pErr } = await supabaseAdmin.from("profiles").update({ email: data.email }).eq("id", context.userId);
+    if (pErr) throw new Error(pErr.message);
+    return { ok: true };
+  });

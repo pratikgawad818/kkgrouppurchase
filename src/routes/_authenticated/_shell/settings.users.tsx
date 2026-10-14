@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { inviteStaff, updateStaffAccess } from "@/lib/admin.functions";
+import { inviteStaff, updateStaffAccess, createStaffAccount } from "@/lib/admin.functions";
 import { PageHeader, Loading, Pill } from "@/components/erp/common";
 import { ROLE_LABEL, type AppRole } from "@/lib/format";
 import { useMe } from "@/lib/session";
@@ -30,7 +30,7 @@ function StaffAvatar({ path, name }: { path: string | null; name: string }) {
   const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "U";
   return <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">{url.data ? <img src={url.data} alt="" className="h-full w-full object-cover" /> : ini}</span>;
 }
-const blankInvite = { email: "", fullName: "", phone: "", department: "", designation: "", role: "site_engineer" as Assignable };
+const blankInvite = { username: "", password: "", email: "", fullName: "", phone: "", department: "", designation: "", role: "site_engineer" as Assignable };
 
 function RoleSelect({ value, onChange, disabled, allowNone }: { value: string; onChange: (v: string) => void; disabled?: boolean; allowNone?: boolean }) {
   return (
@@ -48,6 +48,9 @@ function UsersPage() {
   const qc = useQueryClient();
   const run = useServerFn(updateStaffAccess);
   const invite = useServerFn(inviteStaff);
+  const createAcct = useServerFn(createStaffAccount);
+  const amSuper = !!me.data?.roles.includes("super_admin");
+  const [byUsername, setByUsername] = useState(true);
   const [staff, setStaff] = useState<Staff | null>(null);
   const [edit, setEdit] = useState({ role: "", active: true, phone: "", department: "", designation: "" });
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -79,8 +82,12 @@ function UsersPage() {
     onError: (e) => toast.error(e.message),
   });
   const create = useMutation({
-    mutationFn: async () => { await invite({ data: { ...inv, redirectTo: window.location.origin + "/reset-password" } }); },
-    onSuccess: () => { refresh(); setInviteOpen(false); setInv(blankInvite); toast.success("Invitation sent"); },
+    mutationFn: async () => {
+      const { username, password, email, ...rest } = inv;
+      if (amSuper && byUsername) await createAcct({ data: { ...rest, username, password } });
+      else await invite({ data: { ...rest, email, redirectTo: window.location.origin + "/reset-password" } });
+    },
+    onSuccess: () => { refresh(); setInviteOpen(false); toast.success(amSuper && byUsername ? `Account created. Share username “${inv.username.trim().toLowerCase()}” and the password with the staff member.` : "Invitation sent"); setInv(blankInvite); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -133,15 +140,26 @@ function UsersPage() {
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Invite staff</DialogTitle><DialogDescription>They'll receive an email to set their password.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{amSuper && byUsername ? "Create staff account" : "Invite staff"}</DialogTitle><DialogDescription>{amSuper && byUsername ? "Set a username and password. To reset a password later, staff first add their email in My profile." : "They'll receive an email to set their password."}</DialogDescription></DialogHeader>
+          {amSuper && (
+            <div role="radiogroup" aria-label="Account type" className="grid grid-cols-2 gap-1 rounded-md border bg-muted/40 p-1 text-sm">
+              <button type="button" role="radio" aria-checked={byUsername} onClick={() => setByUsername(true)} className={`min-h-9 rounded px-2 ${byUsername ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>Username & password</button>
+              <button type="button" role="radio" aria-checked={!byUsername} onClick={() => setByUsername(false)} className={`min-h-9 rounded px-2 ${!byUsername ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>Email invitation</button>
+            </div>
+          )}
           <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
             <div className="sm:col-span-2"><Label>Full name</Label><Input required value={inv.fullName} onChange={(e) => setInv({ ...inv, fullName: e.target.value })} /></div>
-            <div className="sm:col-span-2"><Label>Email</Label><Input type="email" required value={inv.email} onChange={(e) => setInv({ ...inv, email: e.target.value })} /></div>
+            {amSuper && byUsername ? (<>
+              <div><Label>Username</Label><Input required autoComplete="off" pattern="[A-Za-z0-9._\-]{3,32}" title="3–32 letters, numbers, dot, dash or underscore" value={inv.username} onChange={(e) => setInv({ ...inv, username: e.target.value })} /></div>
+              <div><Label>Password</Label><Input type="text" required minLength={8} autoComplete="new-password" value={inv.password} onChange={(e) => setInv({ ...inv, password: e.target.value })} /></div>
+            </>) : (
+              <div className="sm:col-span-2"><Label>Email</Label><Input type="email" required value={inv.email} onChange={(e) => setInv({ ...inv, email: e.target.value })} /></div>
+            )}
             <div><Label>Phone</Label><Input value={inv.phone} onChange={(e) => setInv({ ...inv, phone: e.target.value })} /></div>
             <div><Label>Department</Label><Input value={inv.department} onChange={(e) => setInv({ ...inv, department: e.target.value })} /></div>
             <div><Label>Designation</Label><Input value={inv.designation} onChange={(e) => setInv({ ...inv, designation: e.target.value })} /></div>
             <div><Label>Role</Label><RoleSelect value={inv.role} onChange={(v) => setInv({ ...inv, role: v as Assignable })} /></div>
-            <DialogFooter className="sm:col-span-2"><Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button><Button type="submit" disabled={create.isPending}>{create.isPending ? "Sending…" : "Send invitation"}</Button></DialogFooter>
+            <DialogFooter className="sm:col-span-2"><Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button><Button type="submit" disabled={create.isPending}>{create.isPending ? "Saving…" : amSuper && byUsername ? "Create account" : "Send invitation"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
