@@ -9,6 +9,7 @@ import { inviteStaff, updateStaffAccess } from "@/lib/admin.functions";
 import { PageHeader, Loading, Pill } from "@/components/erp/common";
 import { ROLE_LABEL, type AppRole } from "@/lib/format";
 import { useMe } from "@/lib/session";
+import { useAvatarUrl } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,13 @@ export const Route = createFileRoute("/_authenticated/_shell/settings/users")({
 
 type Assignable = Exclude<AppRole, "super_admin" | "sales_manager" | "sales_executive">;
 const ASSIGNABLE: Assignable[] = ["director", "purchase_manager", "store_manager", "accounts_manager", "accountant", "project_manager", "site_engineer", "auditor"];
-type Staff = { id: string; full_name: string | null; email: string | null; phone: string | null; department: string | null; designation: string | null; is_active: boolean; roles: AppRole[] };
+type Staff = { id: string; full_name: string | null; email: string | null; phone: string | null; department: string | null; designation: string | null; is_active: boolean; avatar_url: string | null; roles: AppRole[] };
+
+function StaffAvatar({ path, name }: { path: string | null; name: string }) {
+  const url = useAvatarUrl(path);
+  const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "U";
+  return <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">{url.data ? <img src={url.data} alt="" className="h-full w-full object-cover" /> : ini}</span>;
+}
 const blankInvite = { email: "", fullName: "", phone: "", department: "", designation: "", role: "site_engineer" as Assignable };
 
 function RoleSelect({ value, onChange, disabled, allowNone }: { value: string; onChange: (v: string) => void; disabled?: boolean; allowNone?: boolean }) {
@@ -52,7 +59,7 @@ function UsersPage() {
     queryFn: async () => {
       if (!companyId) throw new Error("An active company is required.");
       const { data: profiles, error: profileError } = await supabase.from("profiles")
-        .select("id,full_name,email,phone,department,designation,is_active")
+        .select("id,full_name,email,phone,department,designation,is_active,avatar_url")
         .eq("company_id", companyId).order("full_name");
       if (profileError) throw profileError;
       if (!profiles?.length) return [] as Staff[];
@@ -97,7 +104,7 @@ function UsersPage() {
           <tbody>
             {q.data?.map((u) => (
               <tr key={u.id} className="border-t">
-                <td className="px-3 py-2"><div className="font-medium">{u.full_name || "Unnamed staff"}</div><div className="text-xs text-muted-foreground">{u.email}</div></td>
+                <td className="px-3 py-2"><div className="flex items-center gap-3"><StaffAvatar path={u.avatar_url} name={u.full_name || u.email || ""} /><div><div className="font-medium">{u.full_name || "Unnamed staff"}</div><div className="text-xs text-muted-foreground">{u.email}</div></div></div></td>
                 <td className="px-3 py-2">{u.phone || "—"}</td>
                 <td className="px-3 py-2">{u.department || "—"}</td>
                 <td className="px-3 py-2">{u.designation || "—"}</td>
