@@ -96,7 +96,7 @@ export const createStaffAccount = createServerFn({ method: "POST" })
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({ email, password: data.password, email_confirm: true, user_metadata: { full_name: data.fullName, username: data.username } });
     if (error) throw new Error(/already/i.test(error.message) ? "That username is already taken." : error.message);
     const id = created.user.id;
-    const { error: pErr } = await supabaseAdmin.from("profiles").upsert({ id, email, full_name: data.fullName, phone: data.phone || null, department: data.department || null, designation: data.designation || null, company_id: me.company_id, is_active: true });
+    const { error: pErr } = await supabaseAdmin.from("profiles").upsert({ id, email, username: data.username, full_name: data.fullName, phone: data.phone || null, department: data.department || null, designation: data.designation || null, company_id: me.company_id, is_active: true });
     if (pErr) throw new Error(pErr.message);
     const { error: rErr } = await supabaseAdmin.from("user_roles").insert({ user_id: id, role: data.role });
     if (rErr) throw new Error(rErr.message);
@@ -121,7 +121,7 @@ export const setMyRealEmail = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Username-only accounts can rename their sign-in username. */
+/** Any staff member can set or change their sign-in username. */
 export const changeMyUsername = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({
@@ -130,14 +130,44 @@ export const changeMyUsername = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { isSyntheticEmail, usernameToEmail } = await import("@/lib/staff-login");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: taken } = await supabaseAdmin.from("profiles").select("id").ilike("username", data.username).neq("id", context.userId).maybeSingle();
+    if (taken) throw new Error("That username is already taken.");
     const { data: u, error: uErr } = await supabaseAdmin.auth.admin.getUserById(context.userId);
     if (uErr || !u.user) throw new Error("Account not found.");
-    if (!isSyntheticEmail(u.user.email)) throw new Error("Your account signs in with email, not a username.");
-    const email = usernameToEmail(data.username);
-    if (email === u.user.email) return { ok: true };
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, { email, email_confirm: true, user_metadata: { ...u.user.user_metadata, username: data.username } });
-    if (error) throw new Error(/already/i.test(error.message) ? "That username is already taken." : error.message);
-    const { error: pErr } = await supabaseAdmin.from("profiles").update({ email }).eq("id", context.userId);
-    if (pErr) throw new Error(pErr.message);
+    const patch: { username: string; email?: string } = { username: data.username };
+    if (isSyntheticEmail(u.user.email)) {
+      const email = usernameToEmail(data.username);
+      if (email !== u.user.email) {
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, { email, email_confirm: true });
+        if (error) throw new Error(/already/i.test(error.message) ? "That username is already taken." : error.message);
+      }
+      patch.email = email;
+    }
+    const { error: pErr } = await supabaseAdmin.from("profiles").update(patch).eq("id", context.userId);
+    if (pErr) throw new Error(/duplicate|unique/i.test(pErr.message) ? "That username is already taken." : pErr.message);
     return { ok: true };
+  });
+
+/** Public: sign in with username + password. Resolves the account server-side so emails are never exposed. */
+export const signInWithUsername = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ username: z.string().trim().toLowerCase().min(1).max(32), password: z.string().min(1).max(72) }).parse(input))
+  .handler(async ({ data }) => {
+    const fail = "Incorrect username or password.";
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: prof } = await supabaseAdmin.from("profiles").select("id").ilike("username", data.username).maybeSingle();
+    let email: string | undefined;
+    if (prof) {
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(prof.id);
+      email = u.user?.email ?? undefined;
+    }
+    if (!email) { const { usernameToEmail } = await import("@/lib/staff-login"); email = usernameToEmail(data.username); }
+    const { createClient } = await import("@supabase/supabase-js");
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    const client = createClient(process.env["SUPABASE_URL"]!, key, {
+      auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+      global: { fetch: (input, init) => { const h = new Headers(init?.headers); if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization"); h.set("apikey", key); return fetch(input, { ...init, headers: h }); } },
+    });
+    const { data: res, error } = await client.auth.signInWithPassword({ email, password: data.password });
+    if (error || !res.session) throw new Error(fail);
+    return { access_token: res.session.access_token, refresh_token: res.session.refresh_token };
   });

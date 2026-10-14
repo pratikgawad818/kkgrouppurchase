@@ -1752,6 +1752,7 @@ export type Database = {
           office_phone: string | null
           phone: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1767,6 +1768,7 @@ export type Database = {
           office_phone?: string | null
           phone?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1782,6 +1784,7 @@ export type Database = {
           office_phone?: string | null
           phone?: string | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -5096,6 +5099,7 @@ export type Database = {
           office_phone: string | null
           phone: string | null
           updated_at: string
+          username: string | null
         }
         SetofOptions: {
           from: "*"
@@ -5409,6 +5413,7 @@ export type Database = {
           office_phone: string | null
           phone: string | null
           updated_at: string
+          username: string | null
         }
         SetofOptions: {
           from: "*"
