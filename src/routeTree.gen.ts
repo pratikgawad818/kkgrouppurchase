@@ -21,6 +21,7 @@ import { Route as AuthenticatedShellBuildingsRouteImport } from './routes/_authe
 import { Route as AuthenticatedShellDashboardRouteImport } from './routes/_authenticated/_shell/dashboard'
 import { Route as AuthenticatedShellManagementRouteImport } from './routes/_authenticated/_shell/management'
 import { Route as AuthenticatedShellMaterialsRouteImport } from './routes/_authenticated/_shell/materials'
+import { Route as AuthenticatedShellProfileRouteImport } from './routes/_authenticated/_shell/profile'
 import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authenticated/_shell/projects'
 import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
 import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authenticated/_shell/vendors'
@@ -124,6 +125,12 @@ const AuthenticatedShellMaterialsRoute =
   AuthenticatedShellMaterialsRouteImport.update({
     id: '/materials',
     path: '/materials',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellProfileRoute =
+  AuthenticatedShellProfileRouteImport.update({
+    id: '/profile',
+    path: '/profile',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellProjectsRoute =
@@ -377,6 +384,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedShellDashboardRoute
   '/management': typeof AuthenticatedShellManagementRoute
   '/materials': typeof AuthenticatedShellMaterialsRoute
+  '/profile': typeof AuthenticatedShellProfileRoute
   '/projects': typeof AuthenticatedShellProjectsRoute
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
@@ -429,6 +437,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedShellDashboardRoute
   '/management': typeof AuthenticatedShellManagementRoute
   '/materials': typeof AuthenticatedShellMaterialsRoute
+  '/profile': typeof AuthenticatedShellProfileRoute
   '/projects': typeof AuthenticatedShellProjectsRoute
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
@@ -484,6 +493,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/dashboard': typeof AuthenticatedShellDashboardRoute
   '/_authenticated/_shell/management': typeof AuthenticatedShellManagementRoute
   '/_authenticated/_shell/materials': typeof AuthenticatedShellMaterialsRoute
+  '/_authenticated/_shell/profile': typeof AuthenticatedShellProfileRoute
   '/_authenticated/_shell/projects': typeof AuthenticatedShellProjectsRoute
   '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
   '/_authenticated/_shell/vendors': typeof AuthenticatedShellVendorsRoute
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/management'
     | '/materials'
+    | '/profile'
     | '/projects'
     | '/units'
     | '/vendors'
@@ -590,6 +601,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/management'
     | '/materials'
+    | '/profile'
     | '/projects'
     | '/units'
     | '/vendors'
@@ -644,6 +656,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/dashboard'
     | '/_authenticated/_shell/management'
     | '/_authenticated/_shell/materials'
+    | '/_authenticated/_shell/profile'
     | '/_authenticated/_shell/projects'
     | '/_authenticated/_shell/units'
     | '/_authenticated/_shell/vendors'
@@ -778,6 +791,13 @@ declare module '@tanstack/react-router' {
       path: '/materials'
       fullPath: '/materials'
       preLoaderRoute: typeof AuthenticatedShellMaterialsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/profile': {
+      id: '/_authenticated/_shell/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedShellProfileRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/projects': {
@@ -1070,6 +1090,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellDashboardRoute: typeof AuthenticatedShellDashboardRoute
   AuthenticatedShellManagementRoute: typeof AuthenticatedShellManagementRoute
   AuthenticatedShellMaterialsRoute: typeof AuthenticatedShellMaterialsRoute
+  AuthenticatedShellProfileRoute: typeof AuthenticatedShellProfileRoute
   AuthenticatedShellProjectsRoute: typeof AuthenticatedShellProjectsRoute
   AuthenticatedShellUnitsRoute: typeof AuthenticatedShellUnitsRoute
   AuthenticatedShellVendorsRoute: typeof AuthenticatedShellVendorsRoute
@@ -1119,6 +1140,7 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellDashboardRoute: AuthenticatedShellDashboardRoute,
   AuthenticatedShellManagementRoute: AuthenticatedShellManagementRoute,
   AuthenticatedShellMaterialsRoute: AuthenticatedShellMaterialsRoute,
+  AuthenticatedShellProfileRoute: AuthenticatedShellProfileRoute,
   AuthenticatedShellProjectsRoute: AuthenticatedShellProjectsRoute,
   AuthenticatedShellUnitsRoute: AuthenticatedShellUnitsRoute,
   AuthenticatedShellVendorsRoute: AuthenticatedShellVendorsRoute,

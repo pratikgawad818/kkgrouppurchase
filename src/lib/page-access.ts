@@ -61,6 +61,8 @@ const rules: readonly Rule[] = [
 ];
 
 export function canAccessPage(path: string, user: PageAccess): boolean {
+  // Every signed-in staff member may manage their own profile.
+  if (/^\/profile\/?$/.test(path)) return true;
   if (!user.roles.length) return false;
   if (/^\/settings\/whatsapp\/?$/.test(path) && !user.roles.includes("super_admin")) return false;
   // A single Management Viewer role must NEVER inherit the operational

@@ -1,10 +1,11 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse, MessageCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, UserRound, Wallet, Warehouse, MessageCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
+import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
 import { canAccessPage } from "@/lib/page-access";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -79,6 +80,7 @@ const getMain = () => (typeof document === "undefined" ? null : document.body);
 
 function Shell() {
   const me = useMe();
+  const avatarUrl = useAvatarUrl(me.data?.profile.avatar_url ?? null);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -234,13 +236,14 @@ function Shell() {
           <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} aria-label="Go to page" className="h-11 w-11 md:hidden"><Search className="h-5 w-5" /></Button>
           <DropdownMenu>
             <DropdownMenuTrigger className="flex min-h-11 items-center gap-2 rounded-lg px-1.5 hover:bg-muted md:min-h-9" aria-label="Account menu">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{initials(profile.full_name ?? profile.email ?? "")}</span>
+              <span className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">{avatarUrl.data ? <img src={avatarUrl.data} alt="" className="h-full w-full object-cover" /> : initials(profile.full_name ?? profile.email ?? "")}</span>
               <span className="hidden max-w-40 truncate text-sm font-medium xl:block">{profile.full_name ?? profile.email}</span>
               <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel><div className="truncate">{profile.full_name ?? profile.email}</div><div className="truncate text-xs font-normal text-muted-foreground">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}><UserRound className="h-4 w-4" />My profile</DropdownMenuItem>
               {canAccessPage("/settings/company", access) && <DropdownMenuItem onSelect={() => navigate({ to: "/settings/company" })}><Settings className="h-4 w-4" />Company settings</DropdownMenuItem>}
               <DropdownMenuItem onSelect={signOut}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
