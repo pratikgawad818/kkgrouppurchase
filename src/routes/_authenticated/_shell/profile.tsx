@@ -116,7 +116,7 @@ function ProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name"><Input value={f.full_name} onChange={set("full_name")} maxLength={120} required /></Field>
             <Field label="Email address"><Input type="email" value={f.email} onChange={set("email")} maxLength={255} /></Field>
-            <Field label="Phone number"><Input type="tel" value={f.phone} onChange={set("phone")} maxLength={20} /></Field>
+            <Field label="PERSONAL PHONE NUMBER"><Input type="tel" value={f.phone} onChange={set("phone")} maxLength={20} /></Field>
             <Field label="Office phone number (optional)"><Input type="tel" value={f.office_phone} onChange={set("office_phone")} maxLength={20} placeholder="Phone provided by the office" /></Field>
             <Field label="Date of birth"><Input type="date" value={f.dob} max={new Date().toISOString().slice(0, 10)} onChange={set("dob")} /></Field>
             <Field label="Department"><Input value={f.department} onChange={set("department")} maxLength={100} /></Field>
