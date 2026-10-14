@@ -33,6 +33,7 @@ function ProfilePage() {
   const avatar = useAvatarUrl(f.avatar_url || null);
 
   if (me.isLoading || !p) return <Loading />;
+  const uid = p.id; const currentEmail = p.email ?? "";
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
   async function persist(next: typeof f) {
@@ -45,11 +46,11 @@ function ProfilePage() {
   }
 
   async function upload(file: File) {
-    if (!file.type.startsWith("image/")) return toast.error("Please choose an image file.");
-    if (file.size > 5 * 1024 * 1024) return toast.error("Photo must be under 5 MB.");
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file."); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Photo must be under 5 MB."); return; }
     setUploading(true);
     try {
-      const path = `${p.id}/${Date.now()}.${file.name.split(".").pop() || "jpg"}`;
+      const path = `${uid}/${Date.now()}.${file.name.split(".").pop() || "jpg"}`;
       const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
       if (error) throw error;
       const old = f.avatar_url;
@@ -68,12 +69,12 @@ function ProfilePage() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!f.full_name.trim()) return toast.error("Name is required.");
+    if (!f.full_name.trim()) { toast.error("Name is required."); return; }
     setSaving(true);
     try {
       await persist(f);
       const email = f.email.trim();
-      if (email && email !== (p.email ?? "")) {
+      if (email && email !== currentEmail) {
         const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo: window.location.origin + "/auth" });
         if (error) throw error;
         toast.success("Profile saved. Check both inboxes to confirm the new email address.");
