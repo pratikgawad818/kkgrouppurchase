@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, Wallet, Warehouse, MessageCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, UserRound, Wallet, Warehouse, MessageCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -241,6 +241,7 @@ function Shell() {
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel><div className="truncate">{profile.full_name ?? profile.email}</div><div className="truncate text-xs font-normal text-muted-foreground">{roles.map((r) => ROLE_LABEL[r]).join(", ") || "No role assigned"}</div></DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}><UserRound className="h-4 w-4" />My profile</DropdownMenuItem>
               {canAccessPage("/settings/company", access) && <DropdownMenuItem onSelect={() => navigate({ to: "/settings/company" })}><Settings className="h-4 w-4" />Company settings</DropdownMenuItem>}
               <DropdownMenuItem onSelect={signOut}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
