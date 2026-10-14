@@ -90,7 +90,12 @@ function Company() {
   const save = useMutation({
     mutationFn: async () => {
       if (!query.data) throw new Error("Company is unavailable.");
-      const result = await supabase.from("companies").update(form).eq("id", query.data.id);
+      const upper = new Set(["pan", "tan", "gstin", "cin"]);
+      const payload = Object.fromEntries(Object.entries(form).map(([k, v]) => {
+        const t = v.trim();
+        return [k, k === "name" ? t : t ? (upper.has(k) ? t.toUpperCase() : t) : null];
+      })) as Record<keyof CompanyForm, string | null> & { name: string };
+      const result = await supabase.from("companies").update(payload).eq("id", query.data.id);
       if (result.error) throw result.error;
     },
     onSuccess: async () => {
