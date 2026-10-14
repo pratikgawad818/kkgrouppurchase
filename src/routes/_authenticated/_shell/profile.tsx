@@ -20,14 +20,14 @@ function ProfilePage() {
   const me = useMe();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [f, setF] = useState({ full_name: "", email: "", phone: "", dob: "", department: "", designation: "", avatar_url: "" });
+  const [f, setF] = useState({ full_name: "", email: "", phone: "", office_phone: "", dob: "", department: "", designation: "", avatar_url: "" });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const p = me.data?.profile;
 
   useEffect(() => {
     if (!p) return;
-    setF({ full_name: p.full_name ?? "", email: p.email ?? "", phone: p.phone ?? "", dob: p.dob ?? "",
+    setF({ full_name: p.full_name ?? "", email: p.email ?? "", phone: p.phone ?? "", office_phone: p.office_phone ?? "", dob: p.dob ?? "",
       department: p.department ?? "", designation: p.designation ?? "", avatar_url: p.avatar_url ?? "" });
   }, [p]);
   const avatar = useAvatarUrl(f.avatar_url || null);
@@ -42,6 +42,8 @@ function ProfilePage() {
       _department: next.department, _designation: next.designation, _avatar_url: next.avatar_url,
     });
     if (error) throw error;
+    const op = await supabase.rpc("update_my_office_phone", { _office_phone: next.office_phone });
+    if (op.error) throw op.error;
     await qc.invalidateQueries({ queryKey: ["me"] });
   }
 
@@ -115,6 +117,7 @@ function ProfilePage() {
             <Field label="Full name"><Input value={f.full_name} onChange={set("full_name")} maxLength={120} required /></Field>
             <Field label="Email address"><Input type="email" value={f.email} onChange={set("email")} maxLength={255} /></Field>
             <Field label="Phone number"><Input type="tel" value={f.phone} onChange={set("phone")} maxLength={20} /></Field>
+            <Field label="Office phone number (optional)"><Input type="tel" value={f.office_phone} onChange={set("office_phone")} maxLength={20} placeholder="Phone provided by the office" /></Field>
             <Field label="Date of birth"><Input type="date" value={f.dob} max={new Date().toISOString().slice(0, 10)} onChange={set("dob")} /></Field>
             <Field label="Department"><Input value={f.department} onChange={set("department")} maxLength={100} /></Field>
             <Field label="Designation"><Input value={f.designation} onChange={set("designation")} maxLength={100} /></Field>
