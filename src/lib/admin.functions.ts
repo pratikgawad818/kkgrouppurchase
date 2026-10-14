@@ -120,3 +120,24 @@ export const setMyRealEmail = createServerFn({ method: "POST" })
     if (pErr) throw new Error(pErr.message);
     return { ok: true };
   });
+
+/** Username-only accounts can rename their sign-in username. */
+export const changeMyUsername = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    username: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,32}$/, "Username: 3–32 letters, numbers, dot, dash or underscore"),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { isSyntheticEmail, usernameToEmail } = await import("@/lib/staff-login");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: u, error: uErr } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    if (uErr || !u.user) throw new Error("Account not found.");
+    if (!isSyntheticEmail(u.user.email)) throw new Error("Your account signs in with email, not a username.");
+    const email = usernameToEmail(data.username);
+    if (email === u.user.email) return { ok: true };
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, { email, email_confirm: true, user_metadata: { ...u.user.user_metadata, username: data.username } });
+    if (error) throw new Error(/already/i.test(error.message) ? "That username is already taken." : error.message);
+    const { error: pErr } = await supabaseAdmin.from("profiles").update({ email }).eq("id", context.userId);
+    if (pErr) throw new Error(pErr.message);
+    return { ok: true };
+  });
