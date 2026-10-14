@@ -1749,6 +1749,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          office_phone: string | null
           phone: string | null
           updated_at: string
         }
@@ -1763,6 +1764,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_active?: boolean
+          office_phone?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -1777,6 +1779,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean
+          office_phone?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -5090,6 +5093,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          office_phone: string | null
           phone: string | null
           updated_at: string
         }
@@ -5378,6 +5382,10 @@ export type Database = {
         Returns: undefined
       }
       update_finance_settings: { Args: { _settings: Json }; Returns: undefined }
+      update_my_office_phone: {
+        Args: { _office_phone: string }
+        Returns: undefined
+      }
       update_my_profile: {
         Args: {
           _avatar_url: string
@@ -5398,6 +5406,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          office_phone: string | null
           phone: string | null
           updated_at: string
         }
