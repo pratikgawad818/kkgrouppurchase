@@ -24,7 +24,11 @@ export const inviteStaff = createServerFn({ method: "POST" })
     const { data: me, error: profileError } = await context.supabase.from("profiles").select("company_id,is_active").eq("id", context.userId).single();
     if (profileError || !me?.is_active || !me.company_id) throw new Error("Your account needs an active company before inviting staff.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, { redirectTo: data.redirectTo, data: { full_name: data.fullName } });
+    // Never trust a caller-chosen destination: only same-origin /reset-password is allowed.
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const origin = new URL(getRequest().url).origin;
+    const safeRedirect = `${origin}/reset-password`;
+    const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, { redirectTo: safeRedirect, data: { full_name: data.fullName } });
     if (error) throw new Error(error.message);
     const id = invited.user.id;
     const { error: pErr } = await supabaseAdmin.from("profiles").upsert({ id, email: data.email, full_name: data.fullName, phone: data.phone || null, department: data.department || null, designation: data.designation || null, company_id: me.company_id, is_active: true });
