@@ -35,7 +35,7 @@ export function NotificationBell({ userId }: { userId: string }) {
         qc.invalidateQueries({ queryKey: key });
         const n = p.new as { title: string; body: string | null; link: string | null };
         if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
-          const note = new Notification(n.title, { body: n.body ?? undefined, icon: "/apple-touch-icon.png" });
+          const note = new Notification(n.title, { body: n.body ?? "", icon: "/apple-touch-icon.png" });
           note.onclick = () => { window.focus(); if (n.link) navigate({ to: n.link }); };
         }
       }).subscribe();
