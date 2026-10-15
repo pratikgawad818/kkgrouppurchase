@@ -113,7 +113,7 @@ function StockPage() {
               {rows.length === 0 && <tr><td colSpan={7} className="p-4 text-xs text-muted-foreground">No stock yet. Stock appears after goods are received against a purchase order.</td></tr>}
               {pageRows.map((x) => { const st = status(x); return (
                 <tr key={x.warehouse_id + x.material_id} className="border-b last:border-0 hover:bg-muted/40">
-                  <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
+                  <td className="px-4 py-3">{x.items?.name}</td>
                   <td className="px-4 py-3">{x.warehouses?.name}</td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.items?.reorder_level)}</td>
@@ -216,7 +216,7 @@ function AdjustDialog({ kind, stock, materials, warehouses, onClose }: { kind: "
             {list.length === 0 ? <div className="p-2 text-xs text-muted-foreground">{opening ? "No materials without movements in this store." : "No stock in this store to adjust."}</div> : (
             <table className="w-full text-sm"><tbody>{list.map((m) => { const v = vals[m.id] ?? { q: "", c: "" }; const sys = onHand(m.id); const diff = v.q === "" ? null : Number(v.q) - sys; return (
               <tr key={m.id} className="border-b last:border-0 hover:bg-muted/40">
-                <td className="p-1.5">{m.name} <span className="font-mono text-[11px] text-muted-foreground">{m.code}</span></td>
+                <td className="p-1.5">{m.name}</td>
                 {!opening && <td className="p-1.5 text-right font-mono text-xs">system {num(sys)}</td>}
                 <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" placeholder={opening ? "Qty" : "Counted"} value={v.q} onChange={(e) => setVals({ ...vals, [m.id]: { ...v, q: e.target.value } })} /></td>
                 {opening ? <td className="p-1.5"><Input type="number" min={0} className="h-8 w-24" placeholder="Unit cost" value={v.c} onChange={(e) => setVals({ ...vals, [m.id]: { ...v, c: e.target.value } })} /></td>

@@ -58,7 +58,7 @@ export function PrintPo({ po, items, history }: { po: Po; items: Item[]; history
         <thead><tr className="border-y text-left">{["#", "Material", "Qty", "Unit", "Rate", "Discount", "Taxable", "Tax", "Amount"].map((h) => <th key={h} className="p-1">{h}</th>)}</tr></thead>
         <tbody>{items.map((i) => (
           <tr key={i.id} className="border-b">
-            <td className="p-1">{i.line_no}</td><td className="p-1">{i.items?.name} <span className="text-muted-foreground">{i.items?.code}</span></td>
+            <td className="p-1">{i.line_no}</td><td className="p-1">{i.items?.name}</td>
             <td className="p-1 text-right">{num(i.ordered_quantity)}</td><td className="p-1">{i.units_of_measure?.code}</td>
             <td className="p-1 text-right">{inr(i.rate)}</td><td className="p-1 text-right">{inr(i.discount_amount)}</td><td className="p-1 text-right">{inr(i.taxable_amount)}</td>
             <td className="p-1 text-right">{inr(i.tax_amount)} ({num(i.tax_rate_percent)}% {i.tax_type === "igst" ? "IGST" : i.tax_type === "cgst_sgst" ? "CGST+SGST" : ""})</td>

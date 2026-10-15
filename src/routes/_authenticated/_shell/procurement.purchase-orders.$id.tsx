@@ -140,7 +140,7 @@ function PoDetail() {
         <section className="mt-4 rounded-md border bg-card p-4">
           <div className="mb-3 text-sm font-semibold">Delivery & terms</div>
           <div className="grid gap-3 md:grid-cols-3">
-            <Field label="Delivery store *"><select className={selectCls} value={terms.delivery_warehouse_id} onChange={(e) => setTerms({ ...terms, delivery_warehouse_id: e.target.value })}><option value="">Select store</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}</select></Field>
+            <Field label="Delivery store *"><select className={selectCls} value={terms.delivery_warehouse_id} onChange={(e) => setTerms({ ...terms, delivery_warehouse_id: e.target.value })}><option value="">Select store</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>
             <Field label="Expected delivery"><Input type="date" value={terms.expected_delivery_date} onChange={(e) => setTerms({ ...terms, expected_delivery_date: e.target.value })} /></Field>
             <Field label="Payment terms"><Input value={terms.payment_terms} onChange={(e) => setTerms({ ...terms, payment_terms: e.target.value })} /></Field>
             <Field label="Delivery terms"><Input value={terms.delivery_terms} onChange={(e) => setTerms({ ...terms, delivery_terms: e.target.value })} /></Field>
@@ -156,7 +156,7 @@ function PoDetail() {
           <tbody>{items.map((x) => (
             <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
               <td className="px-4 py-3">{x.line_no}</td>
-              <td className="px-4 py-3"><div className="font-medium">{x.items?.name}</div><div className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</div></td>
+              <td className="px-4 py-3"><div className="font-medium">{x.items?.name}</div></td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.received_quantity)}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums font-semibold">{num(x.accepted_quantity)}</td>

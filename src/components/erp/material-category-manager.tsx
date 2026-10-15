@@ -1,3 +1,4 @@
+import { autoCode } from "@/lib/format";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderPlus, Pencil, Plus } from "lucide-react";
@@ -81,7 +82,7 @@ export function MaterialCategoryManager({
       description: row.description ?? "",
       status: row.status,
       parent_id: row.parent_id ?? "",
-    } : INITIAL_FORM);
+    } : { ...INITIAL_FORM, code: autoCode() });
     setShowEditor(true);
   }
 
@@ -171,8 +172,7 @@ export function MaterialCategoryManager({
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{row.name}</div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        <span className="font-mono">{row.code}</span>
-                        {row.status !== "active" && " · Inactive"}
+                        {row.status === "active" ? "Active" : "Inactive"}
                       </p>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => edit(row)} aria-label={`Edit category ${row.name}`}>

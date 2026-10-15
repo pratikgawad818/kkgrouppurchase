@@ -107,7 +107,7 @@ export function PrForm({ id, initial, initialLines }: { id?: string; initial?: P
       <section className="rounded-md border bg-card p-4">
         <h2 className="mb-3 text-sm font-semibold">Request information</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div><Label>Project *</Label><select className={sel} value={h.project_id} onChange={(e) => setH({ ...h, project_id: e.target.value, building_id: "", floor_id: "" })}><option value="">Select project</option>{r.projects.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}</select></div>
+          <div><Label>Project *</Label><select className={sel} value={h.project_id} onChange={(e) => setH({ ...h, project_id: e.target.value, building_id: "", floor_id: "" })}><option value="">Select project</option>{r.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
           <div><Label>Building</Label><select className={sel} value={h.building_id} disabled={!h.project_id} onChange={(e) => setH({ ...h, building_id: e.target.value, floor_id: "" })}><option value="">—</option>{buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
           <div><Label>Floor</Label><select className={sel} value={h.floor_id} disabled={!h.building_id} onChange={(e) => setH({ ...h, floor_id: e.target.value })}><option value="">—</option>{floors.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
           <div><Label>Required by *</Label><Input type="date" value={h.required_by} onChange={(e) => setH({ ...h, required_by: e.target.value })} /></div>
@@ -127,7 +127,7 @@ export function PrForm({ id, initial, initialLines }: { id?: string; initial?: P
             return (
               <div key={i} className="rounded-md border p-3">
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-12">
-                  <div className="lg:col-span-4"><Label>Material</Label><select className={sel} value={l.material_id} onChange={(e) => { const mm = r.materials.find((x) => x.id === e.target.value); setLine(i, { material_id: e.target.value, unit_id: mm?.unit_id ?? "" }); }}><option value="">Select material</option>{r.materials.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></div>
+                  <div className="lg:col-span-4"><Label>Material</Label><select className={sel} value={l.material_id} onChange={(e) => { const mm = r.materials.find((x) => x.id === e.target.value); setLine(i, { material_id: e.target.value, unit_id: mm?.unit_id ?? "" }); }}><option value="">Select material</option>{r.materials.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
                   <div className="lg:col-span-2"><Label>Quantity</Label><Input type="number" min="0" step="any" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} /></div>
                   <div className="lg:col-span-1"><Label>Unit</Label><select className={sel} value={l.unit_id} onChange={(e) => setLine(i, { unit_id: e.target.value })}><option value="">—</option>{r.units.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}</select></div>
                   <div className="lg:col-span-2"><Label>Est. rate (₹)</Label><Input type="number" min="0" step="any" value={l.estimated_rate} onChange={(e) => setLine(i, { estimated_rate: e.target.value })} /></div>

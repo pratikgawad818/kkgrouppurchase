@@ -66,7 +66,7 @@ function RfqDetail() {
       <section className="rounded-md border bg-card p-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Purchase request">{rfq.purchase_requests && <Link className="text-primary hover:underline" to="/procurement/purchase-requests/$id" params={{ id: rfq.purchase_requests.id }}>{rfq.purchase_requests.pr_number}</Link>}</Field>
-          <Field label="Project">{rfq.projects ? `${rfq.projects.code} · ${rfq.projects.name}` : null}</Field>
+          <Field label="Project">{rfq.projects ? rfq.projects.name : null}</Field>
           <Field label="Building">{rfq.buildings?.name}</Field>
           <Field label="RFQ date">{fmtDate(rfq.rfq_date)}</Field>
           <Field label="Response due">{fmtDate(rfq.response_due_date)}</Field>
@@ -82,7 +82,7 @@ function RfqDetail() {
         <table className="w-full text-sm">
           <thead className="border-y bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3">Unit</th><th className="px-4 py-3 text-right">Target rate</th><th className="px-4 py-3">Awarded to</th></tr></thead>
           <tbody>{items.map((x) => { const s = selections.find((y) => y.rfq_item_id === x.id); return (
-            <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3">{x.line_no}</td><td className="px-4 py-3">{x.items?.name} <span className="text-xs text-muted-foreground">{x.items?.code}</span></td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.requested_quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{x.target_rate == null ? "—" : inr(x.target_rate)}</td><td className="px-4 py-3">{s ? `${s.vendors?.company_name} @ ${inr(s.awarded_rate)}` : "—"}</td></tr>
+            <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3">{x.line_no}</td><td className="px-4 py-3">{x.items?.name}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.requested_quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{x.target_rate == null ? "—" : inr(x.target_rate)}</td><td className="px-4 py-3">{s ? `${s.vendors?.company_name} @ ${inr(s.awarded_rate)}` : "—"}</td></tr>
           ); })}</tbody>
         </table>
       </section>

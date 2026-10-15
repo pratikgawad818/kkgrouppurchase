@@ -161,7 +161,7 @@ function ProjectCostControl() {
     <div className="mb-5 flex flex-wrap items-center gap-2">
       <div className="w-full sm:w-64"><SearchBox value={search} onChange={v => setFilter(setSearch, v)} placeholder="Search project name or code" /></div>
       <select aria-label="Project" className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-48 sm:flex-none")} value={projectId} onChange={e => setFilter(setProjectId, e.target.value)}>
-        <option value="">All accessible projects</option>{projectRows.map(x => <option key={x.id} value={x.id}>{x.name} ({x.code})</option>)}
+        <option value="">All accessible projects</option>{projectRows.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
       </select>
       <select aria-label="Construction status" className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={status} onChange={e => setFilter(setStatus, e.target.value)}>
         <option value="">All project statuses</option>{uniqueStatuses.map(x => <option key={x} value={x}>{x.replace(/_/g, " ")}</option>)}

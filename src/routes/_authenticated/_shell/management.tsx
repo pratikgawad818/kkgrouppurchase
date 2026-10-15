@@ -144,7 +144,7 @@ function ManagementOverview() {
             <tbody>
               {pageRows.length === 0 && <tr><td colSpan={5} className="p-5 text-muted-foreground">No material stock matches. Materials appear after opening stock or posted receipts are entered.</td></tr>}
               {pageRows.map(x => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="px-4 py-3 font-medium">{x.items?.name ?? "Material"}<span className="ml-2 text-xs text-muted-foreground">{x.items?.code}</span></td>
+                <td className="px-4 py-3 font-medium">{x.items?.name ?? "Material"}</td>
                 <td className="px-4 py-3">{x.warehouses?.name ?? "Unknown store"}</td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{x.warehouses?.project_id ? projectNames.get(x.warehouses.project_id) ?? "Project" : "Shared / central store"}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code ?? ""}</td>

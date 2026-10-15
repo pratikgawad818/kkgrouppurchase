@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader, Loading, Progress, Pill } from "@/components/erp/common";
-import { WORK_STATUS_LABEL, inrShort, type WorkStatus } from "@/lib/format";
+import { WORK_STATUS_LABEL, inrShort, type WorkStatus, autoCode } from "@/lib/format";
 import { useCan } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/_shell/buildings")({
@@ -52,7 +52,7 @@ function Buildings() {
   type B = NonNullable<typeof q.data>[number];
   function show(b?: B) {
     setEditingId(b?.id ?? null);
-    setForm(b ? { project_id: b.project_id, code: b.code, name: b.name, wing: b.wing ?? "", planned_floors: String(b.planned_floors), construction_start: b.construction_start ?? "", expected_completion: b.expected_completion ?? "", budget: String(b.budget), progress_pct: String(b.progress_pct), status: b.status, notes: b.notes ?? "" } : empty);
+    setForm(b ? { project_id: b.project_id, code: b.code, name: b.name, wing: b.wing ?? "", planned_floors: String(b.planned_floors), construction_start: b.construction_start ?? "", expected_completion: b.expected_completion ?? "", budget: String(b.budget), progress_pct: String(b.progress_pct), status: b.status, notes: b.notes ?? "" } : { ...empty, code: autoCode() });
     setOpen(true);
   }
   if (q.isLoading) return <Loading />;
