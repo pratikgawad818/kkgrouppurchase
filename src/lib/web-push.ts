@@ -24,7 +24,7 @@ export function pushSupport(): PushStatus | null {
 export async function currentPushStatus(): Promise<PushStatus> {
   const blocked = pushSupport();
   if (blocked) return blocked;
-  const reg = await navigator.serviceWorker.getRegistration("/push-sw.js");
+  const reg = await navigator.serviceWorker.getRegistration("/push-alerts/");
   const sub = await reg?.pushManager.getSubscription();
   return sub && Notification.permission === "granted" ? "on" : "off";
 }
