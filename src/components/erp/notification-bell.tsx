@@ -1,4 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { currentPushStatus, enablePush, type PushStatus } from "@/lib/web-push";
+import { errMsg } from "@/lib/format";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
@@ -60,7 +63,21 @@ export function NotificationBell({ userId }: { userId: string }) {
     await supabase.from("notifications").update({ is_read: true }).eq("user_id", userId).eq("is_read", false);
     qc.invalidateQueries({ queryKey: key });
   }
-  const canAsk = typeof Notification !== "undefined" && Notification.permission === "default";
+  const [push, setPush] = useState<PushStatus | null>(null);
+  useEffect(() => { currentPushStatus().then(setPush).catch(() => setPush("unsupported")); }, []);
+  async function turnOn() {
+    try {
+      const s = await enablePush(userId);
+      setPush(s);
+      if (s === "on") toast.success("Phone alerts are on for this device");
+    } catch (e) { toast.error(errMsg(e)); }
+  }
+  const pushHint: Partial<Record<PushStatus, string>> = {
+    "open-in-new-tab": "To get phone alerts, open the ERP in its own browser tab (not the editor preview).",
+    "install-first": "On iPhone: tap Share → Add to Home Screen, open the ERP from the icon, then turn on alerts here.",
+    denied: "Alerts are blocked. Allow notifications for this site in your browser settings.",
+    unsupported: "This browser can't show phone alerts.",
+  };
 
   return (
     <Popover>
@@ -75,7 +92,8 @@ export function NotificationBell({ userId }: { userId: string }) {
           <span className="text-sm font-semibold">Notifications</span>
           {unread > 0 && <button onClick={readAll} className="text-xs font-medium text-primary hover:underline">Mark all read</button>}
         </div>
-        {canAsk && <button onClick={() => Notification.requestPermission()} className="block w-full border-b bg-muted/50 px-4 py-2 text-left text-xs text-muted-foreground hover:bg-muted">Turn on phone/desktop alerts for this device</button>}
+        {push === "off" && <button onClick={turnOn} className="block min-h-11 w-full border-b bg-primary/5 px-4 py-2 text-left text-xs font-medium text-primary hover:bg-primary/10">Turn on phone alerts for this device</button>}
+        {push && pushHint[push] && <p className="border-b bg-muted/50 px-4 py-2 text-xs text-muted-foreground">{pushHint[push]}</p>}
         <div className="max-h-[60vh] overflow-y-auto">
           {items.length === 0 ? <p className="px-4 py-8 text-center text-sm text-muted-foreground">No notifications yet.</p> :
             items.map((n) => (

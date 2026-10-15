@@ -25,6 +25,7 @@ import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
 import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authenticated/_shell/vendors'
 import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
+import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
 import { Route as AuthenticatedShellFinancePayablesRouteImport } from './routes/_authenticated/_shell/finance.payables'
 import { Route as AuthenticatedShellFinancePaymentsRouteImport } from './routes/_authenticated/_shell/finance.payments'
 import { Route as AuthenticatedShellFinanceSmallExpensesRouteImport } from './routes/_authenticated/_shell/finance.small-expenses'
@@ -148,6 +149,11 @@ const AuthenticatedShellWarehousesRoute =
     path: '/warehouses',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
+  id: '/api/public/push-dispatch',
+  path: '/api/public/push-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedShellFinancePayablesRoute =
   AuthenticatedShellFinancePayablesRouteImport.update({
     id: '/finance/payables',
@@ -374,6 +380,7 @@ export interface FileRoutesByFullPath {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
   '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
@@ -425,6 +432,7 @@ export interface FileRoutesByTo {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
   '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
@@ -479,6 +487,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
   '/_authenticated/_shell/vendors': typeof AuthenticatedShellVendorsRoute
   '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/_authenticated/_shell/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/_authenticated/_shell/finance/payments': typeof AuthenticatedShellFinancePaymentsRoute
   '/_authenticated/_shell/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
@@ -532,6 +541,7 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
+    | '/api/public/push-dispatch'
     | '/finance/payables'
     | '/finance/payments'
     | '/finance/small-expenses'
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
+    | '/api/public/push-dispatch'
     | '/finance/payables'
     | '/finance/payments'
     | '/finance/small-expenses'
@@ -636,6 +647,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/units'
     | '/_authenticated/_shell/vendors'
     | '/_authenticated/_shell/warehouses'
+    | '/api/public/push-dispatch'
     | '/_authenticated/_shell/finance/payables'
     | '/_authenticated/_shell/finance/payments'
     | '/_authenticated/_shell/finance/small-expenses'
@@ -678,6 +690,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -793,6 +806,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/warehouses'
       preLoaderRoute: typeof AuthenticatedShellWarehousesRouteImport
       parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/api/public/push-dispatch': {
+      id: '/api/public/push-dispatch'
+      path: '/api/public/push-dispatch'
+      fullPath: '/api/public/push-dispatch'
+      preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_shell/finance/payables': {
       id: '/_authenticated/_shell/finance/payables'
@@ -1192,6 +1212,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
