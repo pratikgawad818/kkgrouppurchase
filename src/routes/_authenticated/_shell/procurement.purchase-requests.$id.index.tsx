@@ -92,7 +92,7 @@ function PrDetail() {
       <section className="rounded-md border bg-card p-4">
         <h2 className="mb-3 text-sm font-semibold">Request information</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Project">{pr.projects ? `${pr.projects.code} · ${pr.projects.name}` : null}</Field>
+          <Field label="Project">{pr.projects ? pr.projects.name : null}</Field>
           <Field label="Building">{pr.buildings?.name}</Field>
           <Field label="Floor">{pr.floors?.name}</Field>
           <Field label="Requester">{name(pr.requested_by)}</Field>
@@ -110,7 +110,7 @@ function PrDetail() {
           <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3">Unit</th><th className="px-4 py-3 text-right">Est. rate</th><th className="px-4 py-3 text-right">Est. amount</th><th className="px-4 py-3">Required by</th></tr></thead>
           <tbody>
             {items.length === 0 && <tr><td colSpan={7} className="p-3 text-xs text-muted-foreground">No items yet.</td></tr>}
-            {items.map((x) => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3 text-muted-foreground">{x.line_no}</td><td className="px-4 py-3"><div>{x.items?.name}</div><div className="text-xs text-muted-foreground">{x.items?.code}{x.description ? ` · ${x.description}` : ""}</div></td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{x.estimated_rate == null ? "—" : inr(x.estimated_rate)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.estimated_amount)}</td><td className="px-4 py-3">{fmtDate(x.required_by)}</td></tr>)}
+            {items.map((x) => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3 text-muted-foreground">{x.line_no}</td><td className="px-4 py-3"><div>{x.items?.name}</div><div className="text-xs text-muted-foreground">{x.description ?? ""}</div></td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{x.estimated_rate == null ? "—" : inr(x.estimated_rate)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.estimated_amount)}</td><td className="px-4 py-3">{fmtDate(x.required_by)}</td></tr>)}
           </tbody>
           <tfoot><tr className="border-t"><td colSpan={5} className="p-2 text-right text-xs text-muted-foreground">Estimated Value (not an accounting entry)</td><td className="px-4 py-3 text-right font-medium tabular-nums font-semibold">{inr(pr.estimated_total)}</td><td /></tr></tfoot>
         </table>

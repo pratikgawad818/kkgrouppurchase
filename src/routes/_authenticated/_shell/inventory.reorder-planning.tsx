@@ -199,7 +199,7 @@ function ReorderPlanning() {
       <select aria-label="Store" className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")}
         value={warehouse} onChange={e => change(setWarehouse, e.target.value)}>
         <option value="">All relevant stores</option>
-        {warehouses.map(x => <option key={x.id} value={x.id}>{x.name} ({x.code})</option>)}
+        {warehouses.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
       </select>
       <select aria-label="Urgency" className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")}
         value={state} onChange={e => changeState(e.target.value as ReorderState | "all")}>

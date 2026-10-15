@@ -105,7 +105,7 @@ function IssueDetail() {
         <tbody>{lines.map(x=>{
           const back=returnedQty.get(x.id)??0, used=Math.max(0,Number(x.quantity)-back);
           return <tr key={x.id} className="border-b last:border-0">
-            <td className="p-2">{x.items?.name} <span className="text-xs text-muted-foreground">{x.items?.code}</span></td>
+            <td className="p-2">{x.items?.name}</td>
             <td className="p-2 text-right">{num(x.quantity)} {x.items?.units_of_measure?.code}</td>
             <td className="p-2 text-right">{num(back)}</td>
             <td className="p-2 text-right font-medium">{num(used)}</td>

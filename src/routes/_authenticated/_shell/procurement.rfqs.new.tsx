@@ -83,7 +83,7 @@ function NewRfq() {
         <label className="text-sm sm:col-span-2">Approved purchase request
           <select className="mt-1 h-9 w-full rounded-md border bg-background px-2" value={prId} onChange={(e) => setPrId(e.target.value)}>
             <option value="">Select…</option>
-            {refs.data!.prs.map((p) => <option key={p.id} value={p.id}>{p.pr_number} · {p.projects?.code} {p.projects?.name}</option>)}
+            {refs.data!.prs.map((p) => <option key={p.id} value={p.id}>{p.pr_number} · {p.projects?.name}</option>)}
           </select>
         </label>
         <label className="text-sm">Response due date<Input className="mt-1" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></label>
@@ -95,7 +95,7 @@ function NewRfq() {
           <h2 className="p-3 text-sm font-semibold">Items requested</h2>
           <table className="w-full text-sm">
             <thead className="border-y bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3">Unit</th></tr></thead>
-            <tbody>{(items.data ?? []).map((x) => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3">{x.line_no}</td><td className="px-4 py-3">{x.items?.name} <span className="text-xs text-muted-foreground">{x.items?.code}</span></td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td></tr>)}</tbody>
+            <tbody>{(items.data ?? []).map((x) => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40"><td className="px-4 py-3">{x.line_no}</td><td className="px-4 py-3">{x.items?.name}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.quantity)}</td><td className="px-4 py-3">{x.units_of_measure?.code}</td></tr>)}</tbody>
           </table>
         </section>
       )}
@@ -106,7 +106,7 @@ function NewRfq() {
           {vs.map((v) => (
             <label key={v.id} className="flex cursor-pointer items-start gap-2 rounded border p-2 text-sm hover:bg-muted/40">
               <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={vendors.includes(v.id)} onChange={(e) => setVendors(e.target.checked ? [...vendors, v.id] : vendors.filter((x) => x !== v.id))} />
-              <span><span className="font-medium">{v.company_name}</span> <span className="text-xs text-muted-foreground">{v.code}</span>
+              <span><span className="font-medium">{v.company_name}</span>
                 <span className="block text-xs text-muted-foreground">{(v.vendor_category_links ?? []).map((l) => l.vendor_categories?.name).filter(Boolean).join(", ")}{v.contact_person ? ` · ${v.contact_person}` : ""}{v.mobile ? ` · ${v.mobile}` : ""}</span></span>
             </label>
           ))}

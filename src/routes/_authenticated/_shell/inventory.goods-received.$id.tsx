@@ -89,7 +89,7 @@ function GrnDetail() {
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Ordered</th><th className="px-4 py-3 text-right">Previously received</th><th className="px-4 py-3 text-right">Physically received</th><th className="px-4 py-3 text-right">PO remaining</th><th className="px-4 py-3 text-right">Damaged</th><th className="px-4 py-3 text-right">Rejected</th><th className="px-4 py-3 text-right">Accepted</th><th className="px-4 py-3 text-right">Unit cost</th><th className="px-4 py-3">Disposition</th></tr></thead>
           <tbody>{items.map((x) => { const pi = poItems.find((p) => p.id === x.po_item_id); return (
             <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
-              <td className="px-4 py-3">{x.items?.name} <span className="font-mono text-[11px] text-muted-foreground">{x.items?.code}</span></td>
+              <td className="px-4 py-3">{x.items?.name}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.ordered_quantity)} {x.units_of_measure?.code}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.previously_received)}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{num(x.received_quantity)}</td>

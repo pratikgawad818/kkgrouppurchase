@@ -156,7 +156,7 @@ function MaterialIssues() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 border-b bg-muted/90 text-xs"><tr><th className="p-2 text-left">Material</th><th className="p-2 text-right">Available</th><th className="p-2 text-right">Avg. cost</th><th className="p-2 text-right">Issue qty</th></tr></thead>
                 <tbody>{materials.map(x=><tr key={x.material_id} className="border-b last:border-0">
-                  <td className="p-2">{x.items?.name} <span className="text-xs text-muted-foreground">{x.items?.code}</span></td>
+                  <td className="p-2">{x.items?.name}</td>
                   <td className="p-2 text-right tabular-nums">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
                   <td className="p-2 text-right tabular-nums">{inr(x.weighted_avg_cost)}</td>
                   <td className="p-2"><Input inputMode="decimal" type="number" min={0} step="0.001" max={x.quantity_on_hand}

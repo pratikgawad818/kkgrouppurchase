@@ -94,3 +94,9 @@ export function parseDuplicateInvoice(m: string) {
   const p = m.match(/DUPLICATE_INVOICE\|([0-9a-f-]+)\|([^|]+)\|(\w+)/);
   return p ? { id: p[1], number: p[2], status: p[3] } : null;
 }
+
+/** Internal reference code generated automatically for new master records (not shown to users). */
+export function autoCode() {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 6 }, () => a[Math.floor(Math.random() * a.length)]).join("");
+}

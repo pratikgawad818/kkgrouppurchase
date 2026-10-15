@@ -89,7 +89,7 @@ function ChallanDetails() {
       <div className="doc-table overflow-x-auto"><table className="w-full text-sm sm:min-w-[580px]">
         <thead className="border-b bg-muted/30 text-left text-xs"><tr><th className="p-2">Material</th><th className="p-2 text-right">Dispatched</th><th className="p-2 text-right">GRN received</th><th className="p-2 text-right">Remaining on challan</th></tr></thead>
         <tbody>{lines.map(x => { const got = receivedByLine.get(x.id) ?? 0; return <tr key={x.id} className="border-b last:border-0">
-          <td className="p-2">{x.purchase_order_items?.items?.name} <span className="text-xs text-muted-foreground">{x.purchase_order_items?.items?.code}</span></td>
+          <td className="p-2">{x.purchase_order_items?.items?.name} </td>
           <td className="p-2 text-right tabular-nums">{num(x.quantity)} {x.purchase_order_items?.units_of_measure?.code}</td>
           <td className="p-2 text-right tabular-nums">{num(got)}</td>
           <td className="p-2 text-right tabular-nums">{num(Math.max(0, Number(x.quantity) - got))}</td>

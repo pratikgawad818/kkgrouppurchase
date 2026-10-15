@@ -1,3 +1,4 @@
+import { autoCode } from "@/lib/format";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderPlus, Pencil, Plus } from "lucide-react";
@@ -81,7 +82,7 @@ export function MaterialCategoryManager({
       description: row.description ?? "",
       status: row.status,
       parent_id: row.parent_id ?? "",
-    } : INITIAL_FORM);
+    } : { ...INITIAL_FORM, code: autoCode() });
     setShowEditor(true);
   }
 
@@ -171,8 +172,7 @@ export function MaterialCategoryManager({
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{row.name}</div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        <span className="font-mono">{row.code}</span>
-                        {row.status !== "active" && " · Inactive"}
+                        {row.status === "active" ? "Active" : "Inactive"}
                       </p>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => edit(row)} aria-label={`Edit category ${row.name}`}>
@@ -190,12 +190,6 @@ export function MaterialCategoryManager({
 
         {showEditor && (
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); save.mutate(); }}>
-            <div>
-              <Label htmlFor="category-code">Category code</Label>
-              <Input id="category-code" required maxLength={30} autoComplete="off"
-                placeholder="CEMENT" value={form.code}
-                onChange={e => setForm(previous => ({ ...previous, code: e.target.value.toUpperCase() }))} />
-            </div>
             <div>
               <Label htmlFor="category-name">Category name</Label>
               <Input id="category-name" required maxLength={120}
@@ -230,7 +224,7 @@ export function MaterialCategoryManager({
             </div>
             <div className="flex flex-wrap justify-end gap-2 border-t pt-4 sm:col-span-2">
               <Button type="button" variant="outline" onClick={() => reset()}>Back</Button>
-              <Button type="submit" disabled={save.isPending || !form.code.trim() || !form.name.trim()}>
+              <Button type="submit" disabled={save.isPending || !form.name.trim()}>
                 {save.isPending ? "Saving…" : editing ? "Save changes" : "Create category"}
               </Button>
             </div>

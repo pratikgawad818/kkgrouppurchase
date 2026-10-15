@@ -311,7 +311,7 @@ function Overview({ canMoney, canStock, canPr, canPo, canAp, projectId, building
           <div className="divide-y">
             {d.projects.slice(0, 5).map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                <div className="min-w-0"><div className="truncate text-sm font-medium">{p.name}</div><div className="truncate text-xs text-muted-foreground">{p.code}{p.city ? ` · ${p.city}` : ""}</div></div>
+                <div className="min-w-0"><div className="truncate text-sm font-medium">{p.name}</div><div className="truncate text-xs text-muted-foreground">{p.city ?? ""}</div></div>
                 <span className={"shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium " + (STATUS_TONE[p.status] ?? "")}>{PROJECT_STATUS_LABEL[p.status as keyof typeof PROJECT_STATUS_LABEL]}</span>
               </div>
             ))}

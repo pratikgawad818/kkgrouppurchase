@@ -55,7 +55,7 @@ function RfqList() {
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
                     <td className="px-4 py-3 font-medium tabular-nums"><Link className="text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: r.id }}>{r.rfq_number}</Link></td>
                     <td className="px-4 py-3 font-medium tabular-nums text-xs">{r.purchase_requests?.pr_number}</td>
-                    <td className="px-4 py-3">{r.projects?.code} · {r.projects?.name}{r.buildings ? ` / ${r.buildings.name}` : ""}</td>
+                    <td className="px-4 py-3">{r.projects?.name}{r.buildings ? ` / ${r.buildings.name}` : ""}</td>
                     <td className="px-4 py-3">{fmtDate(r.rfq_date)}</td>
                     <td className="px-4 py-3">{fmtDate(r.response_due_date)}</td>
                     <td className="px-4 py-3">{v.filter((x) => x.status !== "pending").length}/{v.length}</td>
