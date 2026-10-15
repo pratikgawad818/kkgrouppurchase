@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus, Trash2, AlertTriangle } from "lucide-react";
@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loading } from "@/components/erp/common";
-import { errMsg, inr, num } from "@/lib/format";
+import { errMsg, num } from "@/lib/format";
 import { PR_PRIORITY, PR_TYPE, type PrPriority, type PrType } from "@/lib/pr";
 
-export type PrLine = { material_id: string; description: string; quantity: string; unit_id: string; estimated_rate: string; required_by: string; notes: string };
+// Preserve historical draft estimates when editing; new requests collect no prices.
+export type PrLine = { material_id: string; description: string; quantity: string; unit_id: string; estimated_rate?: number | null; required_by: string; notes: string };
 export type PrHeader = { project_id: string; building_id: string; floor_id: string; required_by: string; priority: PrPriority; request_type: PrType; purpose: string; remarks: string };
 
-const blankLine: PrLine = { material_id: "", description: "", quantity: "", unit_id: "", estimated_rate: "", required_by: "", notes: "" };
+const blankLine: PrLine = { material_id: "", description: "", quantity: "", unit_id: "", required_by: "", notes: "" };
 const sel = "h-9 w-full rounded-md border bg-background px-2 text-sm";
 
 export function PrForm({ id, initial, initialLines }: { id?: string; initial?: PrHeader; initialLines?: PrLine[] }) {
@@ -47,8 +48,6 @@ export function PrForm({ id, initial, initialLines }: { id?: string; initial?: P
     },
   });
 
-  const total = useMemo(() => lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.estimated_rate) || 0), 0), [lines]);
-
   const save = useMutation({
     mutationFn: async (submit: boolean) => {
       if (!h.project_id) throw new Error("Select a project.");
@@ -76,7 +75,7 @@ export function PrForm({ id, initial, initialLines }: { id?: string; initial?: P
         prId = data.id;
       }
       if (valid.length) {
-        const { error } = await supabase.from("purchase_request_items").insert(valid.map((l, i) => ({ purchase_request_id: prId!, line_no: i + 1, material_id: l.material_id, description: l.description || null, quantity: Number(l.quantity), unit_id: l.unit_id, estimated_rate: l.estimated_rate === "" ? null : Number(l.estimated_rate), required_by: l.required_by || null, notes: l.notes || null })));
+        const { error } = await supabase.from("purchase_request_items").insert(valid.map((l, i) => ({ purchase_request_id: prId!, line_no: i + 1, material_id: l.material_id, description: l.description || null, quantity: Number(l.quantity), unit_id: l.unit_id, estimated_rate: l.estimated_rate ?? null, required_by: l.required_by || null, notes: l.notes || null })));
         if (error) throw error;
       }
       if (submit) {
@@ -123,14 +122,12 @@ export function PrForm({ id, initial, initialLines }: { id?: string; initial?: P
         <div className="space-y-3">
           {lines.map((l, i) => {
             const m = r.materials.find((x) => x.id === l.material_id);
-            const amt = (Number(l.quantity) || 0) * (Number(l.estimated_rate) || 0);
             return (
               <div key={i} className="rounded-md border p-3">
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-12">
-                  <div className="lg:col-span-4"><Label>Material</Label><select className={sel} value={l.material_id} onChange={(e) => { const mm = r.materials.find((x) => x.id === e.target.value); setLine(i, { material_id: e.target.value, unit_id: mm?.unit_id ?? "" }); }}><option value="">Select material</option>{r.materials.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+                  <div className="lg:col-span-5"><Label>Material</Label><select className={sel} value={l.material_id} onChange={(e) => { const mm = r.materials.find((x) => x.id === e.target.value); setLine(i, { material_id: e.target.value, unit_id: mm?.unit_id ?? "", estimated_rate: null }); }}><option value="">Select material</option>{r.materials.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
                   <div className="lg:col-span-2"><Label>Quantity</Label><Input type="number" min="0" step="any" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} /></div>
-                  <div className="lg:col-span-1"><Label>Unit</Label><select className={sel} value={l.unit_id} onChange={(e) => setLine(i, { unit_id: e.target.value })}><option value="">—</option>{r.units.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}</select></div>
-                  <div className="lg:col-span-2"><Label>Est. rate (₹)</Label><Input type="number" min="0" step="any" value={l.estimated_rate} onChange={(e) => setLine(i, { estimated_rate: e.target.value })} /></div>
+                  <div className="lg:col-span-2"><Label>Unit</Label><select className={sel} value={l.unit_id} onChange={(e) => setLine(i, { unit_id: e.target.value })}><option value="">—</option>{r.units.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}</select></div>
                   <div className="lg:col-span-2"><Label>Required by</Label><Input type="date" value={l.required_by} onChange={(e) => setLine(i, { required_by: e.target.value })} /></div>
                   <div className="flex items-end lg:col-span-1"><Button type="button" size="icon" variant="ghost" aria-label="Remove item" disabled={lines.length === 1} onClick={() => setLines(lines.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button></div>
                   <div className="sm:col-span-2 lg:col-span-12"><Input placeholder="Description / specification (optional)" value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} /></div>
@@ -142,15 +139,12 @@ export function PrForm({ id, initial, initialLines }: { id?: string; initial?: P
                     <span>Minimum stock: {num(m.minimum_stock)}</span>
                     <span>Reorder level: {num(m.reorder_level)}</span>
                     <span className="inline-flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Current stock is tracked from Phase 4 (Goods Received) — check the store before raising.</span>
-                    <span className="ml-auto font-mono text-foreground">Est. {inr(amt)}</span>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-        <div className="mt-3 flex justify-end text-sm"><span className="text-muted-foreground">Estimated Value&nbsp;</span><span className="font-mono font-semibold">{inr(total)}</span></div>
-        <p className="mt-1 text-right text-[11px] text-muted-foreground">Estimate only — not an accounting entry.</p>
       </section>
 
       <div className="flex justify-end gap-2">

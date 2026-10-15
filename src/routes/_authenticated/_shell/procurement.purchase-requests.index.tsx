@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Empty, Loading, PageHeader, SearchBox } from "@/components/erp/common";
-import { errMsg, fmtDate, inr } from "@/lib/format";
+import { errMsg, fmtDate } from "@/lib/format";
 import { useCan } from "@/lib/session";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { PR_PRIORITY, PR_STATUS, type PrPriority, type PrStatus } from "@/lib/pr";
@@ -56,7 +56,7 @@ function PrList() {
   const q = useQuery({
     queryKey: ["prs", status, projectId, buildingId, priority, requester, fy, from, to, settledText, page, sp.due],
     queryFn: async () => {
-      let r = supabase.from("purchase_requests").select("id,pr_number,request_date,required_by,estimated_total,priority,status,requested_by,projects(code,name),buildings(name)", { count: "exact" }).order("created_at", { ascending: false }).range(page * PAGE, page * PAGE + PAGE - 1);
+      let r = supabase.from("purchase_requests").select("id,pr_number,request_date,required_by,priority,status,requested_by,projects(code,name),buildings(name)", { count: "exact" }).order("created_at", { ascending: false }).range(page * PAGE, page * PAGE + PAGE - 1);
       if (status) r = r.eq("status", status as PrStatus);
       if (projectId) r = r.eq("project_id", projectId);
       if (buildingId) r = r.eq("building_id", buildingId);
@@ -108,7 +108,7 @@ function PrList() {
       {q.isLoading ? <Loading /> : q.error ? <div className="text-sm text-destructive">{errMsg(q.error)}</div> : q.data!.rows.length === 0 ? <Empty>No purchase requests match these filters.</Empty> : (
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">PR</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Building</th><th className="px-4 py-3">Requested by</th><th className="px-4 py-3">Required by</th><th className="px-4 py-3 text-right">Est. value</th><th className="px-4 py-3">Priority</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead>
+            <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-4 py-3">PR</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Project</th><th className="px-4 py-3">Building</th><th className="px-4 py-3">Requested by</th><th className="px-4 py-3">Required by</th><th className="px-4 py-3">Priority</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead>
             <tbody>
               {q.data!.rows.map((r) => (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
@@ -118,7 +118,6 @@ function PrList() {
                   <td className="px-4 py-3">{r.buildings?.name ?? "—"}</td>
                   <td className="px-4 py-3">{who(r.requested_by)}</td>
                   <td className="px-4 py-3">{fmtDate(r.required_by)}</td>
-                  <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(r.estimated_total)}</td>
                   <td className="px-4 py-3">{PR_PRIORITY[r.priority]}</td>
                   <td className="px-4 py-3"><span className={`inline-flex whitespace-nowrap whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${PR_STATUS[r.status].cls}`}>{PR_STATUS[r.status].label}</span></td>
                   <td className="px-4 py-3 text-right"><Link to="/procurement/purchase-requests/$id" params={{ id: r.id }} className="text-xs text-primary hover:underline">Open</Link></td>
