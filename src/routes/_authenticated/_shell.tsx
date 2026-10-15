@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, UserRound, Wallet, Warehouse } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -111,6 +111,20 @@ function Shell() {
       navigate({ to: "/management", replace: true });
     }
   }, [path, me.data?.roles, navigate]);
+  const isDirectorUser = me.data?.roles.includes("director") ?? false;
+  const pendingQ = useQuery({
+    queryKey: ["director-pending-count"],
+    enabled: isDirectorUser,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const [po, pay] = await Promise.all([
+        supabase.from("purchase_orders").select("id", { count: "exact", head: true }).eq("status", "pending_approval"),
+        supabase.from("vendor_payments").select("id", { count: "exact", head: true }).eq("status", "scheduled"),
+      ]);
+      return (po.count ?? 0) + (pay.count ?? 0);
+    },
+  });
+  const pendingApprovals = isDirectorUser ? pendingQ.data ?? 0 : 0;
   useEffect(() => setCollapsed(window.localStorage.getItem("kk-sidebar-collapsed") === "1"), []);
   function toggleCollapsed() { setCollapsed((value) => { window.localStorage.setItem("kk-sidebar-collapsed", value ? "0" : "1"); return !value; }); }
 
@@ -167,6 +181,9 @@ function Shell() {
                     {active && <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-sidebar-primary" />}
                     <i.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-sidebar-primary" : "text-sidebar-foreground/75 group-hover:text-sidebar-accent-foreground")} />
                     {!mini && <span className="truncate">{i.label}</span>}
+                    {i.to === "/approvals" && pendingApprovals > 0 && (
+                      <span aria-label={`${pendingApprovals} pending`} className={cn("grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground", mini ? "absolute right-0.5 top-0.5 h-4 min-w-4 text-[10px]" : "ml-auto")}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>
+                    )}
                   </Link>
                 );
               })}
