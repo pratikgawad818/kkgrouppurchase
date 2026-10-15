@@ -2401,6 +2401,54 @@ export type Database = {
           },
         ]
       }
+      push_config: {
+        Row: {
+          dispatch_secret: string
+          dispatch_url: string
+          id: number
+          vapid_private_jwk: Json
+        }
+        Insert: {
+          dispatch_secret: string
+          dispatch_url: string
+          id?: number
+          vapid_private_jwk: Json
+        }
+        Update: {
+          dispatch_secret?: string
+          dispatch_url?: string
+          id?: number
+          vapid_private_jwk?: Json
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rfq_items: {
         Row: {
           created_at: string

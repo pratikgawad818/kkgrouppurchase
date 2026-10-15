@@ -232,6 +232,13 @@
       "when": 1792056874216,
       "tag": "0032_remind_po_approvers",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792059072060,
+      "tag": "0033_web_push",
+      "breakpoints": true
     }
   ]
 }
