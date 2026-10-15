@@ -162,3 +162,7 @@ if __name__=="__main__":
     test_admin_consent_and_idempotent_notification()
     test_claim_lease_and_revocation()
     print("PASS: 0024 real schema and functions in disposable PostgreSQL")
+
+    from assert_integration_retirement import assert_retired
+    with db() as connection:
+        assert_retired(connection)

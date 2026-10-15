@@ -6,7 +6,7 @@ The approvals queue now reads all accessible pending POs and scheduled payments 
 
 The administrator's active director directory and role memberships are also checked for completeness. On database or permission errors, the UI reports that approval status cannot be verified instead of presenting partial data. The database transition functions still enforce the actual quorum, signer identity, and self-approval rules; UI counts are informational.
 
-This is a source-only improvement with no migration, live database mutation, WhatsApp automation, or deployment. Because the HTTP calls aren't one transaction, directors should refresh before acting; transition RPCs are the authority. Automated CI cannot replace real individual director account acceptance tests.
+This is a source-only improvement with no migration, live database mutation, or deployment. Because the HTTP calls aren't one transaction, directors should refresh before acting; transition RPCs are the authority. Automated CI cannot replace real individual director account acceptance tests.
 
 ## Approval queue usability follow-up
 

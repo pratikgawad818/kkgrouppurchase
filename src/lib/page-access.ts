@@ -56,7 +56,6 @@ const rules: readonly Rule[] = [
   { pattern: /^\/settings\/users\/?$/, any: ["users.manage"] },
   { pattern: /^\/settings\/company\/?$/, any: ["company.view", "company.manage"] },
   { pattern: /^\/settings\/finance\/?$/, any: ["company.view", "company.manage"] },
-  { pattern: /^\/settings\/whatsapp\/?$/, any: ["users.manage"] },
   { pattern: /^\/audit\/?$/, any: ["audit.view"] },
 ];
 
@@ -64,7 +63,6 @@ export function canAccessPage(path: string, user: PageAccess): boolean {
   // Every signed-in staff member may manage their own profile.
   if (/^\/profile\/?$/.test(path)) return true;
   if (!user.roles.length) return false;
-  if (/^\/settings\/whatsapp\/?$/.test(path) && !user.roles.includes("super_admin")) return false;
   // A single Management Viewer role must NEVER inherit the operational
   // dashboard, staff settings, approval flows, or document detail edit forms.
   if (user.roles.length === 1 && user.roles[0] === "auditor" &&

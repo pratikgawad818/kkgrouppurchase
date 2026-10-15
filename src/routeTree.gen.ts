@@ -14,7 +14,6 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedShellRouteImport } from './routes/_authenticated/_shell'
-import { Route as ApiDirectorWhatsappWorkerRouteImport } from './routes/api/director-whatsapp-worker'
 import { Route as AuthenticatedShellApprovalsRouteImport } from './routes/_authenticated/_shell/approvals'
 import { Route as AuthenticatedShellAuditRouteImport } from './routes/_authenticated/_shell/audit'
 import { Route as AuthenticatedShellBuildingsRouteImport } from './routes/_authenticated/_shell/buildings'
@@ -41,7 +40,6 @@ import { Route as AuthenticatedShellReportsProjectCostControlRouteImport } from 
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
-import { Route as AuthenticatedShellSettingsWhatsappRouteImport } from './routes/_authenticated/_shell/settings.whatsapp'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIndexRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.index'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIdRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.$id'
 import { Route as AuthenticatedShellFinanceVendorInvoicesNewRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.new'
@@ -86,12 +84,6 @@ const AuthenticatedShellRoute = AuthenticatedShellRouteImport.update({
   id: '/_shell',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiDirectorWhatsappWorkerRoute =
-  ApiDirectorWhatsappWorkerRouteImport.update({
-    id: '/api/director-whatsapp-worker',
-    path: '/api/director-whatsapp-worker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AuthenticatedShellApprovalsRoute =
   AuthenticatedShellApprovalsRouteImport.update({
     id: '/approvals',
@@ -246,12 +238,6 @@ const AuthenticatedShellSettingsUsersRoute =
     path: '/settings/users',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
-const AuthenticatedShellSettingsWhatsappRoute =
-  AuthenticatedShellSettingsWhatsappRouteImport.update({
-    id: '/settings/whatsapp',
-    path: '/settings/whatsapp',
-    getParentRoute: () => AuthenticatedShellRoute,
-  } as any)
 const AuthenticatedShellFinanceVendorInvoicesIndexRoute =
   AuthenticatedShellFinanceVendorInvoicesIndexRouteImport.update({
     id: '/finance/vendor-invoices/',
@@ -377,7 +363,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/api/director-whatsapp-worker': typeof ApiDirectorWhatsappWorkerRoute
   '/approvals': typeof AuthenticatedShellApprovalsRoute
   '/audit': typeof AuthenticatedShellAuditRoute
   '/buildings': typeof AuthenticatedShellBuildingsRoute
@@ -404,7 +389,6 @@ export interface FileRoutesByFullPath {
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
-  '/settings/whatsapp': typeof AuthenticatedShellSettingsWhatsappRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -430,7 +414,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/api/director-whatsapp-worker': typeof ApiDirectorWhatsappWorkerRoute
   '/approvals': typeof AuthenticatedShellApprovalsRoute
   '/audit': typeof AuthenticatedShellAuditRoute
   '/buildings': typeof AuthenticatedShellBuildingsRoute
@@ -457,7 +440,6 @@ export interface FileRoutesByTo {
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
-  '/settings/whatsapp': typeof AuthenticatedShellSettingsWhatsappRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -486,7 +468,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/_shell': typeof AuthenticatedShellRouteWithChildren
-  '/api/director-whatsapp-worker': typeof ApiDirectorWhatsappWorkerRoute
   '/_authenticated/_shell/approvals': typeof AuthenticatedShellApprovalsRoute
   '/_authenticated/_shell/audit': typeof AuthenticatedShellAuditRoute
   '/_authenticated/_shell/buildings': typeof AuthenticatedShellBuildingsRoute
@@ -513,7 +494,6 @@ export interface FileRoutesById {
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
-  '/_authenticated/_shell/settings/whatsapp': typeof AuthenticatedShellSettingsWhatsappRoute
   '/_authenticated/_shell/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   '/_authenticated/_shell/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -541,7 +521,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
-    | '/api/director-whatsapp-worker'
     | '/approvals'
     | '/audit'
     | '/buildings'
@@ -568,7 +547,6 @@ export interface FileRouteTypes {
     | '/settings/company'
     | '/settings/finance'
     | '/settings/users'
-    | '/settings/whatsapp'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
     | '/inventory/delivery-challans/$id'
@@ -594,7 +572,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
-    | '/api/director-whatsapp-worker'
     | '/approvals'
     | '/audit'
     | '/buildings'
@@ -621,7 +598,6 @@ export interface FileRouteTypes {
     | '/settings/company'
     | '/settings/finance'
     | '/settings/users'
-    | '/settings/whatsapp'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
     | '/inventory/delivery-challans/$id'
@@ -649,7 +625,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/_shell'
-    | '/api/director-whatsapp-worker'
     | '/_authenticated/_shell/approvals'
     | '/_authenticated/_shell/audit'
     | '/_authenticated/_shell/buildings'
@@ -676,7 +651,6 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/finance'
     | '/_authenticated/_shell/settings/users'
-    | '/_authenticated/_shell/settings/whatsapp'
     | '/_authenticated/_shell/finance/vendor-invoices/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/new'
     | '/_authenticated/_shell/inventory/delivery-challans/$id'
@@ -704,7 +678,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiDirectorWhatsappWorkerRoute: typeof ApiDirectorWhatsappWorkerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -743,13 +716,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedShellRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/api/director-whatsapp-worker': {
-      id: '/api/director-whatsapp-worker'
-      path: '/api/director-whatsapp-worker'
-      fullPath: '/api/director-whatsapp-worker'
-      preLoaderRoute: typeof ApiDirectorWhatsappWorkerRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_shell/approvals': {
       id: '/_authenticated/_shell/approvals'
@@ -933,13 +899,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellSettingsUsersRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
-    '/_authenticated/_shell/settings/whatsapp': {
-      id: '/_authenticated/_shell/settings/whatsapp'
-      path: '/settings/whatsapp'
-      fullPath: '/settings/whatsapp'
-      preLoaderRoute: typeof AuthenticatedShellSettingsWhatsappRouteImport
-      parentRoute: typeof AuthenticatedShellRoute
-    }
     '/_authenticated/_shell/finance/vendor-invoices/': {
       id: '/_authenticated/_shell/finance/vendor-invoices/'
       path: '/finance/vendor-invoices'
@@ -1110,7 +1069,6 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsFinanceRoute: typeof AuthenticatedShellSettingsFinanceRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
-  AuthenticatedShellSettingsWhatsappRoute: typeof AuthenticatedShellSettingsWhatsappRoute
   AuthenticatedShellFinanceVendorInvoicesIdRoute: typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   AuthenticatedShellFinanceVendorInvoicesNewRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
   AuthenticatedShellInventoryDeliveryChallansIdRoute: typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
@@ -1173,8 +1131,6 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
   AuthenticatedShellSettingsFinanceRoute:
     AuthenticatedShellSettingsFinanceRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
-  AuthenticatedShellSettingsWhatsappRoute:
-    AuthenticatedShellSettingsWhatsappRoute,
   AuthenticatedShellFinanceVendorInvoicesIdRoute:
     AuthenticatedShellFinanceVendorInvoicesIdRoute,
   AuthenticatedShellFinanceVendorInvoicesNewRoute:
@@ -1236,7 +1192,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiDirectorWhatsappWorkerRoute: ApiDirectorWhatsappWorkerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

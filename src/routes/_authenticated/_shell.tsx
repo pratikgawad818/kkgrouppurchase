@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, UserRound, Wallet, Warehouse, MessageCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Banknote, ChartNoAxesCombined, CalendarClock, BookOpen, Boxes, Building, Building2, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, ShieldCheck, FileClock, FileText, Layers, LayoutDashboard, LogOut, Menu, Package, Search, Receipt, Settings, ShoppingCart, Store, Truck, Users, UserRound, Wallet, Warehouse } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -65,7 +65,6 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/settings/users", label: "Users & Roles", icon: Users, perm: "users.manage" },
     { to: "/settings/company", label: "Company Settings", icon: Settings },
     { to: "/settings/finance", label: "Finance Settings", icon: Settings, perm: "company.view" },
-    { to: "/settings/whatsapp", label: "WhatsApp Sandbox", icon: MessageCircle, perm: "users.manage" },
     { to: "/audit", label: "Audit Log", icon: FileClock, perm: "audit.view" },
   ] },
 ];

@@ -22,7 +22,7 @@ The Python driver rejects any DSN not targeting the exact database name `directo
 |---|---|---|
 | Invoice accepted quantity | Isolated PostgreSQL migration 0017 two-session concurrency suite | Actual operator sessions and invoice UI |
 | Payment reservations | Isolated PostgreSQL migration 0018 two-session concurrency suite | Real API accounts and full journal reconciliation |
-| Three-director PO/payment approvals | Isolated PostgreSQL migrations 0012/0013 with role and company-scope tests | Three separate real Director logins, WhatsApp secure links and desktop/mobile |
+| Three-director PO/payment approvals | Isolated PostgreSQL migrations 0012/0013 with role and company-scope tests | Three separate real Director logins and approval actions on desktop/mobile |
 | Stock issue/return, GRN and matching | Earlier rollback-only source notes; no reproducible full-E2E CI proof | Create an independent supply-chain fixture and exercise live RPC chain in staging |
 | Authenticated app workflow | Source-only UI build and TypeScript | Browser login, route-level permissions, access under restricted staff accounts |
 | Finance and accounting | Isolated reservation/concurrency and approval posting-boundary tests | Snapshot-consistent trial balances, account reconciliation and tax validation |
