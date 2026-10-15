@@ -10,8 +10,6 @@ import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
 import { loadRfq } from "@/lib/rfq-data";
-import { SupplierWhatsAppDraftButton } from "@/components/erp/supplier-whatsapp-draft";
-import { rfqSupplierDraft } from "@/lib/supplier-whatsapp-drafts";
 import { QUOTATION_STATUS, RFQ_STATUS, RFQ_VENDOR_STATUS } from "@/lib/rfq";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/$id/")({
@@ -101,19 +99,6 @@ function RfqDetail() {
               <td className="px-4 py-3">{qt ? fmtDate(qt.valid_until) : "—"}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{qt ? inr(qt.grand_total) : "—"}</td>
               <td className="px-4 py-3 text-right whitespace-nowrap">
-                {can("rfq.send") && v.status === "pending" && !qt &&
-                  ["draft", "sent", "partially_responded", "fully_responded"].includes(rfq.status) &&
-                  <SupplierWhatsAppDraftButton
-                    label={rfq.status === "draft" ? "WhatsApp RFQ" : "Follow up"}
-                    supplier={v.vendors?.company_name ?? "Supplier"}
-                    mobile={v.vendors?.mobile}
-                    draft={rfqSupplierDraft({
-                      number: rfq.rfq_number, project: rfq.projects?.name ?? "",
-                      responseDue: rfq.response_due_date, requiredBy: rfq.required_by_date,
-                      materials: items.map(x => ({ name: x.items?.name ?? "Material", quantity: x.requested_quantity,
-                        unit: x.units_of_measure?.code })),
-                    }, rfq.status !== "draft")}
-                  />}
                 {rfq.status === "draft" && can("rfq.edit") && <Button size="sm" variant="ghost" onClick={() => removeVendor.mutate(v.id)}>Remove</Button>}
                 {open && can("quotation.create") && (!qt || ["draft", "submitted"].includes(qt.status)) && v.status !== "declined" && <Button asChild size="sm" variant="outline"><Link to="/procurement/rfqs/$id/quotation" params={{ id }} search={{ vendor: v.id }}>{qt ? "Edit quote" : "Enter quote"}</Link></Button>}
                 {open && can("quotation.create") && v.status === "pending" && <Button size="sm" variant="ghost" onClick={() => decline.mutate(v.id)}>Declined</Button>}

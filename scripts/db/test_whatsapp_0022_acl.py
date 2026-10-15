@@ -210,3 +210,7 @@ if __name__ == "__main__":
     test_stale_phone_guard()
     test_draft_lifecycle()
     print("PASS: actual migration 0022 on isolated two-company PostgreSQL")
+
+    from assert_integration_retirement import assert_retired
+    with db() as connection:
+        assert_retired(connection)

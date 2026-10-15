@@ -1,4 +1,4 @@
-"""Offline PostgreSQL syntax preflight for the seven high-risk ERP migrations.
+"""Offline PostgreSQL syntax preflight for the ERP migration chain.
 
 This parser checks SQL statement grammar and migration ordering without
 connecting to Supabase. It cannot validate embedded PL/pgSQL bodies,
@@ -29,6 +29,12 @@ EXPECTED = [
     "0022_whatsapp_consent_outbox",
     "0023_small_expenses",
     "0024_director_whatsapp_outbox",
+    "0025_self_profile",
+    "0026_avatar_read_auth",
+    "0027_office_phone",
+    "0028_profile_username",
+    "0029_in_app_notifications",
+    "0030_retire_whatsapp_integration",
 ]
 
 
@@ -37,7 +43,7 @@ def run() -> None:
     tags = [entry["tag"] for entry in entries]
     assert all(tag in tags for tag in EXPECTED), "An ERP migration is missing from the Drizzle journal"
     indexes = [tags.index(tag) for tag in EXPECTED]
-    assert indexes == sorted(indexes), "Migrations 0012–0023 are not in deployment order"
+    assert indexes == sorted(indexes), "ERP migrations are not in deployment order"
     assert len(set(tags)) == len(tags), "Duplicate migration tag in journal"
     if any(not entry["breakpoints"] for entry in entries if entry["tag"] in EXPECTED):
         raise AssertionError("Missing Drizzle statement breakpoints")

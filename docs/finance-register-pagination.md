@@ -18,6 +18,6 @@ No database mutation or publication was made. For formal finance reporting a ser
 - Advance adjustment sums use integer paise and inconsistent amounts are rejected rather than showing misleading negative balances.
 - Scheduled-payment availability checks are vendor-scoped, include all approved invoice reservations in verified pages, and fail closed when incomplete.
 - Advance-to-invoice applications require a verified invoice selection, positive amount with two-decimal precision, and sufficient remaining advance and invoice balances. The server's apply_vendor_advance RPC continues to enforce transactional correctness.
-- Automated tests cover amount precision, overadjustment and data corruption. No SQL migration, database reset, auto WhatsApp sending or live deployment was performed.
+- Automated tests cover amount precision, overadjustment and data corruption. No SQL migration, database reset, live deployment was performed.
 
 Remaining: PostgREST's multiple page calls are not a transactionally consistent database snapshot; database-side reporting is necessary for accounting sign-off. Proof file uploads also need a separate lifecycle and orphan-cleanup review.

@@ -79,11 +79,9 @@ test("navigation and direct URL authorization share the identical rules", () => 
   assert.deepEqual(accessibleNavigation(nav,store).map(x=>x.to),["/dashboard","/inventory/stock"]);
 });
 
-test("WhatsApp test page is restricted to actual super administrators", () => {
-  assert.equal(canAccessPage("/settings/whatsapp", owner), true);
-  assert.equal(canAccessPage("/settings/whatsapp", subject("purchase_manager","users.manage")), false);
-  assert.equal(canAccessPage("/settings/whatsapp", subject("auditor","users.manage")), false);
-  assert.equal(canAccessPage("/settings/whatsapp", subject("super_admin","vendors.view")), false);
+test("removed integration settings have no page access", () => {
+  assert.equal(canAccessPage("/settings/whatsapp", owner), false);
+  assert.equal(canAccessPage("/settings/whatsapp", subject("director", "users.manage")), false);
 });
 
 test("small expenses report is read-only for management and editable only inside superadmin's page",()=>{

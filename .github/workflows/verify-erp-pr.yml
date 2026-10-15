@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [feature/whatsapp-approval-links]
+    branches: [main]
 
 permissions:
   contents: read
@@ -109,8 +109,8 @@ jobs:
       - name: Test staff, company, stock, payments and storage RLS isolation
         run: python scripts/db/test_company_0020_rls.py
 
-  director-wa-0024-acceptance:
-    name: Director WhatsApp queue and consent (disposable PostgreSQL)
+  director-integration-retirement:
+    name: Director integration retirement (disposable PostgreSQL)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     services:
@@ -136,7 +136,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install "psycopg[binary]>=3.2,<4"
-      - name: Test actual 0024 queue, consent and service-role leases
+      - name: Replay director integration and verify retirement preserves business data
         run: python scripts/db/test_director_whatsapp_0024.py
 
   director-approval-acceptance:
@@ -292,8 +292,8 @@ jobs:
       - name: Verify audited small expenses and company isolation
         run: python scripts/db/test_site_small_expenses_0023.py
 
-  whatsapp-consent-acceptance:
-    name: WhatsApp consent and outbox ACL (disposable PostgreSQL)
+  supplier-integration-retirement:
+    name: Supplier integration retirement (disposable PostgreSQL)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     services:
@@ -319,7 +319,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install "psycopg[binary]>=3.2,<4"
-      - name: Test tenant RLS, consent revocation, idempotency and denied direct writes
+      - name: Replay supplier integration and verify retirement preserves audit data
         run: python scripts/db/test_whatsapp_0022_acl.py
 
   migration-syntax:
@@ -335,7 +335,7 @@ jobs:
           python-version: "3.12"
       - name: Install PostgreSQL parser
         run: python -m pip install "pglast>=6,<8"
-      - name: Parse SQL 0012-0021 and check Drizzle journal
+      - name: Parse SQL 0012–0030 and check Drizzle journal
         run: python scripts/db/check_migration_sql.py
 
   typecheck:
@@ -350,55 +350,15 @@ jobs:
           node-version: "24"
       - name: Audit Supabase client environment (no values printed)
         run: node scripts/check-public-env.mjs
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Test procurement follow-up calculations
-        run: node --test scripts/tests/procurement-followup.test.mjs
-      - name: Test project cost control and non-additive accounting stages
-        run: node --test scripts/tests/project-cost-control.test.mjs
-      - name: Test awarded supplier rate history
-        run: node --test scripts/tests/supplier-rate-history.test.mjs
-      - name: Test stock reorder planning and open-PO safeguards
-        run: node --test scripts/tests/reorder-planning.test.mjs
-      - name: Test vendor-invoice GRN and three-way match preflight
-        run: node --test scripts/tests/invoice-preflight.test.mjs
-      - name: Test safe vendor payment scheduling preflight
-        run: node --test scripts/tests/payment-preflight.test.mjs
-      - name: Test clean-slate first-run ERP setup
-        run: node --test scripts/tests/erp-onboarding.test.mjs
-      - name: Test safe single-company master selection
-        run: node --test scripts/tests/company-scope.test.mjs
-      - name: Test complete finance register pagination and truncation detection
-        run: node --test scripts/tests/complete-register.test.mjs
-      - name: Test director vote queries and scoped batching
-        run: node --test scripts/tests/approval-queue.test.mjs
-      - name: Test management cost categories and viewer navigation restrictions
-        run: node --test scripts/tests/management-overview.test.mjs
-      - name: Test role based pages and direct URL restrictions
-        run: node --test scripts/tests/page-access.test.mjs
-      - name: Test stale-chunk recovery without a browser
-        run: node --test scripts/tests/stale-chunk-recovery.test.mjs
-      - name: Test WhatsApp sandbox sandboxing and fixed template
-        run: node --test scripts/tests/whatsapp-sandbox.test.mjs
-      - name: Test manual supplier WhatsApp draft content and routing
-        run: node --test scripts/tests/supplier-whatsapp-drafts.test.mjs
-      - name: Verify small-expense calculations
-        run: node --test scripts/tests/small-expenses.test.mjs
-      - name: Test material building-wise usage and physical stock reconciliation
-        run: node --test scripts/tests/material-usage-tracker.test.mjs
-      - name: Test verified-user cache reuse and safe auth transitions
-        run: node --test scripts/tests/verified-user-cache.test.mjs
-      - name: Test deferred dashboard activation
-        run: node --test scripts/tests/dashboard-viewport.test.mjs
-      - name: Verify stock completeness and rollup
-        run: node --test scripts/tests/stock-register.test.mjs
-      - name: Test complete stock movement history and filters
-        run: node --test scripts/tests/stock-ledger-register.test.mjs
-      - name: Verify safe mobile pager calculations
-        run: node --test scripts/tests/pager-window.test.mjs
-      - name: Test disabled-by-default Meta template sender and approval references
-        run: node --test scripts/tests/director-whatsapp-delivery.test.mjs
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Run all domain regression tests
+        run: bun run test
       - name: Generate typed TanStack routes and production bundle
-        run: npm run build
+        run: bun run build
       - name: TypeScript check
-        run: npx tsc --noEmit --project tsconfig.json
+        run: bun run typecheck

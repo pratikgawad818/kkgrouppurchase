@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCan } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { Pager } from "@/components/erp/pager";
