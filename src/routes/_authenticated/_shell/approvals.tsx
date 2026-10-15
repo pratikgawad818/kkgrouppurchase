@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { CheckCircle2, Clock3, ExternalLink, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ExternalLink, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
