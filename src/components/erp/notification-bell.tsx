@@ -27,6 +27,7 @@ export function NotificationBell({ userId }: { userId: string }) {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30000,
   });
 
   useEffect(() => {
@@ -45,6 +46,10 @@ export function NotificationBell({ userId }: { userId: string }) {
 
   const items = q.data ?? [];
   const unread = items.filter((n) => !n.is_read).length;
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (unread > 0) nav.setAppBadge?.(unread).catch(() => {}); else nav.clearAppBadge?.().catch(() => {});
+  }, [unread]);
 
   async function open(n: (typeof items)[number]) {
     if (!n.is_read) await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
