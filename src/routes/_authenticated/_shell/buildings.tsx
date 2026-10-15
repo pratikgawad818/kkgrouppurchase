@@ -46,7 +46,7 @@ function Buildings() {
       if (r.error) throw r.error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["buildings"] }); setOpen(false); toast.success(editingId ? "Building updated" : "Building created"); },
-    onError: (e) => toast.error(e.message.includes("buildings_project_id_code_key") ? "This project already has a building with that code. Use a different code (e.g. B, C, T2)." : e.message),
+    onError: (e) => toast.error(e.message.includes("buildings_project_id_code_key") ? "Could not save — please try again." : e.message),
   });
   const manage = can("buildings.manage");
   type B = NonNullable<typeof q.data>[number];
