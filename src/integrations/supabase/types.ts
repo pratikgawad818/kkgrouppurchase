@@ -4930,6 +4930,7 @@ export type Database = {
         Args: { _header: Json; _items: Json; _po_id: string }
         Returns: string
       }
+      remind_po_approvers: { Args: { _po_id: string }; Returns: undefined }
       rfq_can_edit_draft: { Args: { _rfq_id: string }; Returns: boolean }
       rfq_can_quote: { Args: { _rfq_id: string }; Returns: boolean }
       rfq_can_view: { Args: { _rfq_id: string }; Returns: boolean }
