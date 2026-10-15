@@ -79,7 +79,7 @@ function Buildings() {
           <DialogHeader><DialogTitle>{editingId ? "Edit building" : "New building"}</DialogTitle><DialogDescription>Building or wing details within a project.</DialogDescription></DialogHeader>
           <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
             <div className="sm:col-span-2"><Label>Project</Label><select required className="h-9 w-full rounded-lg border bg-background px-3 text-sm" value={form.project_id} onChange={set("project_id")}><option value="">Select project</option>{projects.data?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-            <div><Label>Building code</Label><Input required value={form.code} maxLength={6} placeholder="e.g. A, B, T1" onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} /><p className="mt-1 text-xs text-muted-foreground">Up to 6 letters/numbers; must differ from other buildings in the same project.</p></div>
+            
             <div><Label>Building name</Label><Input required value={form.name} onChange={set("name")} /></div>
             <div><Label>Wing</Label><Input value={form.wing} onChange={set("wing")} /></div>
             <div><Label>Planned floors</Label><Input type="number" min="0" value={form.planned_floors} onChange={set("planned_floors")} /></div>

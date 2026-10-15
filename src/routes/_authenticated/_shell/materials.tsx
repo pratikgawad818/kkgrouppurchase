@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { requireSingleCompanyId } from "@/lib/company-scope";
 import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { PageHeader, SearchBox, DemoBadge, Loading, Empty, Pill, autoCode } from "@/components/erp/common"; import { useCan } from "@/lib/session"; import { num } from "@/lib/format";
+import { PageHeader, SearchBox, DemoBadge, Loading, Empty, Pill } from "@/components/erp/common"; import { useCan } from "@/lib/session"; import { num, autoCode } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/_shell/materials")({ head: () => ({ meta: [{ title: "Materials — KK Group ERP" }, { name: "description", content: "Construction material master and reorder controls." }, { property: "og:title", content: "Materials — KK Group ERP" }, { property: "og:description", content: "Construction material master and reorder controls." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: Materials });
 type Row={id:string;code:string;name:string;description:string|null;hsn_sac:string|null;minimum_stock:number;reorder_level:number;maximum_stock:number|null;status:"active"|"inactive";is_demo:boolean;category_id:string;unit_id:string;item_categories:{name:string}|null;units_of_measure:{code:string}|null};

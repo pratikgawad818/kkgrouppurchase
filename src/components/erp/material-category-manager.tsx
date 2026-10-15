@@ -191,12 +191,6 @@ export function MaterialCategoryManager({
         {showEditor && (
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); save.mutate(); }}>
             <div>
-              <Label htmlFor="category-code">Category code</Label>
-              <Input id="category-code" required maxLength={30} autoComplete="off"
-                placeholder="CEMENT" value={form.code}
-                onChange={e => setForm(previous => ({ ...previous, code: e.target.value.toUpperCase() }))} />
-            </div>
-            <div>
               <Label htmlFor="category-name">Category name</Label>
               <Input id="category-name" required maxLength={120}
                 placeholder="Cement & Concrete" value={form.name}
@@ -230,7 +224,7 @@ export function MaterialCategoryManager({
             </div>
             <div className="flex flex-wrap justify-end gap-2 border-t pt-4 sm:col-span-2">
               <Button type="button" variant="outline" onClick={() => reset()}>Back</Button>
-              <Button type="submit" disabled={save.isPending || !form.code.trim() || !form.name.trim()}>
+              <Button type="submit" disabled={save.isPending || !form.name.trim()}>
                 {save.isPending ? "Saving…" : editing ? "Save changes" : "Create category"}
               </Button>
             </div>
