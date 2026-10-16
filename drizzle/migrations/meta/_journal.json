@@ -239,6 +239,13 @@
       "when": 1792059072060,
       "tag": "0033_web_push",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792129209347,
+      "tag": "0034_director_notifications_link_approvals",
+      "breakpoints": true
     }
   ]
 }
