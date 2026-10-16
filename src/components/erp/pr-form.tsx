@@ -141,7 +141,7 @@ export function PrForm({
         remarks: h.remarks.trim() || null,
       };
       const payload = {
-        _id: id ?? null,
+        _id: (id ?? null) as string,
         _header: header,
         _items: valid.map((l) => ({
           material_id: l.material_id,
