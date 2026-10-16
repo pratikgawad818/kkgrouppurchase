@@ -153,7 +153,7 @@ export function PrForm({
           notes: l.notes || null,
         })),
         _submit: submit,
-        _expected_updated_at: expectedUpdatedAt ?? undefined,
+        _expected_updated_at: (expectedUpdatedAt ?? null) as string,
       };
       attempt.current = saveAttempt(attempt.current, payload);
       const { data: prId, error } = await supabase.rpc("save_purchase_request", {
