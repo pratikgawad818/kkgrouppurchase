@@ -34,7 +34,7 @@ function EditPr() {
       {pr.status !== "draft" ? <div className="rounded-md border bg-card p-4 text-sm">Only draft requests can be edited.</div> : (
         <PrForm id={id}
           initial={{ project_id: pr.project_id, building_id: pr.building_id ?? "", floor_id: pr.floor_id ?? "", required_by: pr.required_by, priority: pr.priority, request_type: pr.request_type, purpose: pr.purpose ?? "", remarks: pr.remarks ?? "" }}
-          initialLines={items.map((x) => ({ material_id: x.material_id, description: x.description ?? "", quantity: String(x.quantity), unit_id: x.unit_id, estimated_rate: x.estimated_rate == null ? "" : String(x.estimated_rate), required_by: x.required_by ?? "", notes: x.notes ?? "" }))} />
+          initialLines={items.map((x) => ({ material_id: x.material_id, description: x.description ?? "", quantity: String(x.quantity), unit_id: x.unit_id, estimated_rate: x.estimated_rate, required_by: x.required_by ?? "", notes: x.notes ?? "" }))} />
       )}
     </>
   );
