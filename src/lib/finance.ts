@@ -43,7 +43,8 @@ export async function uploadVendorDoc(folder: "invoices" | "payments", file: Fil
   return path;
 }
 export async function openVendorDoc(path: string, download = false) {
-  const { data, error } = await supabase.storage.from("vendor-documents").createSignedUrl(path, 300, download ? { download: true } : undefined);
+  // Short-lived link: it is opened immediately, so revoked staff can't reuse it later.
+  const { data, error } = await supabase.storage.from("vendor-documents").createSignedUrl(path, 30, download ? { download: true } : undefined);
   if (error) throw error;
   window.open(data.signedUrl, "_blank", "noopener");
 }
