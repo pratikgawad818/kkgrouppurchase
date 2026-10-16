@@ -2,6 +2,15 @@
 export type ApprovalKind = "purchase_order" | "vendor_payment";
 export type VoteFetchBatch = { kind: ApprovalKind; ids: string[] };
 
+/** Filter by document type before pagination, including notification deep links. */
+export function pendingApprovals<T extends { kind: ApprovalKind; id: string }>(
+  requests: ReadonlyArray<T>,
+  kind: ApprovalKind,
+  id: string | null = null,
+): T[] {
+  return requests.filter(request => request.kind === kind && (!id || request.id === id));
+}
+
 export function voteFetchChunks(
   requests: ReadonlyArray<{ kind: ApprovalKind; id: string }>,
   chunkSize = 50,

@@ -1,6 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { approvalPage, voteFetchChunks } from "../../src/lib/approval-queue.ts";
+import { approvalPage, pendingApprovals, voteFetchChunks } from "../../src/lib/approval-queue.ts";
+
+test("approval tabs isolate document types before counts and pagination", () => {
+  const requests = Array.from({ length: 36 }, (_, i) => ({
+    kind: i % 2 ? "vendor_payment" : "purchase_order", id: `request-${i}`,
+  }));
+  const orders = pendingApprovals(requests, "purchase_order");
+  const payments = pendingApprovals(requests, "vendor_payment");
+  assert.equal(orders.length, 18);
+  assert.equal(payments.length, 18);
+  assert.ok(orders.every(row => row.kind === "purchase_order"));
+  assert.ok(payments.every(row => row.kind === "vendor_payment"));
+  const last = approvalPage(payments, 1);
+  assert.equal(last.total, 18);
+  assert.deepEqual(last.items, payments.slice(15));
+});
+
+test("notification links match both type and ID without hiding the other queue", () => {
+  const requests = [
+    { kind: "purchase_order", id: "shared-id" },
+    { kind: "vendor_payment", id: "shared-id" },
+    { kind: "vendor_payment", id: "other-payment" },
+  ];
+  assert.deepEqual(pendingApprovals(requests, "vendor_payment", "shared-id"), [requests[1]]);
+  assert.deepEqual(pendingApprovals(requests, "purchase_order", "completed"), []);
+  assert.deepEqual(pendingApprovals(requests, "vendor_payment"), requests.slice(1));
+  assert.deepEqual(pendingApprovals([], "purchase_order"), []);
+});
 
 test("empty approval queue does not query historical director votes", () => {
   assert.deepEqual(voteFetchChunks([]), []);

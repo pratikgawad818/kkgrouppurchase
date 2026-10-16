@@ -5,12 +5,13 @@ import { CheckCircle2, ExternalLink, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { approvalPage, voteFetchChunks } from "@/lib/approval-queue";
+import { approvalPage, pendingApprovals, voteFetchChunks } from "@/lib/approval-queue";
 import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { Pager } from "@/components/erp/pager";
+import { ApprovalKindTabs } from "@/components/erp/approval-kind-tabs";
 import { errMsg, inr } from "@/lib/format";
 
 type Kind = "purchase_order" | "vendor_payment";
@@ -31,10 +32,18 @@ export const Route = createFileRoute("/_authenticated/_shell/approvals")({
 
 function DirectorApprovals() {
   const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const activeKind = search.kind ?? "purchase_order";
   const me = useMe();
   const qc = useQueryClient();
   const [reason, setReason] = useState<Record<string, string>>({});
-  const [page, setPage] = useState(0);
+  const [pagination, setPagination] = useState({ kind: activeKind, id: search.id, page: 0 });
+  const page = pagination.kind === activeKind && pagination.id === search.id ? pagination.page : 0;
+  const setPage = (next: number) => setPagination({ kind: activeKind, id: search.id, page: next });
+  const selectKind = (kind: Kind) => {
+    setPagination({ kind, id: null, page: 0 });
+    void navigate({ search: { kind, id: null } });
+  };
   const isDirector = me.data?.roles.includes("director") ?? false;
   const isAdmin = me.data?.permissions.has("users.manage") ?? false;
   const q = useQuery({
@@ -91,7 +100,12 @@ function DirectorApprovals() {
     onSuccess: () => { toast.success("Decision recorded"); qc.invalidateQueries({ queryKey: ["director-approvals"] }); qc.invalidateQueries({ queryKey: ["po"] }); qc.invalidateQueries({ queryKey: ["vendor-payments"] }); },
     onError: e => toast.error(errMsg(e)),
   });
-  const pending = (q.data?.requests ?? []).filter(r => !search.id || (r.id === search.id && r.kind === search.kind));
+  const requests = q.data?.requests ?? [];
+  const pending = pendingApprovals(requests, activeKind, search.id);
+  const counts = q.data ? {
+    purchase_order: pendingApprovals(requests, "purchase_order").length,
+    vendor_payment: pendingApprovals(requests, "vendor_payment").length,
+  } : undefined;
   const votesByRequest = q.data?.votes ?? [];
   const directors = q.data?.directors ?? [];
   const visible = approvalPage(pending, page);
@@ -100,9 +114,11 @@ function DirectorApprovals() {
   if (!isDirector && !isAdmin) return <div className="mx-auto max-w-lg rounded-xl border bg-card p-6"><ShieldCheck className="mb-3 h-7 w-7" /><h1 className="text-lg font-semibold">Restricted access</h1><p className="mt-2 text-sm text-muted-foreground">Only directors can vote. Administrators can review the queue without gaining voting rights.</p></div>;
   return <div className="mx-auto max-w-3xl pb-20">
     <PageHeader title="Director Approvals" subtitle={isAdmin && !isDirector ? "Monitor requests and each director’s recorded decision." : "Review each request and approve using your own account. Three independent approvals are required."} />
+    <ApprovalKindTabs value={activeKind} counts={counts} onChange={selectKind} />
     <div className="mb-5 rounded-xl border bg-card p-4 text-sm"><ShieldCheck className="mr-2 inline h-5 w-5 text-primary" />Each director signs in with their own account. Every decision is recorded in the app.</div>
     {isAdmin && directors.length === 0 && <div role="status" className="mb-5 rounded-xl border bg-card p-4 text-sm">At least one active director account is required. Found 0. Review accounts in <a href="/settings/users" className="font-semibold underline">Users & Roles</a>.</div>}
-    {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Director approvals could not be verified: {errMsg(q.error)} <Button variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : !pending.length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">No pending approvals for this request. It may have been completed or cancelled.</div> :
+    <div id="approval-queue-panel" role="tabpanel" aria-labelledby={`approval-tab-${activeKind}`} tabIndex={0}>
+    {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Director approvals could not be verified: {errMsg(q.error)} <Button variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : !pending.length ? <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">{search.id ? "No pending approval for this request. It may have been completed or cancelled." : activeKind === "purchase_order" ? "No purchase orders awaiting approval." : "No vendor payments awaiting approval."}{search.id && <Button variant="outline" size="sm" className="mt-3" onClick={() => selectKind(activeKind)}>Show all {activeKind === "purchase_order" ? "purchase orders" : "vendor payments"}</Button>}</div> :
     <div className="space-y-4">{visible.items.map(r => {
       const votes = votesByRequest.filter(v => v.entity_type === r.kind && v.entity_id === r.id);
       const approved = votes.filter(v => v.decision === "approved").length;
@@ -127,5 +143,6 @@ function DirectorApprovals() {
     })}
     <Pager page={visible.page} total={visible.total} size={15} onPage={setPage} />
     </div>}
+    </div>
   </div>;
 }
