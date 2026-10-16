@@ -246,6 +246,48 @@
       "when": 1792129209347,
       "tag": "0034_director_notifications_link_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792157400035,
+      "tag": "0035_atomic_procurement_saves",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792157400036,
+      "tag": "0036_document_actor_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792157400037,
+      "tag": "0037_scoped_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792157400038,
+      "tag": "0038_push_subscription_boundary",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792157400039,
+      "tag": "0039_explicit_director_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792157400040,
+      "tag": "0040_verified_profile_email",
+      "breakpoints": true
     }
   ]
 }

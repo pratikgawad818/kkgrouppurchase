@@ -1,3 +1,8 @@
+> Historical acceptance notes for migrations 0012/0013. The current one-director
+> release is covered by [go-live hardening](go-live-hardening.md) and its complete
+> source replay on PostgreSQL 17. Do not use the three-director assertions below
+> as acceptance of the current deployed policy.
+
 # KK GROUP ERP — director acceptance gate (disposable PostgreSQL)
 
 ## Implemented CI checks

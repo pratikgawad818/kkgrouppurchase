@@ -46,3 +46,5 @@ the time, not the current live deployment. The
 [0019–0023 rehearsal](ordered-migration-rehearsal-0019-0023.md) remains evidence
 for the original migration chain. Original migration files, historical SQL
 fixtures and Lovable planning records are kept for audit and replay purposes.
+
+- [Go-live hardening and rollout](go-live-hardening.md) — transactional saves, current approval policy, notification security and release acceptance.

@@ -17,10 +17,31 @@ export type PageAccess = {
 const rules: readonly Rule[] = [
   { pattern: /^\/dashboard\/?$/ },
   { pattern: /^\/management\/?$/, all: ["inventory.view", "payable.view", "payment.view"] },
-  { pattern: /^\/projects\/?$/, any: ["projects.view_all", "projects.manage", "purchase_request.view", "inventory.view", "units.view"] },
-  { pattern: /^\/buildings\/?$/, any: ["projects.view_all", "buildings.manage", "inventory.view", "purchase_request.view", "units.view"] },
+  {
+    pattern: /^\/projects\/?$/,
+    any: [
+      "projects.view_all",
+      "projects.manage",
+      "purchase_request.view",
+      "inventory.view",
+      "units.view",
+    ],
+  },
+  {
+    pattern: /^\/buildings\/?$/,
+    any: [
+      "projects.view_all",
+      "buildings.manage",
+      "inventory.view",
+      "purchase_request.view",
+      "units.view",
+    ],
+  },
   { pattern: /^\/units\/?$/, any: ["units.view"] },
-  { pattern: /^\/approvals\/?$/, any: ["purchase_order.approve", "payment.approve", "users.manage"] },
+  {
+    pattern: /^\/approvals\/?$/,
+    any: ["purchase_order.approve", "payment.approve", "users.manage"],
+  },
 
   { pattern: /^\/procurement\/follow-ups\/?$/, any: ["purchase_order.view"] },
   { pattern: /^\/procurement\/supplier-rate-history\/?$/, any: ["purchase_order.view"] },
@@ -28,7 +49,10 @@ const rules: readonly Rule[] = [
   { pattern: /^\/procurement\/purchase-requests\/[^/]+\/edit\/?$/, any: ["purchase_request.edit"] },
   { pattern: /^\/procurement\/purchase-requests(?:\/[^/]+)?\/?$/, any: ["purchase_request.view"] },
   { pattern: /^\/procurement\/rfqs\/new\/?$/, any: ["rfq.create"] },
-  { pattern: /^\/procurement\/rfqs\/[^/]+\/quotation\/?$/, any: ["quotation.create", "quotation.edit"] },
+  {
+    pattern: /^\/procurement\/rfqs\/[^/]+\/quotation\/?$/,
+    any: ["quotation.create", "quotation.edit"],
+  },
   { pattern: /^\/procurement\/rfqs\/[^/]+\/compare\/?$/, any: ["quotation.compare"] },
   { pattern: /^\/procurement\/rfqs(?:\/[^/]+)?\/?$/, any: ["rfq.view"] },
   { pattern: /^\/procurement\/vendor-quotations\/?$/, any: ["quotation.view"] },
@@ -63,19 +87,30 @@ export function canAccessPage(path: string, user: PageAccess): boolean {
   // Every signed-in staff member may manage their own profile.
   if (/^\/profile\/?$/.test(path)) return true;
   if (!user.roles.length) return false;
+  if (
+    /^\/approvals\/?$/.test(path) &&
+    !user.roles.includes("director") &&
+    !user.permissions.has("users.manage")
+  )
+    return false;
   // A single Management Viewer role must NEVER inherit the operational
   // dashboard, staff settings, approval flows, or document detail edit forms.
-  if (user.roles.length === 1 && user.roles[0] === "auditor" &&
-      !VIEWER_NAV.has(path.replace(/\/$/, ""))) return false;
-  const rule = rules.find(entry => entry.pattern.test(path));
+  if (
+    user.roles.length === 1 &&
+    user.roles[0] === "auditor" &&
+    !VIEWER_NAV.has(path.replace(/\/$/, ""))
+  )
+    return false;
+  const rule = rules.find((entry) => entry.pattern.test(path));
   if (!rule) return false; // New routes fail closed until deliberately classified.
-  if (rule.all && !rule.all.every(p => user.permissions.has(p))) return false;
-  if (rule.any && !rule.any.some(p => user.permissions.has(p))) return false;
+  if (rule.all && !rule.all.every((p) => user.permissions.has(p))) return false;
+  if (rule.any && !rule.any.some((p) => user.permissions.has(p))) return false;
   return true;
 }
 
 export function accessibleNavigation<T extends { to: string }>(
-  items: readonly T[], user: PageAccess,
+  items: readonly T[],
+  user: PageAccess,
 ): T[] {
-  return items.filter(item => canAccessPage(item.to, user));
+  return items.filter((item) => canAccessPage(item.to, user));
 }
