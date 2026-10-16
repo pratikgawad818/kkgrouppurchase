@@ -1389,11 +1389,13 @@ function Dashboard() {
           {d.audit.map((x) => (
             <div
               key={x.id}
-              className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-b px-4 py-3 text-xs sm:grid-cols-[10rem_6rem_1fr] last:border-0"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 border-b px-4 py-3 text-xs sm:grid-cols-[11rem_12rem_minmax(0,1fr)] last:border-0"
             >
               <span className="text-muted-foreground">{fmtDateTime(x.created_at)}</span>
-              <span className="font-medium capitalize">{x.action}</span>
-              <span className="truncate">
+              <span className="min-w-0 break-words font-medium capitalize">
+                {x.action.replaceAll("_", " ")}
+              </span>
+              <span className="col-span-2 min-w-0 truncate sm:col-span-1">
                 {x.entity.replaceAll("_", " ")}{" "}
                 <span className="font-mono text-muted-foreground">{x.entity_id}</span>
               </span>
