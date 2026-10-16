@@ -1,3 +1,4 @@
+import type { PendingRpc } from "@/lib/pending-rpc";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -93,7 +94,7 @@ function NewRfq() {
         _vendor_ids: vendors,
       };
       attempt.current = saveAttempt(attempt.current, payload);
-      const { data: rfqId, error } = await supabase.rpc("create_rfq_draft", {
+      const { data: rfqId, error } = await (supabase.rpc as unknown as PendingRpc<string>)("create_rfq_draft", {
         ...payload,
         _request_id: attempt.current.id,
       });

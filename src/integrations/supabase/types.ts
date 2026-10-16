@@ -4668,23 +4668,6 @@ export type Database = {
       }
     }
     Functions: {
-      save_purchase_request: {
-        Args: { _request_id: string; _id: string | null; _header: Json; _items: Json; _submit?: boolean; _expected_updated_at?: string | null }
-        Returns: string
-      }
-      create_rfq_draft: {
-        Args: { _request_id: string; _pr_id: string; _header: Json; _vendor_ids: string[] }
-        Returns: string
-      }
-      document_actor_names: {
-        Args: { _kind: string; _ids: string[] }
-        Returns: { actor_id: string; full_name: string | null }[]
-      }
-      register_my_push_subscription: {
-        Args: { _endpoint: string; _p256dh: string; _auth: string }
-        Returns: undefined
-      }
-
       acct: { Args: { _code: string; _company: string }; Returns: string }
       actor_in_company: { Args: { _company_id: string }; Returns: boolean }
       apply_vendor_advance: {
