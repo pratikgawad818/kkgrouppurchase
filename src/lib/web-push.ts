@@ -1,4 +1,3 @@
-import type { PendingRpc } from "@/lib/pending-rpc";
 import { supabase } from "@/integrations/supabase/client";
 
 export const VAPID_PUBLIC_KEY =
@@ -78,7 +77,7 @@ export async function enablePush(): Promise<PushStatus> {
       applicationServerKey: b64ToBytes(VAPID_PUBLIC_KEY),
     });
   const j = sub.toJSON();
-  const { error } = await (supabase.rpc as unknown as PendingRpc<null>)("register_my_push_subscription", {
+  const { error } = await supabase.rpc("register_my_push_subscription", {
     _endpoint: sub.endpoint,
     _p256dh: j.keys?.["p256dh"] ?? "",
     _auth: j.keys?.["auth"] ?? "",
