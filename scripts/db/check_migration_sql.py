@@ -15,32 +15,17 @@ from pglast import ast, parse_sql
 ROOT = Path(__file__).resolve().parents[2]
 JOURNAL = ROOT / "drizzle" / "migrations" / "meta" / "_journal.json"
 MIGRATIONS = ROOT / "drizzle" / "migrations"
-EXPECTED = [
-    "0012_three_director_approvals",
-    "0013_company_scoped_director_votes",
-    "0014_vendor_delivery_challans",
-    "0015_project_material_issues_returns",
-    "0016_harden_approval_inventory_acl",
-    "0017_invoice_grn_allocation_integrity",
-    "0018_payment_allocation_integrity",
-    "0019_management_viewer_scope",
-    "0020_company_staff_scope",
-    "0021_tenant_operations_storage_acl",
-    "0022_whatsapp_consent_outbox",
-    "0023_small_expenses",
-    "0024_director_whatsapp_outbox",
-    "0025_self_profile",
-    "0026_avatar_read_auth",
-    "0027_office_phone",
-    "0028_profile_username",
-    "0029_in_app_notifications",
-    "0030_retire_whatsapp_integration",
-]
+EXPECTED = [path.stem for path in sorted(MIGRATIONS.glob("*.sql")) if int(path.name[:4]) >= 12]
+
 
 
 def run() -> None:
     entries = json.loads(JOURNAL.read_text(encoding="utf-8"))["entries"]
     tags = [entry["tag"] for entry in entries]
+    source_tags = [path.stem for path in sorted(MIGRATIONS.glob("*.sql"))]
+    assert tags == source_tags, "Migration files and the journal must match exactly in deployment order"
+    assert [entry["idx"] for entry in entries] == list(range(len(entries))), "Migration indexes must be contiguous"
+    assert all(a["when"] < b["when"] for a,b in zip(entries,entries[1:])), "Migration timestamps must increase"
     assert all(tag in tags for tag in EXPECTED), "An ERP migration is missing from the Drizzle journal"
     indexes = [tags.index(tag) for tag in EXPECTED]
     assert indexes == sorted(indexes), "ERP migrations are not in deployment order"
@@ -96,6 +81,8 @@ def run() -> None:
         raise AssertionError("Release preflight must contain SELECT statements ONLY")
     print(f"PASS release preflight: {len(preflight)} SELECT-only catalog queries")
 
+    hardening_preflight = parse_sql((ROOT / "scripts/db/preflight-go-live-hardening.sql").read_text())
+    assert hardening_preflight and all(isinstance(raw.stmt,ast.SelectStmt) for raw in hardening_preflight), "Hardening preflight must be SELECT-only"
     print(
         "Offline grammar and journal checks passed. "
         "Live schema, embedded PL/pgSQL bodies, RLS and finance/inventory "

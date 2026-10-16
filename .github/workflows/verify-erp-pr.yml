@@ -322,6 +322,36 @@ jobs:
       - name: Replay supplier integration and verify retirement preserves audit data
         run: python scripts/db/test_whatsapp_0022_acl.py
 
+  go-live-hardening:
+    name: Current release, atomic saves and security (PostgreSQL 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: hardening_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hardening_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      HARDENING_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/hardening_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Replay foundation and every migration; verify current workflow boundaries
+        run: python scripts/db/test_go_live_hardening.py
+
   migration-syntax:
     name: Validate SQL migrations (offline)
     runs-on: ubuntu-latest
@@ -335,7 +365,7 @@ jobs:
           python-version: "3.12"
       - name: Install PostgreSQL parser
         run: python -m pip install "pglast>=6,<8"
-      - name: Parse SQL 0012–0030 and check Drizzle journal
+      - name: Parse every SQL migration and check Drizzle journal
         run: python scripts/db/check_migration_sql.py
 
   typecheck:

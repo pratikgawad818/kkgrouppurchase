@@ -1,8 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export const VAPID_PUBLIC_KEY = "BGUsTa0EAb9eYT3r1tNW9cOHAkhaVfCak-jut9ejFUdMhTL_si749PMOkGE5LIxi9qWGz0jH_Py7CTlU2Naj5uE";
+export const VAPID_PUBLIC_KEY =
+  "BGUsTa0EAb9eYT3r1tNW9cOHAkhaVfCak-jut9ejFUdMhTL_si749PMOkGE5LIxi9qWGz0jH_Py7CTlU2Naj5uE";
 
-export type PushStatus = "on" | "off" | "unsupported" | "open-in-new-tab" | "denied" | "install-first";
+export type PushStatus =
+  "on" | "off" | "unsupported" | "open-in-new-tab" | "denied" | "install-first";
 
 function b64ToBytes(s: string) {
   const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4));
@@ -14,10 +16,19 @@ function waitForActive(reg: ServiceWorkerRegistration): Promise<void> {
   const w = reg.installing ?? reg.waiting;
   if (!w) return Promise.resolve();
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("Phone alert setup timed out. Please try again.")), 15000);
+    const t = setTimeout(
+      () => reject(new Error("Phone alert setup timed out. Please try again.")),
+      15000,
+    );
     w.addEventListener("statechange", () => {
-      if (w.state === "activated") { clearTimeout(t); resolve(); }
-      if (w.state === "redundant") { clearTimeout(t); reject(new Error("Phone alert setup failed. Please try again.")); }
+      if (w.state === "activated") {
+        clearTimeout(t);
+        resolve();
+      }
+      if (w.state === "redundant") {
+        clearTimeout(t);
+        reject(new Error("Phone alert setup failed. Please try again."));
+      }
     });
   });
 }
@@ -26,8 +37,14 @@ export function pushSupport(): PushStatus | null {
   if (typeof window === "undefined") return "unsupported";
   if (window.top !== window.self) return "open-in-new-tab";
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone;
-  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+  const standalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as { standalone?: boolean }).standalone;
+  if (
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window) ||
+    !("Notification" in window)
+  ) {
     return ios && !standalone ? "install-first" : "unsupported";
   }
   if (Notification.permission === "denied") return "denied";
@@ -43,22 +60,28 @@ export async function currentPushStatus(): Promise<PushStatus> {
 }
 
 /** Must be called from a tap/click. */
-export async function enablePush(userId: string): Promise<PushStatus> {
+export async function enablePush(): Promise<PushStatus> {
   const blocked = pushSupport();
   if (blocked) return blocked;
-  const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  const perm =
+    Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (perm !== "granted") return "denied";
   const reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/push-alerts/" });
   // navigator.serviceWorker.ready never resolves here (the worker's scope doesn't cover this page),
   // so wait for this registration's own worker to activate.
   await waitForActive(reg);
   let sub = await reg.pushManager.getSubscription();
-  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC_KEY) });
+  if (!sub)
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: b64ToBytes(VAPID_PUBLIC_KEY),
+    });
   const j = sub.toJSON();
-  const { error } = await supabase.from("push_subscriptions").upsert(
-    { user_id: userId, endpoint: sub.endpoint, p256dh: j.keys?.["p256dh"] ?? "", auth: j.keys?.["auth"] ?? "" },
-    { onConflict: "endpoint" },
-  );
+  const { error } = await supabase.rpc("register_my_push_subscription", {
+    _endpoint: sub.endpoint,
+    _p256dh: j.keys?.["p256dh"] ?? "",
+    _auth: j.keys?.["auth"] ?? "",
+  });
   if (error) throw error;
   return "on";
 }

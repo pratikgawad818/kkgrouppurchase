@@ -15,7 +15,8 @@
     "check": "node scripts/check-public-env.mjs && npm test && npm run build && npm run typecheck"
   },
   "overrides": {
-    "rolldown": "1.2.1"
+    "rolldown": "1.2.1",
+    "esbuild": "0.25.12"
   },
   "dependencies": {
     "@pushforge/builder": "^2.0.5",
