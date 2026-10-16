@@ -1,26 +1,53 @@
 import { useEffect } from "react";
 
-/**
- * Presentation-only: copies each column header's text onto its body cells (data-label)
- * inside `.doc-table` wrappers, so the same rendered rows can display as stacked cards
- * on phones via CSS. Does not touch data, queries or handlers.
- */
+/** Keep one semantic table on desktop, with header labels on its mobile cells.
+ * Changes are coalesced per frame and only affected tables are revisited. */
 export function useDocTableLabels(root: () => HTMLElement | null) {
   useEffect(() => {
     const el = root();
     if (!el) return;
-    const label = () => {
-      el.querySelectorAll<HTMLTableElement>(".doc-table table").forEach((t) => {
-        const heads = Array.from(t.tHead?.rows[0]?.cells ?? []).map((c) => c.textContent?.trim() ?? "");
-        Array.from(t.tBodies).forEach((b) => Array.from(b.rows).forEach((r) => Array.from(r.cells).forEach((c, i) => {
-          const v = c.colSpan > 1 ? "" : heads[i] ?? "";
-          if (c.getAttribute("data-label") !== v) c.setAttribute("data-label", v);
-        })));
-      });
+    let frame = 0;
+    const pending = new Set<HTMLTableElement>();
+    const collect = (node: Node) => {
+      const element = node instanceof Element ? node : node.parentElement;
+      if (!element) return;
+      const table = element.closest<HTMLTableElement>(".doc-table table");
+      if (table) pending.add(table);
+      element
+        .querySelectorAll<HTMLTableElement>(".doc-table table")
+        .forEach((table) => pending.add(table));
     };
+    const label = () => {
+      frame = 0;
+      for (const table of pending) {
+        if (!table.isConnected) continue;
+        const headers = Array.from(table.tHead?.rows[0]?.cells ?? []).map(
+          (cell) => cell.textContent?.trim() ?? "",
+        );
+        Array.from(table.tBodies).forEach((body) =>
+          Array.from(body.rows).forEach((row) =>
+            Array.from(row.cells).forEach((cell, index) => {
+              const value = cell.colSpan > 1 ? "" : (headers[index] ?? "");
+              if (cell.getAttribute("data-label") !== value) cell.setAttribute("data-label", value);
+            }),
+          ),
+        );
+      }
+      pending.clear();
+    };
+    collect(el);
     label();
-    const mo = new MutationObserver(label);
-    mo.observe(el, { childList: true, subtree: true });
-    return () => mo.disconnect();
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        collect(mutation.target);
+        mutation.addedNodes.forEach(collect);
+      }
+      if (pending.size && !frame) frame = window.requestAnimationFrame(label);
+    });
+    observer.observe(el, { childList: true, characterData: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, [root]);
 }

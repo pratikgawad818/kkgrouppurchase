@@ -201,6 +201,7 @@ export function PrForm({
           <div>
             <Label>Project *</Label>
             <select
+              aria-label="Project"
               className={sel}
               value={h.project_id}
               onChange={(e) =>
@@ -218,6 +219,7 @@ export function PrForm({
           <div>
             <Label>Building</Label>
             <select
+              aria-label="Building"
               className={sel}
               value={h.building_id}
               disabled={!h.project_id}
@@ -234,6 +236,7 @@ export function PrForm({
           <div>
             <Label>Floor</Label>
             <select
+              aria-label="Floor"
               className={sel}
               value={h.floor_id}
               disabled={!h.building_id}
@@ -250,6 +253,7 @@ export function PrForm({
           <div>
             <Label>Required by *</Label>
             <Input
+              aria-label="Required by"
               type="date"
               value={h.required_by}
               onChange={(e) => setH({ ...h, required_by: e.target.value })}
@@ -258,6 +262,7 @@ export function PrForm({
           <div>
             <Label>Priority</Label>
             <select
+              aria-label="Priority"
               className={sel}
               value={h.priority}
               onChange={(e) => setH({ ...h, priority: e.target.value as PrPriority })}
@@ -272,6 +277,7 @@ export function PrForm({
           <div>
             <Label>Request type</Label>
             <select
+              aria-label="Request type"
               className={sel}
               value={h.request_type}
               onChange={(e) => setH({ ...h, request_type: e.target.value as PrType })}
@@ -286,6 +292,7 @@ export function PrForm({
           <div className="sm:col-span-2">
             <Label>Purpose *</Label>
             <Input
+              aria-label="Purpose"
               value={h.purpose}
               onChange={(e) => setH({ ...h, purpose: e.target.value })}
               placeholder="e.g. 5th floor slab work"
@@ -294,6 +301,7 @@ export function PrForm({
           <div className="sm:col-span-2 lg:col-span-4">
             <Label>Remarks</Label>
             <Textarea
+              aria-label="Remarks"
               rows={2}
               value={h.remarks}
               onChange={(e) => setH({ ...h, remarks: e.target.value })}
@@ -324,6 +332,7 @@ export function PrForm({
                   <div className="lg:col-span-5">
                     <Label>Material</Label>
                     <select
+                      aria-label="Material"
                       className={sel}
                       value={l.material_id}
                       onChange={(e) => {
@@ -346,6 +355,7 @@ export function PrForm({
                   <div className="lg:col-span-2">
                     <Label>Quantity</Label>
                     <Input
+                      aria-label="Quantity"
                       type="number"
                       min="0"
                       step="any"
@@ -356,6 +366,7 @@ export function PrForm({
                   <div className="lg:col-span-2">
                     <Label>Unit</Label>
                     <select
+                      aria-label="Unit"
                       className={sel}
                       value={l.unit_id}
                       onChange={(e) => setLine(i, { unit_id: e.target.value })}
@@ -371,6 +382,7 @@ export function PrForm({
                   <div className="lg:col-span-2">
                     <Label>Required by</Label>
                     <Input
+                      aria-label="Required by"
                       type="date"
                       value={l.required_by}
                       onChange={(e) => setLine(i, { required_by: e.target.value })}
@@ -390,6 +402,7 @@ export function PrForm({
                   </div>
                   <div className="sm:col-span-2 lg:col-span-12">
                     <Input
+                      aria-label="Item description"
                       placeholder="Description / specification (optional)"
                       value={l.description}
                       onChange={(e) => setLine(i, { description: e.target.value })}
@@ -404,8 +417,7 @@ export function PrForm({
                     <span>Reorder level: {num(m.reorder_level)}</span>
                     <span className="inline-flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" />
-                      Current stock is tracked from Phase 4 (Goods Received) — check the store
-                      before raising.
+                      Check stock on hand before raising a request.
                     </span>
                   </div>
                 )}
