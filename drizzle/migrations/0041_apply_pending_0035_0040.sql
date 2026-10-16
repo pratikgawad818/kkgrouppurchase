@@ -1,0 +1,1 @@
+COMMENT ON TABLE public.notifications IS 'In-app notifications per user; pushed to subscribed devices.';

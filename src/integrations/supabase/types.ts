@@ -52,6 +52,42 @@ export type Database = {
           },
         ]
       }
+      approval_reminder_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          po_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          po_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          po_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_reminder_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_reminder_events_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1560,6 +1596,41 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      procurement_save_receipts: {
+        Row: {
+          actor_id: string
+          created_at: string
+          document_id: string
+          operation: string
+          payload_hash: string
+          request_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          document_id: string
+          operation: string
+          payload_hash: string
+          request_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          document_id?: string
+          operation?: string
+          payload_hash?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_save_receipts_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -4701,6 +4772,15 @@ export type Database = {
         Args: { _quotation_id: string; _rfq_id: string }
         Returns: string
       }
+      create_rfq_draft: {
+        Args: {
+          _header: Json
+          _pr_id: string
+          _request_id: string
+          _vendor_ids: string[]
+        }
+        Returns: string
+      }
       create_stock_adjustment: {
         Args: {
           _items: Json
@@ -4709,6 +4789,13 @@ export type Database = {
           _warehouse_id: string
         }
         Returns: string
+      }
+      document_actor_names: {
+        Args: { _ids: string[]; _kind: string }
+        Returns: {
+          actor_id: string
+          full_name: string
+        }[]
       }
       ensure_profile: {
         Args: never
@@ -4804,13 +4891,25 @@ export type Database = {
         Returns: string
       }
       norm_bill_no: { Args: { _t: string }; Returns: string }
-      notify_permission_holders: {
+      notify_document_approvers: {
         Args: {
           _body: string
+          _company: string
           _exclude: string
           _link: string
           _perm: string
+          _project: string
           _title: string
+        }
+        Returns: undefined
+      }
+      notify_document_creator: {
+        Args: {
+          _company: string
+          _link: string
+          _project: string
+          _title: string
+          _user: string
         }
         Returns: undefined
       }
@@ -4974,6 +5073,10 @@ export type Database = {
         }
         Returns: number
       }
+      register_my_push_subscription: {
+        Args: { _auth: string; _endpoint: string; _p256dh: string }
+        Returns: undefined
+      }
       register_vendor_delivery_challan: {
         Args: { _header: Json; _items: Json; _po_id: string }
         Returns: string
@@ -4993,6 +5096,17 @@ export type Database = {
       run_invoice_match: {
         Args: { _id: string }
         Returns: Database["public"]["Enums"]["match_status"]
+      }
+      save_purchase_request: {
+        Args: {
+          _expected_updated_at?: string
+          _header: Json
+          _id: string
+          _items: Json
+          _request_id: string
+          _submit?: boolean
+        }
+        Returns: string
       }
       save_vendor_invoice: {
         Args: { _header: Json; _id: string; _items: Json }
