@@ -1,4 +1,4 @@
-/** Fetch votes for currently pending documents, not arbitrary historical votes. */
+/** Query votes for explicit documents, never an unbounded historical vote list. */
 export type ApprovalKind = "purchase_order" | "vendor_payment";
 export type VoteFetchBatch = { kind: ApprovalKind; ids: string[] };
 
