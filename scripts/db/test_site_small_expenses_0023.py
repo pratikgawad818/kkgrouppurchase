@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from uuid import uuid4
-from datetime import date,timedelta
+from datetime import timedelta
 import psycopg
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -67,10 +67,14 @@ def denied(c,operation):
     c.execute("RELEASE SAVEPOINT expense_denied")
     raise AssertionError("Expected operation denial")
 
+def business_date(c):
+    # Match the RPC's business calendar, including when the UTC runner is a day behind India.
+    return c.execute("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date").fetchone()[0]
+
 def record(c,entry_key,project=PROJECT_A,building=BUILDING_A,amount="120.50",description="Construction site drinking water",spent_on=None):
     return c.execute(
       "SELECT public.record_site_small_expense(%s::uuid,%s::uuid,%s::uuid,%s::date,%s,%s::numeric,%s,%s,%s,%s)",
-      (entry_key,project,building,spent_on or date.today(),"site_supplies",amount,"cash","Local supplier",
+      (entry_key,project,building,spent_on or business_date(c),"site_supplies",amount,"cash","Local supplier",
        description,"BILL-2026-01")).fetchone()[0]
 
 def test_create_idempotent_and_void():
@@ -84,7 +88,7 @@ def test_create_idempotent_and_void():
         denied(c,lambda:record(c,str(uuid4()),amount="0"))
         denied(c,lambda:record(c,str(uuid4()),amount="50000.01"))
         denied(c,lambda:record(c,str(uuid4()),amount="1.234"))
-        denied(c,lambda:record(c,str(uuid4()),spent_on=date.today()+timedelta(days=1)))
+        denied(c,lambda:record(c,str(uuid4()),spent_on=business_date(c)+timedelta(days=1)))
         denied(c,lambda:record(c,str(uuid4()),project=PROJECT_B,building=BUILDING_B))
         denied(c,lambda:record(c,str(uuid4()),project=PROJECT_A,building=BUILDING_B))
         denied(c,lambda:record(c,str(uuid4()),project=None,building=BUILDING_A))
@@ -103,8 +107,7 @@ def test_india_business_date_independent_of_session_timezone():
     with db() as c:
         c.execute("SET TIME ZONE 'America/Los_Angeles'")
         actor(c, ADMIN_A)
-        india_today = c.execute(
-          "SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date").fetchone()[0]
+        india_today = business_date(c)
         permitted = str(uuid4())
         expense_id = record(c, permitted, spent_on=india_today)
         assert expense_id is not None
