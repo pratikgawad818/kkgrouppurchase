@@ -1,3 +1,4 @@
+import type { PendingRpc } from "@/lib/pending-rpc";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -156,7 +157,7 @@ export function PrForm({
         _expected_updated_at: expectedUpdatedAt ?? null,
       };
       attempt.current = saveAttempt(attempt.current, payload);
-      const { data: prId, error } = await supabase.rpc("save_purchase_request", {
+      const { data: prId, error } = await (supabase.rpc as unknown as PendingRpc<string>)("save_purchase_request", {
         ...payload,
         _request_id: attempt.current.id,
       });
