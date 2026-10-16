@@ -1,3 +1,4 @@
+import { RegisterFilters } from "@/components/erp/register-filters";
 import { safeSearch } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -152,7 +153,11 @@ function PrList() {
           )
         }
       />
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <RegisterFilters
+        activeCount={
+          [status, projectId, buildingId, priority, requester, fy, from, to].filter(Boolean).length
+        }
+      >
         <SearchBox
           value={text}
           onChange={(v) => {
@@ -281,7 +286,7 @@ function PrList() {
           }}
           aria-label="To date"
         />
-      </div>
+      </RegisterFilters>
       {q.isLoading ? (
         <Loading />
       ) : q.error ? (
