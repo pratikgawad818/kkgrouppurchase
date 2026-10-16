@@ -1,4 +1,3 @@
-import type { PendingRpc } from "@/lib/pending-rpc";
 import { supabase } from "@/integrations/supabase/client";
 
 export async function documentActorNames(
@@ -7,7 +6,7 @@ export async function documentActorNames(
 ) {
   const names = new Map<string, string>();
   for (let start = 0; start < ids.length; start += 100) {
-    const { data, error } = await (supabase.rpc as unknown as PendingRpc<{ actor_id: string; full_name: string | null }[]>)("document_actor_names", {
+    const { data, error } = await supabase.rpc("document_actor_names", {
       _kind: kind,
       _ids: [...ids.slice(start, start + 100)],
     });
