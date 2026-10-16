@@ -52,6 +52,14 @@ test("finance manager and site staff get their own modules, not others", () => {
   assert.equal(canAccessPage("/settings/users", store), false);
 });
 
+test("payment detail keeps payment-read authorization and the management viewer whitelist", () => {
+  assert.equal(canAccessPage("/finance/payments/pay-1", subject("director", "payment.view")), true);
+  assert.equal(canAccessPage("/finance/payments/pay-1", subject("accountant", "payment.view")), true);
+  assert.equal(canAccessPage("/finance/payments/pay-1", subject("site_engineer", "inventory.view")), false);
+  assert.equal(canAccessPage("/finance/payments/pay-1", subject("auditor", "payment.view")), false);
+  assert.equal(canAccessPage("/finance/payments/pay-1/edit", owner), false);
+});
+
 test("manually typed /new /edit and sensitive nested pages require action permissions", () => {
   const viewer = subject("purchase_manager", "purchase_request.view","rfq.view",
     "quotation.view","vendor_invoice.view");

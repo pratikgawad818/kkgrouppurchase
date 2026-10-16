@@ -49,7 +49,7 @@ const rules: readonly Rule[] = [
   { pattern: /^\/finance\/vendor-invoices\/new\/?$/, any: ["vendor_invoice.create"] },
   { pattern: /^\/finance\/vendor-invoices(?:\/[^/]+)?\/?$/, any: ["vendor_invoice.view"] },
   { pattern: /^\/finance\/payables\/?$/, any: ["payable.view"] },
-  { pattern: /^\/finance\/payments\/?$/, any: ["payment.view"] },
+  { pattern: /^\/finance\/payments(?:\/[^/]+)?\/?$/, any: ["payment.view"] },
   { pattern: /^\/finance\/vendor-ledger\/?$/, any: ["ledger.view"] },
   { pattern: /^\/finance\/small-expenses\/?$/, any: ["financial.view"] },
 
