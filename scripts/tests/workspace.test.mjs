@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { workspaceNavigation, workspaceLocation } from "../../src/lib/workspace-navigation.ts";
+import {
+  workspaceNavigation,
+  workspaceLocation,
+  mobileWorkspaceNavigation,
+} from "../../src/lib/workspace-navigation.ts";
 import { orderedTasks, taskDue } from "../../src/lib/workspace-tasks.ts";
 
 test("site staff navigation keeps operational scope without exposing finance or director approvals", () => {
@@ -79,5 +83,45 @@ test("task grouping keeps overdue work ahead of undated work without mutating ca
   assert.deepEqual(
     input.map((task) => task.id),
     ["a", "b", "c"],
+  );
+});
+
+test("director phone shortcuts put approvals first and open purchase orders directly", () => {
+  const groups = workspaceNavigation({
+    roles: ["director"],
+    permissions: new Set([
+      "purchase_order.view",
+      "purchase_order.approve",
+      "purchase_request.view",
+      "payment.view",
+      "inventory.view",
+    ]),
+  });
+  assert.deepEqual(
+    mobileWorkspaceNavigation(groups, true).map(({ label, to }) => [label, to]),
+    [
+      ["Home", "/dashboard"],
+      ["Approvals", "/approvals"],
+      ["Orders", "/procurement/purchase-orders"],
+      ["Payments", "/finance/payments"],
+    ],
+  );
+});
+test("mobile director shortcuts never invent permissions or expose unauthorized order routes", () => {
+  const groups = workspaceNavigation({
+    roles: ["site_engineer"],
+    permissions: new Set(["purchase_request.view"]),
+  });
+  const paths = mobileWorkspaceNavigation(groups, true).map((item) => item.to);
+  assert.deepEqual(paths, ["/dashboard"]);
+});
+test("operational phone shortcuts preserve purchasing and stock access", () => {
+  const groups = workspaceNavigation({
+    roles: ["store_manager"],
+    permissions: new Set(["purchase_request.view", "inventory.view"]),
+  });
+  assert.deepEqual(
+    mobileWorkspaceNavigation(groups).map((item) => item.label),
+    ["Home", "Purchasing", "Stock"],
   );
 });

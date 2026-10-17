@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ApprovalDecisionDialog } from "@/components/erp/approval-decision-dialog";
 import { documentActorNames } from "@/lib/document-actors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,10 @@ function PoDetail() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["po", id], queryFn: () => loadPo(id) });
   const [dlg, setDlg] = useState<null | PoAction>(null);
+  const [approvalDecision, setApprovalDecision] = useState<"approved" | "rejected">("approved");
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const approvalTrigger = useRef<HTMLButtonElement | null>(null);
+  const orderHeading = useRef<HTMLDivElement | null>(null);
   const [comment, setComment] = useState("");
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [sc, setSc] = useState<null | { id: string; max: number; name: string }>(null);
@@ -132,6 +137,9 @@ function PoDetail() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["po", id] });
     qc.invalidateQueries({ queryKey: ["pos"] });
+    qc.invalidateQueries({ queryKey: ["director-approvals"] });
+    qc.invalidateQueries({ queryKey: ["director-pending-count"] });
+    qc.invalidateQueries({ queryKey: ["approval-decisions"] });
   };
 
   useEffect(() => {
@@ -177,6 +185,7 @@ function PoDetail() {
     },
     onSuccess: () => {
       toast.success("Updated");
+      setApprovalOpen(false);
       setDlg(null);
       setComment("");
       refresh();
@@ -224,134 +233,167 @@ function PoDetail() {
   return (
     <>
       <PrintPo po={po} items={items} history={history} />
-      <div className="print:hidden">
-        <PageHeader
-          crumbs={
-            <Link to="/procurement/purchase-orders" className="hover:underline">
-              Purchase Orders
-            </Link>
-          }
-          title={po.po_number}
-          subtitle={
-            <span className="flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                  st.cls,
-                )}
-              >
-                {st.label}
-              </span>
-              {po.vendors?.company_name} · {po.projects?.name}
-              {po.buildings?.name ? ` · ${po.buildings.name}` : ""}
-            </span>
-          }
-          actions={
-            <div className="flex flex-wrap gap-2">
-              {draft && can("purchase_order.create") && (
-                <Button
-                  size="sm"
-                  disabled={act.isPending || saveTerms.isPending}
-                  onClick={async () => {
-                    if (!terms.delivery_warehouse_id) {
-                      toast.error("Select a delivery store and click Save terms first");
-                      return;
-                    }
-                    if (
-                      terms.delivery_warehouse_id !== (po.delivery_warehouse_id ?? "") ||
-                      terms.expected_delivery_date !== (po.expected_delivery_date ?? "") ||
-                      terms.payment_terms !== (po.payment_terms ?? "") ||
-                      terms.delivery_terms !== (po.delivery_terms ?? "") ||
-                      terms.remarks !== (po.remarks ?? "")
-                    ) {
-                      try {
-                        await saveTerms.mutateAsync();
-                      } catch {
+      <div className="purchase-order-detail print:hidden">
+        <div ref={orderHeading} tabIndex={-1} className="outline-none">
+          <PageHeader
+            crumbs={
+              <Link to="/procurement/purchase-orders" className="hover:underline">
+                Purchase Orders
+              </Link>
+            }
+            title={po.po_number}
+            subtitle={
+              <div className="space-y-2">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      "whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                      st.cls,
+                    )}
+                  >
+                    {st.label}
+                  </span>
+                  {po.vendors?.company_name} · {po.projects?.name}
+                  {po.buildings?.name ? ` · ${po.buildings.name}` : ""}
+                </span>
+                <p className="num text-3xl font-semibold tracking-tight text-foreground">
+                  <span className="sr-only">Grand total </span>
+                  {inr(po.grand_total)}
+                </p>
+              </div>
+            }
+            actions={
+              <div className="flex flex-wrap gap-2">
+                {draft && can("purchase_order.create") && (
+                  <Button
+                    size="sm"
+                    disabled={act.isPending || saveTerms.isPending}
+                    onClick={async () => {
+                      if (!terms.delivery_warehouse_id) {
+                        toast.error("Select a delivery store and click Save terms first");
                         return;
                       }
-                    }
-                    act.mutate("submitted");
-                  }}
-                >
-                  Submit for approval
-                </Button>
-              )}
-              {po.status === "pending_approval" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    const { error } = await supabase.rpc("remind_po_approvers", { _po_id: id });
-                    if (error) toast.error(errMsg(error));
-                    else toast.success("Reminder sent to directors");
-                  }}
-                >
-                  Remind directors
-                </Button>
-              )}
-              {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
-                <>
-                  <Button size="sm" disabled={act.isPending} onClick={() => act.mutate("approved")}>
-                    Approve
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setDlg("rejected")}>
-                    Reject
-                  </Button>
-                </>
-              )}
-              {po.status === "approved" && can("purchase_order.create") && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={act.isPending}
-                  onClick={() => act.mutate("sent")}
-                >
-                  Mark as sent
-                </Button>
-              )}
-              {canReceive && (
-                <Link to="/inventory/delivery-challans" search={{ po: id }}>
-                  <Button size="sm" variant="outline">
-                    Register vendor challan
-                  </Button>
-                </Link>
-              )}
-              {canReceive && (
-                <Button size="sm" onClick={() => setReceiveOpen(true)}>
-                  Receive goods
-                </Button>
-              )}
-              {["partially_received", "partially_accepted", "fully_received"].includes(po.status) &&
-                can("purchase_order.approve") && (
-                  <Button size="sm" variant="outline" onClick={() => setDlg("closed")}>
-                    Close PO
+                      if (
+                        terms.delivery_warehouse_id !== (po.delivery_warehouse_id ?? "") ||
+                        terms.expected_delivery_date !== (po.expected_delivery_date ?? "") ||
+                        terms.payment_terms !== (po.payment_terms ?? "") ||
+                        terms.delivery_terms !== (po.delivery_terms ?? "") ||
+                        terms.remarks !== (po.remarks ?? "")
+                      ) {
+                        try {
+                          await saveTerms.mutateAsync();
+                        } catch {
+                          return;
+                        }
+                      }
+                      act.mutate("submitted");
+                    }}
+                  >
+                    Submit for approval
                   </Button>
                 )}
-              {["draft", "pending_approval", "approved", "rejected", "sent"].includes(po.status) &&
-                grns.length === 0 &&
-                can("purchase_order.cancel") && (
-                  <Button size="sm" variant="ghost" onClick={() => setDlg("cancelled")}>
-                    Cancel
+                {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
+                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                    <Button
+                      className="approval-action min-h-12"
+                      variant="outline"
+                      disabled={act.isPending}
+                      onClick={(event) => {
+                        approvalTrigger.current = event.currentTarget;
+                        act.reset();
+                        setComment("");
+                        setApprovalDecision("rejected");
+                        setApprovalOpen(true);
+                      }}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      className="approval-action min-h-12"
+                      disabled={act.isPending}
+                      onClick={(event) => {
+                        approvalTrigger.current = event.currentTarget;
+                        act.reset();
+                        setComment("");
+                        setApprovalDecision("approved");
+                        setApprovalOpen(true);
+                      }}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                )}
+                {po.status === "pending_approval" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      const { error } = await supabase.rpc("remind_po_approvers", { _po_id: id });
+                      if (error) toast.error(errMsg(error));
+                      else toast.success("Reminder sent to directors");
+                    }}
+                  >
+                    Remind directors
                   </Button>
                 )}
-              <Button size="sm" variant="ghost" onClick={() => window.print()}>
-                Print
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  const t = document.title;
-                  document.title = po.po_number;
-                  window.print();
-                  document.title = t;
-                }}
-              >
-                Download PDF
-              </Button>
-            </div>
-          }
-        />
+                {po.status === "approved" && can("purchase_order.create") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={act.isPending}
+                    onClick={() => act.mutate("sent")}
+                  >
+                    Mark as sent
+                  </Button>
+                )}
+                {canReceive && (
+                  <Link to="/inventory/delivery-challans" search={{ po: id }}>
+                    <Button size="sm" variant="outline">
+                      Register vendor challan
+                    </Button>
+                  </Link>
+                )}
+                {canReceive && (
+                  <Button size="sm" onClick={() => setReceiveOpen(true)}>
+                    Receive goods
+                  </Button>
+                )}
+                {["partially_received", "partially_accepted", "fully_received"].includes(
+                  po.status,
+                ) &&
+                  can("purchase_order.approve") && (
+                    <Button size="sm" variant="outline" onClick={() => setDlg("closed")}>
+                      Close PO
+                    </Button>
+                  )}
+                {["draft", "pending_approval", "approved", "rejected", "sent"].includes(
+                  po.status,
+                ) &&
+                  grns.length === 0 &&
+                  can("purchase_order.cancel") && (
+                    <Button size="sm" variant="ghost" onClick={() => setDlg("cancelled")}>
+                      Cancel
+                    </Button>
+                  )}
+                <Button size="sm" variant="ghost" onClick={() => window.print()}>
+                  Print
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const t = document.title;
+                    document.title = po.po_number;
+                    window.print();
+                    document.title = t;
+                  }}
+                >
+                  Download PDF
+                </Button>
+              </div>
+            }
+          />
+        </div>
         {po.status === "pending_approval" && mine && (
           <div className="mb-3 text-xs text-muted-foreground">
             Another approver must approve this PO — you created it.
@@ -708,6 +750,31 @@ function PoDetail() {
           </section>
         </div>
 
+        <ApprovalDecisionDialog
+          open={approvalOpen}
+          target={{
+            kind: "purchase_order",
+            number: po.po_number,
+            amount: Number(po.grand_total),
+            project: po.projects?.name ?? "Project",
+            vendor: po.vendors?.company_name ?? "Supplier",
+          }}
+          decision={approvalDecision}
+          comment={comment}
+          onComment={setComment}
+          onConfirm={() => {
+            if (approvalOpen && !act.isPending) act.mutate(approvalDecision);
+          }}
+          onClose={() => {
+            if (!act.isPending) setApprovalOpen(false);
+          }}
+          onReturnFocus={() => {
+            if (approvalTrigger.current?.isConnected) approvalTrigger.current.focus();
+            else orderHeading.current?.focus();
+          }}
+          busy={act.isPending}
+          error={act.error ? errMsg(act.error) : undefined}
+        />
         <Dialog open={!!dlg} onOpenChange={(o) => !o && setDlg(null)}>
           <DialogContent>
             <DialogHeader>

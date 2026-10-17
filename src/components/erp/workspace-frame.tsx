@@ -34,7 +34,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { workspaceLocation, type WorkspaceNavGroup } from "@/lib/workspace-navigation";
+import {
+  mobileWorkspaceNavigation,
+  workspaceLocation,
+  type WorkspaceNavGroup,
+} from "@/lib/workspace-navigation";
 import { cn } from "@/lib/utils";
 
 const icons = {
@@ -80,6 +84,7 @@ export type WorkspaceFrameProps = {
   groups: WorkspaceNavGroup[];
   name: string;
   role: string;
+  isDirector?: boolean;
   avatar?: string | null | undefined;
   notifications?: ReactNode;
   pendingApprovals?: number | undefined;
@@ -94,6 +99,7 @@ export function WorkspaceFrame({
   groups,
   name,
   role,
+  isDirector = false,
   avatar,
   notifications,
   pendingApprovals = 0,
@@ -256,9 +262,7 @@ export function WorkspaceFrame({
       </div>
     </nav>
   );
-  const bottom = groups.filter((group) =>
-    ["home", "purchasing", "stock", "finance"].includes(group.key),
-  );
+  const bottom = mobileWorkspaceNavigation(groups, isDirector);
   return (
     <div className="workspace-frame">
       <a href="#workspace-main" className="workspace-skip-link">
@@ -432,20 +436,22 @@ export function WorkspaceFrame({
           return (
             <Link
               key={group.key}
-              to={group.items[0]!.to}
+              to={group.to}
+              aria-label={
+                group.key === "approvals" && pendingApprovals > 0
+                  ? `Approvals, ${pendingApprovals} pending`
+                  : undefined
+              }
               aria-current={active ? "page" : undefined}
               className={cn(active && "is-active")}
             >
               <Icon aria-hidden />
-              <span>
-                {group.key === "home"
-                  ? "Home"
-                  : group.key === "purchasing"
-                    ? "Purchasing"
-                    : group.key === "stock"
-                      ? "Stock"
-                      : "Payments"}
-              </span>
+              {group.key === "approvals" && pendingApprovals > 0 && (
+                <span className="workspace-bottom-badge" aria-hidden="true">
+                  {pendingApprovals > 99 ? "99+" : pendingApprovals}
+                </span>
+              )}
+              <span>{group.label}</span>
             </Link>
           );
         })}
