@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { PAYMENT_MODES, PAYMENT_STATUS, openVendorDoc } from "@/lib/finance";
 import { checkedAdvanceUsage, remainingAdvanceAmount } from "@/lib/payment-preflight";
-import { useCan } from "@/lib/session";
+import { useCan, useMe } from "@/lib/session";
 import { errMsg, fmtDate, fmtDateTime, inr } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/_shell/finance/payments/$id")({
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/_authenticated/_shell/finance/payments/$i
 function PaymentDetail() {
   const { id } = Route.useParams();
   const can = useCan();
+  const me = useMe();
   const q = useQuery({
     queryKey: ["payment-detail", id],
     queryFn: async () => {
@@ -140,6 +141,15 @@ function PaymentDetail() {
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-16">
       <PageHeader
+        actions={
+          p.status === "scheduled" && me.data?.roles.includes("director") ? (
+            <Button className="approval-action" asChild>
+              <Link to="/approvals" search={{ kind: "vendor_payment", view: "pending", id }}>
+                Review approval
+              </Link>
+            </Button>
+          ) : undefined
+        }
         title={p.payment_number}
         crumbs={
           <Link to="/finance/payments" className="text-primary hover:underline">
@@ -154,9 +164,13 @@ function PaymentDetail() {
       />
       <section className="rounded-xl border bg-card p-4 sm:p-6">
         <p className="mb-5 text-3xl font-semibold tabular-nums">{inr(p.amount)}</p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Vendor">{p.vendors?.company_name}</Field>
-          <Field label="Project">{p.projects?.name ?? "Company-wide"}</Field>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <Field className="col-span-2 sm:col-span-1" label="Vendor">
+            {p.vendors?.company_name}
+          </Field>
+          <Field className="col-span-2 sm:col-span-1" label="Project">
+            {p.projects?.name ?? "Company-wide"}
+          </Field>
           <Field label="Type">{p.kind === "advance" ? "Vendor advance" : "Invoice payment"}</Field>
           <Field label="Payment date">{fmtDate(p.payment_date)}</Field>
           <Field label="Payment mode">
@@ -168,7 +182,11 @@ function PaymentDetail() {
           <Field label="Created by">{p.creator?.full_name ?? "Staff name unavailable"}</Field>
           <Field label="Created at">{fmtDateTime(p.created_at)}</Field>
           <Field label="Approved by">
-            {p.approver?.full_name ?? (p.approved_at ? "Staff name unavailable" : "—")}
+            {p.approved_by || p.approved_at
+              ? (p.approver?.full_name ?? "Staff name unavailable")
+              : p.status === "scheduled"
+                ? "Awaiting approval"
+                : "—"}
           </Field>
           <Field label="Approved at">{p.approved_at ? fmtDateTime(p.approved_at) : "—"}</Field>
           {p.recorded_at && (

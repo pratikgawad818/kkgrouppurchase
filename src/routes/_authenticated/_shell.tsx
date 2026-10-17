@@ -99,6 +99,7 @@ function Shell() {
       groups={blocked ? [] : workspaceNavigation(access)}
       name={profile.full_name ?? profile.email ?? "My account"}
       role={roles.map((role) => ROLE_LABEL[role]).join(", ") || "Awaiting access"}
+      isDirector={isDirector}
       avatar={avatar.data}
       notifications={<NotificationBell userId={profile.id} />}
       pendingApprovals={isDirector && !pending.isError ? pending.data : undefined}

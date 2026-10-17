@@ -96,3 +96,32 @@ export function workspaceLocation(path: string, groups: WorkspaceNavGroup[]) {
     .filter(({ item }) => path === item.to || path.startsWith(item.to + "/"))
     .sort((a, b) => b.item.to.length - a.item.to.length)[0];
 }
+
+/** Choose shortcuts only from already-authorized routes. Directors review work first. */
+export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirector = false) {
+  const keys = isDirector
+    ? ["home", "approvals", "purchasing", "finance"]
+    : ["home", "purchasing", "stock", "finance"];
+  return keys.flatMap((key) => {
+    const group = groups.find((entry) => entry.key === key);
+    if (!group) return [];
+    const target =
+      isDirector && key === "purchasing"
+        ? group.items.find((item) => item.to === "/procurement/purchase-orders")
+        : group.items[0];
+    if (!target) return [];
+    const label =
+      key === "home"
+        ? "Home"
+        : key === "approvals"
+          ? "Approvals"
+          : key === "purchasing"
+            ? isDirector
+              ? "Orders"
+              : "Purchasing"
+            : key === "stock"
+              ? "Stock"
+              : "Payments";
+    return [{ key, to: target.to, label }];
+  });
+}
