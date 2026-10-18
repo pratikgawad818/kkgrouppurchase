@@ -56,7 +56,14 @@ export async function currentPushStatus(): Promise<PushStatus> {
   if (blocked) return blocked;
   const reg = await navigator.serviceWorker.getRegistration("/push-alerts/");
   const sub = await reg?.pushManager.getSubscription();
-  return sub && Notification.permission === "granted" ? "on" : "off";
+  if (!sub || Notification.permission !== "granted") return "off";
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("id")
+    .eq("endpoint", sub.endpoint)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? "on" : "off";
 }
 
 /** Must be called from a tap/click. */
