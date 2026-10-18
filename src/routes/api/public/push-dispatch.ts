@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { buildPushHTTPRequest } from "@pushforge/builder";
+import { sendPushRequest } from "@/lib/push-transport";
 import {
   allowedPushEndpoint,
   internalNotificationLink,
@@ -104,13 +105,7 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
               },
             });
             // Provider redirects must never turn an approved destination into an arbitrary request.
-            const res = await fetch(req.endpoint, {
-              method: "POST",
-              headers: req.headers,
-              body: req.body,
-              redirect: "error",
-              signal: AbortSignal.timeout(5000),
-            });
+            const res = await sendPushRequest(req);
             if (res.status === 404 || res.status === 410) {
               await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
             } else if (!res.ok) {
