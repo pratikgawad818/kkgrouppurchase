@@ -1,0 +1,2 @@
+- [ ] Remove director-reminder cooldown while preserving access checks and reminder history.
+- [ ] Diagnose and correct failed phone alert delivery; verify what can be tested safely.
