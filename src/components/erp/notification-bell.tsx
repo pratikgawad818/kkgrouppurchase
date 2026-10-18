@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { currentPushStatus, enablePush, type PushStatus } from "@/lib/web-push";
+import { ensureDirectorPush, enablePush, type PushStatus } from "@/lib/web-push";
 import { errMsg } from "@/lib/format";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -18,7 +18,7 @@ function ago(iso: string) {
   return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
 }
 
-export function NotificationBell({ userId }: { userId: string }) {
+export function NotificationBell({ userId, isDirector = false }: { userId: string; isDirector?: boolean }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const key = ["notifications", userId];
@@ -101,10 +101,24 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [push, setPush] = useState<PushStatus | null>(null);
   const [settingUpPush, setSettingUpPush] = useState(false);
   useEffect(() => {
-    currentPushStatus()
-      .then(setPush)
-      .catch(() => setPush("unsupported"));
-  }, []);
+    let active = true;
+    let checking = false;
+    async function sync() {
+      if (checking) return;
+      checking = true;
+      try {
+        const status = await ensureDirectorPush(isDirector);
+        if (active) setPush(status);
+      } catch {
+        if (active) setPush("off");
+      } finally {
+        checking = false;
+      }
+    }
+    void sync();
+    window.addEventListener("focus", sync);
+    return () => { active = false; window.removeEventListener("focus", sync); };
+  }, [userId, isDirector]);
   async function turnOn() {
     if (settingUpPush) return;
     setSettingUpPush(true);
@@ -134,6 +148,10 @@ export function NotificationBell({ userId }: { userId: string }) {
           variant="ghost"
           size="icon"
           aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+          onClick={() => {
+            // This tap is the browser-required gesture for first-time permission.
+            if (isDirector && push === "off") void turnOn();
+          }}
           className="relative h-11 w-11 md:h-9 md:w-9"
         >
           <Bell className="h-5 w-5 md:h-4 md:w-4" />
@@ -153,7 +171,7 @@ export function NotificationBell({ userId }: { userId: string }) {
             </button>
           )}
         </div>
-        {(push === "off" || push === "on") && (
+        {!isDirector && (push === "off" || push === "on") && (
           <Button
             variant="ghost"
             onClick={turnOn}

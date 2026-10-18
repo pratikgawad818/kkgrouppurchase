@@ -66,7 +66,17 @@ export async function currentPushStatus(): Promise<PushStatus> {
   return data ? "on" : "off";
 }
 
-/** Must be called from a tap/click. */
+/** Directors automatically register when permission was already granted; never prompt without a tap. */
+export async function ensureDirectorPush(isDirector: boolean): Promise<PushStatus> {
+  if (!isDirector) return currentPushStatus();
+  const blocked = pushSupport();
+  if (blocked) return blocked;
+  if (Notification.permission !== "granted") return "off";
+  const status = await currentPushStatus();
+  return status === "on" ? status : enablePush();
+}
+
+/** Must be called from a tap/click unless notification permission is already granted. */
 export async function enablePush(): Promise<PushStatus> {
   const blocked = pushSupport();
   if (blocked) return blocked;

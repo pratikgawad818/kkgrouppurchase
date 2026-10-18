@@ -101,7 +101,7 @@ function Shell() {
       role={roles.map((role) => ROLE_LABEL[role]).join(", ") || "Awaiting access"}
       isDirector={isDirector}
       avatar={avatar.data}
-      notifications={<NotificationBell userId={profile.id} />}
+      notifications={<NotificationBell key={profile.id} userId={profile.id} isDirector={isDirector && profile.is_active} />}
       pendingApprovals={isDirector && !pending.isError ? pending.data : undefined}
       navigating={showProgress}
       onSignOut={() => void signOut()}
