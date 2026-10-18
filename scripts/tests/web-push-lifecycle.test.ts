@@ -11,7 +11,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-import { currentPushStatus, enablePush } from "../../src/lib/web-push";
+import { currentPushStatus, enablePush, ensureDirectorPush } from "../../src/lib/web-push";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
@@ -45,4 +45,36 @@ test("turning on alerts renews an expired endpoint before registering the new on
   expect(mocks.rpc).toHaveBeenCalledWith("register_my_push_subscription", {
     _endpoint: "new", _p256dh: "key", _auth: "auth",
   });
+});
+
+test("Directors automatically register alerts when phone permission is granted", async () => {
+  const { subscribe } = browser();
+  mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+  expect(await ensureDirectorPush(true)).toBe("on");
+  expect(subscribe).toHaveBeenCalledTimes(1);
+  expect(mocks.rpc).toHaveBeenCalledTimes(1);
+});
+
+test("Director automatic setup does not prompt without the phone-required gesture", async () => {
+  const { subscribe } = browser();
+  const requestPermission = vi.fn();
+  vi.stubGlobal("Notification", { permission: "default", requestPermission });
+  expect(await ensureDirectorPush(true)).toBe("off");
+  expect(requestPermission).not.toHaveBeenCalled();
+  expect(subscribe).not.toHaveBeenCalled();
+});
+
+test("staff who are not Directors do not automatically subscribe", async () => {
+  const { subscribe } = browser();
+  mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+  expect(await ensureDirectorPush(false)).toBe("off");
+  expect(subscribe).not.toHaveBeenCalled();
+});
+
+test("Directors with active phone alerts keep their existing registration", async () => {
+  const { subscribe, unsubscribe } = browser();
+  mocks.maybeSingle.mockResolvedValue({ data: { id: "device" }, error: null });
+  expect(await ensureDirectorPush(true)).toBe("on");
+  expect(subscribe).not.toHaveBeenCalled();
+  expect(unsubscribe).not.toHaveBeenCalled();
 });
