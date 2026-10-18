@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { currentPushStatus, disablePush, enablePush, type PushStatus } from "@/lib/web-push";
+import { currentPushStatus, enablePush, type PushStatus } from "@/lib/web-push";
 import { errMsg } from "@/lib/format";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -109,8 +109,6 @@ export function NotificationBell({ userId }: { userId: string }) {
     if (settingUpPush) return;
     setSettingUpPush(true);
     try {
-      // Renew expired browser subscriptions instead of saving the same dead endpoint again.
-      await disablePush();
       const s = await enablePush();
       setPush(s);
       if (s === "on") toast.success("Phone alerts are on for this device");

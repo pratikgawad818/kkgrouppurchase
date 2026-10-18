@@ -73,6 +73,9 @@ export async function enablePush(): Promise<PushStatus> {
   const perm =
     Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (perm !== "granted") return "denied";
+  // Permission must be requested during the tap before awaiting subscription cleanup.
+  // Renew expired browser endpoints instead of registering the same dead one again.
+  await disablePush();
   const reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/push-alerts/" });
   // navigator.serviceWorker.ready never resolves here (the worker's scope doesn't cover this page),
   // so wait for this registration's own worker to activate.
