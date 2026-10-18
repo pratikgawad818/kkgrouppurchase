@@ -78,9 +78,9 @@ def setup():
           GRANT ALL ON storage.objects TO authenticated,service_role;
           CREATE FUNCTION storage.foldername(text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$ SELECT string_to_array($1,'/') $$;
           CREATE PUBLICATION supabase_realtime;
-          CREATE TABLE public.qa_http_requests(url text,body jsonb,headers jsonb);
-          CREATE FUNCTION net.http_post(url text,body jsonb,headers jsonb) RETURNS bigint LANGUAGE plpgsql AS $$
-            BEGIN INSERT INTO public.qa_http_requests VALUES(url,body,headers); RETURN 1; END $$;
+          CREATE TABLE public.qa_http_requests(url text,body jsonb,headers jsonb,timeout_ms integer);
+          CREATE FUNCTION net.http_post(url text,body jsonb,headers jsonb,timeout_milliseconds integer DEFAULT 5000) RETURNS bigint LANGUAGE plpgsql AS $$
+            BEGIN INSERT INTO public.qa_http_requests VALUES(url,body,headers,timeout_milliseconds); RETURN 1; END $$;
         """)
         for path in sorted((ROOT / "supabase/migrations").glob("*.sql")):
             c.execute(path.read_text())
@@ -238,6 +238,13 @@ def test_push_and_email_boundaries():
             c.execute("SELECT register_my_push_subscription(%s,%s,%s)",(endpoint+str(n),key,auth))
         denied(c,lambda:c.execute("SELECT register_my_push_subscription(%s,%s,%s)",(endpoint+'over-quota',key,auth)),"10 alert devices")
         c.execute("RESET ROLE")
+        c.execute("INSERT INTO push_config(id,vapid_private_jwk,dispatch_secret,dispatch_url) VALUES(1,'{}','qa-only','https://example.invalid/dispatch')")
+        c.execute("INSERT INTO notifications(user_id,title) VALUES(%s,'QA phone test')",(PURCHASER,))
+        assert c.execute("SELECT timeout_ms FROM qa_http_requests ORDER BY timeout_ms DESC LIMIT 1").fetchone()[0]==15000
+        assert not c.execute("SELECT has_table_privilege('authenticated','push_subscriptions','UPDATE')").fetchone()[0]
+        claimed=c.execute("UPDATE push_subscriptions SET last_test_at=now() WHERE user_id=%s AND endpoint=%s AND (last_test_at IS NULL OR last_test_at<now()-interval '30 seconds') RETURNING id",(PURCHASER,endpoint)).fetchall()
+        repeated=c.execute("UPDATE push_subscriptions SET last_test_at=now() WHERE user_id=%s AND endpoint=%s AND (last_test_at IS NULL OR last_test_at<now()-interval '30 seconds') RETURNING id",(PURCHASER,endpoint)).fetchall()
+        assert len(claimed)==1 and len(repeated)==0
         c.execute("UPDATE auth.users SET email='pending@example.invalid',email_confirmed_at=NULL WHERE id=%s",(PURCHASER,))
         assert c.execute("SELECT email FROM profiles WHERE id=%s",(PURCHASER,)).fetchone()[0]!='pending@example.invalid'
         c.execute("UPDATE auth.users SET email_confirmed_at=now() WHERE id=%s",(PURCHASER,))

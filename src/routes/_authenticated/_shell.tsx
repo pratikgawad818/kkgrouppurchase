@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
+import { disablePush, ensureDirectorPush } from "@/lib/web-push";
+import { toast } from "sonner";
 import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
 import { canAccessPage } from "@/lib/page-access";
@@ -42,6 +44,9 @@ function Shell() {
       void navigate({ to: "/management", replace: true });
   }, [path, managementViewer, navigate]);
   const isDirector = me.data?.roles.includes("director") ?? false;
+  useEffect(() => {
+    if (me.data?.profile.is_active) void ensureDirectorPush(isDirector).catch(() => {});
+  }, [me.data?.profile.id, me.data?.profile.is_active, isDirector]);
   const pending = useQuery({
     queryKey: ["director-pending-count", me.data?.profile.id],
     enabled: isDirector && !!me.data?.profile.is_active,
@@ -64,6 +69,13 @@ function Shell() {
     },
   });
   async function signOut() {
+    try {
+      await disablePush();
+    } catch {
+      toast.error(
+        "Could not fully clear phone alerts. Block this site’s notifications in browser settings if this is a shared phone.",
+      );
+    }
     await qc.cancelQueries();
     qc.clear();
     await supabase.auth.signOut();
@@ -101,7 +113,13 @@ function Shell() {
       role={roles.map((role) => ROLE_LABEL[role]).join(", ") || "Awaiting access"}
       isDirector={isDirector}
       avatar={avatar.data}
-      notifications={<NotificationBell key={profile.id} userId={profile.id} isDirector={isDirector && profile.is_active} />}
+      notifications={
+        <NotificationBell
+          key={profile.id}
+          userId={profile.id}
+          isDirector={isDirector && profile.is_active}
+        />
+      }
       pendingApprovals={isDirector && !pending.isError ? pending.data : undefined}
       navigating={showProgress}
       onSignOut={() => void signOut()}
