@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Keep ERP modules connected through source-document foreign keys and immutable ledgers so every material and monetary movement is traceable.
+- Push delivery uses the shared transport with manual redirects; Workers reject error mode, and provider redirects must never be followed.
 - Keep Phase 1 limited to authenticated master data; introduce transactional tables only in their approved phase.
 - Use project-scoped RLS for operational locations and separate role assignments from user profiles to prevent privilege escalation.
 - Keep the ERP authentication-first: `/` redirects to `/auth`, and authenticated users continue to `/dashboard`.

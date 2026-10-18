@@ -1,0 +1,3 @@
+- [x] Remove director-reminder cooldown while preserving access checks and reminder history; two immediate reminders tested in the signed-in app.
+- [x] Correct Worker-incompatible push redirect handling; sender and security tests pass in the live runtime.
+- [ ] Verify physical phone receipt after publishing and renewing Sahib’s expired phone registration; requires the phone owner.

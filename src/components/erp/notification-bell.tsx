@@ -99,18 +99,23 @@ export function NotificationBell({ userId }: { userId: string }) {
     qc.invalidateQueries({ queryKey: key });
   }
   const [push, setPush] = useState<PushStatus | null>(null);
+  const [settingUpPush, setSettingUpPush] = useState(false);
   useEffect(() => {
     currentPushStatus()
       .then(setPush)
       .catch(() => setPush("unsupported"));
   }, []);
   async function turnOn() {
+    if (settingUpPush) return;
+    setSettingUpPush(true);
     try {
       const s = await enablePush();
       setPush(s);
       if (s === "on") toast.success("Phone alerts are on for this device");
     } catch (e) {
       toast.error(errMsg(e));
+    } finally {
+      setSettingUpPush(false);
     }
   }
   const pushHint: Partial<Record<PushStatus, string>> = {
@@ -148,13 +153,15 @@ export function NotificationBell({ userId }: { userId: string }) {
             </button>
           )}
         </div>
-        {push === "off" && (
-          <button
+        {(push === "off" || push === "on") && (
+          <Button
+            variant="ghost"
             onClick={turnOn}
-            className="block min-h-11 w-full border-b bg-primary/5 px-4 py-2 text-left text-xs font-medium text-primary hover:bg-primary/10"
+            disabled={settingUpPush}
+            className="min-h-11 w-full justify-start rounded-none border-b bg-primary/5 px-4 py-2 text-left text-xs font-medium text-primary hover:bg-primary/10"
           >
-            Turn on phone alerts for this device
-          </button>
+            {settingUpPush ? "Setting up phone alerts…" : push === "on" ? "Refresh phone alerts for this device" : "Turn on phone alerts for this device"}
+          </Button>
         )}
         {push && pushHint[push] && (
           <p className="border-b bg-muted/50 px-4 py-2 text-xs text-muted-foreground">

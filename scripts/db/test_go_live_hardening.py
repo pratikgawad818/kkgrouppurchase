@@ -194,7 +194,10 @@ def test_director_notifications_and_names():
         assert all('kind=purchase_order&id=' in r[1] for r in recipients)
         actor(c,PURCHASER)
         c.execute("SELECT remind_po_approvers(%s)",(doc,))
-        denied(c,lambda:c.execute("SELECT remind_po_approvers(%s)",(doc,)),"wait 15 minutes")
+        c.execute("SELECT remind_po_approvers(%s)",(doc,))
+        c.execute("RESET ROLE")
+        assert c.execute("SELECT count(*) FROM approval_reminder_events WHERE po_id=%s",(doc,)).fetchone()[0]==2
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND title LIKE 'Reminder:%%' AND link LIKE %s",(DIRECTOR,'%'+doc)).fetchone()[0]==2
         actor(c,DIRECTOR)
         assert c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)).fetchone()[0]=='approved'
         actor(c,PURCHASER)

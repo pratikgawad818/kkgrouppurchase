@@ -56,7 +56,14 @@ export async function currentPushStatus(): Promise<PushStatus> {
   if (blocked) return blocked;
   const reg = await navigator.serviceWorker.getRegistration("/push-alerts/");
   const sub = await reg?.pushManager.getSubscription();
-  return sub && Notification.permission === "granted" ? "on" : "off";
+  if (!sub || Notification.permission !== "granted") return "off";
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("id")
+    .eq("endpoint", sub.endpoint)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? "on" : "off";
 }
 
 /** Must be called from a tap/click. */
@@ -66,6 +73,9 @@ export async function enablePush(): Promise<PushStatus> {
   const perm =
     Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (perm !== "granted") return "denied";
+  // Permission must be requested during the tap before awaiting subscription cleanup.
+  // Renew expired browser endpoints instead of registering the same dead one again.
+  await disablePush();
   const reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/push-alerts/" });
   // navigator.serviceWorker.ready never resolves here (the worker's scope doesn't cover this page),
   // so wait for this registration's own worker to activate.
