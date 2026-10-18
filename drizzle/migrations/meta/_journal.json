@@ -309,6 +309,13 @@
       "when": 1792319985432,
       "tag": "0043_remove_director_reminder_cooldown",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792323811723,
+      "tag": "0044_push_device_test",
+      "breakpoints": true
     }
   ]
 }

@@ -31,3 +31,25 @@ test("provider redirects are not followed or counted as successful delivery", as
   assert.equal(calls, 1);
   assert.equal(result.ok, false);
 });
+
+test("a temporary provider rejection gets one bounded retry", async () => {
+  let calls = 0;
+  const result = await sendPushRequest(
+    { endpoint: "https://fcm.googleapis.com/fcm/send/test", headers: {}, body: "encrypted" },
+    async () => new Response(null, { status: ++calls === 1 ? 503 : 201 }),
+  );
+  assert.equal(calls, 2);
+  assert.equal(result.status, 201);
+});
+
+test("authentication failures are not retried", async () => {
+  let calls = 0;
+  await sendPushRequest(
+    { endpoint: "https://fcm.googleapis.com/fcm/send/test", headers: {}, body: "encrypted" },
+    async () => {
+      calls++;
+      return new Response(null, { status: 403 });
+    },
+  );
+  assert.equal(calls, 1);
+});

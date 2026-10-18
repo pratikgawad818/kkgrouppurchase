@@ -1,11 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { buildPushHTTPRequest } from "@pushforge/builder";
-import { sendPushRequest } from "@/lib/push-transport";
-import {
-  allowedPushEndpoint,
-  internalNotificationLink,
-  matchingDispatchSecret,
-} from "@/lib/push-security";
+import { internalNotificationLink, matchingDispatchSecret } from "@/lib/push-security";
 
 // Called by the database (pg_net) after a notification row is inserted.
 // Verifies the shared dispatch secret before sending any phone alert.
@@ -81,43 +75,21 @@ export const Route = createFileRoute("/api/public/push-dispatch")({
           .eq("is_read", false);
         if (subsError || countError) return new Response("Unavailable", { status: 503 });
 
-        let sent = 0;
-        let failed = 0;
-        for (const s of subs ?? []) {
-          if (!allowedPushEndpoint(s.endpoint)) {
-            failed++;
-            continue;
-          }
-          try {
-            const req = await buildPushHTTPRequest({
-              privateJWK: cfg.vapid_private_jwk as JsonWebKey,
-              subscription: { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-              message: {
-                payload: {
-                  title: n.title.slice(0, 150),
-                  body: (n.body ?? "").slice(0, 1000),
-                  link: internalNotificationLink(n.link),
-                  badge: count ?? 0,
-                  tag: n.id,
-                },
-                adminContact: "mailto:admin@kkgroups.in",
-                options: { ttl: 86400, urgency: "high" },
-              },
-            });
-            // Provider redirects must never turn an approved destination into an arbitrary request.
-            const res = await sendPushRequest(req);
-            if (res.status === 404 || res.status === 410) {
-              await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
-            } else if (!res.ok) {
-              failed++;
-              console.error(`Push delivery failed with status ${res.status}`);
-            } else sent++;
-            await res.body?.cancel();
-          } catch {
-            failed++;
-            console.error("Push delivery failed");
-          }
-        }
+        const { deliverPush } = await import("@/lib/push-delivery.server");
+        // A slow/offline device must not hold up the other nine phones.
+        const results = await Promise.all(
+          (subs ?? []).map((s) =>
+            deliverPush(cfg.vapid_private_jwk, s, {
+              title: n.title.slice(0, 150),
+              body: (n.body ?? "").slice(0, 1000),
+              link: internalNotificationLink(n.link),
+              badge: count ?? 0,
+              tag: n.id,
+            }),
+          ),
+        );
+        const sent = results.filter((r) => r === "sent").length;
+        const failed = results.filter((r) => r === "failed").length;
         return Response.json({ sent, failed }, { status: failed ? 502 : 200 });
       },
     },

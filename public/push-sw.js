@@ -10,6 +10,7 @@ self.addEventListener("push", (event) => {
   } catch {
     d = { title: "KK GROUP ERP", body: event.data ? event.data.text() : "" };
   }
+  if (!d || typeof d !== "object") d = {};
   const show = self.registration.showNotification(d.title || "KK GROUP ERP", {
     body: d.body || "",
     icon: "/apple-touch-icon.png",
@@ -43,8 +44,12 @@ self.addEventListener("notificationclick", (event) => {
       const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const c of all) {
         if (new URL(c.url).origin === self.location.origin) {
-          await c.focus();
-          return c.navigate(url);
+          try {
+            const navigated = await c.navigate(url);
+            if (navigated) return await navigated.focus();
+          } catch {
+            /* a stale/closed window must not swallow the tap */
+          }
         }
       }
       return self.clients.openWindow(url);
