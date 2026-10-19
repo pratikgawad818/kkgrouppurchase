@@ -39,6 +39,7 @@ import { Route as AuthenticatedShellProcurementSupplierRateHistoryRouteImport } 
 import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } from './routes/_authenticated/_shell/procurement.vendor-quotations'
 import { Route as AuthenticatedShellReportsProjectCostControlRouteImport } from './routes/_authenticated/_shell/reports.project-cost-control'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
+import { Route as AuthenticatedShellSettingsDataCleanupRouteImport } from './routes/_authenticated/_shell/settings.data-cleanup'
 import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
 import { Route as AuthenticatedShellFinancePaymentsIndexRouteImport } from './routes/_authenticated/_shell/finance.payments.index'
@@ -234,6 +235,12 @@ const AuthenticatedShellSettingsCompanyRoute =
     path: '/settings/company',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellSettingsDataCleanupRoute =
+  AuthenticatedShellSettingsDataCleanupRouteImport.update({
+    id: '/settings/data-cleanup',
+    path: '/settings/data-cleanup',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellSettingsFinanceRoute =
   AuthenticatedShellSettingsFinanceRouteImport.update({
     id: '/settings/finance',
@@ -408,6 +415,7 @@ export interface FileRoutesByFullPath {
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
@@ -461,6 +469,7 @@ export interface FileRoutesByTo {
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
@@ -518,6 +527,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/_authenticated/_shell/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
+  '/_authenticated/_shell/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
   '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
   '/_authenticated/_shell/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
@@ -574,6 +584,7 @@ export interface FileRouteTypes {
     | '/procurement/vendor-quotations'
     | '/reports/project-cost-control'
     | '/settings/company'
+    | '/settings/data-cleanup'
     | '/settings/finance'
     | '/settings/users'
     | '/finance/payments/$id'
@@ -627,6 +638,7 @@ export interface FileRouteTypes {
     | '/procurement/vendor-quotations'
     | '/reports/project-cost-control'
     | '/settings/company'
+    | '/settings/data-cleanup'
     | '/settings/finance'
     | '/settings/users'
     | '/finance/payments/$id'
@@ -683,6 +695,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/procurement/vendor-quotations'
     | '/_authenticated/_shell/reports/project-cost-control'
     | '/_authenticated/_shell/settings/company'
+    | '/_authenticated/_shell/settings/data-cleanup'
     | '/_authenticated/_shell/settings/finance'
     | '/_authenticated/_shell/settings/users'
     | '/_authenticated/_shell/finance/payments/$id'
@@ -929,6 +942,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellSettingsCompanyRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/settings/data-cleanup': {
+      id: '/_authenticated/_shell/settings/data-cleanup'
+      path: '/settings/data-cleanup'
+      fullPath: '/settings/data-cleanup'
+      preLoaderRoute: typeof AuthenticatedShellSettingsDataCleanupRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/settings/finance': {
       id: '/_authenticated/_shell/settings/finance'
       path: '/settings/finance'
@@ -1143,6 +1163,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellProcurementVendorQuotationsRoute: typeof AuthenticatedShellProcurementVendorQuotationsRoute
   AuthenticatedShellReportsProjectCostControlRoute: typeof AuthenticatedShellReportsProjectCostControlRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
+  AuthenticatedShellSettingsDataCleanupRoute: typeof AuthenticatedShellSettingsDataCleanupRoute
   AuthenticatedShellSettingsFinanceRoute: typeof AuthenticatedShellSettingsFinanceRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
   AuthenticatedShellFinanceVendorInvoicesIdRoute: typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
@@ -1204,6 +1225,8 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
     AuthenticatedShellReportsProjectCostControlRoute,
   AuthenticatedShellSettingsCompanyRoute:
     AuthenticatedShellSettingsCompanyRoute,
+  AuthenticatedShellSettingsDataCleanupRoute:
+    AuthenticatedShellSettingsDataCleanupRoute,
   AuthenticatedShellSettingsFinanceRoute:
     AuthenticatedShellSettingsFinanceRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
