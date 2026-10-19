@@ -287,8 +287,8 @@ function ProfilePage() {
           </div>
           {usernameOnly && (
             <p className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
-              You sign in with a username. To change your password, first request and complete email
-              verification above — then use “Forgot password?” on the sign-in page and the reset
+              You sign in with a username. To change your password, first add your email
+              above and save — then use “Forgot password?” on the sign-in page and the reset
               link will be sent there.
             </p>
           )}
