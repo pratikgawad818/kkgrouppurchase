@@ -9,7 +9,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "KK Bussiness"
+const SITE_NAME = "KK Group"
 const SENDER_DOMAIN = "notify.kkgrouppurchase.in"
 const ROOT_DOMAIN = "kkgrouppurchase.in"
 const FROM_DOMAIN = "kkgrouppurchase.in"
