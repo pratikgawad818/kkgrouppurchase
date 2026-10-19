@@ -41,6 +41,8 @@ import { Route as AuthenticatedShellReportsProjectCostControlRouteImport } from 
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as AuthenticatedShellFinancePaymentsIndexRouteImport } from './routes/_authenticated/_shell/finance.payments.index'
 import { Route as AuthenticatedShellFinancePaymentsIdRouteImport } from './routes/_authenticated/_shell/finance.payments.$id'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIndexRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.index'
@@ -246,6 +248,16 @@ const AuthenticatedShellSettingsUsersRoute =
     path: '/settings/users',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedShellFinancePaymentsIndexRoute =
   AuthenticatedShellFinancePaymentsIndexRouteImport.update({
     id: '/',
@@ -410,6 +422,8 @@ export interface FileRoutesByFullPath {
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
@@ -463,6 +477,8 @@ export interface FileRoutesByTo {
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
@@ -520,6 +536,8 @@ export interface FileRoutesById {
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/_authenticated/_shell/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
@@ -576,6 +594,8 @@ export interface FileRouteTypes {
     | '/settings/company'
     | '/settings/finance'
     | '/settings/users'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/finance/payments/$id'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
@@ -629,6 +649,8 @@ export interface FileRouteTypes {
     | '/settings/company'
     | '/settings/finance'
     | '/settings/users'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/finance/payments/$id'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
@@ -685,6 +707,8 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/finance'
     | '/_authenticated/_shell/settings/users'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/_authenticated/_shell/finance/payments/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/new'
@@ -715,6 +739,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -942,6 +968,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/users'
       preLoaderRoute: typeof AuthenticatedShellSettingsUsersRouteImport
       parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_shell/finance/payments/': {
       id: '/_authenticated/_shell/finance/payments/'
@@ -1269,6 +1309,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
