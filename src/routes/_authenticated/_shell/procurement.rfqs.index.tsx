@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { RegisterFilters } from "@/components/erp/register-filters";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -95,17 +96,18 @@ function RfqList() {
                 <th className="px-4 py-3">Response due</th>
                 <th className="px-4 py-3">Responses</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" aria-label="Actions"/>
               </tr>
             </thead>
             <tbody>
-              {q.data!.rows.length === 0 && (
+              {(q.data?.rows ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-4 text-xs text-muted-foreground">
+                  <td colSpan={8} className="p-4 text-xs text-muted-foreground">
                     No RFQs yet. Open an approved purchase request and choose “Create RFQ”.
                   </td>
                 </tr>
               )}
-              {q.data!.rows.map((r) => {
+              {(q.data?.rows ?? []).map((r) => {
                 const v = r.rfq_vendors ?? [];
                 return (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
@@ -137,13 +139,14 @@ function RfqList() {
                         {RFQ_STATUS[r.status].label}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-right"><PermanentDelete kind="rfq" id={r.id} name={r.rfq_number} disabled={r.status!=="draft"}/></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
           <div className="flex items-center justify-between border-t p-2 text-xs text-muted-foreground">
-            <span>{q.data!.count} RFQs</span>
+            <span>{(q.data?.count ?? 0)} RFQs</span>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -156,7 +159,7 @@ function RfqList() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={(page + 1) * PAGE >= q.data!.count}
+                disabled={(page + 1) * PAGE >= (q.data?.count ?? 0)}
                 onClick={() => setPage(page + 1)}
               >
                 Next
