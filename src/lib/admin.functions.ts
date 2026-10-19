@@ -232,28 +232,32 @@ export const setMyRealEmail = createServerFn({ method: "POST" })
     if (profileError || !profile?.is_active) throw new Error("Your staff account is inactive.");
     if (!isSyntheticEmail(profile.email))
       throw new Error("Your account already has an email address.");
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const request = getRequest();
-    // Use the ordinary user-authenticated endpoint, which sends confirmation mail.
-    // The profile email is synchronized only after Auth confirms the change.
-    const response = await fetch(`${process.env["SUPABASE_URL"]}/auth/v1/user`, {
-      method: "PUT",
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        apikey: process.env["SUPABASE_PUBLISHABLE_KEY"]!,
-        Authorization: request.headers.get("authorization")!,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email: data.email }),
+    // Username-only accounts have a placeholder inbox that can never receive a
+    // confirmation link, so attach the first real email directly.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: taken } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("email", data.email)
+      .neq("id", context.userId)
+      .maybeSingle();
+    if (taken) throw new Error("That email address is already used by another staff account.");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
+      email: data.email,
+      email_confirm: true,
     });
-    if (!response.ok) {
-      await response.body?.cancel();
+    if (error)
       throw new Error(
-        "Could not request email verification. Please try again or contact your administrator.",
+        /already|registered|exists/i.test(error.message)
+          ? "That email address is already used by another account."
+          : "Could not save the email address. Please try again.",
       );
-    }
-    await response.body?.cancel();
-    return { verificationRequired: true };
+    const { error: pErr } = await supabaseAdmin
+      .from("profiles")
+      .update({ email: data.email })
+      .eq("id", context.userId);
+    if (pErr) throw new Error("Email saved for sign-in, but the profile could not be updated.");
+    return { verificationRequired: false };
   });
 
 /** Any staff member can set or change their sign-in username. */

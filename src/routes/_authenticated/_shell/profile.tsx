@@ -150,7 +150,7 @@ function ProfilePage() {
         await attachEmail({ data: { email } });
         await qc.invalidateQueries({ queryKey: ["me"] });
         toast.success(
-          "Verification requested. Follow the confirmation email instructions before using this address for password recovery.",
+          "Email saved. You can now sign in with it, and password reset links will go there.",
         );
       } else if (email && email !== currentEmail) {
         const { error } = await supabase.auth.updateUser(
