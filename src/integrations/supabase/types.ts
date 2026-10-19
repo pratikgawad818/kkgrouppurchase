@@ -4761,6 +4761,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: undefined
       }
+      check_staff_deletion_history: {
+        Args: { _id: string }
+        Returns: undefined
+      }
       create_goods_receipt: {
         Args: {
           _header: Json
@@ -4828,6 +4832,10 @@ export type Database = {
       execute_stock_transfer: {
         Args: { _from: string; _items: Json; _reason: string; _to: string }
         Returns: string
+      }
+      finalize_staff_permanent_delete: {
+        Args: { _actor_id: string; _id: string }
+        Returns: undefined
       }
       generate_units: {
         Args: {
