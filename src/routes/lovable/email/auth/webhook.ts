@@ -12,7 +12,11 @@ import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 const SITE_NAME = "KK Group"
 const SENDER_DOMAIN = "notify.kkgrouppurchase.in"
 const ROOT_DOMAIN = "kkgrouppurchase.in"
-const FROM_DOMAIN = "kkgrouppurchase.in"
+// The root domain publishes "v=spf1 -all" and a strict DMARC policy
+// (p=reject, adkim=s, aspf=s), so a "noreply@kkgrouppurchase.in" sender fails
+// alignment and every message is rejected at dispatch. Sending from the
+// verified subdomain keeps the From address aligned with the signing domain.
+const FROM_DOMAIN = SENDER_DOMAIN
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
 // The SDK handler owns verification, dispatch, and retry semantics; this file
