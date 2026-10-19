@@ -4761,6 +4761,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: undefined
       }
+      check_staff_deletion_history: {
+        Args: { _id: string }
+        Returns: undefined
+      }
       create_goods_receipt: {
         Args: {
           _header: Json
