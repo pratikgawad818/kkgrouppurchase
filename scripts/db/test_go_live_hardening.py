@@ -373,6 +373,91 @@ def test_real_payment_posting():
     print("PASS real scheduled → one-director approval → recorded payment posts one balanced journal; duplicate recording refused")
 
 
+def test_super_admin_record_cleanup():
+    # Every change below is disposable; no production records or network transport.
+    with db() as c:
+        unused=c.execute("INSERT INTO vendors(company_id,code,company_name) VALUES(%s,'QA-DELETE','Unused supplier') RETURNING id",(A,)).fetchone()[0]
+        for uid in [PURCHASER,DIRECTOR,INACTIVE]:
+            actor(c,uid)
+            denied(c,lambda:c.execute("SELECT super_admin_delete_record('vendor',%s)",(unused,)),"active Super Admin")
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('vendor',%s)",(FOREIGN_VENDOR,)),"own company")
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('user',%s)",(ADMIN,)),"cannot be deleted")
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('journal_entries',%s)",(unused,)),"Unsupported")
+        count=c.execute("SELECT count(*) FROM audit_logs WHERE action='permanently_deleted'").fetchone()[0]
+        c.execute("SELECT super_admin_delete_record('vendor',%s,true)",(unused,))
+        assert c.execute("SELECT count(*) FROM vendors WHERE id=%s",(unused,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM audit_logs WHERE action='permanently_deleted'").fetchone()[0]==count
+        c.execute("SELECT super_admin_delete_record('vendor',%s)",(unused,))
+        assert not c.execute("SELECT 1 FROM vendors WHERE id=%s",(unused,)).fetchone()
+        audit=c.execute("SELECT user_id,old_data->>'company_name' FROM audit_logs WHERE action='permanently_deleted' AND entity_id=%s",(str(unused),)).fetchone()
+        assert str(audit[0])==ADMIN and audit[1]=='Unused supplier'
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('vendor',%s)",(unused,)),"already deleted")
+        denied(c,lambda:c.execute("UPDATE audit_logs SET reason='tampered' WHERE entity_id=%s",(str(unused),)))
+        c.rollback()
+    with db() as c:
+        # Building/floor company is derived through the project, never supplied by the caller.
+        building=c.execute("INSERT INTO buildings(project_id,code,name,planned_floors) VALUES(%s,'DEL','Unused building',0) RETURNING id",(PROJECT,)).fetchone()[0]
+        foreign=c.execute("INSERT INTO buildings(project_id,code,name) VALUES(%s,'FOR','Foreign building') RETURNING id",(OTHER_PROJECT,)).fetchone()[0]
+        floor=c.execute("SELECT id FROM floors WHERE building_id=%s LIMIT 1",(building,)).fetchone()[0]
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('building',%s)",(foreign,)),"own company")
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('building',%s)",(building,)),"Linked floors")
+        c.execute("SELECT super_admin_delete_record('floor',%s)",(floor,))
+        c.execute("SELECT super_admin_delete_record('building',%s)",(building,))
+        c.rollback()
+    with db() as c:
+        actor(c,PURCHASER)
+        token=str(uuid4()); request=save_pr(c,token)
+        line=c.execute("SELECT id FROM purchase_request_items WHERE purchase_request_id=%s",(request,)).fetchone()[0]
+        actor(c,ADMIN)
+        c.execute("SELECT super_admin_delete_record('purchase_request',%s,true)",(request,))
+        c.execute("SELECT super_admin_delete_record('purchase_request',%s)",(request,))
+        assert not c.execute("SELECT 1 FROM purchase_request_items WHERE id=%s",(line,)).fetchone()
+        saved=c.execute("SELECT old_data->'deleted_draft_lines'->'purchase_request_items' FROM audit_logs WHERE action='permanently_deleted' AND entity_id=%s",(request,)).fetchone()[0]
+        assert len(saved)==1 and saved[0]['material_id']==MATERIAL
+        actor(c,PURCHASER)
+        denied(c,lambda:save_pr(c,token),"deleted by a Super Admin")
+        approved=save_pr(c,submit=True)
+        actor(c,DIRECTOR); c.execute("SELECT pr_transition(%s,'approved','QA')",(approved,))
+        actor(c,PURCHASER)
+        rfq_token=str(uuid4()); args=(rfq_token,approved,json.dumps({"response_due_date":"2026-12-01"}),[VENDOR])
+        rfq=c.execute("SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])",args).fetchone()[0]
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('material',%s)",(MATERIAL,)),"Linked")
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('purchase_request',%s)",(approved,)),"unused drafts")
+        c.execute("SELECT super_admin_delete_record('rfq',%s)",(rfq,))
+        assert c.execute("SELECT count(*) FROM rfq_items WHERE rfq_id=%s",(rfq,)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM rfq_vendors WHERE rfq_id=%s",(rfq,)).fetchone()[0]==0
+        actor(c,PURCHASER)
+        denied(c,lambda:c.execute("SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])",args),"deleted by a Super Admin")
+        c.rollback()
+    with db() as c:
+        # A reference to a draft LINE also blocks deletion, even without a reference to its header.
+        actor(c,PURCHASER); draft=save_pr(c)
+        line=c.execute("SELECT id FROM purchase_request_items WHERE purchase_request_id=%s",(draft,)).fetchone()[0]
+        c.execute("RESET ROLE")
+        c.execute("CREATE TABLE public.qa_line_dependency(id uuid PRIMARY KEY,pr_line uuid REFERENCES public.purchase_request_items(id) ON DELETE CASCADE)")
+        c.execute("INSERT INTO qa_line_dependency VALUES(gen_random_uuid(),%s)",(line,))
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('purchase_request',%s,true)",(draft,)),"Draft lines are linked")
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('purchase_request',%s)",(draft,)),"Draft lines are linked")
+        assert c.execute("SELECT count(*) FROM purchase_request_items WHERE id=%s",(line,)).fetchone()[0]==1
+        c.rollback()
+    with db() as c:
+        doc=seed_po(c)
+        c.execute("RESET ROLE")
+        # Isolate the deletion boundary: draft vs posted GRN, while real PO/source FKs remain.
+        grn=c.execute("INSERT INTO goods_receipt_notes(grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,received_by,status) VALUES('QA-DELETE-GRN',%s,%s,%s,%s,%s,%s,'draft') RETURNING id",(A,doc,VENDOR,PROJECT,WAREHOUSE,PURCHASER)).fetchone()[0]
+        actor(c,ADMIN)
+        c.execute("SELECT super_admin_delete_record('goods_receipt',%s,true)",(grn,))
+        c.execute("SELECT super_admin_delete_record('goods_receipt',%s)",(grn,))
+        assert not c.execute("SELECT 1 FROM goods_receipt_notes WHERE id=%s",(grn,)).fetchone()
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('purchase_order',%s)",(doc,)),"Unsupported")
+        c.rollback()
+    print("PASS Super Admin-only company cleanup, read-only preflight, master scope, draft-line dependency guards, retained audit snapshots and deleted-save retry protection")
+
+
 if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
@@ -380,4 +465,5 @@ if __name__ == "__main__":
     test_director_origin_and_super_admin_purchasing()
     test_push_and_email_boundaries()
     test_real_payment_posting()
+    test_super_admin_record_cleanup()
     test_concurrent_save_retries()

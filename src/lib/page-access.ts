@@ -78,6 +78,7 @@ const rules: readonly Rule[] = [
   { pattern: /^\/finance\/small-expenses\/?$/, any: ["financial.view"] },
 
   { pattern: /^\/settings\/users\/?$/, any: ["users.manage"] },
+  { pattern: /^\/settings\/data-cleanup\/?$/ },
   { pattern: /^\/settings\/company\/?$/, any: ["company.view", "company.manage"] },
   { pattern: /^\/settings\/finance\/?$/, any: ["company.view", "company.manage"] },
   { pattern: /^\/audit\/?$/, any: ["audit.view"] },
@@ -87,6 +88,8 @@ export function canAccessPage(path: string, user: PageAccess): boolean {
   // Every signed-in staff member may manage their own profile.
   if (/^\/profile\/?$/.test(path)) return true;
   if (!user.roles.length) return false;
+  if (/^\/settings\/data-cleanup\/?$/.test(path) && !user.roles.includes("super_admin"))
+    return false;
   if (
     /^\/approvals\/?$/.test(path) &&
     !user.roles.includes("director") &&

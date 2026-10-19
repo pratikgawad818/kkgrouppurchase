@@ -330,6 +330,13 @@
       "when": 1792436725261,
       "tag": "0046_director_created_purchasing",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1792437964581,
+      "tag": "0047_super_admin_record_cleanup",
+      "breakpoints": true
     }
   ]
 }

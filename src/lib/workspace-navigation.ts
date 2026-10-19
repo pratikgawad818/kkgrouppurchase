@@ -66,6 +66,7 @@ export const WORKSPACE_NAV: WorkspaceNavGroup[] = [
     items: [
       { to: "/profile", label: "My profile" },
       { to: "/settings/users", label: "Users & roles" },
+      { to: "/settings/data-cleanup", label: "Data cleanup" },
       { to: "/settings/company", label: "Company settings" },
       { to: "/settings/finance", label: "Finance settings" },
       { to: "/audit", label: "Audit log" },

@@ -46,6 +46,13 @@ test("unknown route, no role and missing permissions fail closed", () => {
   assert.equal(canAccessPage("/settings/users", subject("auditor", "users.manage")), false);
 });
 
+test("data cleanup is restricted by role even when staff have management permissions", () => {
+  assert.equal(canAccessPage("/settings/data-cleanup", owner), true);
+  for(const role of ["director","purchase_manager","accounts_manager","site_engineer","auditor"]) {
+    assert.equal(canAccessPage("/settings/data-cleanup", subject(role,"users.manage","company.manage")), false);
+  }
+});
+
 test("director approval navigation uses the same role boundary as the queue", () => {
   assert.equal(
     canAccessPage("/approvals", subject("purchase_manager", "purchase_order.approve")),
