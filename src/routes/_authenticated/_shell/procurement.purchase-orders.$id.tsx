@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
+import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PrintPo } from "@/components/erp/print-po";
@@ -220,6 +221,7 @@ function PoDetail() {
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { po, items, history, grns, warehouses, challans, grnItems } = q.data!;
   const mine = po.created_by === me.data?.profile.id;
+  const finalizeOwn = mine && directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
   const canReceive =
@@ -264,34 +266,35 @@ function PoDetail() {
             }
             actions={
               <div className="flex flex-wrap gap-2">
-                {draft && can("purchase_order.create") && (
-                  <Button
-                    size="sm"
-                    disabled={act.isPending || saveTerms.isPending}
-                    onClick={async () => {
-                      if (!terms.delivery_warehouse_id) {
-                        toast.error("Select a delivery store and click Save terms first");
-                        return;
-                      }
-                      if (
-                        terms.delivery_warehouse_id !== (po.delivery_warehouse_id ?? "") ||
-                        terms.expected_delivery_date !== (po.expected_delivery_date ?? "") ||
-                        terms.payment_terms !== (po.payment_terms ?? "") ||
-                        terms.delivery_terms !== (po.delivery_terms ?? "") ||
-                        terms.remarks !== (po.remarks ?? "")
-                      ) {
-                        try {
-                          await saveTerms.mutateAsync();
-                        } catch {
+                {(draft || (po.status === "pending_approval" && finalizeOwn)) &&
+                  can("purchase_order.create") && (
+                    <Button
+                      size="sm"
+                      disabled={act.isPending || saveTerms.isPending}
+                      onClick={async () => {
+                        if (!terms.delivery_warehouse_id) {
+                          toast.error("Select a delivery store and click Save terms first");
                           return;
                         }
-                      }
-                      act.mutate("submitted");
-                    }}
-                  >
-                    Submit for approval
-                  </Button>
-                )}
+                        if (
+                          terms.delivery_warehouse_id !== (po.delivery_warehouse_id ?? "") ||
+                          terms.expected_delivery_date !== (po.expected_delivery_date ?? "") ||
+                          terms.payment_terms !== (po.payment_terms ?? "") ||
+                          terms.delivery_terms !== (po.delivery_terms ?? "") ||
+                          terms.remarks !== (po.remarks ?? "")
+                        ) {
+                          try {
+                            await saveTerms.mutateAsync();
+                          } catch {
+                            return;
+                          }
+                        }
+                        act.mutate("submitted");
+                      }}
+                    >
+                      {finalizeOwn ? "Finalize order" : "Submit to Director"}
+                    </Button>
+                  )}
                 {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
                   <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
                     <Button
@@ -736,7 +739,11 @@ function PoDetail() {
                   ) : (
                     <li key={h.id} className="border-l-2 border-primary/40 pl-3">
                       <div className="font-medium">
-                        {PO_ACTION_LABEL[h.action]}{" "}
+                        {h.action === "submitted" &&
+                        "new_status" in h &&
+                        h.new_status === "approved"
+                          ? "Finalized"
+                          : PO_ACTION_LABEL[h.action]}{" "}
                         <span className="font-normal text-muted-foreground">
                           by {h.profiles?.full_name ?? "—"}
                         </span>

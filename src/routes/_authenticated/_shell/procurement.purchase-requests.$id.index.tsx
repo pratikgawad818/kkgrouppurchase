@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
+import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { RFQ_STATUS } from "@/lib/rfq";
 import { PR_ACTION, PR_PRIORITY, PR_STATUS, PR_TYPE, type PrAction } from "@/lib/pr";
@@ -123,6 +124,7 @@ function PrDetail() {
   const mine = pr.requested_by === me.data?.profile.id;
   const st = PR_STATUS[pr.status];
   const pending = pr.status === "pending_approval";
+  const finalizeOwn = mine && directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
 
   return (
     <>
@@ -145,11 +147,13 @@ function PrDetail() {
                 </Link>
               </Button>
             )}
-            {pr.status === "draft" && mine && can("purchase_request.submit") && (
-              <Button size="sm" disabled={run.isPending} onClick={() => run.mutate("submitted")}>
-                Submit for approval
-              </Button>
-            )}
+            {(pr.status === "draft" || (pending && finalizeOwn)) &&
+              mine &&
+              can("purchase_request.submit") && (
+                <Button size="sm" disabled={run.isPending} onClick={() => run.mutate("submitted")}>
+                  {finalizeOwn ? "Finalize request" : "Submit for approval"}
+                </Button>
+              )}
             {pending && !mine && can("purchase_request.approve") && (
               <>
                 <Button size="sm" onClick={() => setAct("approved")}>

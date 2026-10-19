@@ -23,6 +23,7 @@ UNASSIGNED = "10000000-0000-4000-8000-000000000004"
 INACTIVE = "10000000-0000-4000-8000-000000000005"
 SITE = "10000000-0000-4000-8000-000000000006"
 ACCOUNTS = "10000000-0000-4000-8000-000000000007"
+ADMIN = "10000000-0000-4000-8000-000000000008"
 PROJECT = "20000000-0000-4000-8000-000000000001"
 OTHER_PROJECT = "20000000-0000-4000-8000-000000000002"
 MATERIAL = "30000000-0000-4000-8000-000000000001"
@@ -97,7 +98,7 @@ def setup():
             (PURCHASER, A, "purchase_manager", True), (DIRECTOR, A, "director", True),
             (OTHER_DIRECTOR, B, "director", True), (UNASSIGNED, A, "director", True),
             (INACTIVE, A, "director", False), (SITE, A, "site_engineer", True),
-            (ACCOUNTS, A, "accounts_manager", True),
+            (ACCOUNTS, A, "accounts_manager", True), (ADMIN, A, "super_admin", True),
         ]:
             c.execute("INSERT INTO profiles(id,company_id,full_name,email,is_active) VALUES(%s,%s,%s,%s,%s)",
                       (uid, company, "QA " + role, uid + "@example.invalid", active))
@@ -213,11 +214,72 @@ def test_director_notifications_and_names():
     with db() as c:
         doc=seed_po(c,DIRECTOR)
         actor(c,DIRECTOR)
-        c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,))
-        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)),"cannot approve")
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='approved'
+        assert str(c.execute("SELECT approved_by FROM purchase_orders WHERE id=%s",(doc,)).fetchone()[0])==DIRECTOR
+        assert c.execute("SELECT count(*) FROM director_approval_votes WHERE entity_id=%s",(doc,)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='approved'",(doc,)).fetchone()[0]==1
         c.rollback()
     print("PASS one independent director, scoped notification recipients, reminder throttle and safe actor-name lookup")
 
+
+
+def test_director_origin_and_super_admin_purchasing():
+    with db() as c:
+        actor(c,DIRECTOR)
+        doc=save_pr(c,submit=True)
+        row=c.execute("SELECT status,requested_by,approved_by,approved_at IS NOT NULL FROM purchase_requests WHERE id=%s",(doc,)).fetchone()
+        assert row[0]=='approved' and str(row[1])==DIRECTOR and row[1]==row[2] and row[3],row
+        assert c.execute("SELECT count(*) FROM purchase_request_approvals WHERE purchase_request_id=%s AND action='approved'",(doc,)).fetchone()[0]==1
+        denied(c,lambda:c.execute("SELECT pr_transition(%s,'submitted','again')",(doc,)),"Only draft")
+        rid=c.execute("SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])",(str(uuid4()),doc,json.dumps({"response_due_date":"2026-12-01"}),[VENDOR])).fetchone()[0]
+        c.execute("SELECT rfq_transition(%s,'send','QA')",(rid,))
+        invitation=c.execute("SELECT id FROM rfq_vendors WHERE rfq_id=%s",(rid,)).fetchone()[0]
+        item=c.execute("SELECT id FROM rfq_items WHERE rfq_id=%s",(rid,)).fetchone()[0]
+        quote=c.execute("INSERT INTO vendor_quotations(rfq_id,rfq_vendor_id,vendor_id,quotation_number) VALUES(%s,%s,%s,'QA-DIRECTOR') RETURNING id",(rid,invitation,VENDOR)).fetchone()[0]
+        line=c.execute("INSERT INTO vendor_quotation_items(quotation_id,rfq_item_id,quoted_quantity,rate) VALUES(%s,%s,2,100) RETURNING id",(quote,item)).fetchone()[0]
+        c.execute("SELECT record_vendor_selection(%s,%s::jsonb,'QA selected supplier')",(rid,json.dumps([{"rfq_item_id":str(item),"quotation_item_id":str(line)}])))
+        order=c.execute("SELECT create_po_from_selection(%s,%s)",(rid,quote)).fetchone()[0]
+        c.execute("UPDATE purchase_orders SET delivery_warehouse_id=%s WHERE id=%s",(WAREHOUSE,order))
+        assert c.execute("SELECT po_transition(%s,'submitted','Director finalized')",(order,)).fetchone()[0]=='approved'
+        source=c.execute("SELECT purchase_request_id,rfq_id,quotation_id,created_by,approved_by FROM purchase_orders WHERE id=%s",(order,)).fetchone()
+        assert str(source[0])==doc and source[1]==rid and source[2]==quote and str(source[3])==DIRECTOR and source[3]==source[4],source
+        assert c.execute("SELECT count(*) FROM purchase_order_items WHERE po_id=%s",(order,)).fetchone()[0]==1
+        actor(c,PURCHASER)
+        own=save_pr(c,submit=True)
+        assert c.execute("SELECT status FROM purchase_requests WHERE id=%s",(own,)).fetchone()[0]=='pending_approval'
+        denied(c,lambda:c.execute("SELECT pr_transition(%s,'approved','self')",(own,)),"own request")
+        c.rollback()
+    with db() as c:
+        doc=seed_po(c,ADMIN)
+        actor(c,ADMIN)
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','self')",(doc,)),"cannot approve")
+        actor(c,PURCHASER)
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)),"Only an active director")
+        actor(c,OTHER_DIRECTOR)
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)),"not found")
+        actor(c,INACTIVE)
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)),"Not signed in")
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)).fetchone()[0]=='approved'
+        assert str(c.execute("SELECT approved_by FROM purchase_orders WHERE id=%s",(doc,)).fetchone()[0])==DIRECTOR
+        c.rollback()
+    with db() as c:
+        doc=seed_po(c,ADMIN)
+        c.execute("RESET ROLE")
+        c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,'director')",(ADMIN,))
+        actor(c,ADMIN)
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','self')",(doc,)),"cannot approve")
+        c.rollback()
+    with db() as c:
+        doc=seed_po(c,DIRECTOR)
+        actor(c,ADMIN)
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT po_transition(%s,'submitted','Finalize my existing order')",(doc,)).fetchone()[0]=='approved'
+        c.rollback()
+    print("PASS Director-owned PR/PO finalize with audit history; Super Admin and dual-role POs require one independent company Director")
 
 def test_push_and_email_boundaries():
     with db() as c:
@@ -315,6 +377,7 @@ if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
+    test_director_origin_and_super_admin_purchasing()
     test_push_and_email_boundaries()
     test_real_payment_posting()
     test_concurrent_save_retries()

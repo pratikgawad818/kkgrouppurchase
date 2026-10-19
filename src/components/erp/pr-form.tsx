@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loading } from "@/components/erp/common";
 import { errMsg, num } from "@/lib/format";
+import { useMe } from "@/lib/session";
+import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { saveAttempt } from "@/lib/save-attempt";
 import { PR_PRIORITY, PR_TYPE, type PrPriority, type PrType } from "@/lib/pr";
 
@@ -56,6 +58,8 @@ export function PrForm({
   expectedUpdatedAt?: string;
 }) {
   const attempt = useRef<{ signature: string; id: string } | null>(null);
+  const me = useMe();
+  const finalizeOwn = directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [h, setH] = useState<PrHeader>(
@@ -165,7 +169,13 @@ export function PrForm({
       return prId;
     },
     onSuccess: (prId, submit) => {
-      toast.success(submit ? "Submitted for approval" : "Draft saved");
+      toast.success(
+        submit
+          ? finalizeOwn
+            ? "Request finalized · Ready for RFQ"
+            : "Submitted for approval"
+          : "Draft saved",
+      );
       qc.invalidateQueries({ queryKey: ["prs"] });
       qc.invalidateQueries({ queryKey: ["pr", prId] });
       navigate({ to: "/procurement/purchase-requests/$id", params: { id: prId } });
@@ -427,12 +437,17 @@ export function PrForm({
         </div>
       </section>
 
+      {finalizeOwn && (
+        <p className="text-sm text-muted-foreground">
+          Your request will be ready for RFQ immediately. No additional approval is needed.
+        </p>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="submit" variant="outline" disabled={save.isPending}>
           Save draft
         </Button>
         <Button type="button" disabled={save.isPending} onClick={() => save.mutate(true)}>
-          Submit for approval
+          {finalizeOwn ? "Finalize request" : "Submit for approval"}
         </Button>
       </div>
     </form>
