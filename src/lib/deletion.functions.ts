@@ -21,11 +21,16 @@ export const permanentlyDeleteRecord = createServerFn({ method: "POST" })
       ]);
       if(target.error || targetRole.error) throw new Error("Staff account could not be verified.");
       validatePermanentDeletion({kind:data.kind,isSuperAdmin:role.data,active:actor.data.is_active,actorCompanyId:actor.data.company_id,targetCompanyId:target.data.company_id,actorId:context.userId,targetId:data.id,targetIsSuperAdmin:targetRole.data});
+      const { error: historyError } = await context.supabase.rpc("check_staff_deletion_history", {_id:data.id});
+      if(historyError) throw new Error(historyError.message);
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error } = await supabaseAdmin.auth.admin.deleteUser(data.id);
       if(error && error.code !== "user_not_found") throw new Error("Staff sign-in account could not be deleted. No profile was removed.");
+      const { error: finalizeError } = await supabaseAdmin.rpc("finalize_staff_permanent_delete", {_actor_id:context.userId,_id:data.id});
+      if(finalizeError) throw new Error("Sign-in access was removed, but the staff profile could not be deleted. Retry deletion; linked history remains protected.");
+      return { ok:true };
     }
     const { error } = await context.supabase.rpc("super_admin_delete_record",{_kind:data.kind,_id:data.id});
-    if(error) throw new Error(data.kind === "user" ? "Sign-in access was removed, but the staff profile could not be deleted. Retry deletion; linked history remains protected." : error.message);
+    if(error) throw new Error(error.message);
     return { ok:true };
   });
