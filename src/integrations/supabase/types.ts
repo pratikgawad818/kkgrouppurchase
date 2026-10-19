@@ -5140,6 +5140,10 @@ export type Database = {
         Args: { _po_item: string; _qty: number; _reason: string }
         Returns: undefined
       }
+      super_admin_delete_record: {
+        Args: { _check_only?: boolean; _id: string; _kind: string }
+        Returns: undefined
+      }
       update_finance_settings: { Args: { _settings: Json }; Returns: undefined }
       update_my_office_phone: {
         Args: { _office_phone: string }

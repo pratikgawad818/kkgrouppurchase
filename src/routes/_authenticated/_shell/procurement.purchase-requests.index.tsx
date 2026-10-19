@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { RegisterFilters } from "@/components/erp/register-filters";
 import { safeSearch } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -291,7 +292,7 @@ function PrList() {
         <Loading />
       ) : q.error ? (
         <div className="text-sm text-destructive">{errMsg(q.error)}</div>
-      ) : q.data!.rows.length === 0 ? (
+      ) : (q.data?.rows ?? []).length === 0 ? (
         <Empty>No purchase requests match these filters.</Empty>
       ) : (
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
@@ -310,7 +311,7 @@ function PrList() {
               </tr>
             </thead>
             <tbody>
-              {q.data!.rows.map((r) => (
+              {(q.data?.rows ?? []).map((r) => (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium tabular-nums font-medium">
                     <Link
@@ -342,6 +343,7 @@ function PrList() {
                     >
                       Open
                     </Link>
+                    <PermanentDelete kind="purchase_request" id={r.id} name={r.pr_number} disabled={r.status!=="draft"}/>
                   </td>
                 </tr>
               ))}

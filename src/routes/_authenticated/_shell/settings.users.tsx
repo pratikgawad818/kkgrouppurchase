@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -27,7 +28,7 @@ type Staff = { id: string; full_name: string | null; email: string | null; phone
 
 function StaffAvatar({ path, name }: { path: string | null; name: string }) {
   const url = useAvatarUrl(path);
-  const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "U";
+  const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "U";
   return <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">{url.data ? <img src={url.data} alt="" className="h-full w-full object-cover" /> : ini}</span>;
 }
 const blankInvite = { username: "", password: "", email: "", fullName: "", phone: "", department: "", designation: "", role: "site_engineer" as Assignable };
@@ -117,7 +118,7 @@ function UsersPage() {
                 <td className="px-3 py-2">{u.designation || "—"}</td>
                 <td className="px-3 py-2"><div className="flex flex-wrap gap-1">{u.roles.length ? u.roles.map((r) => <Pill key={r}>{ROLE_LABEL[r]}</Pill>) : <span className="text-muted-foreground">Awaiting role</span>}</div></td>
                 <td className="px-3 py-2"><Pill>{u.is_active ? "Active" : "Inactive"}</Pill></td>
-                <td className="px-3 py-2 text-right"><Button variant="ghost" size="icon" aria-label={`Edit ${u.full_name ?? u.email}`} onClick={() => open(u)}><Pencil className="h-4 w-4" /></Button></td>
+                <td className="px-3 py-2 text-right"><Button variant="ghost" size="icon" aria-label={`Edit ${u.full_name ?? u.email}`} onClick={() => open(u)}><Pencil className="h-4 w-4" /></Button><PermanentDelete kind="user" id={u.id} name={u.full_name || u.email || "staff member"} disabled={u.id===me.data?.profile.id || u.roles.includes("super_admin")}/></td>
               </tr>
             ))}
           </tbody>
