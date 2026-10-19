@@ -400,9 +400,13 @@ def test_super_admin_record_cleanup():
         building=c.execute("INSERT INTO buildings(project_id,code,name,planned_floors) VALUES(%s,'DEL','Unused building',0) RETURNING id",(PROJECT,)).fetchone()[0]
         foreign=c.execute("INSERT INTO buildings(project_id,code,name) VALUES(%s,'FOR','Foreign building') RETURNING id",(OTHER_PROJECT,)).fetchone()[0]
         floor=c.execute("SELECT id FROM floors WHERE building_id=%s LIMIT 1",(building,)).fetchone()[0]
+        unit=c.execute("INSERT INTO units(project_id,building_id,floor_id,unit_number,unit_type,carpet_area,built_up_area,saleable_area,base_rate) VALUES(%s,%s,%s,'QA-101','other',100,100,100,100) RETURNING id",(PROJECT,building,floor)).fetchone()[0]
         actor(c,ADMIN)
         denied(c,lambda:c.execute("SELECT super_admin_delete_record('building',%s)",(foreign,)),"own company")
         denied(c,lambda:c.execute("SELECT super_admin_delete_record('building',%s)",(building,)),"Linked floors")
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('floor',%s)",(floor,)),"Linked units")
+        c.execute("SELECT super_admin_delete_record('unit',%s)",(unit,))
+        assert c.execute("SELECT jsonb_array_length(old_data->'deleted_draft_lines'->'unit_status_history') FROM audit_logs WHERE action='permanently_deleted' AND entity_id=%s",(str(unit),)).fetchone()[0]==1
         c.execute("SELECT super_admin_delete_record('floor',%s)",(floor,))
         c.execute("SELECT super_admin_delete_record('building',%s)",(building,))
         c.rollback()
@@ -416,6 +420,7 @@ def test_super_admin_record_cleanup():
         assert not c.execute("SELECT 1 FROM purchase_request_items WHERE id=%s",(line,)).fetchone()
         saved=c.execute("SELECT old_data->'deleted_draft_lines'->'purchase_request_items' FROM audit_logs WHERE action='permanently_deleted' AND entity_id=%s",(request,)).fetchone()[0]
         assert len(saved)==1 and saved[0]['material_id']==MATERIAL
+        assert c.execute("SELECT jsonb_array_length(old_data->'deleted_draft_lines'->'purchase_request_approvals') FROM audit_logs WHERE action='permanently_deleted' AND entity_id=%s",(request,)).fetchone()[0]==1
         actor(c,PURCHASER)
         denied(c,lambda:save_pr(c,token),"deleted by a Super Admin")
         approved=save_pr(c,submit=True)
@@ -431,6 +436,10 @@ def test_super_admin_record_cleanup():
         assert c.execute("SELECT count(*) FROM rfq_vendors WHERE rfq_id=%s",(rfq,)).fetchone()[0]==0
         actor(c,PURCHASER)
         denied(c,lambda:c.execute("SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])",args),"deleted by a Super Admin")
+        returned=save_pr(c,submit=True)
+        actor(c,DIRECTOR); c.execute("SELECT pr_transition(%s,'returned','QA return')",(returned,))
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('purchase_request',%s)",(returned,)),"submission or decision history")
         c.rollback()
     with db() as c:
         # A reference to a draft LINE also blocks deletion, even without a reference to its header.
@@ -451,9 +460,25 @@ def test_super_admin_record_cleanup():
         grn=c.execute("INSERT INTO goods_receipt_notes(grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,received_by,status) VALUES('QA-DELETE-GRN',%s,%s,%s,%s,%s,%s,'draft') RETURNING id",(A,doc,VENDOR,PROJECT,WAREHOUSE,PURCHASER)).fetchone()[0]
         actor(c,ADMIN)
         c.execute("SELECT super_admin_delete_record('goods_receipt',%s,true)",(grn,))
+        c.execute("RESET ROLE")
+        c.execute("UPDATE goods_receipt_notes SET status='posted' WHERE id=%s",(grn,))
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('goods_receipt',%s)",(grn,)),"unused drafts")
+        c.execute("RESET ROLE"); c.execute("UPDATE goods_receipt_notes SET status='draft' WHERE id=%s",(grn,)); actor(c,ADMIN)
         c.execute("SELECT super_admin_delete_record('goods_receipt',%s)",(grn,))
         assert not c.execute("SELECT 1 FROM goods_receipt_notes WHERE id=%s",(grn,)).fetchone()
-        denied(c,lambda:c.execute("SELECT super_admin_delete_record('purchase_order',%s)",(doc,)),"Unsupported")
+        c.execute("RESET ROLE")
+        invoice=c.execute("INSERT INTO vendor_invoices(invoice_number,company_id,vendor_id,po_id,project_id,vendor_invoice_number,vendor_invoice_date,created_by) VALUES('QA-DELETE-INVOICE',%s,%s,%s,%s,'QA-BILL',current_date,%s) RETURNING id",(A,VENDOR,doc,PROJECT,PURCHASER)).fetchone()[0]
+        c.execute("INSERT INTO vendor_invoice_events(invoice_id,action,acted_by,new_status) VALUES(%s,'created',%s,'draft'),(%s,'edited',%s,'draft')",(invoice,PURCHASER,invoice,PURCHASER))
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_record('purchase_order',%s)",(doc,)),"Linked vendor invoices")
+        c.execute("SELECT super_admin_delete_record('vendor_invoice',%s)",(invoice,))
+        assert c.execute("SELECT jsonb_array_length(old_data->'deleted_draft_lines'->'vendor_invoice_events') FROM audit_logs WHERE action='permanently_deleted' AND entity_id=%s",(str(invoice),)).fetchone()[0]==2
+        c.execute("RESET ROLE")
+        c.execute("INSERT INTO purchase_order_approvals(po_id,action,acted_by,new_status) VALUES(%s,'created',%s,'draft')",(doc,PURCHASER))
+        actor(c,ADMIN)
+        c.execute("SELECT super_admin_delete_record('purchase_order',%s)",(doc,))
+        assert not c.execute("SELECT 1 FROM purchase_orders WHERE id=%s",(doc,)).fetchone()
         c.rollback()
     print("PASS Super Admin-only company cleanup, read-only preflight, master scope, draft-line dependency guards, retained audit snapshots and deleted-save retry protection")
 

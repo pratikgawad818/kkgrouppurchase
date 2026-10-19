@@ -8,6 +8,8 @@ export const DELETION_KINDS = [
   "warehouse",
   "purchase_request",
   "rfq",
+  "purchase_order",
+  "vendor_invoice",
   "goods_receipt",
   "user",
 ] as const;
@@ -30,7 +32,12 @@ export function validatePermanentDeletion(input: {
     throw new Error("You can delete records only in your own company.");
   if (input.kind === "user" && (input.actorId === input.targetId || input.targetIsSuperAdmin))
     throw new Error("Your own account and Super Admin accounts cannot be deleted.");
-  if (["purchase_request", "rfq", "goods_receipt"].includes(input.kind) && input.status !== "draft")
+  if (
+    ["purchase_request", "rfq", "purchase_order", "vendor_invoice", "goods_receipt"].includes(
+      input.kind,
+    ) &&
+    input.status !== "draft"
+  )
     throw new Error(
       "Only unused drafts can be permanently deleted. Submitted documents retain their history.",
     );

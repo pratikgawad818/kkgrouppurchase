@@ -87,6 +87,20 @@ const sources = {
     columns: "id,label:grn_number,status",
     page: "/inventory/goods-received",
   },
+  purchase_order: {
+    title: "Draft purchase orders",
+    table: "purchase_orders",
+    label: "po_number",
+    columns: "id,label:po_number,status",
+    page: "/procurement/purchase-orders",
+  },
+  vendor_invoice: {
+    title: "Draft vendor invoices",
+    table: "vendor_invoices",
+    label: "invoice_number",
+    columns: "id,label:invoice_number,detail:vendor_invoice_number,status",
+    page: "/finance/vendor-invoices",
+  },
 } as const;
 type Kind = keyof typeof sources;
 type CleanupRow = {
@@ -186,7 +200,11 @@ function DataCleanup() {
             projects.data.map((p) => p.id),
           );
       } else request = request.filter("company_id", "eq", company!);
-      if (["purchase_request", "rfq", "goods_receipt"].includes(kind))
+      if (
+        ["purchase_request", "rfq", "purchase_order", "vendor_invoice", "goods_receipt"].includes(
+          kind,
+        )
+      )
         request = request.filter("status", "eq", "draft");
       if (kind === "unit") request = request.filter("status", "eq", "available");
       const term = safeSearch(search);

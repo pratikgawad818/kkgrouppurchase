@@ -14,7 +14,8 @@ BEGIN
   WHEN 'material' THEN 'items' WHEN 'vendor' THEN 'vendors' WHEN 'project' THEN 'projects'
   WHEN 'building' THEN 'buildings' WHEN 'floor' THEN 'floors' WHEN 'unit' THEN 'units'
   WHEN 'warehouse' THEN 'warehouses' WHEN 'purchase_request' THEN 'purchase_requests'
-  WHEN 'rfq' THEN 'rfqs' WHEN 'goods_receipt' THEN 'goods_receipt_notes' WHEN 'user' THEN 'profiles'
+  WHEN 'rfq' THEN 'rfqs' WHEN 'purchase_order' THEN 'purchase_orders' WHEN 'vendor_invoice' THEN 'vendor_invoices'
+  WHEN 'goods_receipt' THEN 'goods_receipt_notes' WHEN 'user' THEN 'profiles'
   ELSE NULL END;
  IF tab IS NULL THEN RAISE EXCEPTION 'Unsupported deletion type.'; END IF;
  EXECUTE format('SELECT to_jsonb(t) FROM public.%I t WHERE id=$1 FOR UPDATE',tab) INTO target USING _id;
@@ -29,7 +30,7 @@ BEGIN
  IF actor.company_id IS NULL OR target_company IS DISTINCT FROM actor.company_id THEN
   RAISE EXCEPTION 'You can delete records only in your own company.';
  END IF;
- IF _kind IN ('purchase_request','rfq','goods_receipt') AND target->>'status' <> 'draft' THEN
+ IF _kind IN ('purchase_request','rfq','purchase_order','vendor_invoice','goods_receipt') AND target->>'status' <> 'draft' THEN
   RAISE EXCEPTION 'Only unused drafts can be permanently deleted. Open the document to cancel or correct it with history retained.';
  END IF;
  IF _kind='unit' AND target->>'status' <> 'available' THEN
@@ -38,9 +39,28 @@ BEGIN
  IF _kind='user' AND (_id=auth.uid() OR public.has_role(_id,'super_admin')) THEN
   RAISE EXCEPTION 'Your own account and Super Admin accounts cannot be deleted.';
  END IF;
+ -- Creation/edit metadata for an unsubmitted draft is preserved in the immutable deletion snapshot.
+ -- Actual submissions, approvals, returns and property status changes are never deleted.
+ IF _kind='purchase_request' AND EXISTS(SELECT 1 FROM public.purchase_request_approvals WHERE purchase_request_id=_id AND action<>'created') THEN
+  RAISE EXCEPTION 'This request has submission or decision history. Cancel/correct it instead.';
+ END IF;
+ IF _kind='purchase_order' AND EXISTS(SELECT 1 FROM public.purchase_order_approvals WHERE po_id=_id AND action<>'created') THEN
+  RAISE EXCEPTION 'This order has submission or decision history. Cancel/correct it instead.';
+ END IF;
+ IF _kind='vendor_invoice' AND (EXISTS(SELECT 1 FROM public.vendor_invoice_events WHERE invoice_id=_id AND action NOT IN ('created','edited'))
+    OR EXISTS(SELECT 1 FROM public.journal_entries WHERE source_id=_id)) THEN
+  RAISE EXCEPTION 'This invoice has matching, approval or accounting history. Cancel/correct it instead.';
+ END IF;
+ IF _kind='unit' AND EXISTS(SELECT 1 FROM public.unit_status_history WHERE unit_id=_id AND
+    (from_status IS NOT NULL OR to_status<>'available' OR reason IS DISTINCT FROM 'Unit created')) THEN
+  RAISE EXCEPTION 'This property unit has status history. Edit/correct it instead.';
+ END IF;
  owned := CASE _kind
-  WHEN 'purchase_request' THEN '{"purchase_request_items":"purchase_request_id"}'::jsonb
+  WHEN 'purchase_request' THEN '{"purchase_request_items":"purchase_request_id","purchase_request_approvals":"purchase_request_id"}'::jsonb
   WHEN 'rfq' THEN '{"rfq_items":"rfq_id","rfq_vendors":"rfq_id"}'::jsonb
+  WHEN 'purchase_order' THEN '{"purchase_order_items":"po_id","purchase_order_approvals":"po_id"}'::jsonb
+  WHEN 'vendor_invoice' THEN '{"vendor_invoice_items":"invoice_id","vendor_invoice_events":"invoice_id"}'::jsonb
+  WHEN 'unit' THEN '{"unit_status_history":"unit_id"}'::jsonb
   WHEN 'goods_receipt' THEN '{"goods_receipt_items":"grn_id"}'::jsonb
   WHEN 'user' THEN '{"user_roles":"user_id","user_project_assignments":"user_id"}'::jsonb
   ELSE '{}'::jsonb END;
@@ -93,7 +113,7 @@ BEGIN
   END IF;
  END LOOP;
  IF _check_only THEN RETURN; END IF;
- label := coalesce(target->>'pr_number',target->>'rfq_number',target->>'grn_number',target->>'company_name',target->>'unit_number',target->>'name',target->>'full_name',target->>'email',_id::text);
+ label := coalesce(target->>'pr_number',target->>'rfq_number',target->>'po_number',target->>'invoice_number',target->>'grn_number',target->>'company_name',target->>'unit_number',target->>'name',target->>'full_name',target->>'email',_id::text);
  PERFORM public.log_event('permanently_deleted',tab,label,_id,'Super Admin confirmed permanent deletion',target||jsonb_build_object('deleted_draft_lines',children),NULL);
  FOR child IN SELECT key AS tab,value AS col FROM jsonb_each_text(owned) LOOP
   EXECUTE format('DELETE FROM public.%I WHERE %I=$1',child.tab,child.col) USING _id;
@@ -102,7 +122,7 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.super_admin_delete_record(text,uuid,boolean) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.super_admin_delete_record(text,uuid,boolean) TO authenticated;
-COMMENT ON FUNCTION public.super_admin_delete_record(text,uuid,boolean) IS 'Active company Super Admin only; unused masters and draft PR/RFQ/GRN; FK dependencies and history protected; deletion snapshot retained in immutable audit. Staff auth deletion uses authenticated server function.';
+COMMENT ON FUNCTION public.super_admin_delete_record(text,uuid,boolean) IS 'Active company Super Admin only; unused masters and unsubmitted draft PR/RFQ/PO/invoice/GRN; business history and FK dependencies protected; creation metadata and complete deletion snapshot retained in immutable audit. Staff auth deletion uses authenticated server function.';
 
 -- Keep retry receipts as tombstones; retries must not return or recreate a deleted draft.
 CREATE OR REPLACE FUNCTION public.save_purchase_request(

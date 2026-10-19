@@ -16,7 +16,7 @@ test("Super Admin cannot delete self or another Super Admin",()=>{
   assert.throws(()=>validatePermanentDeletion({...base,kind:"user",targetIsSuperAdmin:true}),/cannot be deleted/);
   assert.doesNotThrow(()=>validatePermanentDeletion({...base,kind:"user"}));
 });
-for (const kind of ["purchase_request","rfq","goods_receipt"]) test(`${kind} permanent deletion is draft-only`,()=>{
+for (const kind of ["purchase_request","rfq","purchase_order","vendor_invoice","goods_receipt"]) test(`${kind} permanent deletion is draft-only`,()=>{
   assert.doesNotThrow(()=>validatePermanentDeletion({...base,kind,status:"draft"}));
   for(const status of ["pending_approval","approved","sent","closed","cancelled","rejected"]) assert.throws(()=>validatePermanentDeletion({...base,kind,status}),/unused drafts/);
 });
