@@ -283,7 +283,12 @@ function PrDetail() {
               <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-primary" />
               <div className="text-xs text-muted-foreground">{fmtDateTime(x.acted_at)}</div>
               <div>
-                <span className="font-medium">{PR_ACTION[x.action]}</span> by {name(x.acted_by)}
+                <span className="font-medium">
+                  {x.action === "submitted" && x.new_status === "approved"
+                    ? "Finalized"
+                    : PR_ACTION[x.action]}
+                </span>{" "}
+                by {name(x.acted_by)}
               </div>
               {x.comment && (
                 <div className="mt-0.5 text-xs italic text-muted-foreground">“{x.comment}”</div>
