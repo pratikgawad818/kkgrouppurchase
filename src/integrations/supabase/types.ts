@@ -4829,6 +4829,10 @@ export type Database = {
         Args: { _from: string; _items: Json; _reason: string; _to: string }
         Returns: string
       }
+      finalize_staff_permanent_delete: {
+        Args: { _actor_id: string; _id: string }
+        Returns: undefined
+      }
       generate_units: {
         Args: {
           _base_rate: number

@@ -323,6 +323,13 @@
       "when": 1792387992850,
       "tag": "0045_super_admin_permanent_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1792388282712,
+      "tag": "0046_staff_deletion_finalization_guards",
+      "breakpoints": true
     }
   ]
 }
