@@ -337,6 +337,13 @@
       "when": 1792437964581,
       "tag": "0047_super_admin_record_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792499623139,
+      "tag": "0054_profile_email_otp",
+      "breakpoints": true
     }
   ]
 }

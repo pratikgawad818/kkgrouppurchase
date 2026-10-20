@@ -6,13 +6,14 @@ import { Camera, Lock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { useServerFn } from "@tanstack/react-start";
-import { setMyRealEmail, changeMyUsername } from "@/lib/admin.functions";
+import { changeMyUsername } from "@/lib/admin.functions";
 import { isSyntheticEmail } from "@/lib/staff-login";
 import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
 import { PageHeader, Field, Loading, Pill } from "@/components/erp/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailVerification } from "@/components/erp/email-verification";
 
 export const Route = createFileRoute("/_authenticated/_shell/profile")({
   head: () => ({
@@ -27,7 +28,6 @@ export const Route = createFileRoute("/_authenticated/_shell/profile")({
 function ProfilePage() {
   const me = useMe();
   const qc = useQueryClient();
-  const attachEmail = useServerFn(setMyRealEmail);
   const renameUser = useServerFn(changeMyUsername);
   const [uname, setUname] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -145,21 +145,7 @@ function ProfilePage() {
           return;
         }
       }
-      const email = f.email.trim();
-      if (email && usernameOnly) {
-        await attachEmail({ data: { email } });
-        await qc.invalidateQueries({ queryKey: ["me"] });
-        toast.success(
-          "Verification requested. Follow the confirmation email instructions before using this address for password recovery.",
-        );
-      } else if (email && email !== currentEmail) {
-        const { error } = await supabase.auth.updateUser(
-          { email },
-          { emailRedirectTo: window.location.origin + "/auth" },
-        );
-        if (error) throw error;
-        toast.success("Profile saved. Check both inboxes to confirm the new email address.");
-      } else toast.success("Profile saved");
+      toast.success("Profile saved");
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -240,6 +226,8 @@ function ProfilePage() {
           </p>
         </section>
 
+        <EmailVerification currentEmail={currentEmail} />
+
         <form onSubmit={save} className="rounded-xl border bg-card p-5 shadow-card">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Username">
@@ -254,9 +242,6 @@ function ProfilePage() {
             </Field>
             <Field label="Full name">
               <Input value={f.full_name} onChange={set("full_name")} maxLength={120} required />
-            </Field>
-            <Field label="Email address">
-              <Input type="email" value={f.email} onChange={set("email")} maxLength={255} />
             </Field>
             <Field label="PERSONAL PHONE NUMBER">
               <Input type="tel" value={f.phone} onChange={set("phone")} maxLength={20} />
@@ -285,17 +270,6 @@ function ProfilePage() {
               <Input value={f.designation} onChange={set("designation")} maxLength={100} />
             </Field>
           </div>
-          {usernameOnly && (
-            <p className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
-              You sign in with a username. To change your password, first request and complete email
-              verification above — then use “Forgot password?” on the sign-in page and the reset
-              link will be sent there.
-            </p>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Changing your email sends a confirmation link; your sign-in email changes only after you
-            confirm it.
-          </p>
           <div className="mt-4 flex justify-end">
             <Button type="submit" disabled={saving}>
               {saving ? "Saving…" : "Save changes"}
