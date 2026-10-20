@@ -4742,6 +4742,10 @@ export type Database = {
       }
     }
     Functions: {
+      _force_delete_rows: {
+        Args: { _ids: string[]; _tab: unknown }
+        Returns: undefined
+      }
       acct: { Args: { _code: string; _company: string }; Returns: string }
       actor_in_company: { Args: { _company_id: string }; Returns: boolean }
       apply_vendor_advance: {
@@ -5150,6 +5154,10 @@ export type Database = {
       }
       super_admin_delete_record: {
         Args: { _check_only?: boolean; _id: string; _kind: string }
+        Returns: undefined
+      }
+      super_admin_force_delete: {
+        Args: { _id: string; _kind: string }
         Returns: undefined
       }
       update_finance_settings: { Args: { _settings: Json }; Returns: undefined }
