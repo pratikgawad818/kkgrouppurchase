@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Loading } from "@/components/erp/common";
+import { ClearHistory } from "@/components/erp/clear-history";
 import { Input } from "@/components/ui/input";
 import { fmtDateTime } from "@/lib/format";
 import { selectCls } from "@/lib/po";
@@ -38,7 +39,7 @@ function Audit() {
   const actions = ["grn_created", "grn_posted", "grn_cancelled", "grn_reversed", "grn_line_edited", "invoice_submit", "disposition_decision", "short_close", "invoice_created", "invoice_matched", "invoice_approve", "invoice_reject", "invoice_cancel", "finance_settings_changed", "insert", "update", "delete"];
   return (
     <>
-      <PageHeader title="Audit Log" subtitle="Permanent history. Entries cannot be edited or deleted." />
+      <PageHeader title="Audit Log" subtitle="Change history. Only a Super Admin can delete entries." deleteAction={<ClearHistory scope="audit" label="Clear audit log" />} />
       <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <select aria-label="Document type" className={selectCls} value={docType} onChange={(e) => setDocType(e.target.value)}><option value="">All documents</option>{DOC_TYPES.map((d) => <option key={d}>{d}</option>)}</select>
         <select aria-label="Action" className={selectCls} value={action} onChange={(e) => setAction(e.target.value)}><option value="">All actions</option>{actions.map((a) => <option key={a} value={a}>{a.replace(/_/g, " ")}</option>)}</select>
@@ -57,6 +58,7 @@ function Audit() {
                 <span>{a.document_type ?? a.entity}{a.document_number ? <span className="ml-1 font-mono">{a.document_number}</span> : null}</span>
                 <span className="text-xs text-muted-foreground">{a.actor_name ?? "—"}</span>
                 {a.reason && <span className="text-xs italic">“{a.reason}”</span>}
+                <span className="ml-auto"><ClearHistory scope="audit_row" auditId={a.id} label="Delete this entry" /></span>
               </summary>
               <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
                 <div><div className="text-muted-foreground">Before</div><pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-muted/40 p-2">{a.old_data ? JSON.stringify(a.old_data, null, 1) : "—"}</pre></div>
