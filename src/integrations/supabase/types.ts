@@ -5161,6 +5161,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      super_admin_clear_history: {
+        Args: { _audit_id?: number; _scope: string }
+        Returns: number
+      }
       super_admin_delete_record: {
         Args: { _check_only?: boolean; _id: string; _kind: string }
         Returns: undefined
