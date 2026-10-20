@@ -351,6 +351,13 @@
       "when": 1792476263621,
       "tag": "0049_fix_force_delete_journal_column",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792477257034,
+      "tag": "0050_allow_staff_deletion_after_self_profile_updates",
+      "breakpoints": true
     }
   ]
 }

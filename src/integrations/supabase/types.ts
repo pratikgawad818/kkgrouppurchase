@@ -5152,6 +5152,15 @@ export type Database = {
         Args: { _po_item: string; _qty: number; _reason: string }
         Returns: undefined
       }
+      staff_audit_blocks_deletion: {
+        Args: {
+          _action: string
+          _entity: string
+          _entity_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       super_admin_delete_record: {
         Args: { _check_only?: boolean; _id: string; _kind: string }
         Returns: undefined
