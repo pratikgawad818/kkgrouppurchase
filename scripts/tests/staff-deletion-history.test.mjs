@@ -3,9 +3,15 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 
 const user = '11111111-1111-4111-8111-111111111111';
+// Evaluate the deployed SQL expression without widening access to the private helper.
+const definition = JSON.parse(execFileSync('lovable', ['supabase', 'query', "select pg_get_functiondef('public.staff_audit_blocks_deletion(text,text,text,uuid)'::regprocedure) as definition", '--json'], { encoding: 'utf8' })).rows[0].definition;
+const body = definition.match(/AS \$function\$([\s\S]*?)\$function\$/)?.[1];
+assert.ok(body, 'deployed history classifier has a SQL body');
 function blocks(entity, action, entityId = user) {
   const literal = value => value === null ? 'NULL' : `'${value.replaceAll("'", "''")}'`;
-  const query = `select public.staff_audit_blocks_deletion(${literal(entity)},${literal(action)},${literal(entityId)},'${user}'::uuid) as blocked`;
+  const values = { _entity: literal(entity), _action: literal(action), _entity_id: literal(entityId), _user_id: `'${user}'::uuid` };
+  const expression = body.trim().replace(/;$/, '').replace(/\b(_entity_id|_user_id|_entity|_action)\b/g, key => values[key]);
+  const query = `select result.* from (${expression}) as result(blocked)`;
   const result = JSON.parse(execFileSync('lovable', ['supabase', 'query', query, '--json'], { encoding: 'utf8' }));
   return result.rows[0].blocked;
 }
