@@ -344,6 +344,13 @@
       "when": 1792475979340,
       "tag": "0048_super_admin_force_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792476263621,
+      "tag": "0049_fix_force_delete_journal_column",
+      "breakpoints": true
     }
   ]
 }
