@@ -11,6 +11,7 @@
 
 - Keep ERP modules connected through source-document foreign keys and immutable ledgers so every material and monetary movement is traceable.
 - Permanent deletion uses a company-scoped Super Admin database function with row locks and reference checks; staff auth deletion additionally uses an authenticated server function, so linked history is never cascade-deleted.
+- Staff deletion preflight and profile deletion trigger share a fail-closed audit classifier: only own profile creation/updates and own sign-in activity are nonblocking, and their audit rows remain immutable.
 - Push delivery uses the shared transport with manual redirects; Workers reject error mode, and provider redirects must never be followed.
 - Director device registration reconciles on workspace entry and focus after permission is granted; first-time permission requests run only from a notification-bell tap to respect browser consent.
 - Keep Phase 1 limited to authenticated master data; introduce transactional tables only in their approved phase.
