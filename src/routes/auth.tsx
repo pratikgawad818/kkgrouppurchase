@@ -105,12 +105,15 @@ function AuthPage() {
         </blockquote>
         <div className="text-xs text-sidebar-foreground/60">Internal system · Authorised staff only</div>
       </div>
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          <img src={brandLogo.url} alt="KK GROUP" className="mb-8 h-24 w-auto max-w-full object-contain object-left lg:hidden" />
-          <h1 className="text-2xl font-semibold tracking-tight">{mode === "in" ? "Sign in" : "Reset password"}</h1>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-primary/10 via-background to-background p-5 sm:p-8 lg:min-h-0 lg:bg-none">
+        <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-lg sm:p-8">
+          <div className="mb-6 flex justify-center lg:hidden">
+            <img src={brandLogo.url} alt="KK GROUP" className="h-20 w-auto max-w-full object-contain" />
+          </div>
+          <div className="mb-1 h-1 w-10 rounded-full bg-primary" />
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight">{mode === "in" ? "Welcome back" : "Reset password"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "in" ? "Procurement & Project Management ERP" : "We'll email you a link to set a new password."}
+            {mode === "in" ? "Sign in to KK GROUP Procurement & Project Management" : "We'll email you a link to set a new password."}
           </p>
           {checkingSession ? (
             <div role="status" aria-live="polite" className="mt-6 flex items-center gap-3 rounded-md border bg-card p-4 text-sm text-muted-foreground">
@@ -131,14 +134,17 @@ function AuthPage() {
                   <Input id="pw" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
               )}
-              <Button type="submit" className="w-full" disabled={busy}>{busy ? "Please wait…" : mode === "in" ? "Sign in" : "Send reset link"}</Button>
+              <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? "Please wait…" : mode === "in" ? "Sign in" : "Send reset link"}</Button>
             </form>
           )}
-          <button disabled={checkingSession || busy} className="mt-6 text-sm text-primary underline-offset-4 hover:underline disabled:opacity-50" onClick={() => { setMode(mode === "in" ? "forgot" : "in"); setSent(false); }}>
-            {mode === "in" ? "Forgot password?" : "Back to sign in"}
-          </button>
-          <p className="mt-8 text-xs text-muted-foreground">Accounts are created by your administrator.</p>
+          <div className="mt-5 text-center">
+            <button disabled={checkingSession || busy} className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-50" onClick={() => { setMode(mode === "in" ? "forgot" : "in"); setSent(false); }}>
+              {mode === "in" ? "Forgot password?" : "Back to sign in"}
+            </button>
+          </div>
+          <p className="mt-4 border-t pt-4 text-center text-xs text-muted-foreground">Accounts are created by your administrator.</p>
         </div>
+        <p className="mt-6 text-xs text-muted-foreground lg:hidden">Internal system · Authorised staff only</p>
       </div>
     </div>
   );
