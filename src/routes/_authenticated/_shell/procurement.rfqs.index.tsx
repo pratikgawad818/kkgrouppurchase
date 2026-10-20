@@ -139,7 +139,7 @@ function RfqList() {
                         {RFQ_STATUS[r.status].label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right"><PermanentDelete kind="rfq" id={r.id} name={r.rfq_number} disabled={r.status!=="draft"}/></td>
+                    <td className="px-4 py-3 text-right"><PermanentDelete kind="rfq" id={r.id} name={r.rfq_number}/></td>
                   </tr>
                 );
               })}

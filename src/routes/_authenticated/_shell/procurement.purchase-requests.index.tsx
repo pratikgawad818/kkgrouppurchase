@@ -343,7 +343,7 @@ function PrList() {
                     >
                       Open
                     </Link>
-                    <PermanentDelete kind="purchase_request" id={r.id} name={r.pr_number} disabled={r.status!=="draft"}/>
+                    <PermanentDelete kind="purchase_request" id={r.id} name={r.pr_number}/>
                   </td>
                 </tr>
               ))}
