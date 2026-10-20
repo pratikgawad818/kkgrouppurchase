@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -128,7 +129,7 @@ function PrDetail() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader deleteAction={<PermanentDelete force kind="purchase_request" id={pr.id} name={pr.pr_number} onDeleted={()=>window.location.assign("/procurement/purchase-requests")}/>}
         crumbs={<Link to="/procurement/purchase-requests">Purchase Requests</Link>}
         title={pr.pr_number}
         subtitle={

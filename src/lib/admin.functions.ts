@@ -215,46 +215,8 @@ export const createStaffAccount = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Username-only accounts have a non-deliverable sign-in email; let them attach their real one so password reset links can reach them. */
-export const setMyRealEmail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ email: z.string().trim().toLowerCase().email().max(255) }).parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const { isSyntheticEmail } = await import("@/lib/staff-login");
-    if (isSyntheticEmail(data.email)) throw new Error("Please enter a real email address.");
-    const { data: profile, error: profileError } = await context.supabase
-      .from("profiles")
-      .select("email,is_active")
-      .eq("id", context.userId)
-      .single();
-    if (profileError || !profile?.is_active) throw new Error("Your staff account is inactive.");
-    if (!isSyntheticEmail(profile.email))
-      throw new Error("Your account already has an email address.");
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const request = getRequest();
-    // Use the ordinary user-authenticated endpoint, which sends confirmation mail.
-    // The profile email is synchronized only after Auth confirms the change.
-    const response = await fetch(`${process.env["SUPABASE_URL"]}/auth/v1/user`, {
-      method: "PUT",
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        apikey: process.env["SUPABASE_PUBLISHABLE_KEY"]!,
-        Authorization: request.headers.get("authorization")!,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email: data.email }),
-    });
-    if (!response.ok) {
-      await response.body?.cancel();
-      throw new Error(
-        "Could not request email verification. Please try again or contact your administrator.",
-      );
-    }
-    await response.body?.cancel();
-    return { verificationRequired: true };
-  });
+// First-email attachment requires inbox verification before any Auth update.
+export { requestMyEmailOtp as setMyRealEmail } from "@/lib/email-otp.functions";
 
 /** Any staff member can set or change their sign-in username. */
 export const changeMyUsername = createServerFn({ method: "POST" })

@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -200,7 +201,7 @@ function SmallExpenses() {
           <td className="p-3 text-right font-medium tabular-nums">{inr(x.amount)}</td>
           <td className="p-3">{x.status==="voided"?<span title={x.void_reason??""} className="text-destructive">Voided</span>:"Recorded"}</td>
           <td className="p-3">{canWrite&&x.status==="recorded"?
-            <Button size="sm" variant="outline" onClick={()=>{setVoidId(x.id);setVoidReason("");}}><Undo2 className="mr-1 h-3.5 w-3.5"/>Void</Button>:"—"}</td>
+            <Button size="sm" variant="outline" onClick={()=>{setVoidId(x.id);setVoidReason("");}}><Undo2 className="mr-1 h-3.5 w-3.5"/>Void</Button>:"—"}<PermanentDelete force kind="small_expense" id={x.id} name={x.paid_to ?? "expense"}/></td>
         </tr>)}
           {!rows.length&&<tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No small-expense entries match.</td></tr>}
         </tbody></table>

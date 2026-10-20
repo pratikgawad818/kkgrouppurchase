@@ -71,6 +71,7 @@ def setup():
           CREATE SCHEMA auth; CREATE SCHEMA storage; CREATE SCHEMA extensions; CREATE SCHEMA net;
           CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
             SELECT nullif(current_setting('qa.actor',true),'')::uuid $$;
+          CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('role',true) $$;
           CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb $$;
           CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);
           CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text,owner uuid);
@@ -483,6 +484,15 @@ def test_super_admin_record_cleanup():
     print("PASS Super Admin-only company cleanup, read-only preflight, master scope, draft-line dependency guards, retained audit snapshots and deleted-save retry protection")
 
 
+def test_staff_audit_classifier():
+    with db() as c:
+        cases = [('profiles','insert',ADMIN,False),('profiles','update',ADMIN,False),('auth','login',ADMIN,False),('sessions','signed_in',ADMIN,False),('purchase_orders','update',ADMIN,True),('PO','po_approved',ADMIN,True),('profiles','update',DIRECTOR,True),(None,None,None,True),('profiles','delete',ADMIN,True)]
+        for entity,action,entity_id,blocked in cases:
+            result=c.execute("SELECT public.staff_audit_blocks_deletion(%s,%s,%s,%s)",(entity,action,entity_id,ADMIN)).fetchone()[0]
+            assert result==blocked,(entity,action,entity_id,result)
+    print("PASS recovered staff classifier tested against disposable PostgreSQL; no live database calls")
+
+
 if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
@@ -492,3 +502,4 @@ if __name__ == "__main__":
     test_real_payment_posting()
     test_super_admin_record_cleanup()
     test_concurrent_save_retries()
+    test_staff_audit_classifier()

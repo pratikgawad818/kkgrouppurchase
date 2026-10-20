@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -81,7 +82,7 @@ function IssueDetail() {
   const available = lines.some(x=>Number(x.quantity) - (returnedQty.get(x.id)??0)>0);
 
   return <div className="mx-auto max-w-5xl pb-16">
-    <PageHeader title={issue.issue_number} crumbs={<Link to="/inventory/material-issues" className="hover:underline">Material Issues</Link>}
+    <PageHeader deleteAction={<PermanentDelete force kind="material_issue" id={issue.id} name={issue.issue_number} onDeleted={()=>window.location.assign("/inventory/material-issues")}/>} title={issue.issue_number} crumbs={<Link to="/inventory/material-issues" className="hover:underline">Material Issues</Link>}
       subtitle="Posted stock issue · original issue lines are immutable"
       actions={can("inventory.return") && available && <Button size="sm" onClick={()=>setShowReturn(true)}><Undo2 className="mr-1 h-4 w-4" />Return unused materials</Button>} />
     <section className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 text-sm shadow-card sm:p-5 lg:grid-cols-4">

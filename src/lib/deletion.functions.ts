@@ -1,9 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DELETION_KINDS, validatePermanentDeletion } from "@/lib/deletion-policy";
+import {
+  DELETION_KINDS,
+  FORCE_DELETION_KINDS,
+  validatePermanentDeletion,
+} from "@/lib/deletion-policy";
 
-const deletionInput = z.object({ kind: z.enum(DELETION_KINDS), id: z.string().uuid() });
+const deletionInput = z.object({
+  kind: z.enum(DELETION_KINDS),
+  id: z.string().uuid(),
+  force: z.boolean().optional().default(false),
+});
 
 export const checkPermanentDeletion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -32,6 +40,18 @@ export const permanentlyDeleteRecord = createServerFn({ method: "POST" })
     ]);
     if (role.error || !role.data || actor.error || !actor.data?.is_active)
       throw new Error("Only an active Super Admin can permanently delete records.");
+    if (
+      data.force &&
+      data.kind !== "user" &&
+      (FORCE_DELETION_KINDS as readonly string[]).includes(data.kind)
+    ) {
+      const { error } = await context.supabase.rpc("super_admin_force_delete", {
+        _kind: data.kind,
+        _id: data.id,
+      });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
     const { error: checkError } = await context.supabase.rpc("super_admin_delete_record", {
       _kind: data.kind,
       _id: data.id,
@@ -54,15 +74,27 @@ export const permanentlyDeleteRecord = createServerFn({ method: "POST" })
         targetId: data.id,
         targetIsSuperAdmin: targetRole.data,
       });
+      const { error: historyError } = await context.supabase.rpc("check_staff_deletion_history", {
+        _id: data.id,
+      });
+      if (historyError) throw new Error(historyError.message);
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error } = await supabaseAdmin.auth.admin.deleteUser(data.id);
       if (error && error.code !== "user_not_found")
         throw new Error("Staff sign-in account could not be deleted. No profile was removed.");
     }
-    const { error } = await context.supabase.rpc("super_admin_delete_record", {
-      _kind: data.kind,
-      _id: data.id,
-    });
+    const { error } =
+      data.kind === "user"
+        ? await (
+            await import("@/integrations/supabase/client.server")
+          ).supabaseAdmin.rpc("finalize_staff_permanent_delete", {
+            _actor_id: context.userId,
+            _id: data.id,
+          })
+        : await context.supabase.rpc("super_admin_delete_record", {
+            _kind: data.kind,
+            _id: data.id,
+          });
     if (error)
       throw new Error(
         data.kind === "user"

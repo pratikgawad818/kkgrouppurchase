@@ -9,8 +9,10 @@ export function PageHeader({
   subtitle,
   actions,
   crumbs,
+  deleteAction,
 }: {
   title: string;
+  deleteAction?: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
   crumbs?: ReactNode;
@@ -19,7 +21,7 @@ export function PageHeader({
     <div className="workspace-page-header flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
         {crumbs && <div className="mb-1.5 text-xs font-medium text-muted-foreground">{crumbs}</div>}
-        <h2 className="workspace-page-title text-foreground">{title}</h2>
+        <div className="flex items-center gap-1"><h2 className="workspace-page-title text-foreground">{title}</h2>{deleteAction}</div>
         {subtitle && <div className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</div>}
       </div>
       {actions && (

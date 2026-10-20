@@ -25,3 +25,5 @@
 
 - Lovable-managed `.env` must be eligible for source sync and **contain public values only**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, optional project ID and server-side equivalents. The public anon / `sb_publishable_` key is NOT a service-role key. **Never commit any `sb_secret_` key, service-role JWT, DB password, SMTP password, or other secret**. Check via `node scripts/check-public-env.mjs --require` before tracking `.env`. Deployment platform may inject env variables instead; never hardcode secrets as an app fallback.
 - A normal `npm run build` can succeed without Supabase browser configuration but the published `/auth` route will fail at runtime. When diagnosing blank previews, check the published VITE_ environment and deployment state; GitHub CI only validates static build syntax.
+
+- Profile email changes require server-verified OTPs from both real inboxes; first email attachment requires the new inbox only. Never activate an email before proof completes. Verification material stays server-only, expires, and is rate limited.

@@ -10,6 +10,7 @@ import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { ApprovalDecisionDialog } from "@/components/erp/approval-decision-dialog";
 import { Loading, PageHeader } from "@/components/erp/common";
+import { ClearHistory } from "@/components/erp/clear-history";
 import { Pager } from "@/components/erp/pager";
 import { ApprovalKindTabs } from "@/components/erp/approval-kind-tabs";
 import { ApprovalStatusFilter } from "@/components/erp/approval-status-filter";
@@ -297,7 +298,9 @@ function DirectorApprovals() {
               ? "Monitor orders, payments and director decisions."
               : "Review orders and payments. Keep work moving."
           }
+          deleteAction={<ClearHistory scope="approvals" label="Clear approval history" />}
         />
+
       </div>
       <ApprovalKindTabs value={activeKind} counts={counts} onChange={(kind) => selectQueue(kind)} />
       <div className="mb-4 flex items-center justify-between gap-3">

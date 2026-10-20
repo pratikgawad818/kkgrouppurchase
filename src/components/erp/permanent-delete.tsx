@@ -24,12 +24,16 @@ export function PermanentDelete({
   name,
   disabled = false,
   labelled = false,
+  force = false,
+  onDeleted,
 }: {
   kind: DeletionKind;
   id: string;
   name: string;
   disabled?: boolean;
   labelled?: boolean;
+  force?: boolean;
+  onDeleted?: () => void;
 }) {
   const me = useMe();
   const [open, setOpen] = useState(false),
@@ -39,16 +43,17 @@ export function PermanentDelete({
     check = useServerFn(checkPermanentDeletion);
   const eligibility = useQuery({
     queryKey: ["deletion-check", kind, id],
-    enabled: open,
+    enabled: open && !force,
     staleTime: 0,
     retry: false,
     queryFn: () => check({ data: { kind, id } }),
   });
   const mutation = useMutation({
-    mutationFn: () => run({ data: { kind, id } }),
+    mutationFn: () => run({ data: { kind, id, force } }),
     onSuccess: () => {
       setOpen(false);
       toast.success("Permanently deleted");
+      onDeleted?.();
       void qc.invalidateQueries();
     },
     onError: (error) => toast.error(error.message),
@@ -67,7 +72,9 @@ export function PermanentDelete({
             ? "This record must be cancelled or corrected with its history retained"
             : `Delete ${name}`
         }
-        onClick={() => {
+        onClick={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
           setConfirmation("");
           mutation.reset();
           setOpen(true);
@@ -82,19 +89,20 @@ export function PermanentDelete({
           if (!mutation.isPending) setOpen(value);
         }}
       >
-        <DialogContent>
+        <DialogContent onClick={(event) => event.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>Permanently delete {name}?</DialogTitle>
             <DialogDescription>
-              This cannot be undone. Linked purchases, stock, payments and history are protected. A
-              deletion entry is retained in the audit log.
+              {force
+                ? "This cannot be undone. Everything created from it (including linked quotations, orders, receipts, invoices, payments and stock or account entries) will also be deleted, and stock balances corrected."
+                : "This cannot be undone. Linked purchases, stock, payments and history are protected. A deletion entry is retained in the audit log."}
             </DialogDescription>
           </DialogHeader>
-          {eligibility.isFetching ? (
+          {!force && eligibility.isFetching ? (
             <p role="status" className="text-sm text-muted-foreground">
               Checking linked records…
             </p>
-          ) : eligibility.error ? (
+          ) : !force && eligibility.error ? (
             <div
               role="alert"
               className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
@@ -128,8 +136,7 @@ export function PermanentDelete({
               disabled={
                 confirmation !== "DELETE" ||
                 mutation.isPending ||
-                eligibility.isFetching ||
-                !eligibility.isSuccess
+                (!force && (eligibility.isFetching || !eligibility.isSuccess))
               }
               onClick={() => mutation.mutate()}
             >
