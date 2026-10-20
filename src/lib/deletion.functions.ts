@@ -35,7 +35,4 @@ export const permanentlyDeleteRecord = createServerFn({ method: "POST" })
       if(finalizeError) throw new Error("Sign-in access was removed, but the staff profile could not be deleted. Retry deletion; linked history remains protected.");
       return { ok:true };
     }
-    const { error } = await context.supabase.rpc("super_admin_delete_record",{_kind:data.kind,_id:data.id});
-    if(error) throw new Error(error.message);
-    return { ok:true };
   });
