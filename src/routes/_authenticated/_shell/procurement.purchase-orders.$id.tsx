@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -235,7 +236,7 @@ function PoDetail() {
       <PrintPo po={po} items={items} history={history} />
       <div className="purchase-order-detail print:hidden">
         <div ref={orderHeading} tabIndex={-1} className="outline-none">
-          <PageHeader
+          <PageHeader deleteAction={<PermanentDelete kind="purchase_order" id={po.id} name={po.po_number} onDeleted={()=>window.location.assign("/procurement/purchase-orders")}/>}
             crumbs={
               <Link to="/procurement/purchase-orders" className="hover:underline">
                 Purchase Orders
