@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -140,7 +141,7 @@ function PaymentDetail() {
   };
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-16">
-      <PageHeader
+      <PageHeader deleteAction={<PermanentDelete force kind="vendor_payment" id={p.id} name={p.payment_number} onDeleted={()=>window.location.assign("/finance/payments")}/>}
         actions={
           p.status === "scheduled" && me.data?.roles.includes("director") ? (
             <Button className="approval-action" asChild>

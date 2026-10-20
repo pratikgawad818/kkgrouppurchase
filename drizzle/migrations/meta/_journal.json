@@ -341,6 +341,48 @@
     {
       "idx": 48,
       "version": "7",
+      "when": 1792437964582,
+      "tag": "0048_staff_deletion_finalization_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792437964583,
+      "tag": "0049_deletion_guard_history_refinement",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792475979340,
+      "tag": "0050_super_admin_force_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1792476263621,
+      "tag": "0051_fix_force_delete_journal_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1792477257034,
+      "tag": "0052_allow_staff_deletion_after_self_profile_updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792478070806,
+      "tag": "0053_super_admin_clear_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
       "when": 1792499623139,
       "tag": "0054_profile_email_otp",
       "breakpoints": true

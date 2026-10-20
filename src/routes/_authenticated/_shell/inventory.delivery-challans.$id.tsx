@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -69,7 +70,7 @@ function ChallanDetails() {
   const received = lines.reduce((sum, x) => sum + (receivedByLine.get(x.id) ?? 0), 0);
 
   return <div className="mx-auto max-w-5xl pb-20">
-    <PageHeader title={h.challan_number}
+    <PageHeader deleteAction={<PermanentDelete force kind="delivery_challan" id={h.id} name={h.challan_number} onDeleted={()=>window.location.assign("/inventory/delivery-challans")}/>} title={h.challan_number}
       subtitle={<span>Vendor Delivery Challan · <span className={h.status === "registered" ? "font-semibold text-green-700 dark:text-green-400" : "font-semibold text-destructive"}>{h.status === "registered" ? "Registered" : "Cancelled"}</span></span>}
       crumbs={<Link to="/inventory/delivery-challans" search={{ po: null }} className="hover:underline">Delivery Challans</Link>}
       actions={canCancel && <Button variant="outline" size="sm" onClick={() => setCancelOpen(true)}>Cancel challan</Button>} />

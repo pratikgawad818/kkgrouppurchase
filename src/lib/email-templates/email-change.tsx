@@ -48,7 +48,7 @@ export function EmailChangeEmail({
             fontSize: "13px",
             padding: "16px",
             backgroundColor: "transparent",
-              border: "1px solid #dce4ee",
+            border: "1px solid #dce4ee",
             borderRadius: "10px",
             overflowWrap: "anywhere",
           }}

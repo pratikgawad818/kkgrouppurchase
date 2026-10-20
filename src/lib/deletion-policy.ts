@@ -1,3 +1,18 @@
+export const FORCE_DELETION_KINDS = [
+  "material",
+  "purchase_request",
+  "rfq",
+  "vendor_quotation",
+  "purchase_order",
+  "delivery_challan",
+  "goods_receipt",
+  "material_issue",
+  "material_return",
+  "vendor_invoice",
+  "vendor_payment",
+  "small_expense",
+] as const;
+export type ForceDeletionKind = (typeof FORCE_DELETION_KINDS)[number];
 export const DELETION_KINDS = [
   "material",
   "vendor",
@@ -12,8 +27,9 @@ export const DELETION_KINDS = [
   "vendor_invoice",
   "goods_receipt",
   "user",
+  ...FORCE_DELETION_KINDS,
 ] as const;
-export type DeletionKind = (typeof DELETION_KINDS)[number];
+export type DeletionKind = (typeof DELETION_KINDS)[number] | ForceDeletionKind;
 
 export function validatePermanentDeletion(input: {
   isSuperAdmin: boolean;

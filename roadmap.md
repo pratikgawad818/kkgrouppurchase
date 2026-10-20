@@ -1,5 +1,9 @@
-- [ ] Add Super Admin permanent deletion for eligible materials, purchase requests, RFQs and users; preserve linked history and verify safeguards.
+- [x] Add Super Admin permanent deletion for eligible materials, purchase requests, RFQs and users; disposable material and staff deletion verified in the signed-in app, submitted-document and self-account safeguards verified, nine access tests pass.
+- [ ] Extend Super Admin deletion across ERP registers while preserving linked stock, financial and audit history.
 - [x] Remove director-reminder cooldown while preserving access checks and reminder history; two immediate reminders tested in the signed-in app.
 - [x] Correct Worker-incompatible push redirect handling; sender and security tests pass in the live runtime.
 - [x] Remove the Director turn-on switch and automatically reconcile permitted phone registrations; first-time consent remains phone-controlled.
 - [ ] Verify physical phone receipt after publishing and renewing Sahib’s expired phone registration; requires the phone owner.
+- [x] Super Admin force delete (cascade) across all registers
+- [ ] Super Admin unrestricted edit of documents at any stage (next)
+- [x] Allow staff deletion after self-profile updates without weakening business-history protection; disposable staff signed in, saved own profile and was deleted through Super Admin UI; all 11 protection tests pass and test accounts removed.

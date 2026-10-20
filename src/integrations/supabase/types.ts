@@ -4742,6 +4742,10 @@ export type Database = {
       }
     }
     Functions: {
+      _force_delete_rows: {
+        Args: { _ids: string[]; _tab: unknown }
+        Returns: undefined
+      }
       acct: { Args: { _code: string; _company: string }; Returns: string }
       actor_in_company: { Args: { _company_id: string }; Returns: boolean }
       apply_vendor_advance: {
@@ -4759,6 +4763,10 @@ export type Database = {
       }
       cancel_vendor_delivery_challan: {
         Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
+      check_staff_deletion_history: {
+        Args: { _id: string }
         Returns: undefined
       }
       create_goods_receipt: {
@@ -4828,6 +4836,10 @@ export type Database = {
       execute_stock_transfer: {
         Args: { _from: string; _items: Json; _reason: string; _to: string }
         Returns: string
+      }
+      finalize_staff_permanent_delete: {
+        Args: { _actor_id: string; _id: string }
+        Returns: undefined
       }
       generate_units: {
         Args: {
@@ -5140,8 +5152,25 @@ export type Database = {
         Args: { _po_item: string; _qty: number; _reason: string }
         Returns: undefined
       }
+      staff_audit_blocks_deletion: {
+        Args: {
+          _action: string
+          _entity: string
+          _entity_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      super_admin_clear_history: {
+        Args: { _audit_id?: number; _scope: string }
+        Returns: number
+      }
       super_admin_delete_record: {
         Args: { _check_only?: boolean; _id: string; _kind: string }
+        Returns: undefined
+      }
+      super_admin_force_delete: {
+        Args: { _id: string; _kind: string }
         Returns: undefined
       }
       update_finance_settings: { Args: { _settings: Json }; Returns: undefined }
