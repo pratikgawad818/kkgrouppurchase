@@ -22,9 +22,9 @@ export function ClearHistory({ scope, auditId, label }: { scope: Scope; auditId?
   if (!me.data?.roles.includes("super_admin")) return null;
   const run = async () => {
     setBusy(true);
-    const { data, error } = await supabase.rpc("super_admin_clear_history", { _scope: scope, _audit_id: auditId });
+    const { data, error } = await supabase.rpc("super_admin_clear_history", auditId === undefined ? { _scope: scope } : { _scope: scope, _audit_id: auditId });
     setBusy(false);
-    if (error) return toast.error(errMsg(error));
+    if (error) { toast.error(errMsg(error)); return; }
     toast.success(`Deleted ${data ?? 0} record(s)`);
     setOpen(false); setText("");
     void qc.invalidateQueries();
