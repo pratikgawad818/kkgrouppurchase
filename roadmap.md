@@ -4,3 +4,5 @@
 - [x] Correct Worker-incompatible push redirect handling; sender and security tests pass in the live runtime.
 - [x] Remove the Director turn-on switch and automatically reconcile permitted phone registrations; first-time consent remains phone-controlled.
 - [ ] Verify physical phone receipt after publishing and renewing Sahib’s expired phone registration; requires the phone owner.
+- [x] Super Admin force delete (cascade) across all registers
+- [ ] Super Admin unrestricted edit of documents at any stage (next)

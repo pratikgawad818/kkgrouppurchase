@@ -1,20 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { validatePermanentDeletion } from "@/lib/deletion-policy";
+import { validatePermanentDeletion, FORCE_DELETION_KINDS } from "@/lib/deletion-policy";
 
 export const permanentlyDeleteRecord = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ kind:z.enum(["material","purchase_request","rfq","user"]), id:z.string().uuid() }).parse(input))
+  .inputValidator((input) => z.object({ kind:z.enum([...FORCE_DELETION_KINDS,"user"]), id:z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const [role, actor] = await Promise.all([
       context.supabase.rpc("has_role",{_user_id:context.userId,_role:"super_admin"}),
       context.supabase.from("profiles").select("company_id,is_active").eq("id",context.userId).single(),
     ]);
     if (role.error || !role.data || actor.error || !actor.data?.is_active) throw new Error("Only an active Super Admin can permanently delete records.");
+    if(data.kind !== "user") {
+      const { error } = await context.supabase.rpc("super_admin_force_delete",{_kind:data.kind,_id:data.id});
+      if(error) throw new Error(error.message);
+      return { ok:true };
+    }
     const { error: checkError } = await context.supabase.rpc("super_admin_delete_record",{_kind:data.kind,_id:data.id,_check_only:true});
     if(checkError) throw new Error(checkError.message);
-    if(data.kind === "user") {
+    {
       const [target, targetRole] = await Promise.all([
         context.supabase.from("profiles").select("company_id").eq("id",data.id).single(),
         context.supabase.rpc("has_role",{_user_id:data.id,_role:"super_admin"}),
@@ -30,7 +35,4 @@ export const permanentlyDeleteRecord = createServerFn({ method: "POST" })
       if(finalizeError) throw new Error("Sign-in access was removed, but the staff profile could not be deleted. Retry deletion; linked history remains protected.");
       return { ok:true };
     }
-    const { error } = await context.supabase.rpc("super_admin_delete_record",{_kind:data.kind,_id:data.id});
-    if(error) throw new Error(error.message);
-    return { ok:true };
   });

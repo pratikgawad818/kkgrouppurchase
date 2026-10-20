@@ -337,6 +337,13 @@
       "when": 1792388296982,
       "tag": "0047_deletion_guard_history_refinement",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792475979340,
+      "tag": "0048_super_admin_force_delete",
+      "breakpoints": true
     }
   ]
 }

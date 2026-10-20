@@ -1,3 +1,4 @@
+import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -56,7 +57,7 @@ function InvoiceDetail() {
   const editable = inv.status === "draft" || inv.status === "exception";
   return (
     <>
-      <PageHeader title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{MATCH_STATUS[inv.match_status].label}</span></span>}
+      <PageHeader deleteAction={<PermanentDelete kind="vendor_invoice" id={inv.id} name={inv.invoice_number} onDeleted={()=>window.location.assign("/finance/vendor-invoices")}/>} title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{MATCH_STATUS[inv.match_status].label}</span></span>}
         actions={<div className="flex flex-wrap gap-2">
           {inv.attachment_path && <><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!).catch((e) => toast.error(errMsg(e)))}>View invoice</Button><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!, true).catch((e) => toast.error(errMsg(e)))}>Download invoice</Button></>}
           {editable && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/new" search={{ id }}>{inv.status === "exception" ? "Resolve (edit)" : "Edit"}</Link></Button>}
