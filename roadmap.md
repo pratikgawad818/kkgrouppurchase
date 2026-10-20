@@ -6,4 +6,4 @@
 - [ ] Verify physical phone receipt after publishing and renewing Sahib’s expired phone registration; requires the phone owner.
 - [x] Super Admin force delete (cascade) across all registers
 - [ ] Super Admin unrestricted edit of documents at any stage (next)
-- [ ] Allow staff deletion after self-profile updates without weakening business-history protection; verify with a disposable staff account.
+- [x] Allow staff deletion after self-profile updates without weakening business-history protection; disposable staff signed in, saved own profile and was deleted through Super Admin UI; all 11 protection tests pass and test accounts removed.
