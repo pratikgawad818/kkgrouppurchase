@@ -71,3 +71,219 @@ export function decideHistoricalConflict(previous: string | null, erp: string | 
   if (erp !== previous && sheet !== previous) return "conflict" as const;
   return erp !== previous ? "export" as const : "import" as const;
 }
+
+
+export const SHEET_ENTRY_TABS = [
+  { kind: "costing", name: "Entry - Project Costing", statusIndex: 13,
+    headers: ["Reference","Date (YYYY-MM-DD)","Project Code","Building Code","Cost Category","Vendor Code (optional)","Description","Quantity","Unit Rate INR","Amount INR","Invoice/Challan Ref (optional)","Payment Method","Remarks","ERP Record ID (do not edit)","Import Status","Import Error"] },
+  { kind: "challan", name: "Entry - Vendor Challans", statusIndex: 13,
+    headers: ["Import Reference","Challan Number","Challan Date (YYYY-MM-DD)","Vendor Code","PO Number","Project Code","Building Code","PO Line No","Material Code","Dispatched Quantity","Vehicle Number","Invoice Reference","Remarks","ERP Record ID (do not edit)","Import Status","Import Error"] },
+  { kind: "invoice", name: "Entry - Vendor Invoices", statusIndex: 18,
+    headers: ["Import Reference","Vendor Invoice Number","Invoice Date (YYYY-MM-DD)","Due Date (YYYY-MM-DD)","Vendor Code","PO Number","GRN Number","GRN Line No","Material Code","Invoiced Quantity","Rate INR","Tax Type","Tax Rate %","Freight INR (first line)","Other Charges INR (first line)","TDS Section","TDS Rate %","Remarks","ERP Record ID (do not edit)","Import Status","Import Error"] },
+] as const;
+export type SheetEntryKind = typeof SHEET_ENTRY_TABS[number]["kind"];
+export type SheetEntryDocument = { kind:SheetEntryKind; reference:string; rows:number[]; payload:Record<string,unknown> };
+export type SheetEntryError = { row:number; message:string };
+function cell(row:readonly unknown[],i:number) { return String(row[i]??"").trim(); }
+function entryReference(value:string):string {
+  const key=value.toUpperCase();
+  if(!/^[A-Z0-9_-]{2,64}$/.test(key))throw new Error("Import Reference must contain 2–64 letters, numbers, underscores or hyphens.");
+  return key;
+}
+function code(value:string,name:string,optional=false):string {
+  const c=value.trim().toUpperCase();
+  if(optional&&!c)return "";
+  if(!/^[A-Z0-9_.-]{1,80}$/.test(c))throw new Error(name+" must be an existing ERP code/number.");
+  return c;
+}
+function sheetDate(value:string,name:string,optional=false):string {
+  if(optional&&!value)return "";
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    Number.isNaN(Date.parse(value+"T00:00:00Z")) ||
+    new Date(value+"T00:00:00Z").toISOString().slice(0,10)!==value)
+    throw new Error(name+" must be a real YYYY-MM-DD date.");
+  return value;
+}
+function amount(value:string,name:string,required=true,min=0,max=1_000_000_000,precision=2):number|null {
+  if(!value&&!required)return null;
+  if(!value || !/^\d+(?:\.\d+)?$/.test(value))throw new Error(name+" must be a positive numeric value.");
+  const n=Number(value);
+  if(!Number.isFinite(n)||n<min||n>max||Math.abs(n*10**precision-Math.round(n*10**precision))>0.00001)
+    throw new Error(name+" is out of range or has too many decimals.");
+  return n;
+}
+function textValue(value:string,name:string,max=500,required=false):string {
+  if((required&&!value)||value.length>max)throw new Error(name+" is missing or too long.");
+  return value;
+}
+function sameHeader(rows:readonly (readonly string[])[], indexes:number[], name:string) {
+  for(const ix of indexes){
+    const first=cell(rows[0]!,ix).toUpperCase();
+    for(const row of rows.slice(1)){
+      const next=cell(row,ix).toUpperCase();
+      if(next && next!==first)throw new Error(name+" has contradictory values on lines sharing one Import Reference.");
+    }
+  }
+}
+function parseEntryDocument(kind:SheetEntryKind, reference:string, rows:readonly (readonly string[])[]):Record<string,unknown> {
+  const r=rows[0]!;
+  if(kind==="costing"){
+    if(rows.length!==1)throw new Error("Costing needs one line per unique Reference.");
+    const quantity=amount(cell(r,7),"Quantity",false,0.001,1_000_000,3);
+    const unitRate=amount(cell(r,8),"Unit Rate",false);
+    const billed=amount(cell(r,9),"Amount",false,0.01);
+    const calculated=quantity!==null&&unitRate!==null?Math.round(quantity*unitRate*100)/100:null;
+    if(billed===null&&calculated===null)throw new Error("Enter Amount or both Quantity and Unit Rate.");
+    if((billed??calculated??0)<=0)throw new Error("Cost amount must exceed zero.");
+    if(billed!==null&&calculated!==null&&Math.abs(billed-calculated)>0.01)
+      throw new Error("Amount does not match Quantity × Unit Rate.");
+    return {reference,date:sheetDate(cell(r,1),"Cost date"),projectCode:code(cell(r,2),"Project Code"),
+      buildingCode:code(cell(r,3),"Building Code",true),
+      category:textValue(cell(r,4),"Cost category",80,true).toLowerCase(),
+      vendorCode:code(cell(r,5),"Vendor Code",true),
+      description:textValue(cell(r,6),"Description",500,true),
+      quantity,unitRate,amount:billed??calculated,relatedDocument:textValue(cell(r,10),"Related document",120),
+      paymentMethod:textValue(cell(r,11),"Payment Method",30).toLowerCase(),
+      remarks:textValue(cell(r,12),"Remarks",500)};
+  }
+  if(kind==="challan"){
+    sameHeader(rows,[1,2,3,4,5,6,10,11,12],"Challan");
+    const items=rows.map(line=>({
+      poLineNo:amount(cell(line,7),"PO Line No",true,1,10000,0)!,
+      materialCode:code(cell(line,8),"Material Code"),
+      quantity:amount(cell(line,9),"Dispatched Quantity",true,0.001,1_000_000,3)!,
+    }));
+    if(new Set(items.map(x=>x.poLineNo)).size!==items.length)
+      throw new Error("Each PO Line No may appear once in one challan.");
+    return {reference,challanNumber:textValue(cell(r,1),"Challan number",100,true),
+      date:sheetDate(cell(r,2),"Challan date"),vendorCode:code(cell(r,3),"Vendor Code"),
+      poNumber:code(cell(r,4),"PO Number"),projectCode:code(cell(r,5),"Project Code"),
+      buildingCode:code(cell(r,6),"Building Code",true),
+      vehicleNumber:textValue(cell(r,10),"Vehicle Number",80),
+      invoiceReference:textValue(cell(r,11),"Invoice Reference",100),
+      remarks:textValue(cell(r,12),"Remarks",500),items};
+  }
+  sameHeader(rows,[1,2,3,4,5,15,16,17],"Invoice");
+  const items=rows.map(line=>({
+    grnNumber:code(cell(line,6),"GRN Number"),
+    grnLineNo:amount(cell(line,7),"GRN Line No",false,1,10000,0),
+    materialCode:code(cell(line,8),"Material Code"),
+    quantity:amount(cell(line,9),"Invoiced Quantity",true,0.001,1_000_000,3)!,
+    rate:amount(cell(line,10),"Rate INR",true,0)!,
+    taxType:textValue(cell(line,11),"Tax Type",15,true),
+    taxRate:amount(cell(line,12),"Tax Rate",true,0,100)!,
+  }));
+  if(items.some(x=>!["cgst_sgst","igst","none"].includes(x.taxType)))
+    throw new Error("Tax Type must be cgst_sgst, igst or none.");
+  if(items.some(x=>x.taxType==="none"&&x.taxRate!==0))
+    throw new Error("Tax Rate must be 0 when Tax Type is none.");
+  if(rows.slice(1).some(line=>cell(line,13)||cell(line,14)))
+    throw new Error("Freight and Other Charges must be entered on the first invoice line only.");
+  return {reference,vendorInvoiceNumber:textValue(cell(r,1),"Vendor invoice number",100,true),
+    date:sheetDate(cell(r,2),"Invoice date"),dueDate:sheetDate(cell(r,3),"Due date",true),
+    vendorCode:code(cell(r,4),"Vendor Code"),poNumber:code(cell(r,5),"PO Number"),
+    freight:amount(cell(r,13),"Freight",false)??0,
+    otherCharges:amount(cell(r,14),"Other Charges",false)??0,
+    tdsSection:textValue(cell(r,15),"TDS Section",80),
+    tdsRate:amount(cell(r,16),"TDS Rate",false,0,100,3)??0,
+    remarks:textValue(cell(r,17),"Remarks",500),items};
+}
+export function parseEntrySheet(kind:SheetEntryKind, sheet:readonly (readonly string[])[]) {
+  const tab=SHEET_ENTRY_TABS.find(t=>t.kind===kind)!;
+  if(!sheet.length)return {documents:[] as SheetEntryDocument[], errors:[] as SheetEntryError[]};
+  if(tab.headers.some((h,i)=>sheet[0]?.[i]!==h))
+    throw new Error(tab.name+" header does not match the approved import template.");
+  const groups=new Map<string,{rows:string[][];numbers:number[]}>();
+  const errors:SheetEntryError[]=[];
+  const rows=sheet.slice(1);
+  for(let i=0;i<rows.length;i++){
+    const row=rows[i]!;
+    if(!row.slice(0,tab.statusIndex).some(x=>String(x??"").trim()))continue;
+    try{
+      const ref=entryReference(cell(row,0));
+      const group=groups.get(ref)??{rows:[],numbers:[]};
+      group.rows.push(row.map(x=>String(x??"")));
+      group.numbers.push(i+2);
+      groups.set(ref,group);
+    }catch(e){errors.push({row:i+2,message:e instanceof Error?e.message:"Invalid reference"});}
+  }
+  const documents:SheetEntryDocument[]=[];
+  for(const [reference,group] of groups){
+    try{
+      const payload=parseEntryDocument(kind,reference,group.rows);
+      documents.push({kind,reference,rows:group.numbers,payload});
+    }catch(e){for(const row of group.numbers)errors.push({row,message:e instanceof Error?e.message:"Invalid entry"});}
+  }
+  return {documents,errors};
+}
+
+
+/**
+ * Decode Google Sheets / Excel clipboard TSV (including quoted, multiline cells).
+ * Input is treated as inert text, never as formulas or database commands.
+ * Users must select and copy the complete header row with the data.
+ */
+export function parseClipboardGrid(raw:string): string[][] {
+  if(!raw.trim())throw new Error("Copy the header and data rows from the spreadsheet first.");
+  if(raw.length>200_000)throw new Error("Paste is too large. Import up to 500 rows at a time.");
+  const rows:string[][]=[];
+  let row:string[]=[],value="",quoted=false,atStart=true,closed=false;
+  for(let i=0;i<raw.length;i++){
+    const ch=raw[i]!;
+    if(quoted){
+      if(ch==='"'){
+        if(raw[i+1]==='"'){value+='"';i++;}
+        else {quoted=false;closed=true;}
+      } else value+=ch;
+    } else if(ch==='"'&&atStart){quoted=true;atStart=false;}
+    else if(ch==='\t'||ch==='\n'||ch==='\r'){
+      if(ch==='\r'&&raw[i+1]==='\n')i++;
+      if(ch==='\t'){row.push(value);value="";atStart=true;closed=false;}
+      else{
+        row.push(value);if(row.some(s=>s.length))rows.push(row);
+        if(rows.length>501)throw new Error("Paste up to 500 data rows at a time.");
+        row=[];value="";atStart=true;closed=false;
+      }
+    } else {
+      if(closed)throw new Error("Invalid quoted cell. Recopy the spreadsheet range.");
+      value+=ch;atStart=false;
+    }
+  }
+  if(quoted)throw new Error("Unclosed quoted spreadsheet cell. Recopy the range.");
+  row.push(value);if(row.some(s=>s.length))rows.push(row);
+  if(rows.length<2)throw new Error("Include the complete template header row and at least one data row.");
+  if(rows.length>501)throw new Error("Paste up to 500 data rows at a time.");
+  return rows;
+}
+
+
+export type PastedEntryKind = SheetEntryKind | "historical";
+
+/** Manual historic usage backfill; never a current-stock adjustment. */
+export function parsePastedHistoricalGrid(grid:readonly (readonly string[])[]) {
+  if(!grid.length||HISTORICAL_HEADERS.some((header,i)=>grid[0]?.[i]!==header))
+    throw new Error("ERP - Historical Consumption header does not match the approved worksheet.");
+  const documents:{reference:string;rows:number[];payload:HistoricalInput}[]=[];
+  const errors:SheetEntryError[]=[];
+  const seen=new Set<string>();
+  for(let i=1;i<grid.length;i++){
+    const row=grid[i]??[];
+    if(!row.slice(0,8).some(x=>String(x??"").trim()))continue;
+    try {
+      const parsed=parseHistoricalRow(row);
+      parsed.reference=parsed.reference.toUpperCase();
+      parsed.projectCode=parsed.projectCode.toUpperCase();
+      parsed.buildingCode=parsed.buildingCode.toUpperCase();
+      parsed.materialCode=parsed.materialCode.toUpperCase();
+      if(String(row[8]??"").trim())
+        throw new Error("An ERP Record ID is already present. Reconcile this historical entry instead of importing it again.");
+      if(seen.has(parsed.reference))
+        throw new Error("Duplicate historical Reference in the pasted selection.");
+      seen.add(parsed.reference);
+      documents.push({reference:parsed.reference,rows:[i+1],payload:parsed});
+    }catch(err){
+      errors.push({row:i+1,message:err instanceof Error?err.message:"Invalid historical material row"});
+    }
+  }
+  return {documents,errors};
+}

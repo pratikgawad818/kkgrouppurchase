@@ -30,8 +30,37 @@ export const connectGoogleSheets = createServerFn({method:"POST"})
   .handler(async ({context,data})=>{
     const companyId=await requireSheetAdmin(context);
     const spreadsheetId=parseSpreadsheetId(data.url);
-    const {saveGoogleSheetConnection}=await import("@/lib/google-sheets.server");
-    return saveGoogleSheetConnection(companyId,context.userId,spreadsheetId);
+    const {beginGoogleOAuth}=await import("@/lib/google-oauth.server");
+    return beginGoogleOAuth(companyId,context.userId,spreadsheetId);
+  });
+
+export const pasteSpreadsheetEntries = createServerFn({method:"POST"})
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input)=>z.object({
+    kind:z.enum(["costing","challan","invoice","historical"]),
+    clipboard:z.string().min(1).max(200000),
+  }).parse(input))
+  .handler(async ({context,data})=>{
+    const companyId=await requireSheetAdmin(context);
+    const {stagePastedEntries}=await import("@/lib/google-sheet-imports.server");
+    return stagePastedEntries(companyId,data.kind,data.clipboard);
+  });
+
+export const getGoogleSheetImports = createServerFn({method:"GET"})
+  .middleware([requireSupabaseAuth])
+  .handler(async ({context})=>{
+    const companyId=await requireSheetAdmin(context);
+    const {listSheetImports}=await import("@/lib/google-sheet-imports.server");
+    return listSheetImports(companyId);
+  });
+
+export const applyGoogleSheetImport = createServerFn({method:"POST"})
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input)=>z.object({id:z.string().uuid()}).parse(input))
+  .handler(async ({context,data})=>{
+    const companyId=await requireSheetAdmin(context);
+    const {applySheetEntry}=await import("@/lib/google-sheet-imports.server");
+    return applySheetEntry(companyId,context.userId,context.supabase,data.id);
   });
 
 export const setGoogleSheetsEnabled = createServerFn({method:"POST"})

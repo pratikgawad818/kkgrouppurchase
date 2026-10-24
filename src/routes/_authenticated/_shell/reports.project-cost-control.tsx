@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowUpRight, AlertTriangle, ChartNoAxesCombined, ClipboardList, PackageCheck, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { PageHeader, Empty, Loading, Stat, SearchBox } from "@/components/erp/common";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, inr } from "@/lib/format";
@@ -87,6 +88,28 @@ function ProjectCostControl() {
       if (error) throw error;
       return { rows: data ?? [], possiblyCapped: (data?.length ?? 0) >= 1000 };
     },
+  });
+
+  // Historic sheet costs are kept independent from posted purchases, payable and
+  // material usage so these can never silently inflate the headline cost totals.
+  const historicalCostsQ = useQuery({
+    queryKey: ["project-cost-control", "spreadsheet-costs"],
+    enabled: canFinancial,
+    staleTime: 60_000,
+    queryFn: () => loadPages<{
+      id:string;source_reference:string;project_id:string;building_id:string|null;
+      spent_on:string;description:string;category:string;amount:number;
+    }>(async offset => {
+      const client = supabase as unknown as SupabaseClient;
+      const { data, error } = await client.from("erp_project_cost_entries")
+        .select("id,source_reference,project_id,building_id,spent_on,description,category,amount")
+        .order("id").range(offset, offset + BATCH - 1);
+      if (error) throw error;
+      return (data ?? []) as unknown as {
+        id:string;source_reference:string;project_id:string;building_id:string|null;
+        spent_on:string;description:string;category:string;amount:number;
+      }[];
+    }),
   });
 
   const invoicesQ = useQuery({
@@ -222,6 +245,28 @@ function ProjectCostControl() {
         </div>
         <Pager page={page} total={sorted.length} size={PAGE} onPage={setPage} />
       </>}
+
+      <section className="mt-7 rounded-xl border bg-card p-4 sm:p-5">
+        <h3 className="text-sm font-semibold">Imported historical project costing (separate register)</h3>
+        <p className="mt-2 text-xs text-muted-foreground">These amounts were imported from the Google Spreadsheet and are kept separate from posted material usage and approved supplier bills. Do not add them to other project cost figures until finance reconciles duplicate costs.</p>
+        {historicalCostsQ.isLoading?<p className="mt-3 text-sm text-muted-foreground">Loading historical costs…</p>:
+          historicalCostsQ.error?<p role="alert" className="mt-3 text-sm text-destructive">Historical cost register is unavailable; no historical total is reported. The new migration may not yet be applied. {errMsg(historicalCostsQ.error)}</p>:(()=>{
+            const visible=new Set(filtered.map(x=>x.project.id));
+            const historical=historicalCostsQ.data?.rows.filter(x=>visible.has(x.project_id))??[];
+            const sum=historical.reduce((n,x)=>n+Number(x.amount),0);
+            const names=new Map(projectRows.map(x=>[x.id,x.name]));
+            return <div className="mt-3">
+              <div className="mb-3 text-sm"><strong>{inr(sum)}</strong> across {historical.length} imported entries for the filtered projects. <span className="text-muted-foreground">Not included in the four headline totals.</span></div>
+              {historicalCostsQ.data?.capped&&<p role="alert" className="mb-2 text-xs text-destructive">Historical register exceeds the 3,000 row limit. This subtotal is incomplete and must not be used for reconciliation.</p>}
+              <div className="max-h-72 overflow-auto rounded-lg border text-sm">
+                {historical.length===0?<p className="p-4 text-muted-foreground">No imported historical costs for these projects.</p>:
+                <table className="w-full text-left text-xs"><thead className="sticky top-0 bg-muted"><tr><th className="p-2">Date</th><th className="p-2">Reference</th><th className="p-2">Project</th><th className="p-2">Description</th><th className="p-2 text-right">Amount</th></tr></thead>
+                  <tbody>{historical.slice(0,100).map(x=><tr key={x.id} className="border-t"><td className="p-2">{x.spent_on}</td><td className="p-2">{x.source_reference}</td><td className="p-2">{names.get(x.project_id)??"Project"}</td><td className="p-2">{x.description}</td><td className="p-2 text-right tabular-nums">{inr(x.amount)}</td></tr>)}</tbody></table>}
+              </div>
+              {historical.length>100&&<p className="mt-2 text-xs text-muted-foreground">Showing the first 100 lines; subtotal includes all {historical.length} fetched entries.</p>}
+            </div>;
+          })()}
+      </section>
 
       <section className="mt-7 rounded-xl border bg-card p-4 sm:p-5">
         <h3 className="flex items-center gap-2 text-sm font-semibold"><ChartNoAxesCombined className="h-4 w-4 text-primary" /> How to interpret this report</h3>
