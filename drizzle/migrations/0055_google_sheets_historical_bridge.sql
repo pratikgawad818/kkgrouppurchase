@@ -45,3 +45,48 @@ CREATE POLICY erp_historical_consumption_read ON public.erp_historical_material_
  );
 -- Tenant and building/material ownership must also be enforced by server imports.
 -- Historical quantities do not touch inventory_transactions or warehouse_stock.
+
+-- Import integrity is also verified in the database, not only in the app.
+CREATE FUNCTION public.erp_validate_historical_consumption() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.projects p JOIN public.items i ON i.company_id=p.company_id
+    WHERE p.id=NEW.project_id AND p.company_id=NEW.company_id AND i.id=NEW.material_id
+  ) THEN RAISE EXCEPTION 'Historical material must belong to the selected company and project'; END IF;
+  IF NEW.building_id IS NOT NULL AND NOT EXISTS(
+    SELECT 1 FROM public.buildings b WHERE b.id=NEW.building_id AND b.project_id=NEW.project_id
+  ) THEN RAISE EXCEPTION 'Historical building must belong to the selected project'; END IF;
+  NEW.updated_at := now();
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.erp_validate_historical_consumption() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER erp_historical_scope_guard BEFORE INSERT OR UPDATE
+  ON public.erp_historical_material_consumptions FOR EACH ROW
+  EXECUTE FUNCTION public.erp_validate_historical_consumption();
+
+-- Append-only logical history captures imports and corrections made through Sheets.
+CREATE TABLE public.erp_google_sheet_import_audit (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE RESTRICT,
+  reference text NOT NULL,
+  operation text NOT NULL CHECK (operation IN ('INSERT','UPDATE')),
+  previous_row jsonb,
+  new_row jsonb NOT NULL,
+  occurred_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.erp_google_sheet_import_audit ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.erp_google_sheet_import_audit FROM PUBLIC,anon,authenticated;
+GRANT ALL ON public.erp_google_sheet_import_audit TO service_role;
+CREATE FUNCTION public.erp_audit_historical_consumption() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+BEGIN
+  INSERT INTO public.erp_google_sheet_import_audit(company_id,reference,operation,previous_row,new_row)
+  VALUES(NEW.company_id,NEW.reference,TG_OP,
+    CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD) ELSE NULL END,to_jsonb(NEW));
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.erp_audit_historical_consumption() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER erp_historical_audit AFTER INSERT OR UPDATE
+  ON public.erp_historical_material_consumptions FOR EACH ROW
+  EXECUTE FUNCTION public.erp_audit_historical_consumption();
