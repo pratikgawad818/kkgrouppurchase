@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readValues, writeValues, writeEntryStatuses, exportReferenceTab } from "@/lib/google-sheets.server";
-import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, parsePastedHistoricalGrid, canonicalHistorical, type HistoricalInput, type PastedEntryKind, type SheetEntryKind } from "@/lib/google-sheets-model";
+import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, parsePastedHistoricalGrid, canonicalHistorical, type HistoricalInput, type PastedEntryKind } from "@/lib/google-sheets-model";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 const hash=(v:object)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
