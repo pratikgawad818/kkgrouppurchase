@@ -132,8 +132,8 @@ async function masters(companyId: string) {
   ]);
   const projectIds=projects.map(p=>String(p.id));
   const buildings=projectIds.length ? await allRows("buildings","id,code,name,project_id","project_id",projectIds) : [];
-  return { projects: projects as Master[], materials: materials as Master[],
-    buildings: buildings as Master[], warehouses: warehouses as Master[] };
+  return { projects: projects as unknown as Master[], materials: materials as unknown as Master[],
+    buildings: buildings as unknown as Master[], warehouses: warehouses as unknown as Master[] };
 }
 function mapByCode(rows: Master[]) {
   const m=new Map<string, Master>();
@@ -151,10 +151,10 @@ function inSheet(row: History, lookup: {
 }): HistoricalInput {
   const byId=(m:Map<string,Master>,id:string)=>[...m.values()].find(r=>r.id===id)?.code ?? "";
   return {
-    reference:row.reference, date:row.occurred_on,
-    projectCode:byId(lookup.projects,row.project_id),
-    buildingCode:row.building_id?byId(lookup.buildings,row.building_id):"",
-    materialCode:byId(lookup.materials,row.material_id),
+    reference:row.reference.toUpperCase(), date:row.occurred_on,
+    projectCode:byId(lookup.projects,row.project_id).toUpperCase(),
+    buildingCode:row.building_id?byId(lookup.buildings,row.building_id).toUpperCase():"",
+    materialCode:byId(lookup.materials,row.material_id).toUpperCase(),
     quantity:Number(row.quantity),unitCost:Number(row.unit_cost),purpose:row.purpose??"",
   };
 }
@@ -182,14 +182,15 @@ async function importHistorical(id: string, companyId: string, m: Awaited<Return
     if (!values.slice(0,9).some(x=>String(x??"").trim())) continue;
     const line=index+1;
     const ref=String(values[0]??"").trim().toUpperCase();
+    if (/^[A-Z0-9_-]{2,64}$/.test(ref)) seen.add(ref);
     try {
       const input=parseHistoricalRow(values);
       input.reference=input.reference.toUpperCase();
       input.projectCode=input.projectCode.toUpperCase();
       input.buildingCode=input.buildingCode.toUpperCase();
       input.materialCode=input.materialCode.toUpperCase();
-      if(seen.has(input.reference)) throw new Error("Duplicate Reference in this worksheet.");
-      seen.add(input.reference);
+      if(sheet.slice(1,index).some(r=>String(r?.[0]??"").trim().toUpperCase()===input.reference))
+        throw new Error("Duplicate Reference in this worksheet.");
       const old=previous.get(input.reference);
       if(old && String(values[8]??"").trim() && values[8]!==old.id)
         throw new Error("ERP Record ID does not match this Reference.");
@@ -258,6 +259,10 @@ async function importHistorical(id: string, companyId: string, m: Awaited<Return
 async function exportTab(id:string, name:string, rows:Record<string,unknown>[], columns:readonly string[]) {
   const headings=["ERP ID",...columns.filter(x=>x!=="id")];
   if(rows.length>=10000) throw new Error(name+" exceeds export safety limit.");
+  // Refuse to overwrite a pre-existing sheet that is not an ERP-generated mirror.
+  const firstRow=(await readValues(id,name,"A1:Z1"))[0]??[];
+  if(firstRow.some(c=>String(c).trim()) && headings.some((h,i)=>firstRow[i]!==h))
+    throw new Error("Reserved worksheet contains unexpected headers; rename or back it up.");
   // These dedicated tabs are explicitly read-only mirrors. Staff edits are overwritten.
   await google(encodeURIComponent(id)+"/values/"+range(name,"A1:Z10001")+":clear","POST",{});
   const values=[headings,...rows.map(r=>headings.map(c=>{
@@ -313,8 +318,11 @@ export async function syncGoogleSheet(companyId:string) {
     }
     const history=await importHistorical(id,companyId,scope);
     const output={...history,exports:results,at:new Date().toISOString()};
+    const exportFailures=Object.values(results).filter(v=>v.startsWith("failed:"));
     const saved=await db.from("erp_google_sheet_connections").update({
-      spreadsheet_title:info.properties?.title??"",last_synced_at:output.at,last_error:null,last_result:output,
+      spreadsheet_title:info.properties?.title??"",last_synced_at:output.at,
+      last_error:exportFailures.length?exportFailures.length+" export tab(s) failed; see details.":null,
+      last_result:output,
     }).eq("company_id",companyId);
     if(saved.error) throw new Error(saved.error.message);
     return output;
