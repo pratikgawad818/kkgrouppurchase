@@ -216,3 +216,42 @@ export function parseEntrySheet(kind:SheetEntryKind, sheet:readonly (readonly st
   }
   return {documents,errors};
 }
+
+
+/**
+ * Decode Google Sheets / Excel clipboard TSV (including quoted, multiline cells).
+ * Input is treated as inert text, never as formulas or database commands.
+ * Users must select and copy the complete header row with the data.
+ */
+export function parseClipboardGrid(raw:string): string[][] {
+  if(!raw.trim())throw new Error("Copy the header and data rows from the spreadsheet first.");
+  if(raw.length>200_000)throw new Error("Paste is too large. Import up to 500 rows at a time.");
+  const rows:string[][]=[];
+  let row:string[]=[],value="",quoted=false,atStart=true,closed=false;
+  for(let i=0;i<raw.length;i++){
+    const ch=raw[i]!;
+    if(quoted){
+      if(ch==='"'){
+        if(raw[i+1]==='"'){value+='"';i++;}
+        else {quoted=false;closed=true;}
+      } else value+=ch;
+    } else if(ch==='"'&&atStart){quoted=true;atStart=false;}
+    else if(ch==='\t'||ch==='\n'||ch==='\r'){
+      if(ch==='\r'&&raw[i+1]==='\n')i++;
+      if(ch==='\t'){row.push(value);value="";atStart=true;closed=false;}
+      else{
+        row.push(value);if(row.some(s=>s.length))rows.push(row);
+        if(rows.length>501)throw new Error("Paste up to 500 data rows at a time.");
+        row=[];value="";atStart=true;closed=false;
+      }
+    } else {
+      if(closed)throw new Error("Invalid quoted cell. Recopy the spreadsheet range.");
+      value+=ch;atStart=false;
+    }
+  }
+  if(quoted)throw new Error("Unclosed quoted spreadsheet cell. Recopy the range.");
+  row.push(value);if(row.some(s=>s.length))rows.push(row);
+  if(rows.length<2)throw new Error("Include the complete template header row and at least one data row.");
+  if(rows.length>501)throw new Error("Paste up to 500 data rows at a time.");
+  return rows;
+}
