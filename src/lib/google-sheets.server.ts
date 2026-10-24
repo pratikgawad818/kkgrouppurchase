@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   HISTORICAL_HEADERS, HISTORICAL_TAB, EXPORT_TABS, SHEET_ENTRY_TABS,
-  parseHistoricalRow, canonicalHistorical, decideHistoricalConflict,
+  parseHistoricalRow, canonicalHistorical, decideHistoricalConflict, isSheetDemoReference,
   type HistoricalInput,
 } from "@/lib/google-sheets-model";
 
@@ -142,6 +142,7 @@ async function importHistorical(id: string, companyId: string, m: Awaited<Return
   for(let index=1;index<sheet.length;index++) {
     const values=sheet[index] ?? [];
     if (!values.slice(0,9).some(x=>String(x??"").trim())) continue;
+    if (isSheetDemoReference(values[0])) continue; // visual example, never enter stock/cost history
     const line=index+1;
     const ref=String(values[0]??"").trim().toUpperCase();
     if (/^[A-Z0-9_-]{2,64}$/.test(ref)) seen.add(ref);
