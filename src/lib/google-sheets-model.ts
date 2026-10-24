@@ -134,6 +134,7 @@ function parseEntryDocument(kind:SheetEntryKind, reference:string, rows:readonly
     const billed=amount(cell(r,9),"Amount",false,0.01);
     const calculated=quantity!==null&&unitRate!==null?Math.round(quantity*unitRate*100)/100:null;
     if(billed===null&&calculated===null)throw new Error("Enter Amount or both Quantity and Unit Rate.");
+    if((billed??calculated??0)<=0)throw new Error("Cost amount must exceed zero.");
     if(billed!==null&&calculated!==null&&Math.abs(billed-calculated)>0.01)
       throw new Error("Amount does not match Quantity × Unit Rate.");
     return {reference,date:sheetDate(cell(r,1),"Cost date"),projectCode:code(cell(r,2),"Project Code"),
