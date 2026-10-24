@@ -1,4 +1,5 @@
-import { createHash, createSign } from "node:crypto";
+import { createHash } from "node:crypto";
+import { googleAccessToken, googleOAuthConfigured } from "@/lib/google-oauth.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -20,77 +21,37 @@ type History = {
   project_id: string; building_id: string | null; material_id: string;
   quantity: number; unit_cost: number; purpose: string; last_synced_hash: string | null;
 };
-type Credentials = { client_email: string; private_key: string };
-let cached: { token: string; expires: number } | undefined;
-function credentials(): Credentials {
-  const raw = process.env["GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON"];
-  if (!raw) throw new Error("Google Sheets service account is not configured on the server.");
-  let json: Record<string, unknown>;
-  try { json = JSON.parse(raw); } catch { throw new Error("Invalid Google Sheets service account configuration."); }
-  if (typeof json["client_email"] !== "string" ||
-      !/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(json["client_email"]) ||
-      typeof json["private_key"] !== "string" || !json["private_key"].includes("BEGIN PRIVATE KEY"))
-    throw new Error("Google Sheets service account credentials are incomplete.");
-  return { client_email: json["client_email"], private_key: json["private_key"].replace(/\\n/g, "\n") };
-}
-export function serviceAccountEmail(): string | null {
-  try { return credentials().client_email; } catch { return null; }
-}
-function b64(input: string | Buffer) { return Buffer.from(input).toString("base64url"); }
-async function accessToken(): Promise<string> {
-  if (cached && cached.expires > Date.now() + 60_000) return cached.token;
-  const c = credentials();
-  const now = Math.floor(Date.now() / 1000);
-  const header = b64(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const payload = b64(JSON.stringify({
-    iss: c.client_email, scope: "https://www.googleapis.com/auth/spreadsheets",
-    aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600,
-  }));
-  const body = header + "." + payload;
-  const sign = createSign("RSA-SHA256"); sign.update(body); sign.end();
-  const assertion = body + "." + b64(sign.sign(c.private_key));
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!response.ok) throw new Error("Google service account token request failed (" + response.status + ").");
-  const token = await response.json() as { access_token?: string; expires_in?: number };
-  if (!token.access_token) throw new Error("Google did not return a Sheets access token.");
-  cached = { token: token.access_token, expires: Date.now() + Math.min(token.expires_in ?? 3500, 3500) * 1000 };
-  return cached.token;
-}
-async function google<T>(url: string, method = "GET", body?: object): Promise<T> {
+async function google<T>(companyId:string, url: string, method = "GET", body?: object): Promise<T> {
   // Never send credentials to a URL supplied by an operator or spreadsheet cell.
   const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets/" + url, {
     method,
-    headers: { Authorization: "Bearer " + await accessToken(),
+    headers: { Authorization: "Bearer " + await googleAccessToken(companyId),
       ...(body ? { "content-type": "application/json" } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(
-    "Google Sheets API failed (" + res.status + "). Check sharing, service account and API access.",
+    "Google Sheets API failed (" + res.status + "). Check Google account permissions and the shared spreadsheet.",
   );
   return await res.json() as T;
 }
 type SheetInfo = { spreadsheetId: string; properties?: { title: string }; sheets?: { properties: { title: string } }[] };
-export async function spreadsheetInfo(id: string): Promise<SheetInfo> {
-  return google<SheetInfo>(encodeURIComponent(id) + "?fields=spreadsheetId,properties.title,sheets.properties.title");
+export async function spreadsheetInfo(companyId:string, id: string): Promise<SheetInfo> {
+  return google<SheetInfo>(companyId, encodeURIComponent(id) + "?fields=spreadsheetId,properties.title,sheets.properties.title");
 }
 const range = (tab: string, cells: string) => encodeURIComponent("'" + tab.replace(/'/g,"''") + "'!" + cells);
-async function readValues(id: string, tab: string, cells: string): Promise<string[][]> {
+async function readValues(companyId:string, id: string, tab: string, cells: string): Promise<string[][]> {
   const result = await google<{ values?: string[][] }>(
-    encodeURIComponent(id) + "/values/" + range(tab,cells),
+    companyId, encodeURIComponent(id) + "/values/" + range(tab,cells),
   );
   return result.values ?? [];
 }
-async function writeValues(id: string, tab: string, cell: string, values: unknown[][]) {
+async function writeValues(companyId:string, id: string, tab: string, cell: string, values: unknown[][]) {
   if (!values.length) return;
-  await google(encodeURIComponent(id) + "/values/" + range(tab,cell) + "?valueInputOption=RAW",
+  await google(companyId, encodeURIComponent(id) + "/values/" + range(tab,cell) + "?valueInputOption=RAW",
     "PUT", { range: "'" + tab.replace(/'/g,"''") + "'!" + cell, majorDimension: "ROWS", values });
 }
-async function batchRows(id: string, tab: string, updates: { row: number; values: unknown[] }[]) {
+async function batchRows(companyId:string, id: string, tab: string, updates: { row: number; values: unknown[] }[]) {
   if (!updates.length) return;
   const data = updates.map(u=>({
     range: "'" + tab + "'!A" + u.row + ":K" + u.row,
@@ -98,16 +59,16 @@ async function batchRows(id: string, tab: string, updates: { row: number; values
   }));
   // Google limits batch payloads; never send unbounded requests.
   for (let i=0;i<data.length;i+=100) {
-    await google(encodeURIComponent(id) + "/values:batchUpdate", "POST",
+    await google(companyId, encodeURIComponent(id) + "/values:batchUpdate", "POST",
       { valueInputOption: "RAW", data: data.slice(i,i+100) });
   }
 }
-async function ensureTabs(id: string, sheetNames: readonly string[]) {
-  const info = await spreadsheetInfo(id);
+async function ensureTabs(companyId:string, id: string, sheetNames: readonly string[]) {
+  const info = await spreadsheetInfo(companyId,id);
   const existing = new Set((info.sheets ?? []).map(s=>s.properties.title));
   const missing = sheetNames.filter(n=>!existing.has(n));
   if (missing.length)
-    await google(encodeURIComponent(id) + ":batchUpdate", "POST", {
+    await google(companyId, encodeURIComponent(id) + ":batchUpdate", "POST", {
       requests: missing.map(title=>({ addSheet: { properties: { title } } })),
     });
   return info;
@@ -171,8 +132,8 @@ async function importHistorical(id: string, companyId: string, m: Awaited<Return
     .eq("company_id",companyId).order("reference").limit(10000);
   if (error) throw new Error(error.message);
   const previous=new Map<string,History>((data as History[]??[]).map(h=>[h.reference,h]));
-  const sheet=await readValues(id,HISTORICAL_TAB,"A1:K5001");
-  if (!sheet.length) await writeValues(id,HISTORICAL_TAB,"A1:K1",[[...HISTORICAL_HEADERS]]);
+  const sheet=await readValues(companyId,id,HISTORICAL_TAB,"A1:K5001");
+  if (!sheet.length) await writeValues(companyId,id,HISTORICAL_TAB,"A1:K1",[[...HISTORICAL_HEADERS]]);
   else if (HISTORICAL_HEADERS.some((v,j)=>sheet[0]?.[j]!==v))
     throw new Error("Historical Consumption headers were modified. Restore the generated header row.");
   const updates: {row:number;values:unknown[]}[]=[];
@@ -248,48 +209,37 @@ async function importHistorical(id: string, companyId: string, m: Awaited<Return
     append.push(serialize(inSheet(historical,{projects:projectMap,buildings:buildingMap,materials:materialMap}),
       historical.id,"SYNCED"));
   }
-  await batchRows(id,HISTORICAL_TAB,updates);
+  await batchRows(companyId,id,HISTORICAL_TAB,updates);
   if(append.length) {
-    await google(encodeURIComponent(id) + "/values/" + range(HISTORICAL_TAB,"A:K") +
+    await google(companyId,encodeURIComponent(id) + "/values/" + range(HISTORICAL_TAB,"A:K") +
       ":append?valueInputOption=RAW&insertDataOption=INSERT_ROWS","POST",
       { majorDimension:"ROWS",values:append });
     exported+=append.length;
   }
   return { imported, exported, errors, conflicts:conflicts.slice(0,50) };
 }
-async function exportTab(id:string, name:string, rows:Record<string,unknown>[], columns:readonly string[]) {
+async function exportTab(companyId:string, id:string, name:string, rows:Record<string,unknown>[], columns:readonly string[]) {
   const headings=["ERP ID",...columns.filter(x=>x!=="id")];
   if(rows.length>=10000) throw new Error(name+" exceeds export safety limit.");
   // Refuse to overwrite a pre-existing sheet that is not an ERP-generated mirror.
-  const firstRow=(await readValues(id,name,"A1:Z1"))[0]??[];
+  const firstRow=(await readValues(companyId,id,name,"A1:Z1"))[0]??[];
   if(firstRow.some(c=>String(c).trim()) && headings.some((h,i)=>firstRow[i]!==h))
     throw new Error("Reserved worksheet contains unexpected headers; rename or back it up.");
   // These dedicated tabs are explicitly read-only mirrors. Staff edits are overwritten.
-  await google(encodeURIComponent(id)+"/values/"+range(name,"A1:Z10001")+":clear","POST",{});
+  await google(companyId,encodeURIComponent(id)+"/values/"+range(name,"A1:Z10001")+":clear","POST",{});
   const values=[headings,...rows.map(r=>headings.map(c=>{
     const value=r[c==="ERP ID"?"id":c];
     return value===null||value===undefined?"":String(value);
   }))];
   for(let offset=0;offset<values.length;offset+=500)
-    await writeValues(id,name,"A"+(offset+1)+":Z"+(offset+Math.min(500,values.length-offset)),values.slice(offset,offset+500));
+    await writeValues(companyId,id,name,"A"+(offset+1)+":Z"+(offset+Math.min(500,values.length-offset)),values.slice(offset,offset+500));
 }
 export async function googleSheetStatus(companyId: string) {
   const {data,error}=await db.from("erp_google_sheet_connections")
-    .select("company_id,spreadsheet_id,spreadsheet_title,enabled,last_synced_at,last_error,last_result,sync_lease_until")
+    .select("company_id,spreadsheet_id,spreadsheet_title,enabled,last_synced_at,last_error,last_result,sync_lease_until,oauth_account_email")
     .eq("company_id",companyId).maybeSingle();
   if(error) throw new Error(error.message);
-  return { connection: data as Connection | null, serviceEmail:serviceAccountEmail() };
-}
-export async function saveGoogleSheetConnection(companyId:string, actorId:string, spreadsheetId:string) {
-  const info=await spreadsheetInfo(spreadsheetId);
-  if(info.spreadsheetId!==spreadsheetId) throw new Error("Google returned a different spreadsheet.");
-  const result=await db.from("erp_google_sheet_connections").upsert({
-    company_id:companyId,spreadsheet_id:spreadsheetId,
-    spreadsheet_title:info.properties?.title??"",enabled:true,configured_by:actorId,
-    last_synced_at:null,last_error:null,last_result:null,updated_at:new Date().toISOString(),
-  },{onConflict:"company_id"});
-  if(result.error) throw new Error(result.error.message);
-  return {title:info.properties?.title??"",worksheets:(info.sheets??[]).map(s=>s.properties.title)};
+  return { connection: data as Connection | null, oauthConfigured:googleOAuthConfigured(), googleAccountEmail: (data as (Connection & {oauth_account_email?:string})|null)?.oauth_account_email??null };
 }
 export async function syncGoogleSheet(companyId:string) {
   const now=new Date(); const lease=new Date(now.getTime()+5*60_000).toISOString();
@@ -302,7 +252,7 @@ export async function syncGoogleSheet(companyId:string) {
   if(!claimed) return { busy:true };
   const id=String(claimed.spreadsheet_id);
   try {
-    const info=await ensureTabs(id,[...EXPORT_TABS.map(x=>x.name),HISTORICAL_TAB]);
+    const info=await ensureTabs(companyId,id,[...EXPORT_TABS.map(x=>x.name),HISTORICAL_TAB]);
     const scope=await masters(companyId);
     const results:Record<string,string>={};
     // A broken secondary export must not prevent historical entries from importing.
@@ -311,7 +261,7 @@ export async function syncGoogleSheet(companyId:string) {
         const columns=tab.columns.split(",");
         const rows=tab.table==="buildings" ? scope.buildings as unknown as Record<string,unknown>[]
           : await allRows(tab.table,tab.columns,tab.companyColumn,companyId);
-        await exportTab(id,tab.name,rows,columns);
+        await exportTab(companyId,id,tab.name,rows,columns);
         results[tab.name]="exported "+rows.length+" records";
       } catch(err) {
         results[tab.name]="failed: "+(err instanceof Error?err.message:"unknown");
