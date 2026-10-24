@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, HISTORICAL_HEADERS, parsePastedHistoricalGrid } from "../../src/lib/google-sheets-model.ts";
+import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, HISTORICAL_HEADERS, parsePastedHistoricalGrid, isSheetDemoReference } from "../../src/lib/google-sheets-model.ts";
 const header=(kind)=>[...SHEET_ENTRY_TABS.find(t=>t.kind===kind).headers];
 const costing=["LEGACY-COST-1","2026-01-04","PROJ-A","BLDG-A","labour","","Contractor day work","10","250","2500","","cash","Verified"];
 const challan1=["CH-001","D-45","2026-03-05","V-01","PO-2026-004","PROJ-A","BLDG-A","1","CEMENT","100","MH-01","",""];
@@ -97,4 +97,26 @@ test("historic paste never overwrites an existing ERP record ID or negative mate
   const result=parsePastedHistoricalGrid([a,stale,bad]);
   assert.equal(result.documents.length,0);
   assert.deepEqual(result.errors.map(e=>e.row),[2,3]);
+});
+
+test("all three staged import tabs ignore reserved DEMO references",()=>{
+  const cases=[
+    {kind:"costing",first:["DEMO-COST-001","2026-10-24","CC","48PTCZ","labour","","Demo labour","2","750","1500","","cash","DO NOT IMPORT"]},
+    {kind:"challan",first:["DEMO-CH-001","DC-SAMPLE","2026-10-24","9MFSKZ","PO-SAMPLE","CC","48PTCZ","1","KCZBNF","10","","","DO NOT IMPORT"]},
+    {kind:"invoice",first:["DEMO-INV-001","BILL-SAMPLE","2026-10-24","2026-11-07","9MFSKZ","PO-SAMPLE","GRN-SAMPLE","1","KCZBNF","10","50","cgst_sgst","18","0","0","","0","DO NOT IMPORT"]},
+  ];
+  for(const c of cases){
+    const result=parseEntrySheet(c.kind,[header(c.kind),c.first]);
+    assert.deepEqual(result.documents,[],c.kind);
+    assert.deepEqual(result.errors,[],c.kind);
+  }
+  assert.equal(isSheetDemoReference("  demo-inv-001 "),true);
+  assert.equal(isSheetDemoReference("COST-001"),false);
+  assert.equal(isSheetDemoReference("DEMO"),false);
+});
+test("historic example is excluded before database material backfill",()=>{
+  const history=["DEMO-HC-001","2026-10-24","CC","48PTCZ","KCZBNF","5","50","Not real"];
+  const parsed=parsePastedHistoricalGrid([[...HISTORICAL_HEADERS],history]);
+  assert.deepEqual(parsed.documents,[]);
+  assert.deepEqual(parsed.errors,[]);
 });
