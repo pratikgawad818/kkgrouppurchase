@@ -18,6 +18,6 @@ jobs:
         run: |
           test -n "$ENDPOINT" || { echo "Set KK_ERP_SHEETS_SYNC_URL repository variable"; exit 1; }
           test -n "$SECRET" || { echo "Set KK_ERP_SHEETS_SYNC_SECRET repository secret"; exit 1; }
-          curl --fail --silent --show-error --location-trusted --max-time 120 \
+          curl --fail --silent --show-error --max-redirs 0 --max-time 120 \
             --retry 2 --retry-delay 10 \
             -X POST -H "x-erp-sheets-secret: $SECRET" "$ENDPOINT"
