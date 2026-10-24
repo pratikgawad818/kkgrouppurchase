@@ -21,6 +21,7 @@ CREATE TABLE public.erp_sheet_import_documents (
   company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
   document_type text NOT NULL CHECK (document_type IN ('costing','challan','invoice')),
   source_reference text NOT NULL CHECK (char_length(source_reference) BETWEEN 2 AND 100),
+  source_type text NOT NULL DEFAULT 'google' CHECK (source_type IN ('google','paste')),
   source_hash text NOT NULL CHECK (char_length(source_hash)=64),
   payload jsonb NOT NULL,
   status text NOT NULL DEFAULT 'ready'
