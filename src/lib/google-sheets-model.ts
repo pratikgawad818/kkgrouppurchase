@@ -255,3 +255,35 @@ export function parseClipboardGrid(raw:string): string[][] {
   if(rows.length>501)throw new Error("Paste up to 500 data rows at a time.");
   return rows;
 }
+
+
+export type PastedEntryKind = SheetEntryKind | "historical";
+
+/** Manual historic usage backfill; never a current-stock adjustment. */
+export function parsePastedHistoricalGrid(grid:readonly (readonly string[])[]) {
+  if(!grid.length||HISTORICAL_HEADERS.some((header,i)=>grid[0]?.[i]!==header))
+    throw new Error("ERP - Historical Consumption header does not match the approved worksheet.");
+  const documents:{reference:string;rows:number[];payload:HistoricalInput}[]=[];
+  const errors:SheetEntryError[]=[];
+  const seen=new Set<string>();
+  for(let i=1;i<grid.length;i++){
+    const row=grid[i]??[];
+    if(!row.slice(0,8).some(x=>String(x??"").trim()))continue;
+    try {
+      const parsed=parseHistoricalRow(row);
+      parsed.reference=parsed.reference.toUpperCase();
+      parsed.projectCode=parsed.projectCode.toUpperCase();
+      parsed.buildingCode=parsed.buildingCode.toUpperCase();
+      parsed.materialCode=parsed.materialCode.toUpperCase();
+      if(String(row[8]??"").trim())
+        throw new Error("An ERP Record ID is already present. Reconcile this historical entry instead of importing it again.");
+      if(seen.has(parsed.reference))
+        throw new Error("Duplicate historical Reference in the pasted selection.");
+      seen.add(parsed.reference);
+      documents.push({reference:parsed.reference,rows:[i+1],payload:parsed});
+    }catch(err){
+      errors.push({row:i+1,message:err instanceof Error?err.message:"Invalid historical material row"});
+    }
+  }
+  return {documents,errors};
+}
