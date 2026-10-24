@@ -3,7 +3,7 @@ import { googleAccessToken, googleOAuthConfigured } from "@/lib/google-oauth.ser
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  HISTORICAL_HEADERS, HISTORICAL_TAB, EXPORT_TABS,
+  HISTORICAL_HEADERS, HISTORICAL_TAB, EXPORT_TABS, SHEET_ENTRY_TABS,
   parseHistoricalRow, canonicalHistorical, decideHistoricalConflict,
   type HistoricalInput,
 } from "@/lib/google-sheets-model";
@@ -40,13 +40,13 @@ export async function spreadsheetInfo(companyId:string, id: string): Promise<She
   return google<SheetInfo>(companyId, encodeURIComponent(id) + "?fields=spreadsheetId,properties.title,sheets.properties.title");
 }
 const range = (tab: string, cells: string) => encodeURIComponent("'" + tab.replace(/'/g,"''") + "'!" + cells);
-async function readValues(companyId:string, id: string, tab: string, cells: string): Promise<string[][]> {
+export async function readValues(companyId:string, id: string, tab: string, cells: string): Promise<string[][]> {
   const result = await google<{ values?: string[][] }>(
     companyId, encodeURIComponent(id) + "/values/" + range(tab,cells),
   );
   return result.values ?? [];
 }
-async function writeValues(companyId:string, id: string, tab: string, cell: string, values: unknown[][]) {
+export async function writeValues(companyId:string, id: string, tab: string, cell: string, values: unknown[][]) {
   if (!values.length) return;
   await google(companyId, encodeURIComponent(id) + "/values/" + range(tab,cell) + "?valueInputOption=RAW",
     "PUT", { range: "'" + tab.replace(/'/g,"''") + "'!" + cell, majorDimension: "ROWS", values });
@@ -234,6 +234,27 @@ async function exportTab(companyId:string, id:string, name:string, rows:Record<s
   for(let offset=0;offset<values.length;offset+=500)
     await writeValues(companyId,id,name,"A"+(offset+1)+":Z"+(offset+Math.min(500,values.length-offset)),values.slice(offset,offset+500));
 }
+export async function writeEntryStatuses(companyId:string,id:string,tab:string,statusIndex:number,rows:{row:number;recordId:string;status:string;error:string}[]) {
+  if(!rows.length)return;
+  const start=String.fromCharCode(65+statusIndex);
+  const end=String.fromCharCode(65+statusIndex+2);
+  for(let offset=0;offset<rows.length;offset+=100) {
+    const data=rows.slice(offset,offset+100).map(r=>({
+      range:"'"+tab.replace(/'/g,"''")+"'!"+start+r.row+":"+end+r.row,
+      majorDimension:"ROWS",values:[[r.recordId,r.status,r.error]],
+    }));
+    await google(companyId,encodeURIComponent(id)+"/values:batchUpdate","POST",{valueInputOption:"RAW",data});
+  }
+}
+export async function exportReferenceTab(companyId:string,id:string,name:string,columns:readonly string[],rows:readonly (readonly (string|number)[])[]) {
+  const first=(await readValues(companyId,id,name,"A1:G1"))[0]??[];
+  if(first.some(x=>String(x).trim())&&columns.some((x,i)=>first[i]!==x))
+    throw new Error(name+" headers changed; restore the ERP reference tab.");
+  await google(companyId,encodeURIComponent(id)+"/values/"+range(name,"A:G")+":clear","POST",{});
+  const all=[columns as readonly (string|number)[],...rows];
+  for(let i=0;i<all.length;i+=250)
+    await writeValues(companyId,id,name,"A"+(i+1)+":G"+Math.min(i+250,all.length),all.slice(i,i+250).map(r=>[...r]));
+}
 export async function googleSheetStatus(companyId: string) {
   const {data,error}=await db.from("erp_google_sheet_connections")
     .select("company_id,spreadsheet_id,spreadsheet_title,enabled,last_synced_at,last_error,last_result,sync_lease_until,oauth_account_email")
@@ -252,7 +273,7 @@ export async function syncGoogleSheet(companyId:string) {
   if(!claimed) return { busy:true };
   const id=String(claimed.spreadsheet_id);
   try {
-    const info=await ensureTabs(companyId,id,[...EXPORT_TABS.map(x=>x.name),HISTORICAL_TAB]);
+    const info=await ensureTabs(companyId,id,[...EXPORT_TABS.map(x=>x.name),...SHEET_ENTRY_TABS.map(x=>x.name),HISTORICAL_TAB,"ERP - GRN Item References"]);
     const scope=await masters(companyId);
     const results:Record<string,string>={};
     // A broken secondary export must not prevent historical entries from importing.
@@ -268,7 +289,11 @@ export async function syncGoogleSheet(companyId:string) {
       }
     }
     const history=await importHistorical(id,companyId,scope);
-    const output={...history,exports:results,at:new Date().toISOString()};
+    const {stageSheetEntries,exportGrnItemReferences}=await import("@/lib/google-sheet-imports.server");
+    try {await exportGrnItemReferences(companyId,id,scope.materials);}catch(err){results["ERP - GRN Item References"]="failed: "+(err instanceof Error?err.message:"unknown");}
+    const entryResult=await stageSheetEntries(companyId,id);
+    for(const [key,value] of Object.entries(entryResult.errors))results[key]="failed: "+value;
+    const output={...history,staged:entryResult.staged,imports:entryResult.summaries,exports:results,at:new Date().toISOString()};
     const exportFailures=Object.values(results).filter(v=>v.startsWith("failed:"));
     const saved=await db.from("erp_google_sheet_connections").update({
       spreadsheet_title:info.properties?.title??"",last_synced_at:output.at,
