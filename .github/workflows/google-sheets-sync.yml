@@ -1,9 +1,7 @@
-# Google Sheets is eventually consistent, not a zero-latency transaction bus.
-# GitHub scheduled runs can be delayed/skipped; manual "Sync now" remains available.
+# Legacy manual fallback only. The active 5-minute schedule runs in Supabase pg_cron.
+# This workflow no longer schedules automatic runs to avoid duplicate work.
 name: KK ERP Google Sheets sync
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 permissions:
   contents: read
