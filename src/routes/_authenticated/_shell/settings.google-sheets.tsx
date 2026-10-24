@@ -24,7 +24,7 @@ function SheetsSettings() {
   const allowed=!!me.data?.profile.is_active&&!!me.data?.roles.includes("super_admin");
   const [url,setUrl]=useState("");
   const [pendingImport,setPendingImport]=useState<string|null>(null);
-  const [pasteKind,setPasteKind]=useState<"costing"|"challan"|"invoice">("costing");
+  const [pasteKind,setPasteKind]=useState<"costing"|"challan"|"invoice"|"historical">("costing");
   const [clipboard,setClipboard]=useState("");
   const [pasteResult,setPasteResult]=useState<{added:number;updated:number;unchanged:number;rejected:number;rowErrors:{row:number;message:string}[]}|null>(null);
   const get=useServerFn(getGoogleSheetsConnection);
@@ -104,12 +104,13 @@ function SheetsSettings() {
           <select id="paste-kind" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm sm:max-w-md" value={pasteKind}
             onChange={e=>{setPasteKind(e.target.value as typeof pasteKind);setClipboard("");setPasteResult(null);}}>
             {SHEET_ENTRY_TABS.map(tab=><option key={tab.kind} value={tab.kind}>{tab.name}</option>)}
+            <option value="historical">{HISTORICAL_TAB}</option>
           </select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="paste-rows">Paste copied spreadsheet cells (header + data)</Label>
           <Textarea id="paste-rows" rows={7} value={clipboard} onChange={e=>setClipboard(e.target.value)}
-            placeholder={"Select the column headers and filled rows in the '"+SHEET_ENTRY_TABS.find(t=>t.kind===pasteKind)?.name+"' tab, copy, and paste here."}
+            placeholder={"Select the full header row and filled rows in the '"+(pasteKind==="historical"?HISTORICAL_TAB:SHEET_ENTRY_TABS.find(t=>t.kind===pasteKind)?.name)+"' tab, copy, and paste here."}
             className="font-mono text-xs" required/>
           <p className="text-xs text-muted-foreground">Up to 500 data rows per paste. Keep all template columns in the original order. Use existing ERP project/vendor/PO/GRN codes. The imported content is a snapshot and will not update itself when the Sheet changes.</p>
         </div>
