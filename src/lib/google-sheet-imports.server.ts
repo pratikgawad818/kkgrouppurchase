@@ -209,7 +209,7 @@ async function selectedPo(companyId:string,poNumber:string,vendorCode:string) {
 }
 export async function applySheetEntry(companyId:string,actorId:string,client:SupabaseClient,id:string) {
   const {data,error}=await db.from("erp_sheet_import_documents")
-    .select("id,company_id,document_type,source_reference,source_hash,payload,status,erp_record_id,error_message")
+    .select("id,company_id,document_type,source_reference,source_hash,source_type,payload,status,erp_record_id,error_message")
     .eq("company_id",companyId).eq("id",id).maybeSingle();
   if(error||!data)throw new Error("Import not found in your company.");
   const initial=data as StageRow;
