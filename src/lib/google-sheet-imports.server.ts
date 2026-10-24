@@ -351,7 +351,7 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
 }
 export async function listSheetImports(companyId:string){
   const {data,error}=await db.from("erp_sheet_import_documents")
-    .select("id,document_type,source_reference,payload,status,error_message,erp_record_id,created_at,applied_at")
+    .select("id,document_type,source_type,source_reference,payload,status,error_message,erp_record_id,created_at,applied_at")
     .eq("company_id",companyId).order("created_at",{ascending:false}).limit(250);
   if(error)throw new Error(error.message);
   return data??[];
