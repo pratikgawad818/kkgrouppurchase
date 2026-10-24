@@ -73,6 +73,15 @@ export function decideHistoricalConflict(previous: string | null, erp: string | 
 }
 
 
+/**
+ * Visually marked example references are intentionally excluded from both
+ * automatic synchronization and the manual clipboard import queue.
+ * Rename DEMO- references to real unique IDs only when entering actual data.
+ */
+export function isSheetDemoReference(reference: unknown): boolean {
+  return /^DEMO-[A-Z0-9_-]{1,59}$/i.test(String(reference ?? "").trim());
+}
+
 export const SHEET_ENTRY_TABS = [
   { kind: "costing", name: "Entry - Project Costing", statusIndex: 13,
     headers: ["Reference","Date (YYYY-MM-DD)","Project Code","Building Code","Cost Category","Vendor Code (optional)","Description","Quantity","Unit Rate INR","Amount INR","Invoice/Challan Ref (optional)","Payment Method","Remarks","ERP Record ID (do not edit)","Import Status","Import Error"] },
@@ -199,6 +208,7 @@ export function parseEntrySheet(kind:SheetEntryKind, sheet:readonly (readonly st
   for(let i=0;i<rows.length;i++){
     const row=rows[i]!;
     if(!row.slice(0,tab.statusIndex).some(x=>String(x??"").trim()))continue;
+    if(isSheetDemoReference(row[0]))continue;
     try{
       const ref=entryReference(cell(row,0));
       const group=groups.get(ref)??{rows:[],numbers:[]};
@@ -269,6 +279,7 @@ export function parsePastedHistoricalGrid(grid:readonly (readonly string[])[]) {
   for(let i=1;i<grid.length;i++){
     const row=grid[i]??[];
     if(!row.slice(0,8).some(x=>String(x??"").trim()))continue;
+    if(isSheetDemoReference(row[0]))continue;
     try {
       const parsed=parseHistoricalRow(row);
       parsed.reference=parsed.reference.toUpperCase();
