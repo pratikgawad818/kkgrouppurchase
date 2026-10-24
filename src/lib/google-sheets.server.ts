@@ -11,7 +11,8 @@ const db = supabaseAdmin as unknown as SupabaseClient;
 type Connection = {
   company_id: string; spreadsheet_id: string; spreadsheet_title: string;
   enabled: boolean; last_synced_at: string | null; last_error: string | null;
-  last_result: Record<string, unknown> | null; sync_lease_until: string | null;
+  last_result: { imported?:number;exported?:number;errors?:number;conflicts?:string[];exports?:Record<string,string>;at?:string } | null;
+  sync_lease_until: string | null;
 };
 type Master = { id: string; code: string; name?: string; project_id?: string };
 type History = {
@@ -26,11 +27,11 @@ function credentials(): Credentials {
   if (!raw) throw new Error("Google Sheets service account is not configured on the server.");
   let json: Record<string, unknown>;
   try { json = JSON.parse(raw); } catch { throw new Error("Invalid Google Sheets service account configuration."); }
-  if (typeof json.client_email !== "string" ||
-      !/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(json.client_email) ||
-      typeof json.private_key !== "string" || !json.private_key.includes("BEGIN PRIVATE KEY"))
+  if (typeof json["client_email"] !== "string" ||
+      !/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(json["client_email"]) ||
+      typeof json["private_key"] !== "string" || !json["private_key"].includes("BEGIN PRIVATE KEY"))
     throw new Error("Google Sheets service account credentials are incomplete.");
-  return { client_email: json.client_email, private_key: json.private_key.replace(/\\n/g, "\n") };
+  return { client_email: json["client_email"], private_key: json["private_key"].replace(/\\n/g, "\n") };
 }
 export function serviceAccountEmail(): string | null {
   try { return credentials().client_email; } catch { return null; }
@@ -65,7 +66,7 @@ async function google<T>(url: string, method = "GET", body?: object): Promise<T>
     method,
     headers: { Authorization: "Bearer " + await accessToken(),
       ...(body ? { "content-type": "application/json" } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
+    ...(body ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(
@@ -119,7 +120,7 @@ async function allRows(table: string, columns: string, key: string, ids: string 
     q = Array.isArray(ids) ? q.in(key, ids) : q.eq(key,ids);
     const { data, error } = await q;
     if (error) throw new Error("ERP " + table + " query failed: " + error.message);
-    rows.push(...(data ?? []));
+    rows.push(...((data ?? []) as unknown as Record<string,unknown>[]));
     if ((data ?? []).length < limit) return rows;
   }
   throw new Error("ERP " + table + " exceeds the 10000-record sync safety limit.");
@@ -130,7 +131,7 @@ async function masters(companyId: string) {
     allRows("items","id,code,name","company_id",companyId),
     allRows("warehouses","id,code,name","company_id",companyId),
   ]);
-  const projectIds=projects.map(p=>String(p.id));
+  const projectIds=projects.map(p=>String(p["id"]));
   const buildings=projectIds.length ? await allRows("buildings","id,code,name,project_id","project_id",projectIds) : [];
   return { projects: projects as unknown as Master[], materials: materials as unknown as Master[],
     buildings: buildings as unknown as Master[], warehouses: warehouses as unknown as Master[] };
