@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid } from "../../src/lib/google-sheets-model.ts";
+import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, HISTORICAL_HEADERS, parsePastedHistoricalGrid } from "../../src/lib/google-sheets-model.ts";
 const header=(kind)=>[...SHEET_ENTRY_TABS.find(t=>t.kind===kind).headers];
 const costing=["LEGACY-COST-1","2026-01-04","PROJ-A","BLDG-A","labour","","Contractor day work","10","250","2500","","cash","Verified"];
 const challan1=["CH-001","D-45","2026-03-05","V-01","PO-2026-004","PROJ-A","BLDG-A","1","CEMENT","100","MH-01","",""];
@@ -76,4 +76,25 @@ test("clipboard copying full costing worksheet can be parsed for staged review",
   const result=parseEntrySheet("costing",parseClipboardGrid(copied));
   assert.equal(result.documents.length,1);
   assert.deepEqual(result.errors,[]);
+});
+
+test("direct historical consumption paste validates and normalizes safe backfill",()=>{
+  const grid=[
+    [...HISTORICAL_HEADERS],
+    ["H-001","2025-12-15","prj1","bldg1","cement","500","350","Old work","","",""],
+  ];
+  const result=parsePastedHistoricalGrid(grid);
+  assert.deepEqual(result.errors,[]);
+  assert.equal(result.documents.length,1);
+  assert.equal(result.documents[0].payload.materialCode,"CEMENT");
+  assert.equal(result.documents[0].payload.quantity,500);
+  assert.equal(result.documents[0].payload.unitCost,350);
+});
+test("historic paste never overwrites an existing ERP record ID or negative material usage",()=>{
+  const a=[...HISTORICAL_HEADERS];
+  const stale=["H-001","2025-12-15","PRJ","BLDG","CEMENT","500","350","Old work","old-id"];
+  const bad=["H-002","2025-12-15","PRJ","BLDG","CEMENT","-3","350","Old work"];
+  const result=parsePastedHistoricalGrid([a,stale,bad]);
+  assert.equal(result.documents.length,0);
+  assert.deepEqual(result.errors.map(e=>e.row),[2,3]);
 });
