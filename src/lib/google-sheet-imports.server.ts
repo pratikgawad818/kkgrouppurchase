@@ -53,14 +53,14 @@ export async function stageSheetEntries(companyId:string,spreadsheetId:string) {
         const computed=hash(doc.payload);
         const old=known.get(doc.reference);
         let current:StageRow|undefined;
-        if(old&&old.source_hash!==computed&&old.status==="applied"){
+        if(old&&old.source_hash!==computed&&(old.status==="applied"||old.status==="conflict")){
           conflicts++;
           const {error}=await db.from("erp_sheet_import_documents").update({
             status:"conflict",error_message:"This document was already imported. Edit in ERP using a controlled correction; do not overwrite the posted import.",last_seen_at:new Date().toISOString(),
           }).eq("company_id",companyId).eq("id",old.id);
           if(error)throw error;
           current={...old,status:"conflict",error_message:"Already imported; spreadsheet data changed."};
-        } else if(old&&(old.status==="applied"||old.status==="conflict"||old.source_hash===computed)){
+        } else if(old&&(old.status==="applied"||old.status==="conflict"||old.status==="processing"||old.source_hash===computed)){
           current=old;
           // Existing apply errors are intentionally retained so staff can retry.
         } else {
@@ -91,9 +91,21 @@ export async function exportGrnItemReferences(companyId:string, spreadsheetId:st
   if(grns.length>=2000)throw new Error("More than 2,000 goods receipts; split reference export.");
   const materialById=new Map(materials.map(i=>[i.id,i.code]));
   const exported:(string|number)[][]=[];
+  const byGrn=new Map<string,Listed[]>();
+  const ids=grns.map(x=>x.id);
+  for(let start=0;start<ids.length;start+=100) {
+    const {data,error}=await db.from("goods_receipt_items")
+      .select("id,grn_id,po_item_id,material_id,accepted_quantity")
+      .in("grn_id",ids.slice(start,start+100)).limit(10000);
+    if(error)throw error;
+    if((data?.length??0)>=10000)throw new Error("Too many GRN lines for one export batch.");
+    for(const item of (data??[]) as Listed[]){
+      const list=byGrn.get(String(item.grn_id))??[];
+      list.push(item);byGrn.set(String(item.grn_id),list);
+    }
+  }
   for(const grn of grns){
-    const items=await rows("goods_receipt_items",{grn_id:String(grn.id)},"id,grn_id,po_item_id,material_id,accepted_quantity");
-    items.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+    const items=(byGrn.get(String(grn.id))??[]).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
     for(let i=0;i<items.length;i++){
       const row=items[i]!;
       exported.push([String(grn.grn_number),i+1,materialById.get(String(row.material_id))??"",
@@ -132,13 +144,16 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
     .select("spreadsheet_id,enabled").eq("company_id",companyId).single();
   if(connectionError||!connection?.enabled)throw new Error("Connect and enable Google Sheets before importing.");
   // Always rescan live worksheet before applying; never approve a stale queued snapshot.
-  const refreshed=await stageSheetEntries(companyId,String(connection.spreadsheet_id));
   const tab=SHEET_ENTRY_TABS.find(t=>t.kind===initial.document_type)!;
-  if(refreshed.errors[tab.name])throw new Error("Cannot refresh "+tab.name+": "+refreshed.errors[tab.name]);
-  const {data:current}=await db.from("erp_sheet_import_documents").select("source_hash,status,payload")
+  const liveSheet=await readValues(companyId,String(connection.spreadsheet_id),tab.name,"A1:U1501");
+  const parsed=parseEntrySheet(tab.kind,liveSheet);
+  const live=parsed.documents.find(d=>d.reference===initial.source_reference);
+  if(!live||hash(live.payload)!==initial.source_hash)
+    throw new Error("Spreadsheet entry was removed or changed. Sync and review it again before importing.");
+  const {data:current}=await db.from("erp_sheet_import_documents").select("source_hash,status")
     .eq("company_id",companyId).eq("id",id).single();
   if(!current||current.source_hash!==initial.source_hash||current.status==="conflict")
-    throw new Error("Sheet changed since review. Sync and review the updated document before importing.");
+    throw new Error("The staging queue changed. Sync before importing.");
   const claimed=await db.from("erp_sheet_import_documents").update({status:"processing",error_message:null})
     .eq("company_id",companyId).eq("id",id).in("status",["ready","error"])
     .select("id").maybeSingle();
@@ -236,6 +251,10 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
     }).eq("id",id).eq("company_id",companyId).eq("status","processing").select("id").maybeSingle();
     if(result.error||!result.data)
       throw new Error("ERP record was created but import confirmation failed. Contact admin; do not retry before reconciliation.");
+    try {
+      await writeEntryStatuses(companyId,String(connection.spreadsheet_id),tab.name,tab.statusIndex,
+        live.rows.map(row=>({row,recordId:erpId,status:"IMPORTED",error:""})));
+    }catch(writeError){console.error("Spreadsheet status update needs retry:",failure(writeError));}
     return {id:erpId,status:"applied"};
   }catch(error){
     await db.from("erp_sheet_import_documents").update({
