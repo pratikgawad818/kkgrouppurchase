@@ -34,6 +34,18 @@ export const connectGoogleSheets = createServerFn({method:"POST"})
     return beginGoogleOAuth(companyId,context.userId,spreadsheetId);
   });
 
+export const pasteSpreadsheetEntries = createServerFn({method:"POST"})
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input)=>z.object({
+    kind:z.enum(["costing","challan","invoice"]),
+    clipboard:z.string().min(1).max(200000),
+  }).parse(input))
+  .handler(async ({context,data})=>{
+    const companyId=await requireSheetAdmin(context);
+    const {stagePastedEntries}=await import("@/lib/google-sheet-imports.server");
+    return stagePastedEntries(companyId,data.kind,data.clipboard);
+  });
+
 export const getGoogleSheetImports = createServerFn({method:"GET"})
   .middleware([requireSupabaseAuth])
   .handler(async ({context})=>{
