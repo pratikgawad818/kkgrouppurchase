@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SHEET_ENTRY_TABS, parseEntrySheet } from "../../src/lib/google-sheets-model.ts";
+import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid } from "../../src/lib/google-sheets-model.ts";
 const header=(kind)=>[...SHEET_ENTRY_TABS.find(t=>t.kind===kind).headers];
 const costing=["LEGACY-COST-1","2026-01-04","PROJ-A","BLDG-A","labour","","Contractor day work","10","250","2500","","cash","Verified"];
 const challan1=["CH-001","D-45","2026-03-05","V-01","PO-2026-004","PROJ-A","BLDG-A","1","CEMENT","100","MH-01","",""];
@@ -55,4 +55,25 @@ test("reserved import headers must match exactly; trailing status fields never b
   const out=parseEntrySheet("costing",[header("costing"),statusRow]);
   assert.deepEqual(out.errors,[]);
   assert.equal("erp_record_id" in out.documents[0].payload,false);
+});
+
+test("Google Sheets clipboard TSV preserves quoted tabs, embedded newlines, CRLF and trailing cells",()=>{
+  const clip='Ref\tDescription\tTotal\r\nC-1\t"Project ""A"", Phase\t2\nRework"\t120.00\r\nC-2\tNormal\t5\r\n';
+  assert.deepEqual(parseClipboardGrid(clip),[
+    ["Ref","Description","Total"],["C-1",'Project "A", Phase\t2\nRework',"120.00"],
+    ["C-2","Normal","5"],
+  ]);
+});
+test("clipboard rejects missing rows, invalid quotes and oversized input",()=>{
+  assert.throws(()=>parseClipboardGrid(""),/Copy/);
+  assert.throws(()=>parseClipboardGrid("Header only"),/header row/);
+  assert.throws(()=>parseClipboardGrid('H1\tH2\nA\t"never closed'),/Unclosed/);
+  assert.throws(()=>parseClipboardGrid("a\tb\n"+("x\t1\n").repeat(501)),/500 data rows/);
+  assert.throws(()=>parseClipboardGrid("a\tb\n"+("x".repeat(200001))),/too large/);
+});
+test("clipboard copying full costing worksheet can be parsed for staged review",()=>{
+  const copied=[header("costing").join("\t"),costing.join("\t")].join("\n");
+  const result=parseEntrySheet("costing",parseClipboardGrid(copied));
+  assert.equal(result.documents.length,1);
+  assert.deepEqual(result.errors,[]);
 });
