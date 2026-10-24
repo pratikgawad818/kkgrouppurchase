@@ -1,4 +1,18 @@
-# KK GROUP ERP ↔ Google Sheets: account sign-in and controlled imports
+# KK GROUP ERP ↔ Google Sheets: direct no-client import and optional automatic sync
+
+## Direct workflow (no Google Cloud client or service-account JSON)
+
+**This is the recommended setup-free path.** The existing private Google Spreadsheet remains restricted to your organization. Super Admin staff do not need to configure an OAuth app, generate any Google token or expose the workbook publicly.
+
+1. Open the original Google Sheet, choose one of `Entry - Project Costing`, `Entry - Vendor Challans`, or `Entry - Vendor Invoices`.
+2. Select the **full header row (all columns)** plus up to 500 filled data rows and copy them (⌘C/Ctrl+C).
+3. Open ERP → **Settings → Google Sheets Integration** → **Import directly**. Select the matching worksheet type and paste (⌘V/Ctrl+V). Click **Validate and stage for review**.
+4. The ERP parses Google Sheets/Excel clipboard TSV, including correctly quoted multi-line values. The Super Admin reviews per-row errors and opens each staged document to verify amounts, supplier, PO and GRN references. Each **Confirm import into ERP** action uses the existing privileged ERP business workflows, not arbitrary direct SQL writes to financial or stock tables.
+5. A direct paste is a **point-in-time snapshot**, not automatic synchronization. Editing the Google Sheet later does **not** update ERP. To submit additions/corrections that haven't been applied, paste again using the same stable reference; applied documents require controlled ERP reconciliation.
+
+**Infrastructure prerequisite:** The ERP's server and database must have migrations `0055` and `0056` applied and PR #67 deployed. This is normal ERP deployment setup, **not** a Google account/client setup. A Google-account connection in ChatGPT does not authorize the ERP server.
+
+The optional separate Google OAuth flow below is **only** for future unattended/private-sheet polling, not for direct imports.
 
 ## Actual behavior
 
@@ -11,11 +25,11 @@ The following editable tabs in the *same* spreadsheet are supported:
 - `Entry - Vendor Challans`: multiple lines per Import Reference. Each line needs the existing PO line number and material code. Super Admin action calls `register_vendor_delivery_challan` using the signed-in user's credentials and ERP ACL/RPC rules; challan registration itself does not post a goods receipt.
 - `Entry - Vendor Invoices`: multiple lines per Import Reference. Each bill references an existing PO and posted GRN items, including `GRN Line No` from the **`ERP - GRN Item References`** export. The Super Admin applies via `save_vendor_invoice` and creates **a draft only**. No invoice approval, payment, or journal posting from a sheet.
 
-Staging creates `erp_sheet_import_documents` entries with `ready`, `processing`, `applied`, `error`, and `conflict` states. A changed or deleted sheet row is re-checked immediately before the apply operation. Duplicate imported references cannot silently be applied twice. If a document was already applied and the sheet changes, the queue records a conflict; corrections require the ERP's standard workflow. All entry tabs are per-company. Only active Super Admins can configure OAuth and apply imports.
+Both direct paste and optional Google sync stage `erp_sheet_import_documents` entries with `ready`, `processing`, `applied`, `error`, and `conflict` states. Authorized Google-sync records are re-checked against the live worksheet immediately before the apply operation. Direct pastes are immutable reviewed snapshots until resubmitted. Duplicate imported references cannot silently be applied twice. If a document was already applied and the sheet changes, the queue records a conflict; corrections require the ERP's standard workflow. All entry tabs are per-company. Only active Super Admins can configure OAuth and apply imports.
 
 **Export-only ERP mirrors:** projects, materials, vendors, warehouses, buildings, purchase requests, purchase orders, goods received, material issues, vendor invoices and vendor payments. Staff should not edit these mirrors. For GRN line numbers use `ERP - GRN Item References`. The integration does not directly change immutable stock, invoice, payment or audit ledgers.
 
-## Deployment prerequisites — required before connecting
+## Deployment prerequisites — for *optional* automatic private-sheet synchronization only
 
 1. Back up the database; apply migrations **0055** and **0056** in order, reviewing RLS and PostgreSQL regression tests in staging before production deployment.
 2. In Google Cloud create or choose a restricted project. Enable **Google Sheets API**. Configure **OAuth consent screen** (external test users, if testing, or approved production audience) with `https://www.googleapis.com/auth/spreadsheets` and `openid email` scopes. Create an **OAuth client ID of type Web application**.
