@@ -27,6 +27,7 @@ import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authent
 import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
 import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
 import { Route as ApiPublicGoogleSheetsSyncRouteImport } from './routes/api/public/google-sheets-sync'
+import { Route as ApiPublicGoogleSheetsOAuthRouteImport } from './routes/api/public/google-sheets-oauth'
 import { Route as AuthenticatedShellFinancePayablesRouteImport } from './routes/_authenticated/_shell/finance.payables'
 import { Route as AuthenticatedShellFinancePaymentsRouteImport } from './routes/_authenticated/_shell/finance.payments'
 import { Route as AuthenticatedShellFinanceSmallExpensesRouteImport } from './routes/_authenticated/_shell/finance.small-expenses'
@@ -164,6 +165,11 @@ const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
 const ApiPublicGoogleSheetsSyncRoute = ApiPublicGoogleSheetsSyncRouteImport.update({
   id: '/api/public/google-sheets-sync',
   path: '/api/public/google-sheets-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicGoogleSheetsOAuthRoute = ApiPublicGoogleSheetsOAuthRouteImport.update({
+  id: '/api/public/google-sheets-oauth',
+  path: '/api/public/google-sheets-oauth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedShellFinancePayablesRoute =
@@ -428,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/api/public/google-sheets-sync': typeof ApiPublicGoogleSheetsSyncRoute
+  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOAuthRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/payments': typeof AuthenticatedShellFinancePaymentsRouteWithChildren
   '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
@@ -487,6 +494,7 @@ export interface FileRoutesByTo {
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/api/public/google-sheets-sync': typeof ApiPublicGoogleSheetsSyncRoute
+  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOAuthRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
   '/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
@@ -548,6 +556,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
   '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/api/public/google-sheets-sync': typeof ApiPublicGoogleSheetsSyncRoute
+  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOAuthRoute
   '/_authenticated/_shell/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/_authenticated/_shell/finance/payments': typeof AuthenticatedShellFinancePaymentsRouteWithChildren
   '/_authenticated/_shell/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
@@ -776,6 +785,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
   ApiPublicGoogleSheetsSyncRoute: typeof ApiPublicGoogleSheetsSyncRoute
+  ApiPublicGoogleSheetsOAuthRoute: typeof ApiPublicGoogleSheetsOAuthRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -906,6 +916,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/google-sheets-sync'
       fullPath: '/api/public/google-sheets-sync'
       preLoaderRoute: typeof ApiPublicGoogleSheetsSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/google-sheets-oauth': {
+      id: '/api/public/google-sheets-oauth'
+      path: '/api/public/google-sheets-oauth'
+      fullPath: '/api/public/google-sheets-oauth'
+      preLoaderRoute: typeof ApiPublicGoogleSheetsOAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_shell/finance/payables': {
@@ -1374,6 +1391,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
   ApiPublicGoogleSheetsSyncRoute: ApiPublicGoogleSheetsSyncRoute,
+  ApiPublicGoogleSheetsOAuthRoute: ApiPublicGoogleSheetsOAuthRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
