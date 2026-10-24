@@ -24,7 +24,7 @@ CREATE TABLE public.erp_sheet_import_documents (
   source_hash text NOT NULL CHECK (char_length(source_hash)=64),
   payload jsonb NOT NULL,
   status text NOT NULL DEFAULT 'ready'
-    CHECK (status IN ('ready','applied','conflict','error')),
+    CHECK (status IN ('ready','processing','applied','conflict','error')),
   error_message text,
   erp_record_id uuid,
   applied_by uuid REFERENCES public.profiles(id),
