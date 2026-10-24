@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readValues, writeValues, writeEntryStatuses, exportReferenceTab } from "@/lib/google-sheets.server";
-import { SHEET_ENTRY_TABS, parseEntrySheet, type SheetEntryKind } from "@/lib/google-sheets-model";
+import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, type SheetEntryKind } from "@/lib/google-sheets-model";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 const hash=(v:object)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
-type StageRow={id:string;document_type:SheetEntryKind;source_reference:string;source_hash:string;
+type StageRow={id:string;document_type:SheetEntryKind;source_reference:string;source_hash:string;source_type:"google"|"paste";
   payload:Record<string,unknown>;status:string;erp_record_id:string|null;error_message:string|null};
 type Status={row:number;recordId:string;status:string;error:string};
 type Master={id:string;code:string};
@@ -45,13 +45,19 @@ export async function stageSheetEntries(companyId:string,spreadsheetId:string) {
       const updates:Status[]=parsed.errors.map(e=>({row:e.row,recordId:"",status:"ERROR",error:e.message.slice(0,240)}));
       invalid+=parsed.errors.length;
       const {data:existing,error:lookupError}=await db.from("erp_sheet_import_documents")
-        .select("id,document_type,source_reference,source_hash,payload,status,erp_record_id,error_message")
+        .select("id,document_type,source_reference,source_hash,source_type,payload,status,erp_record_id,error_message")
         .eq("company_id",companyId).eq("document_type",tab.kind).limit(5000);
       if(lookupError)throw lookupError;
       const known=new Map<string,StageRow>((existing as StageRow[]??[]).map(d=>[d.source_reference,d]));
       for(const doc of parsed.documents){
         const computed=hash(doc.payload);
         const old=known.get(doc.reference);
+        if(old?.source_type==="paste"){
+          for(const row of doc.rows) updates.push({row,recordId:old.erp_record_id??"",status:"ERROR",
+            error:"This reference was already submitted by the direct paste importer. Choose a new reference."});
+          invalid+=doc.rows.length;
+          continue;
+        }
         let current:StageRow|undefined;
         if(old&&old.source_hash!==computed&&(old.status==="applied"||old.status==="conflict")){
           conflicts++;
@@ -65,11 +71,11 @@ export async function stageSheetEntries(companyId:string,spreadsheetId:string) {
           // Existing apply errors are intentionally retained so staff can retry.
         } else {
           const {data,error}=await db.from("erp_sheet_import_documents").upsert({
-            company_id:companyId,document_type:tab.kind,source_reference:doc.reference,
+            company_id:companyId,document_type:tab.kind,source_reference:doc.reference,source_type:"google",
             source_hash:computed,payload:doc.payload,status:"ready",error_message:null,
             last_seen_at:new Date().toISOString(),
           },{onConflict:"company_id,document_type,source_reference"})
-            .select("id,document_type,source_reference,source_hash,payload,status,erp_record_id,error_message").single();
+            .select("id,document_type,source_reference,source_hash,source_type,payload,status,erp_record_id,error_message").single();
           if(error||!data)throw new Error("ERP import queue failed: "+(error?.message??"unknown"));
           current=data as StageRow;staged++;
         }
@@ -86,6 +92,75 @@ export async function stageSheetEntries(companyId:string,spreadsheetId:string) {
   }
   return {staged,summaries,errors};
 }
+/**
+ * No-Google-client mode: the Super Admin pastes a copy of a restricted
+ * Google Sheet's cells. This creates reviewed, non-posted ERP queue documents.
+ * This is a point-in-time snapshot, not an automatic background sync.
+ */
+export async function stagePastedEntries(companyId:string,kind:SheetEntryKind,clipboard:string) {
+  const tab=SHEET_ENTRY_TABS.find(t=>t.kind===kind);
+  if(!tab)throw new Error("Unknown spreadsheet import type.");
+  const grid=parseClipboardGrid(clipboard);
+  const parsed=parseEntrySheet(kind,grid);
+  const references=parsed.documents.map(d=>d.reference);
+  if(new Set(references).size!==references.length)throw new Error("Duplicate import references in the pasted selection.");
+  let existing:StageRow[]=[];
+  for(let index=0;index<references.length;index+=100) {
+    const keys=references.slice(index,index+100);
+    const {data,error}=await db.from("erp_sheet_import_documents")
+      .select("id,document_type,source_reference,source_hash,source_type,payload,status,erp_record_id,error_message")
+      .eq("company_id",companyId).eq("document_type",kind).in("source_reference",keys);
+    if(error)throw new Error("Could not verify existing ERP entries: "+error.message);
+    existing.push(...(data as StageRow[]??[]));
+  }
+  const known=new Map(existing.map(x=>[x.source_reference,x]));
+  const rowErrors=[...parsed.errors];
+  let added=0,updated=0,unchanged=0;
+  const inserts:Record<string,unknown>[]=[];
+  const updates:{id:string;hash:string;oldHash:string;payload:Record<string,unknown>}[]=[];
+  for(const doc of parsed.documents){
+    const current=known.get(doc.reference);
+    const value=hash(doc.payload);
+    if(current?.source_type==="google"){
+      for(const row of doc.rows)rowErrors.push({row,message:"This reference belongs to an authorized Google import. Use a unique reference."});
+      continue;
+    }
+    if(current?.status==="applied"){
+      for(const row of doc.rows)rowErrors.push({row,message:
+        current.source_hash===value?"Already imported as "+current.erp_record_id:
+          "The reference was already applied. Existing ERP documents cannot be overwritten."});
+      continue;
+    }
+    if(current?.status==="processing"||current?.status==="conflict"){
+      for(const row of doc.rows)rowErrors.push({row,message:"The reference is processing or in conflict. Reconcile it before resubmitting."});
+      continue;
+    }
+    if(current){
+      if(current.source_hash===value){unchanged++;continue;}
+      updates.push({id:current.id,hash:value,oldHash:current.source_hash,payload:doc.payload});
+    }else {
+      inserts.push({company_id:companyId,document_type:kind,source_type:"paste",
+        source_reference:doc.reference,source_hash:value,payload:doc.payload,
+        status:"ready",error_message:null});
+    }
+  }
+  if(inserts.length){
+    const {error}=await db.from("erp_sheet_import_documents").insert(inserts);
+    if(error)throw new Error("Could not save pasted ERP queue. No new records were accepted in this batch: "+error.message);
+    added=inserts.length;
+  }
+  for(const item of updates){
+    const {data,error}=await db.from("erp_sheet_import_documents").update({
+      source_hash:item.hash,payload:item.payload,status:"ready",error_message:null,
+      last_seen_at:new Date().toISOString(),
+    }).eq("id",item.id).eq("company_id",companyId).eq("source_type","paste")
+      .eq("source_hash",item.oldHash).in("status",["ready","error"]).select("id").maybeSingle();
+    if(error||!data)throw new Error("A pasted entry changed concurrently. Refresh the import queue and retry.");
+    updated++;
+  }
+  return {kind,added,updated,unchanged,rejected:rowErrors.length,rowErrors:rowErrors.slice(0,80)};
+}
+
 export async function exportGrnItemReferences(companyId:string, spreadsheetId:string, materials:Master[]) {
   const grns=await rows("goods_receipt_notes",{company_id:companyId},"id,grn_number,po_id,status");
   if(grns.length>=2000)throw new Error("More than 2,000 goods receipts; split reference export.");
@@ -140,16 +215,24 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
   const initial=data as StageRow;
   if(initial.status==="applied")return {id:initial.erp_record_id??"",status:"applied"};
   if(initial.status==="conflict")throw new Error("Already-imported entry was changed in the sheet. Reconciliation is required.");
-  const {data:connection, error:connectionError}=await db.from("erp_google_sheet_connections")
-    .select("spreadsheet_id,enabled").eq("company_id",companyId).single();
-  if(connectionError||!connection?.enabled)throw new Error("Connect and enable Google Sheets before importing.");
-  // Always rescan live worksheet before applying; never approve a stale queued snapshot.
   const tab=SHEET_ENTRY_TABS.find(t=>t.kind===initial.document_type)!;
-  const liveSheet=await readValues(companyId,String(connection.spreadsheet_id),tab.name,"A1:U1501");
-  const parsed=parseEntrySheet(tab.kind,liveSheet);
-  const live=parsed.documents.find(d=>d.reference===initial.source_reference);
-  if(!live||hash(live.payload)!==initial.source_hash)
-    throw new Error("Spreadsheet entry was removed or changed. Sync and review it again before importing.");
+  let liveRows:number[]=[];
+  let googleSpreadsheetId:string|null=null;
+  if(initial.source_type==="google"){
+    const {data:connection,error:connectionError}=await db.from("erp_google_sheet_connections")
+      .select("spreadsheet_id,enabled").eq("company_id",companyId).single();
+    if(connectionError||!connection?.enabled)throw new Error("Connect and enable Google Sheets before importing.");
+    googleSpreadsheetId=String(connection.spreadsheet_id);
+    // Authorized Google-sync imports must re-read the current workbook before posting.
+    const liveSheet=await readValues(companyId,googleSpreadsheetId,tab.name,"A1:U1501");
+    const parsed=parseEntrySheet(tab.kind,liveSheet);
+    const live=parsed.documents.find(d=>d.reference===initial.source_reference);
+    if(!live||hash(live.payload)!==initial.source_hash)
+      throw new Error("Spreadsheet entry was removed or changed. Sync and review it again before importing.");
+    liveRows=live.rows;
+  }else if(initial.source_type!=="paste"){
+    throw new Error("Unsupported import source.");
+  }
   const {data:current}=await db.from("erp_sheet_import_documents").select("source_hash,status")
     .eq("company_id",companyId).eq("id",id).single();
   if(!current||current.source_hash!==initial.source_hash||current.status==="conflict")
@@ -252,10 +335,12 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
     }).eq("id",id).eq("company_id",companyId).eq("status","processing").select("id").maybeSingle();
     if(result.error||!result.data)
       throw new Error("ERP record was created but import confirmation failed. Contact admin; do not retry before reconciliation.");
-    try {
-      await writeEntryStatuses(companyId,String(connection.spreadsheet_id),tab.name,tab.statusIndex,
-        live.rows.map(row=>({row,recordId:erpId,status:"IMPORTED",error:""})));
-    }catch(writeError){console.error("Spreadsheet status update needs retry:",failure(writeError));}
+    if(googleSpreadsheetId){
+      try {
+        await writeEntryStatuses(companyId,googleSpreadsheetId,tab.name,tab.statusIndex,
+          liveRows.map(row=>({row,recordId:erpId,status:"IMPORTED",error:""})));
+      }catch(writeError){console.error("Spreadsheet status update needs retry:",failure(writeError));}
+    }
     return {id:erpId,status:"applied"};
   }catch(error){
     await db.from("erp_sheet_import_documents").update({
