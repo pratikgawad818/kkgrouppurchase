@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readValues, writeValues, writeEntryStatuses, exportReferenceTab } from "@/lib/google-sheets.server";
-import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, type SheetEntryKind } from "@/lib/google-sheets-model";
+import { SHEET_ENTRY_TABS, parseEntrySheet, parseClipboardGrid, parsePastedHistoricalGrid, canonicalHistorical, type HistoricalInput, type PastedEntryKind, type SheetEntryKind } from "@/lib/google-sheets-model";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 const hash=(v:object)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
-type StageRow={id:string;document_type:SheetEntryKind;source_reference:string;source_hash:string;source_type:"google"|"paste";
+type StageRow={id:string;document_type:PastedEntryKind;source_reference:string;source_hash:string;source_type:"google"|"paste";
   payload:Record<string,unknown>;status:string;erp_record_id:string|null;error_message:string|null};
 type Status={row:number;recordId:string;status:string;error:string};
 type Master={id:string;code:string};
@@ -97,11 +97,10 @@ export async function stageSheetEntries(companyId:string,spreadsheetId:string) {
  * Google Sheet's cells. This creates reviewed, non-posted ERP queue documents.
  * This is a point-in-time snapshot, not an automatic background sync.
  */
-export async function stagePastedEntries(companyId:string,kind:SheetEntryKind,clipboard:string) {
-  const tab=SHEET_ENTRY_TABS.find(t=>t.kind===kind);
-  if(!tab)throw new Error("Unknown spreadsheet import type.");
+export async function stagePastedEntries(companyId:string,kind:PastedEntryKind,clipboard:string) {
   const grid=parseClipboardGrid(clipboard);
-  const parsed=parseEntrySheet(kind,grid);
+  const parsed=kind==="historical"?parsePastedHistoricalGrid(grid):
+    parseEntrySheet(kind,grid);
   const references=parsed.documents.map(d=>d.reference);
   if(new Set(references).size!==references.length)throw new Error("Duplicate import references in the pasted selection.");
   let existing:StageRow[]=[];
@@ -215,10 +214,11 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
   const initial=data as StageRow;
   if(initial.status==="applied")return {id:initial.erp_record_id??"",status:"applied"};
   if(initial.status==="conflict")throw new Error("Already-imported entry was changed in the sheet. Reconciliation is required.");
-  const tab=SHEET_ENTRY_TABS.find(t=>t.kind===initial.document_type)!;
+  const tab=initial.document_type==="historical"?null:SHEET_ENTRY_TABS.find(t=>t.kind===initial.document_type)!;
   let liveRows:number[]=[];
   let googleSpreadsheetId:string|null=null;
   if(initial.source_type==="google"){
+    if(!tab)throw new Error("Historical direct imports cannot use Google auto-sync review.");
     const {data:connection,error:connectionError}=await db.from("erp_google_sheet_connections")
       .select("spreadsheet_id,enabled").eq("company_id",companyId).single();
     if(connectionError||!connection?.enabled)throw new Error("Connect and enable Google Sheets before importing.");
@@ -243,7 +243,27 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
   if(claimed.error||!claimed.data)throw new Error("Another import is processing this record or it is already applied.");
   try{
     let erpId="";
-    if(initial.document_type==="costing"){
+    if(initial.document_type==="historical"){
+      // Preserve imported historical usage as a separate, audited register.
+      // No stock, PO, payable or financial-journal mutation occurs here.
+      const p=initial.payload as HistoricalInput;
+      const project=await one("projects",{company_id:companyId,code:p.projectCode},"id");
+      const material=await one("items",{company_id:companyId,code:p.materialCode},"id");
+      const building=p.buildingCode?await one("buildings",{project_id:project.id,code:p.buildingCode},"id"):null;
+      const {data:already,error:priorError}=await db.from("erp_historical_material_consumptions")
+        .select("id").eq("company_id",companyId).eq("reference",p.reference).limit(1);
+      if(priorError)throw new Error("Could not check historic usage duplicates: "+priorError.message);
+      if(already?.length)throw new Error("Historical material Reference already exists. Correct through reconciliation, not by duplicating this import.");
+      const lastSyncedHash=createHash("sha256").update(canonicalHistorical(p)).digest("hex");
+      const {data:created,error:historyError}=await db.from("erp_historical_material_consumptions").insert({
+        company_id:companyId,reference:p.reference,occurred_on:p.date,
+        project_id:project.id,building_id:building?.id??null,material_id:material.id,
+        quantity:p.quantity,unit_cost:p.unitCost,purpose:p.purpose,
+        last_synced_hash:lastSyncedHash,
+      }).select("id").single();
+      if(historyError||!created)throw new Error(historyError?.message??"Historic material usage save failed.");
+      erpId=String(created.id);
+    }else if(initial.document_type==="costing"){
       const p=initial.payload as CostPayload;
       const project=await one("projects",{company_id:companyId,code:p.projectCode},"id");
       const building=p.buildingCode?await one("buildings",{project_id:project.id,code:p.buildingCode},"id"):null;
@@ -335,7 +355,7 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
     }).eq("id",id).eq("company_id",companyId).eq("status","processing").select("id").maybeSingle();
     if(result.error||!result.data)
       throw new Error("ERP record was created but import confirmation failed. Contact admin; do not retry before reconciliation.");
-    if(googleSpreadsheetId){
+    if(googleSpreadsheetId&&tab){
       try {
         await writeEntryStatuses(companyId,googleSpreadsheetId,tab.name,tab.statusIndex,
           liveRows.map(row=>({row,recordId:erpId,status:"IMPORTED",error:""})));
