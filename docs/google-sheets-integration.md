@@ -1,101 +1,58 @@
-# Google Sheets ↔ KK GROUP ERP (controlled historical bridge)
+# KK GROUP ERP ↔ Google Sheets: account sign-in and controlled imports
 
-## Scope and deliberately enforced boundaries
+## Actual behavior
 
-A company Super Admin can open **Settings → Google Sheets Integration** and connect
-one Google Spreadsheet by its full `docs.google.com/spreadsheets/d/…/edit` URL.
-A spreadsheet can contain multiple tabs. The ERP creates reserved `ERP - …`
-tabs if they do not already exist.
+The Super Admin opens **Settings → Google Sheets Integration**, pastes one spreadsheet URL and chooses **Connect with Google**. The Google consent screen authorizes that ERP application (not ChatGPT). No Google service-account JSON is required.
 
-**Two-way, editable:** `ERP - Historical Consumption`. Used to backfill old
-project/building/material usage, preserving a stable `Reference` across syncs.
-Rows are validated, company-scoped, idempotent, and report status/errors next
-to the source row. If the sheet and ERP change the same row after the last sync,
-the row reports `CONFLICT` and neither side is automatically overwritten.
-Deleting a worksheet row does not delete an ERP record.
+The following editable tabs in the *same* spreadsheet are supported:
 
-**ERP → Google Sheets (read-only exports):** projects, materials, vendors,
-warehouses, buildings, PRs, POs, GRNs, material issues, invoices and payments.
-Some of these are financial or approval-controlled: edits in Google Sheets
-do not become ERP writes. Append-only inventory and accounting journals, staff
-roles, private documents, personal credentials and authorization data are never
-exposed as editable spreadsheet tables. ERP permissions remain in force.
+- `ERP - Historical Consumption`: historical quantity and cost backfill; separate from current stock. Historical imports use reference-based conflict detection.
+- `Entry - Project Costing`: individual historical cost entries by project and optional building. After review they become immutable `erp_project_cost_entries`, **not** posted expenses, payables or inventory transactions. Do not import a cost already present in an approved invoice or stock-consumption register; cost-control reconciliation remains necessary.
+- `Entry - Vendor Challans`: multiple lines per Import Reference. Each line needs the existing PO line number and material code. Super Admin action calls `register_vendor_delivery_challan` using the signed-in user's credentials and ERP ACL/RPC rules; challan registration itself does not post a goods receipt.
+- `Entry - Vendor Invoices`: multiple lines per Import Reference. Each bill references an existing PO and posted GRN items, including `GRN Line No` from the **`ERP - GRN Item References`** export. The Super Admin applies via `save_vendor_invoice` and creates **a draft only**. No invoice approval, payment, or journal posting from a sheet.
 
-**Critical accounting rule:** historical usage is stored separately in
-`erp_historical_material_consumptions`, not `inventory_transactions`.
-It appears as a distinct section on the Project Material Consumption page,
-but it does **not** reduce current stock, post cash, alter a vendor invoice,
-or automatically change the stock-ledger-based cost totals. Before financial
-backfill, reconcile warehouse opening balances, cutover dates and existing
-posted issues; otherwise one historical purchase/issue may be counted twice.
+Staging creates `erp_sheet_import_documents` entries with `ready`, `processing`, `applied`, `error`, and `conflict` states. A changed or deleted sheet row is re-checked immediately before the apply operation. Duplicate imported references cannot silently be applied twice. If a document was already applied and the sheet changes, the queue records a conflict; corrections require the ERP's standard workflow. All entry tabs are per-company. Only active Super Admins can configure OAuth and apply imports.
 
-## Required activation (nothing is connected by committing code)
+**Export-only ERP mirrors:** projects, materials, vendors, warehouses, buildings, purchase requests, purchase orders, goods received, material issues, vendor invoices and vendor payments. Staff should not edit these mirrors. For GRN line numbers use `ERP - GRN Item References`. The integration does not directly change immutable stock, invoice, payment or audit ledgers.
 
-1. Apply migration `drizzle/migrations/0055_google_sheets_historical_bridge.sql`
-   only after production database backup, RLS review and migration preflight.
-   It does not migrate or delete existing business records.
-2. In a restricted Google Cloud project enable **Google Sheets API**, create
-   a dedicated service account, and generate a JSON key if the chosen deployment
-   requires one. Store the entire JSON **only** in the server secret
-   `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` (never in GitHub code, VITE variables,
-   Google worksheet cells or browser localStorage).
-3. In Super Admin settings find the displayed service account email. Share
-   only the intended private Google Spreadsheet with that email as **Editor**.
-   Do not make the document publicly editable.
-4. Paste its full Google Sheets URL. The server verifies actual API access,
-   then stores its spreadsheet ID and display title, scoped to this ERP company.
-   Click **Sync now** once. The ERP creates templates/exports.
-5. Edit **ERP - Historical Consumption** in the Google workbook. In its
-   **Reference** column enter a unique stable key such as `LEGACY-0001`.
-   Use the actual Project/Building/Material codes from the ERP - … reference
-   tabs. **Date** must be `YYYY-MM-DD` as text (set Google cell formatting
-   to plain text); Quantity supports 3 decimals; Unit Cost INR supports 2
-   decimals. Blank Building Code means general project work.
-   Enter **0 explicitly** for an unknown monetary cost, and separately
-   reconcile such records before using historical costs for decisions.
-   Leave `ERP Record ID`, `Sync Status` and `Sync Error` alone.
-6. For periodic sync, configure the **same** securely generated (≥32-character)
-   `GOOGLE_SHEETS_SYNC_SECRET` as a server-only environment secret and the
-   repository **secret** `KK_ERP_SHEETS_SYNC_SECRET`. Set repository **variable**
-   `KK_ERP_SHEETS_SYNC_URL` to the deployed endpoint
-   `https://<ERP-host>/api/public/google-sheets-sync`.
-   `.github/workflows/google-sheets-sync.yml` schedules a secure POST about
-   every 5 minutes, but GitHub does **not** guarantee a precise schedule.
-   Manual sync is also available in settings.
-7. Publish the backend and frontend from the connected branch only after
-   checks pass and the environment/migration have been verified. A successful
-   GitHub build does not mean a live database migration is applied.
+## Deployment prerequisites — required before connecting
 
-## Operational guarantees and limitations
+1. Back up the database; apply migrations **0055** and **0056** in order, reviewing RLS and PostgreSQL regression tests in staging before production deployment.
+2. In Google Cloud create or choose a restricted project. Enable **Google Sheets API**. Configure **OAuth consent screen** (external test users, if testing, or approved production audience) with `https://www.googleapis.com/auth/spreadsheets` and `openid email` scopes. Create an **OAuth client ID of type Web application**.
+3. Set the **Authorized redirect URI** on the Google OAuth client to precisely `https://kkgrouppurchase.lovable.app/api/public/google-sheets-oauth` (use the actual final deployed ERP host, HTTPS, if different).
+4. Set **server-only** secrets:
+   - `GOOGLE_OAUTH_CLIENT_ID`
+   - `GOOGLE_OAUTH_CLIENT_SECRET`
+   - `GOOGLE_OAUTH_REDIRECT_URI`, exactly the URI registered in Google Cloud
+   - `GOOGLE_SHEETS_TOKEN_ENCRYPTION_KEY`, a random 32-byte key encoded as 64 hexadecimal characters. **Keep a secure backup**: losing or rotating it without migrating stored tokens forces reconnection.
+   Never commit credentials, publish them in `VITE_*`, or paste them into a worksheet/chat. AES-256-GCM encrypts refresh tokens in the DB; do not log tokens.
+5. Publish a server runtime that supports TanStack Start API routes and the Google callback. From **Settings → Google Sheets Integration**, paste the Google Spreadsheet URL, click **Connect with Google**, select the Google account with editor access to the workbook, and approve the requested scopes. If the sheet is **Restricted** (recommended), the selected Google account must explicitly have access to it.
+6. Click **Sync now**. The integration generates the ERP reference export tabs and checks the entry tab headers. It will refuse to overwrite unexpected headers. The sheet link alone does not activate backend credentials or database migrations.
+7. For background polling, set the protected deployment secret `GOOGLE_SHEETS_SYNC_SECRET` (minimum 32 characters); configure the same value in the GitHub repository secret `KK_ERP_SHEETS_SYNC_SECRET`; set repository variable `KK_ERP_SHEETS_SYNC_URL` to `https://kkgrouppurchase.lovable.app/api/public/google-sheets-sync`. The existing cron runs about every 5 minutes but GitHub scheduling is not guaranteed. **Sync now** works without the scheduler. Automatic sync only stages costing/challan/invoice rows: each needs an explicit import decision.
 
-- The ERP database is the source of truth for approvals, finance and physical stock.
-- The worker uses a 5-minute database lease to avoid overlapping sync jobs;
-  failed sync attempts preserve errors for admins to review.
-- Each import row is checked against the company's project, matching building
-  and material codes. UUIDs are not accepted from arbitrary sheet rows.
-- Exports are bounded; exceeding safety limits fails instead of silently
-  truncating data. Repeated Google API writes are batched.
-- The sync uses polling, **not instant live streaming**, and may be delayed by
-  Google APIs, deploy downtime or GitHub scheduled job delays. Changes in the
-  same row on both sides are not silently resolved.
-- If an existing reserved `ERP -` tab has unexpected headers, do not
-  overwrite it. Rename it or back it up, then let the integration create
-  its own tab.
-- **Full two-way editing of every ERP table is intentionally not supported.**
-  Extending write access requires individual business-rule-aware workflows
-  (e.g. item master upsert, approved purchase amendments, material issue RPCs).
-  Mapping arbitrary columns to tables would bypass approval rules.
+## User instructions
 
-## Acceptance testing before activation
+The linked sheet's entry tabs have been prepared already:
+- `Entry - Project Costing`: one cost per Reference, date `YYYY-MM-DD`, ERP project/building code, cost category, description, quantity×rate or amount. Be certain costs aren't captured in other registers; a nonblank Invoice/Challan Ref forces reconciliation instead of duplicate counting.
+- `Entry - Vendor Challans`: one row per material, repeat the same Import Reference for one challan, and specify actual PO line no/material/quantity. Match the approved PO project and vendor.
+- `Entry - Vendor Invoices`: one row per posted GRN item, repeat Import Reference for one bill; all rows need GRN number, material, quantity, rate, GST type and rate. Only the first row may contain freight and other charges. GRN Line No is from the exported GRN item reference tab.
+- `ERP - Historical Consumption`: use actual material/project/building codes; keep stable reference keys. This area is independent of live warehouse inventory.
+- Keep generated `ERP Record ID`, `Import Status`, `Import Error`, `Sync Status`, and `Sync Error` fields unchanged. Errors are reported in the workbook; review them in ERP settings.
 
-- An unauthorized user or cross-company admin cannot view/edit sync settings
-  or the source history; confirm role and service account separation.
-- Verify reference idempotency with two consecutive syncs and a spreadsheet
-  reorder. Edit only Sheets, then only ERP, and check conflict handling.
-- Test invalid project/building/material, negative and fractional quantity,
-  duplicate Reference, and mismatched ERP Record ID.
-- Compare stock balances and immutable inventory ledger before and after a
-  historical backfill; there should be **no change**.
-- Confirm that financial document mirror edits are never imported.
-- Confirm a temporary Google permission revocation surfaces an actionable
-  error and does not expose credentials or corrupt historic rows.
+**Current-account boundaries:** a Google account connected to ChatGPT's Google Drive connector is NOT automatically authorized in the ERP. The ERP OAuth consent screen is a separate permission grant. Any Google Sheet shared as `Anyone with the link → Editor` is inappropriate for vendor costing and invoices; change General access to **Restricted**.
+
+## Test and acceptance checklist
+
+- Google account can connect and reconnect; repeat callback/state fails; lost or revoked permission fails safely, without token leakage.
+- A non-admin or cross-company user cannot see/apply staged rows. OAuth permissions remain restricted to requested spreadsheet's owner/editor account.
+- Cost: duplicate reference cannot create duplicate costs; linked invoice cost requires reconciliation.
+- Challan: reject wrong vendor/project/PO line/material, exceeding PO quantity or a duplicate challan; register only via existing security-definer RPC.
+- Invoice: reject non-posted GRNs, wrong PO/material/GRN line, duplicate bill, duplicate GRN item, tax type/rate mismatch or excess accepted quantity; save draft via existing RPC.
+- Sheet edit or deletion after staging blocks approval until restaged. No silent mutation of approved invoice, ledger or warehouse stock.
+- Run CI, replay full database migrations and test on **a disposable staging database**, then test a temporary restricted Google workbook. A build passing is not proof of Google OAuth API or production database connectivity.
+
+## Caveats
+
+- Two-way data editing is intentionally **limited** to historical material usage. Other entry tabs stage one-way into ERP and are not general-purpose bidirectional financial editors.
+- Project historical costing is stored independently; the core Project Cost Control headline totals are unchanged until finance reconciles whether expenses duplicate posted invoices.
+- GitHub Actions can be delayed or skip a run. These functions are polling-based, not transactional zero-latency events.
