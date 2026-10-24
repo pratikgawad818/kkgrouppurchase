@@ -28,7 +28,7 @@ export function parseSpreadsheetId(value: string): string {
   const input = value.trim();
   const match = input.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]{25,})(?:\/[^?#]*)?(?:[?#].*)?$/);
   if (!match) throw new Error("Paste a full Google Sheets URL from docs.google.com/spreadsheets/d/…");
-  return match[1];
+  return match[1]!;
 }
 
 export type HistoricalInput = {
