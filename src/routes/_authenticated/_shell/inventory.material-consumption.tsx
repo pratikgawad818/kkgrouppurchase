@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Search, Boxes, PackageCheck } from "lucide-react";
@@ -52,6 +53,31 @@ function MaterialConsumption() {
       return {data:data?.map(row=>({...row,id:row.warehouse_id}))??null,count,error};
     },{maxRows:10000}),
   });
+  const historical = useQuery({
+    queryKey: ["historical-material-consumption"],
+    queryFn: async () => {
+      // RLS restricts historic records to the signed-in company's inventory viewers.
+      const client = supabase as unknown as SupabaseClient;
+      const {data,count,error}=await client.from("erp_historical_material_consumptions")
+        .select("id,reference,occurred_on,project_id,building_id,material_id,quantity,unit_cost,purpose,projects(name),buildings(name),items(name,code,units_of_measure(code))",
+          {count:"exact"}).order("occurred_on",{ascending:false}).limit(2000);
+      if(error) throw error;
+      if((count??0)>2000) throw new Error("Historical register exceeds 2,000 entries. Use a paginated export.");
+      return (data??[]) as unknown as {
+        id:string;reference:string;occurred_on:string;project_id:string;building_id:string|null;
+        material_id:string;quantity:number;unit_cost:number;purpose:string;
+        projects:{name:string}|null;buildings:{name:string}|null;
+        items:{name:string;code:string;units_of_measure:{code:string}|null}|null;
+      }[];
+    },
+  });
+  const historicalFiltered=(historical.data??[]).filter(x=>
+    (!projectId||x.project_id===projectId)&&
+    (!buildingId||(buildingId==="general"?!x.building_id:x.building_id===buildingId))&&
+    (!materialId||x.material_id===materialId)&&
+    (!search.trim()||[x.reference,x.projects?.name,x.buildings?.name,x.items?.name,x.items?.code]
+      .some(v=>v?.toLowerCase().includes(search.toLowerCase().trim()))));
+  const historicalValue=historicalFiltered.reduce((total,x)=>total+Number(x.quantity)*Number(x.unit_cost),0);
   const all = q.data ?? [];
   const projects = projectOptions.data ?? [...new Map(all.map(x=>[x.project_id,{id:x.project_id,name:x.project_name}])).values()];
   const buildings = [...new Map(all.filter(x=>x.building_id&&(!projectId||x.project_id===projectId))
@@ -188,5 +214,45 @@ function MaterialConsumption() {
       <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
       <p className="mt-3 text-xs text-muted-foreground">This operational report tracks the consumption of materials from stock. It is not a second purchase invoice, cash-flow record or general-ledger expense posting.</p>
     </>}
+    <section className="mt-6 rounded-xl border bg-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Historical project consumption</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Pre-ERP material usage entered through Google Sheets, separate from posted issues/returns.
+            These quantities do not reduce warehouse stock or change the financial journal.
+          </p>
+        </div>
+        <div className="rounded-lg bg-muted/40 px-4 py-2 text-right">
+          <p className="text-xs text-muted-foreground">Historical entered value</p>
+          <strong className="text-lg">{inr(historicalValue)}</strong>
+        </div>
+      </div>
+      {historical.isLoading?<div className="mt-3"><Loading/></div>:
+        historical.error?<p role="alert" className="mt-3 text-sm text-destructive">
+          Historical register unavailable: {errMsg(historical.error)}</p>:
+        !historicalFiltered.length?<p className="mt-3 text-sm text-muted-foreground">
+          No historical entries match these filters. A Super Admin can link Google Sheets from Settings.</p>:
+        <div className="mt-3 overflow-x-auto rounded-lg border">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-muted/30 text-xs"><tr>
+              {["Date","Reference","Project","Building","Material","Used quantity","Historic cost"].map(h=>
+                <th key={h} className="p-3 text-left">{h}</th>)}
+            </tr></thead>
+            <tbody>{historicalFiltered.map(x=><tr key={x.id} className="border-t">
+              <td className="p-3">{x.occurred_on}</td><td className="p-3 font-mono text-xs">{x.reference}</td>
+              <td className="p-3">{x.projects?.name??"—"}</td>
+              <td className="p-3">{x.buildings?.name??"General works"}</td>
+              <td className="p-3">{x.items?.name??"—"}</td>
+              <td className="p-3 tabular-nums">{num(x.quantity)} {x.items?.units_of_measure?.code??""}</td>
+              <td className="p-3 tabular-nums">{inr(Number(x.quantity)*Number(x.unit_cost))}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>}
+      <p className="mt-3 text-xs text-muted-foreground">
+        Reconcile opening inventory before recording any actual stock issues for the same historic period.
+        Do not count the same usage twice in a project cost report.
+      </p>
+    </section>
   </div>;
 }

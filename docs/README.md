@@ -8,6 +8,7 @@
 - [Database validation](database-migration-validation.md)
 - [Production acceptance gates](production-acceptance-gates.md)
 - [ERP data model](erp-data-model.md)
+- [Google Sheets integration and controlled historical backfill](google-sheets-integration.md)
 - [Route file conventions](../src/routes/README.md)
 
 ## Access and approvals

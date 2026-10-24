@@ -1,0 +1,23 @@
+# Google Sheets is eventually consistent, not a zero-latency transaction bus.
+# GitHub scheduled runs can be delayed/skipped; manual "Sync now" remains available.
+name: KK ERP Google Sheets sync
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger protected Sheets sync
+        env:
+          ENDPOINT: ${{ vars.KK_ERP_SHEETS_SYNC_URL }}
+          SECRET: ${{ secrets.KK_ERP_SHEETS_SYNC_SECRET }}
+        run: |
+          test -n "$ENDPOINT" || { echo "Set KK_ERP_SHEETS_SYNC_URL repository variable"; exit 1; }
+          test -n "$SECRET" || { echo "Set KK_ERP_SHEETS_SYNC_SECRET repository secret"; exit 1; }
+          curl --fail --silent --show-error --max-redirs 0 --max-time 120 \
+            --retry 2 --retry-delay 10 \
+            -X POST -H "x-erp-sheets-secret: $SECRET" "$ENDPOINT"
