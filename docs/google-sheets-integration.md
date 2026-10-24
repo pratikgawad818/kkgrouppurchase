@@ -55,6 +55,47 @@ The linked sheet's entry tabs have been prepared already:
 
 **Current-account boundaries:** a Google account connected to ChatGPT's Google Drive connector is NOT automatically authorized in the ERP. The ERP OAuth consent screen is a separate permission grant. Any Google Sheet shared as `Anyone with the link → Editor` is inappropriate for vendor costing and invoices; change General access to **Restricted**.
 
+## Automatic sync: database scheduler (recommended)
+
+Once migration `0057_google_sheets_database_scheduler.sql` is deployed, the production
+Supabase database uses `pg_cron` + `pg_net` to trigger the server's protected
+`/api/public/google-sheets-sync` endpoint every **5 minutes**. It does not require
+GitHub Actions repository variables, GitHub secrets, or an extra Google login.
+
+Security:
+- Each request receives a random 256-bit, **single-use** token that expires after
+  120 seconds; only its SHA-256 hash is stored in the private, RLS-enabled
+  `erp_sheet_sync_nonces` table.
+- Only the privileged `postgres` scheduled job can create a token. The database
+  function denies invocation from `anon` and `authenticated`.
+- The endpoint atomically deletes/consumes the token before syncing. Replays fail.
+  No browser-facing key or permanent scheduler secret is required.
+- The job skips disabled/unconnected workbooks. The existing `sync_lease_until`
+  prevents concurrent syncs on a company.
+- Existing Google Sheets synchronization **stages** costing/challan/invoice rows for
+  explicit Super Admin approval and never auto-posts stock or supplier payments.
+
+Production activation after the updated API route is published, as the database
+administrator (not from the browser):
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
+SELECT cron.schedule(
+  'kk-erp-google-sheets-5min',
+  '*/5 * * * *',
+  'SELECT public.erp_enqueue_google_sheets_sync();'
+);
+```
+
+Verify with `SELECT jobid,jobname,schedule,active FROM cron.job WHERE
+jobname='kk-erp-google-sheets-5min';` and check `last_synced_at` in
+`erp_google_sheet_connections` advances without any manual clicks.
+Check `cron.job_run_details` and `net._http_response` for transport errors.
+
+To stop: `SELECT cron.unschedule('kk-erp-google-sheets-5min');`. The old GitHub
+workflow remains **manual only** to prevent duplicate schedules. GitHub schedule
+activation is no longer required.
+
 ## Test and acceptance checklist
 
 - Google account can connect and reconnect; repeat callback/state fails; lost or revoked permission fails safely, without token leakage.

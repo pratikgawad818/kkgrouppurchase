@@ -240,7 +240,7 @@ function SheetsSettings() {
           {EXPORT_TABS.map(t=><div key={t.name} className="rounded-md border px-3 py-2">{t.name.replace("ERP - ","")}</div>)}
           <div className="rounded-md border px-3 py-2">GRN Item References</div>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">Periodic polling requires the protected scheduler configured in your deployment. Changing a worksheet is not an instant financial transaction.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Automatic background sync is scheduled every 5 minutes through the Supabase database once the scheduler is activated. Verify freshness above under Last successful sync. Changing a worksheet is not an instant financial transaction.</p>
       </section>
     </div>
   </div>;
