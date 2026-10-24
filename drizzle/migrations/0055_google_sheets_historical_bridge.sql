@@ -87,6 +87,6 @@ BEGIN
   RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION public.erp_audit_historical_consumption() FROM PUBLIC,anon,authenticated;
-CREATE TRIGGER erp_historical_audit AFTER INSERT OR UPDATE
+CREATE TRIGGER erp_historical_audit AFTER INSERT OR UPDATE OF reference,occurred_on,project_id,building_id,material_id,quantity,unit_cost,purpose
   ON public.erp_historical_material_consumptions FOR EACH ROW
   EXECUTE FUNCTION public.erp_audit_historical_consumption();
