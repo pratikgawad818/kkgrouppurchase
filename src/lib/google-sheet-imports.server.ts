@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readValues, writeValues, writeEntryStatuses, exportReferenceTab } from "@/lib/google-sheets.server";
-import { SHEET_ENTRY_TABS, parseEntrySheet, type SheetEntryKind, type SheetEntryDocument } from "@/lib/google-sheets-model";
+import { SHEET_ENTRY_TABS, parseEntrySheet, type SheetEntryKind } from "@/lib/google-sheets-model";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 const hash=(v:object)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
@@ -10,7 +10,7 @@ type StageRow={id:string;document_type:SheetEntryKind;source_reference:string;so
   payload:Record<string,unknown>;status:string;erp_record_id:string|null;error_message:string|null};
 type Status={row:number;recordId:string;status:string;error:string};
 type Master={id:string;code:string};
-type Listed={id:string;[key:string]:unknown};
+type Listed={id:string; grn_id?:string; grn_number?:string; material_id?:string; accepted_quantity?:number; po_item_id?:string; status?:string; vendor_id?:string; po_id?:string; project_id?:string; building_id?:string|null; line_no?:number; [key:string]:unknown};
 function failure(error:unknown):string{return error instanceof Error?error.message:"Unexpected ERP error";}
 async function one(table:string, filters:Record<string,string>,columns="id"):Promise<Listed> {
   let query=db.from(table).select(columns);
@@ -18,7 +18,7 @@ async function one(table:string, filters:Record<string,string>,columns="id"):Pro
   const {data,error}=await query.limit(2);
   if(error)throw new Error(table+": "+error.message);
   if(data?.length!==1)throw new Error("Expected exactly one "+table+" for "+Object.entries(filters).map(([k,v])=>k+"="+v).join(", ")+".");
-  return data[0] as Listed;
+  return data[0] as unknown as Listed;
 }
 async function rows(table:string,filters:Record<string,string>,columns:string):Promise<Listed[]> {
   let query=db.from(table).select(columns);
@@ -26,7 +26,7 @@ async function rows(table:string,filters:Record<string,string>,columns:string):P
   const {data,error}=await query.limit(2000);
   if(error)throw new Error(table+": "+error.message);
   if((data?.length??0)>=2000)throw new Error("Too many matching "+table+" lines. Narrow the document.");
-  return (data??[]) as Listed[];
+  return (data??[]) as unknown as Listed[];
 }
 export async function stageSheetEntries(companyId:string,spreadsheetId:string) {
   const errors:Record<string,string>={};
@@ -99,7 +99,7 @@ export async function exportGrnItemReferences(companyId:string, spreadsheetId:st
       .in("grn_id",ids.slice(start,start+100)).limit(10000);
     if(error)throw error;
     if((data?.length??0)>=10000)throw new Error("Too many GRN lines for one export batch.");
-    for(const item of (data??[]) as Listed[]){
+    for(const item of (data??[]) as unknown as Listed[]){
       const list=byGrn.get(String(item.grn_id))??[];
       list.push(item);byGrn.set(String(item.grn_id),list);
     }
@@ -231,6 +231,7 @@ export async function applySheetEntry(companyId:string,actorId:string,client:Sup
           if(matches.length!==1)throw new Error("Enter GRN Line No from ERP - GRN Item References to identify this material unambiguously.");
           item=matches[0];
         }
+        if(!item)throw new Error("GRN item was not found.");
         if(selected.has(item.id))throw new Error("The same GRN item cannot be invoiced twice in one imported bill.");
         selected.add(item.id);
         mapped.push({grn_item_id:item.id,quantity:line.quantity,rate:line.rate,
