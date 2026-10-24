@@ -22,6 +22,7 @@ function SheetsSettings() {
   const me=useMe(),qc=useQueryClient();
   const allowed=!!me.data?.profile.is_active&&!!me.data?.roles.includes("super_admin");
   const [url,setUrl]=useState("");
+  const [pendingImport,setPendingImport]=useState<string|null>(null);
   const get=useServerFn(getGoogleSheetsConnection);
   const connect=useServerFn(connectGoogleSheets);
   const sync=useServerFn(syncGoogleSheetsNow);
@@ -64,7 +65,7 @@ function SheetsSettings() {
   });
   const apply=useMutation({
     mutationFn:(id:string)=>applyFn({data:{id}}),
-    onSuccess:()=>{toast.success("ERP document imported using its controlled workflow.");invalidate();},
+    onSuccess:()=>{toast.success("ERP document imported using its controlled workflow.");setPendingImport(null);invalidate();},
     onError:e=>{toast.error(e.message);invalidate();},
   });
   if(me.isLoading)return <Loading/>;
@@ -153,13 +154,24 @@ function SheetsSettings() {
                 <p className="font-semibold">{entry.source_reference} <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-medium">{entry.document_type}</span></p>
                 <p className="text-xs text-muted-foreground">{statusLabel(entry.status)}{entry.erp_record_id?" · ERP record "+entry.erp_record_id:""}</p>
               </div>
-              {(entry.status==="ready"||entry.status==="error")&&<Button size="sm" disabled={apply.isPending||!connected}
-                onClick={()=>apply.mutate(entry.id)}>{apply.isPending&&apply.variables===entry.id?"Importing…":"Review & import"}</Button>}
+              {(entry.status==="ready"||entry.status==="error")&&<Button size="sm" variant="outline" disabled={apply.isPending||!connected}
+                onClick={()=>setPendingImport(current=>current===entry.id?null:entry.id)}>{pendingImport===entry.id?"Close review":"Review entry"}</Button>}
             </div>
             {entry.error_message&&<p role="alert" className="mt-2 text-xs text-destructive">{entry.error_message}</p>}
-            <details className="mt-2 text-xs"><summary className="cursor-pointer text-primary">Inspect document details before importing</summary>
-              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-muted/30 p-2">{JSON.stringify(entry.payload,null,2)}</pre>
-            </details>
+            {pendingImport===entry.id?<div className="mt-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-semibold">Confirm {entry.document_type} import</p>
+              <p className="mt-1 text-xs text-muted-foreground">Verify the source references, quantities and amounts. The ERP will re-read the spreadsheet before applying; any changed or deleted row is rejected.</p>
+              <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-card p-3 text-xs">{JSON.stringify(entry.payload,null,2)}</pre>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" disabled={apply.isPending} onClick={()=>apply.mutate(entry.id)}>
+                  {apply.isPending&&apply.variables===entry.id?"Importing…":"Confirm import into ERP"}
+                </Button>
+                <Button size="sm" variant="outline" disabled={apply.isPending} onClick={()=>setPendingImport(null)}>Cancel</Button>
+              </div>
+            </div>:
+              <details className="mt-2 text-xs"><summary className="cursor-pointer text-primary">Inspect document details</summary>
+                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-muted/30 p-2">{JSON.stringify(entry.payload,null,2)}</pre>
+              </details>}
           </div>)}
         </div>}
     </section>
