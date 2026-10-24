@@ -4,7 +4,7 @@
 
 **This is the recommended setup-free path.** The existing private Google Spreadsheet remains restricted to your organization. Super Admin staff do not need to configure an OAuth app, generate any Google token or expose the workbook publicly.
 
-1. Open the original Google Sheet, choose one of `Entry - Project Costing`, `Entry - Vendor Challans`, or `Entry - Vendor Invoices`.
+1. Open the original Google Sheet, choose `Entry - Project Costing`, `Entry - Vendor Challans`, `Entry - Vendor Invoices`, or `ERP - Historical Consumption`.
 2. Select the **full header row (all columns)** plus up to 500 filled data rows and copy them (⌘C/Ctrl+C).
 3. Open ERP → **Settings → Google Sheets Integration** → **Import directly**. Select the matching worksheet type and paste (⌘V/Ctrl+V). Click **Validate and stage for review**.
 4. The ERP parses Google Sheets/Excel clipboard TSV, including correctly quoted multi-line values. The Super Admin reviews per-row errors and opens each staged document to verify amounts, supplier, PO and GRN references. Each **Confirm import into ERP** action uses the existing privileged ERP business workflows, not arbitrary direct SQL writes to financial or stock tables.
@@ -20,7 +20,7 @@ The Super Admin opens **Settings → Google Sheets Integration**, pastes one spr
 
 The following editable tabs in the *same* spreadsheet are supported:
 
-- `ERP - Historical Consumption`: historical quantity and cost backfill; separate from current stock. Historical imports use reference-based conflict detection.
+- `ERP - Historical Consumption`: historical quantity and cost backfill; separate from current stock. Direct paste creates reviewed historical usage entries, while optional authorized synchronization uses reference-based conflict detection.
 - `Entry - Project Costing`: individual historical cost entries by project and optional building. After review they become immutable `erp_project_cost_entries`, **not** posted expenses, payables or inventory transactions. Do not import a cost already present in an approved invoice or stock-consumption register; cost-control reconciliation remains necessary.
 - `Entry - Vendor Challans`: multiple lines per Import Reference. Each line needs the existing PO line number and material code. Super Admin action calls `register_vendor_delivery_challan` using the signed-in user's credentials and ERP ACL/RPC rules; challan registration itself does not post a goods receipt.
 - `Entry - Vendor Invoices`: multiple lines per Import Reference. Each bill references an existing PO and posted GRN items, including `GRN Line No` from the **`ERP - GRN Item References`** export. The Super Admin applies via `save_vendor_invoice` and creates **a draft only**. No invoice approval, payment, or journal posting from a sheet.
