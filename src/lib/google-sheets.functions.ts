@@ -37,7 +37,7 @@ export const connectGoogleSheets = createServerFn({method:"POST"})
 export const pasteSpreadsheetEntries = createServerFn({method:"POST"})
   .middleware([requireSupabaseAuth])
   .inputValidator((input)=>z.object({
-    kind:z.enum(["costing","challan","invoice"]),
+    kind:z.enum(["costing","challan","invoice","historical"]),
     clipboard:z.string().min(1).max(200000),
   }).parse(input))
   .handler(async ({context,data})=>{
