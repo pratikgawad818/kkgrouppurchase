@@ -4343,13 +4343,14 @@ export type Database = {
           id: string
           igst: number
           invoice_number: string
+          is_opening: boolean
           match_status: Database["public"]["Enums"]["match_status"]
           match_summary: Json | null
           match_tolerances: Json | null
           matched_at: string | null
           net_payable: number
           other_charges: number
-          po_id: string
+          po_id: string | null
           project_id: string
           remarks: string | null
           sgst: number
@@ -4382,13 +4383,14 @@ export type Database = {
           id?: string
           igst?: number
           invoice_number: string
+          is_opening?: boolean
           match_status?: Database["public"]["Enums"]["match_status"]
           match_summary?: Json | null
           match_tolerances?: Json | null
           matched_at?: string | null
           net_payable?: number
           other_charges?: number
-          po_id: string
+          po_id?: string | null
           project_id: string
           remarks?: string | null
           sgst?: number
@@ -4421,13 +4423,14 @@ export type Database = {
           id?: string
           igst?: number
           invoice_number?: string
+          is_opening?: boolean
           match_status?: Database["public"]["Enums"]["match_status"]
           match_summary?: Json | null
           match_tolerances?: Json | null
           matched_at?: string | null
           net_payable?: number
           other_charges?: number
-          po_id?: string
+          po_id?: string | null
           project_id?: string
           remarks?: string | null
           sgst?: number
@@ -5595,6 +5598,7 @@ export type Database = {
         Args: { _id: string }
         Returns: Database["public"]["Enums"]["match_status"]
       }
+      save_opening_vendor_invoice: { Args: { _header: Json }; Returns: string }
       save_purchase_request: {
         Args: {
           _expected_updated_at?: string
