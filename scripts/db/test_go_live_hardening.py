@@ -686,6 +686,34 @@ def test_optional_invoice_roundoff_accounting():
     print("PASS opt-in round-off, exact paise default, historical payments, and balanced gain/loss journals")
 
 
+def test_accounts_manager_finance_settings_permission():
+    """Accounts Manager can configure TDS and matching; Director remains read-only."""
+    with db() as c:
+        actor(c, ACCOUNTS)
+        perms=c.execute("""SELECT
+          has_permission(auth.uid(),'tax.configure'),
+          has_permission(auth.uid(),'company.manage')""").fetchone()
+        assert perms==(True,False),perms
+        settings={"qty_tolerance_pct":0,"rate_tolerance_pct":1.25,
+            "value_tolerance":250.50,
+            "tds_sections":[{"code":"194C","label":"QA contractor TDS","rate":1}]}
+        c.execute("SELECT update_finance_settings(%s::jsonb)",(json.dumps(settings),))
+        value=c.execute("SELECT finance_settings FROM companies WHERE id=%s",(A,)).fetchone()[0]
+        assert str(value["rate_tolerance_pct"])=="1.25",value
+        assert str(value["value_tolerance"])=="250.50" or str(value["value_tolerance"])=="250.5",value
+        assert value["tds_sections"][0]["code"]=="194C",value
+        denied(c,lambda:c.execute("SELECT update_finance_settings(%s::jsonb)",
+            (json.dumps({**settings,"tds_sections":{"invalid":"object"}}),)),
+            "TDS sections must be an array")
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute("SELECT update_finance_settings(%s::jsonb)",
+            (json.dumps(settings),)),"No permission")
+        actor(c,ADMIN)
+        c.execute("SELECT update_finance_settings(%s::jsonb)",(json.dumps(settings),))
+        c.rollback()
+    print("PASS Accounts Manager finance-settings save, validation and Director read-only enforcement")
+
+
 if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
@@ -699,3 +727,4 @@ if __name__ == "__main__":
     test_structured_opening_bills_and_prior_paid()
     test_accounts_staff_material_create_edit_only()
     test_optional_invoice_roundoff_accounting()
+    test_accounts_manager_finance_settings_permission()
