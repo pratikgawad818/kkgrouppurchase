@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { classifyGoogleRefreshFailure, GOOGLE_REAUTHORIZE_ERROR, GOOGLE_CLIENT_CONFIGURATION_ERROR } from "@/lib/google-oauth-health";
 
 const db = supabaseAdmin as unknown as SupabaseClient;
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets openid email";
@@ -51,13 +52,28 @@ export async function beginGoogleOAuth(companyId:string, actorId:string, spreads
   url.searchParams.set("state",state);
   return {authorizationUrl:url.toString()};
 }
-async function tokenRequest(form:URLSearchParams):Promise<{access_token:string;refresh_token?:string;expires_in?:number}> {
+class GoogleReauthorizationRequiredError extends Error {
+  constructor() { super(GOOGLE_REAUTHORIZE_ERROR); this.name="GoogleReauthorizationRequiredError"; }
+}
+
+async function tokenRequest(form:URLSearchParams,operation:"exchange"|"refresh"="exchange"):
+Promise<{access_token:string;refresh_token?:string;expires_in?:number}> {
   const r=await fetch("https://oauth2.googleapis.com/token",{
     method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:form,
     signal:AbortSignal.timeout(20000),
   });
-  if(!r.ok)throw new Error("Google token exchange failed ("+r.status+").");
-  const data=await r.json() as {access_token?:string;refresh_token?:string;expires_in?:number};
+  // Read only Google's error code. Never log or persist the full token response.
+  const data=await r.json().catch(()=>({})) as {
+    access_token?:string;refresh_token?:string;expires_in?:number;error?:string;
+  };
+  if(!r.ok){
+    if(operation==="refresh") {
+      const reason=classifyGoogleRefreshFailure(r.status,data.error);
+      if(reason==="reauthorize")throw new GoogleReauthorizationRequiredError();
+      if(reason==="configuration")throw new Error(GOOGLE_CLIENT_CONFIGURATION_ERROR);
+    }
+    throw new Error("Google token exchange failed ("+r.status+").");
+  }
   if(!data.access_token)throw new Error("Google did not provide an access token.");
   return {...data,access_token:data.access_token};
 }
@@ -73,7 +89,22 @@ export async function googleAccessToken(companyId:string):Promise<string> {
   const refresh=decrypt(String(data.oauth_refresh_token_ciphertext),c.key);
   const form=new URLSearchParams({client_id:c.clientId,client_secret:c.secret,
     refresh_token:refresh,grant_type:"refresh_token"});
-  const result=await tokenRequest(form);
+  let result:Awaited<ReturnType<typeof tokenRequest>>;
+  try {
+    result=await tokenRequest(form,"refresh");
+  } catch(err) {
+    if(err instanceof GoogleReauthorizationRequiredError){
+      // Disable only the specific connection whose token just failed. A concurrent
+      // successful reauthorization must never be disabled by this older request.
+      const {error:pauseError}=await db.from("erp_google_sheet_connections").update({
+        enabled:false,last_error:GOOGLE_REAUTHORIZE_ERROR,updated_at:new Date().toISOString(),
+      }).eq("company_id",companyId)
+        .eq("oauth_refresh_token_ciphertext",data.oauth_refresh_token_ciphertext);
+      if(pauseError)console.error("Failed to pause expired Google connection.");
+      tokenCache.delete(companyId);
+    }
+    throw err;
+  }
   tokenCache.set(companyId,{token:result.access_token,
     expires:Date.now()+Math.min(result.expires_in??3500,3500)*1000});
   return result.access_token;
