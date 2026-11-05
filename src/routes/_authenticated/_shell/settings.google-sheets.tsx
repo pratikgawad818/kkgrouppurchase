@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { getGoogleSheetsConnection,connectGoogleSheets,
   syncGoogleSheetsNow,setGoogleSheetsEnabled,getGoogleSheetImports,applyGoogleSheetImport,pasteSpreadsheetEntries } from "@/lib/google-sheets.functions";
 import { EXPORT_TABS,HISTORICAL_HEADERS,HISTORICAL_TAB,SHEET_ENTRY_TABS } from "@/lib/google-sheets-model";
+import { GOOGLE_REAUTHORIZE_ERROR } from "@/lib/google-oauth-health";
 
 export const Route=createFileRoute("/_authenticated/_shell/settings/google-sheets")({
   head:()=>({meta:[{title:"Google Sheets Integration — KK GROUP ERP"}]}),
@@ -50,7 +51,7 @@ function SheetsSettings() {
     if(flag){const next=new URL(window.location.href);next.searchParams.delete("google");window.history.replaceState(null,"",next.toString());}
   },[]);
   const save=useMutation({
-    mutationFn:()=>connect({data:{url}}),
+    mutationFn:()=>connect({data:{url:url.trim() || (status.data?.connection?.spreadsheet_id ? "https://docs.google.com/spreadsheets/d/"+status.data.connection.spreadsheet_id+"/edit" : "")}}),
     onSuccess:(value)=>{window.location.assign(value.authorizationUrl);},
     onError:e=>toast.error(e.message),
   });
@@ -82,7 +83,8 @@ function SheetsSettings() {
   if(me.isLoading)return <Loading/>;
   if(!allowed)return <p role="alert">Only an active company Super Admin can manage Google Sheets.</p>;
   const connection=status.data?.connection;
-  const connected=!!status.data?.googleAccountEmail&&!!connection;
+  const requiresReconnect=!!connection?.last_error?.startsWith(GOOGLE_REAUTHORIZE_ERROR);
+  const connected=!!status.data?.googleAccountEmail&&!!connection&&!requiresReconnect;
   const entries=imports.data??[];
   const ready=entries.filter(x=>x.status==="ready").length;
   const applied=entries.filter(x=>x.status==="applied").length;
@@ -126,7 +128,13 @@ function SheetsSettings() {
         </div>}
       </div>}
     </section>
-    <details className="mt-5 rounded-xl border bg-card p-4 sm:p-6">
+    {requiresReconnect&&<div role="alert" className="mb-5 rounded-xl border border-amber-400/50 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
+      <p className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4"/>Automatic Google Sheets sync needs reconnection</p>
+      <p className="mt-2">The previous Google authorization has expired or was revoked. Background synchronization is paused to prevent repeated failures. Your ERP data is unchanged.</p>
+      <p className="mt-2">If the Google OAuth app is still in Testing mode, open Google Cloud Console → Google Auth Platform → Audience and change its publishing status to In production (subject to Google verification requirements). Then reconnect the same account below.</p>
+      <p className="mt-2 font-medium">Expand the Google connection settings and select Reconnect Google. You do not need to re-enter the spreadsheet URL.</p>
+    </div>}
+    <details open={requiresReconnect} className="mt-5 rounded-xl border bg-card p-4 sm:p-6">
       <summary className="cursor-pointer font-semibold">Optional: automatic Google synchronization (requires a separate Google authorization)</summary>
       <p className="mt-2 text-sm text-muted-foreground">You do not need this for direct imports. Google requires authorization for unattended syncing of a private worksheet. You can use the direct paste option above without this setup.</p>
       <div className="mt-4">
@@ -139,9 +147,9 @@ function SheetsSettings() {
           <p className="mt-1">Configure GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REDIRECT_URI and GOOGLE_SHEETS_TOKEN_ENCRYPTION_KEY on the ERP server, then apply the Google Sheets database migrations. This is application setup, not a JSON file you need to upload.</p>
         </div>:
         <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/40 p-3 text-sm">
-          {connected?<CheckCircle2 className="h-5 w-5 text-emerald-600"/>:<KeyRound className="h-5 w-5 text-primary"/>}
-          <div><p className="font-semibold">{connected?"Google account connected":"Ready for Google sign-in"}</p>
-            {connected&&<p className="break-all text-muted-foreground">{status.data?.googleAccountEmail}</p>}
+          {requiresReconnect?<AlertTriangle className="h-5 w-5 text-amber-600"/>:connected?<CheckCircle2 className="h-5 w-5 text-emerald-600"/>:<KeyRound className="h-5 w-5 text-primary"/>}
+          <div><p className="font-semibold">{requiresReconnect?"Google authorization expired":connected?"Google account connected":"Ready for Google sign-in"}</p>
+            {status.data?.googleAccountEmail&&<p className="break-all text-muted-foreground">{status.data.googleAccountEmail}</p>}
           </div>
         </div>
       }
@@ -149,10 +157,10 @@ function SheetsSettings() {
         <div className="min-w-0 flex-1 space-y-2">
           <Label htmlFor="sheet-url">Google Spreadsheet URL</Label>
           <Input id="sheet-url" type="url" value={url} onChange={e=>setUrl(e.target.value)}
-            placeholder="https://docs.google.com/spreadsheets/d/…/edit" required/>
+            placeholder={connection?.spreadsheet_id?"Current workbook is retained if left blank":"https://docs.google.com/spreadsheets/d/…/edit"} required={!connection?.spreadsheet_id}/>
         </div>
         <Button type="submit" disabled={save.isPending||!status.data?.oauthConfigured}>
-          <KeyRound className="mr-2 h-4 w-4"/>{save.isPending?"Preparing…":connected?"Change Google account / workbook":"Connect with Google"}
+          <KeyRound className="mr-2 h-4 w-4"/>{save.isPending?"Preparing…":requiresReconnect?"Reconnect Google":connected?"Change Google account / workbook":"Connect with Google"}
         </Button>
       </form>
       {connection&&<div className="mt-5 rounded-lg border p-4">
@@ -172,7 +180,7 @@ function SheetsSettings() {
           </div>
         </div>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-          <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Sync setting</p><p className="font-medium">{connection.enabled?"Enabled":"Paused"}</p></div>
+          <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Sync setting</p><p className="font-medium">{requiresReconnect?"Authorization expired":connection.enabled?"Enabled":"Paused"}</p></div>
           <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Last successful sync</p><p className="font-medium">{connection.last_synced_at?new Date(connection.last_synced_at).toLocaleString("en-IN"):"Not yet synced"}</p></div>
           <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Historical usage imported on last sync</p><p className="font-medium">{String(connection.last_result?.imported??"—")}</p></div>
         </div>
