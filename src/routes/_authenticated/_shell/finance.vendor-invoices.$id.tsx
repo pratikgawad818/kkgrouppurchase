@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invo
 });
 
 type Act = "submit" | "approve" | "approve_exception" | "reject" | "cancel";
-const ACT_LABEL: Record<string, string> = { created: "Created", edited: "Edited", submit: "Matched / submitted", approve: "Approved", approve_exception: "Exception approved", reject: "Rejected", cancel: "Cancelled" };
+const ACT_LABEL: Record<string, string> = { opening_entry: "Historical bill entered", opening_updated: "Historical bill revised", created: "Created", edited: "Edited", submit: "Matched / submitted", approve: "Approved", approve_exception: "Exception approved", reject: "Rejected", cancel: "Cancelled" };
 
 function InvoiceDetail() {
   const { id } = Route.useParams();
@@ -32,15 +32,19 @@ function InvoiceDetail() {
   const q = useQuery({
     queryKey: ["vi", id],
     queryFn: async () => {
-      const [i, it, ev, pay, adj] = await Promise.all([
+      const [i, it, ev, pay, adj, openingLines, priorPayments] = await Promise.all([
         supabase.from("vendor_invoices").select("*, vendors(company_name,gstin,address,city,state,contact_person,mobile,email), projects(name), buildings(name), purchase_orders(po_number,po_date,grand_total), profiles!vendor_invoices_created_by_fkey(full_name)").eq("id", id).single(),
         supabase.from("vendor_invoice_items").select("*, items(code,name), goods_receipt_notes(grn_number)").eq("invoice_id", id).order("line_no"),
         supabase.from("vendor_invoice_events").select("*, profiles(full_name)").eq("invoice_id", id).order("acted_at"),
         supabase.from("vendor_payment_allocations").select("amount, vendor_payments(id,payment_number,payment_date,status,reference)").eq("invoice_id", id),
         supabase.from("vendor_advance_adjustments").select("amount,created_at,vendor_payments(payment_number)").eq("invoice_id", id),
+        supabase.from("opening_vendor_invoice_lines").select("*").eq("invoice_id",id).order("line_no"),
+        supabase.from("opening_vendor_invoice_prior_payments").select("*").eq("invoice_id",id).order("line_no"),
       ]);
       if (i.error) throw i.error;
-      return { inv: i.data, items: it.data ?? [], events: ev.data ?? [], payments: pay.data ?? [], adjustments: adj.data ?? [] };
+      if (openingLines.error) throw openingLines.error;
+      if (priorPayments.error) throw priorPayments.error;
+      return { inv: i.data, items: it.data ?? [], events: ev.data ?? [], payments: pay.data ?? [], adjustments: adj.data ?? [], openingLines:openingLines.data??[], priorPayments:priorPayments.data??[] };
     },
   });
   const act = useMutation({
@@ -50,7 +54,7 @@ function InvoiceDetail() {
   });
   if (q.isLoading) return <Loading />;
   if (q.error || !q.data) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
-  const { inv, items, events, payments, adjustments } = q.data;
+  const { inv, items, events, payments, adjustments, openingLines, priorPayments } = q.data;
   const mine = inv.created_by === me.data?.profile.id;
   const ms = inv.match_summary as null | { opening?: boolean; note?: string; qty_variances?: number; rate_variances?: number; tax_variances?: number; expected_total?: number; invoice_total?: number; total_variance?: number; matched_at?: string; exceptions?: { message: string }[]; tolerances?: { qty_pct: number; rate_pct: number; value: number; source?: string } };
   const isOpeningBill = !inv.po_id || ms?.opening === true;
@@ -61,13 +65,14 @@ function InvoiceDetail() {
       <PageHeader deleteAction={<PermanentDelete force kind="vendor_invoice" id={inv.id} name={inv.invoice_number} onDeleted={()=>window.location.assign("/finance/vendor-invoices")}/>} title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{isOpeningBill ? "Opening bill · no PO/GRN" : MATCH_STATUS[inv.match_status].label}</span></span>}
         actions={<div className="flex flex-wrap gap-2">
           {inv.attachment_path && <><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!).catch((e) => toast.error(errMsg(e)))}>View invoice</Button><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!, true).catch((e) => toast.error(errMsg(e)))}>Download invoice</Button></>}
-          {editable && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/new" search={{ id }}>{inv.status === "exception" ? "Resolve (edit)" : "Edit"}</Link></Button>}
-          {editable && (can("vendor_invoice.create") || can("vendor_invoice.review")) && <Button size="sm" onClick={() => act.mutate("submit")} disabled={act.isPending}>Run 3-way match</Button>}
+          {isOpeningBill && inv.status==="pending_review" && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/opening" search={{id}}>Edit old bill</Link></Button>}
+          {!isOpeningBill && editable && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/new" search={{ id }}>{inv.status === "exception" ? "Resolve (edit)" : "Edit"}</Link></Button>}
+          {!isOpeningBill && editable && (can("vendor_invoice.create") || can("vendor_invoice.review")) && <Button size="sm" onClick={() => act.mutate("submit")} disabled={act.isPending}>Run 3-way match</Button>}
           {inv.status === "pending_review" && can("vendor_invoice.approve") && !mine && <Button size="sm" onClick={() => setDlg("approve")}>Approve</Button>}
           {inv.status === "exception" && can("vendor_invoice.approve_exception") && !mine && <Button size="sm" onClick={() => setDlg("approve_exception")}>Approve exception</Button>}
           {(inv.status === "pending_review" || inv.status === "exception") && (can("vendor_invoice.approve") || can("vendor_invoice.approve_exception")) && <Button size="sm" variant="destructive" onClick={() => setDlg("reject")}>Reject</Button>}
           {["draft", "exception", "rejected"].includes(inv.status) && can("vendor_invoice.create") && <Button size="sm" variant="ghost" onClick={() => setDlg("cancel")}>Cancel</Button>}
-          {["approved", "partially_paid"].includes(inv.status) && can("payment.schedule") && <Button size="sm" asChild><Link to="/finance/payments" search={{ vendor: inv.vendor_id }}>Schedule payment</Link></Button>}
+          {["approved", "partially_paid"].includes(inv.status) && Number(inv.balance_due)>0 && can("payment.schedule") && <Button size="sm" asChild><Link to="/finance/payments" search={{ vendor: inv.vendor_id }}>Schedule payment</Link></Button>}
         </div>} />
       {mine && (inv.status === "pending_review" || inv.status === "exception") && <p className="mb-3 text-xs text-muted-foreground">You entered this invoice, so another authorised user must approve it.</p>}
 
@@ -119,7 +124,18 @@ function InvoiceDetail() {
         </div>
       </div>
 
-      <div className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      {isOpeningBill && <div className="mt-4 rounded-xl border bg-card p-4 text-sm">
+        <div className="mb-2 font-semibold">Historical bill items</div>
+        {!openingLines.length ? <p className="text-muted-foreground">This bill was entered using the earlier amount-only form. No itemized lines are saved yet.</p> :
+          <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-sm">
+            <thead className="border-b text-left text-xs text-muted-foreground"><tr><th className="p-2">#</th><th className="p-2">Item / service</th><th className="p-2">HSN/SAC</th><th className="p-2">Qty</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">Discount</th><th className="p-2 text-right">GST</th><th className="p-2 text-right">Total</th></tr></thead>
+            <tbody>{openingLines.map(l=><tr key={l.id} className="border-b last:border-0">
+              <td className="p-2">{l.line_no}</td><td className="p-2">{l.description}</td><td className="p-2">{l.hsn_sac??"—"}</td><td className="p-2">{num(l.quantity)} {l.unit}</td>
+              <td className="p-2 text-right">{inr(l.rate)}</td><td className="p-2 text-right">{inr(l.discount)}</td><td className="p-2 text-right">{num(l.tax_rate)}%</td><td className="p-2 text-right font-medium">{inr(l.line_total)}</td>
+            </tr>)}</tbody></table></div>}
+        <p className="mt-2 text-xs text-muted-foreground">Historical bill items do not create GRNs or change current stock.</p>
+      </div>}
+      {!isOpeningBill &&       <div className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">GRN</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Invoiced qty</th><th className="px-4 py-3 text-right">Available at GRN</th><th className="px-4 py-3 text-right">PO rate</th><th className="px-4 py-3 text-right">Bill rate</th><th className="px-4 py-3 text-right">PO GST</th><th className="px-4 py-3 text-right">Bill GST</th><th className="px-4 py-3 text-right">Line total</th><th className="px-4 py-3">Match</th></tr></thead>
           <tbody>{items.map((l) => (
@@ -134,10 +150,13 @@ function InvoiceDetail() {
         </table>
       </div>
 
+      }
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border bg-card p-4">
           <div className="mb-2 text-sm font-medium">Payments</div>
-          {payments.length + adjustments.length === 0 ? <p className="text-xs text-muted-foreground">No payments yet.</p> : (<ul className="space-y-1 text-sm">
+          {isOpeningBill && <p className="mb-2 text-xs text-muted-foreground">Already paid before ERP: {inr(priorPayments.reduce((n,p)=>n+Number(p.amount),Number(inv.opening_legacy_paid??0)))}. No director payment approval is required for historical settlements.</p>}
+          {isOpeningBill && priorPayments.length>0 && <ul className="mb-3 space-y-1 text-xs">{priorPayments.map(p=><li key={p.id} className="flex justify-between gap-2"><span>{fmtDate(p.payment_date)} · {p.payment_mode.toUpperCase()} · {p.reference??"Reference not supplied"}</span><strong>{inr(p.amount)}</strong></li>)}</ul>
+          {payments.length + adjustments.length === 0 && priorPayments.length===0 && Number(inv.opening_legacy_paid??0)===0 ? <p className="text-xs text-muted-foreground">No payments yet.</p> : (<ul className="space-y-1 text-sm">
             {payments.map((p, i) => <li key={i} className="flex justify-between"><span className="font-mono text-xs">{p.vendor_payments?.payment_number} · {fmtDate(p.vendor_payments?.payment_date)} · {p.vendor_payments?.status}</span><span className="font-mono">{inr(p.amount)}</span></li>)}
             {adjustments.map((a, i) => <li key={`a${i}`} className="flex justify-between"><span className="text-xs">Advance {a.vendor_payments?.payment_number} adjusted · {fmtDate(a.created_at)}</span><span className="font-mono">{inr(a.amount)}</span></li>)}
           </ul>)}
