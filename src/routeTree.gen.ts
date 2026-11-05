@@ -52,6 +52,7 @@ import { Route as AuthenticatedShellFinancePaymentsIdRouteImport } from './route
 import { Route as AuthenticatedShellFinanceVendorInvoicesIndexRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.index'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIdRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.$id'
 import { Route as AuthenticatedShellFinanceVendorInvoicesNewRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.new'
+import { Route as AuthenticatedShellFinanceVendorInvoicesOpeningRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.opening'
 import { Route as AuthenticatedShellInventoryDeliveryChallansIndexRouteImport } from './routes/_authenticated/_shell/inventory.delivery-challans.index'
 import { Route as AuthenticatedShellInventoryDeliveryChallansIdRouteImport } from './routes/_authenticated/_shell/inventory.delivery-challans.$id'
 import { Route as AuthenticatedShellInventoryGoodsReceivedIndexRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.index'
@@ -316,6 +317,12 @@ const AuthenticatedShellFinanceVendorInvoicesNewRoute =
     path: '/finance/vendor-invoices/new',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const AuthenticatedShellFinanceVendorInvoicesOpeningRoute =
+  AuthenticatedShellFinanceVendorInvoicesOpeningRouteImport.update({
+    id: '/finance/vendor-invoices/opening',
+    path: '/finance/vendor-invoices/opening',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
 const AuthenticatedShellInventoryDeliveryChallansIndexRoute =
   AuthenticatedShellInventoryDeliveryChallansIndexRouteImport.update({
     id: '/inventory/delivery-challans/',
@@ -459,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  '/finance/vendor-invoices/opening': typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/inventory/material-issues/$id': typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -518,6 +526,7 @@ export interface FileRoutesByTo {
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  '/finance/vendor-invoices/opening': typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/inventory/material-issues/$id': typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -581,6 +590,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  '/_authenticated/_shell/finance/vendor-invoices/opening': typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   '/_authenticated/_shell/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   '/_authenticated/_shell/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/_authenticated/_shell/inventory/material-issues/$id': typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -643,6 +653,7 @@ export interface FileRouteTypes {
     | '/finance/payments/$id'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
+    | '/finance/vendor-invoices/opening'
     | '/inventory/delivery-challans/$id'
     | '/inventory/goods-received/$id'
     | '/inventory/material-issues/$id'
@@ -702,6 +713,7 @@ export interface FileRouteTypes {
     | '/finance/payments/$id'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
+    | '/finance/vendor-invoices/opening'
     | '/inventory/delivery-challans/$id'
     | '/inventory/goods-received/$id'
     | '/inventory/material-issues/$id'
@@ -764,6 +776,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/finance/payments/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/new'
+    | '/_authenticated/_shell/finance/vendor-invoices/opening'
     | '/_authenticated/_shell/inventory/delivery-challans/$id'
     | '/_authenticated/_shell/inventory/goods-received/$id'
     | '/_authenticated/_shell/inventory/material-issues/$id'
@@ -1100,6 +1113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/finance/vendor-invoices/opening': {
+      id: '/_authenticated/_shell/finance/vendor-invoices/opening'
+      path: '/finance/vendor-invoices/opening'
+      fullPath: '/finance/vendor-invoices/opening'
+      preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesOpeningRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/inventory/delivery-challans/': {
       id: '/_authenticated/_shell/inventory/delivery-challans/'
       path: '/inventory/delivery-challans'
@@ -1271,6 +1291,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
   AuthenticatedShellFinanceVendorInvoicesIdRoute: typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   AuthenticatedShellFinanceVendorInvoicesNewRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  AuthenticatedShellFinanceVendorInvoicesOpeningRoute: typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   AuthenticatedShellInventoryDeliveryChallansIdRoute: typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   AuthenticatedShellInventoryGoodsReceivedIdRoute: typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   AuthenticatedShellInventoryMaterialIssuesIdRoute: typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -1339,6 +1360,8 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
     AuthenticatedShellFinanceVendorInvoicesIdRoute,
   AuthenticatedShellFinanceVendorInvoicesNewRoute:
     AuthenticatedShellFinanceVendorInvoicesNewRoute,
+  AuthenticatedShellFinanceVendorInvoicesOpeningRoute:
+    AuthenticatedShellFinanceVendorInvoicesOpeningRoute,
   AuthenticatedShellInventoryDeliveryChallansIdRoute:
     AuthenticatedShellInventoryDeliveryChallansIdRoute,
   AuthenticatedShellInventoryGoodsReceivedIdRoute:
