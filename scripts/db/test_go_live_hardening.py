@@ -714,6 +714,29 @@ def test_accounts_manager_finance_settings_permission():
     print("PASS Accounts Manager finance-settings save, validation and Director read-only enforcement")
 
 
+def test_google_sheets_retired_archives_preserved():
+    """OAuth and scheduler surfaces removed; old material cost evidence preserved."""
+    with db() as c:
+        retired=["erp_google_sheet_connections","erp_google_oauth_states","erp_sheet_sync_nonces"]
+        for name in retired:
+            assert c.execute("SELECT to_regclass(%s)",("public."+name,)).fetchone()[0] is None,name
+        assert c.execute("SELECT to_regprocedure('public.erp_enqueue_google_sheets_sync()')").fetchone()[0] is None
+        for name in ["erp_sheet_import_documents","erp_project_cost_entries",
+                     "erp_historical_material_consumptions","erp_historical_consumption_audit"]:
+            assert c.execute("SELECT to_regclass(%s)",("public."+name,)).fetchone()[0],name
+        # Historical consumption still enforces scope and retains the audit log
+        # even after its former Google import pathway is retired.
+        row=c.execute("""INSERT INTO erp_historical_material_consumptions(
+            company_id,reference,occurred_on,project_id,material_id,quantity,unit_cost)
+            VALUES(%s,'QA-ARCHIVE-001','2026-10-01',%s,%s,3,120.00)
+            RETURNING id""",(A,PROJECT,MATERIAL)).fetchone()
+        assert row
+        assert c.execute("""SELECT count(*) FROM erp_historical_consumption_audit
+            WHERE reference='QA-ARCHIVE-001'""").fetchone()[0]==1
+        c.rollback()
+    print("PASS retired Google OAuth/sync and preserved audited historical registers")
+
+
 if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
@@ -728,3 +751,4 @@ if __name__ == "__main__":
     test_accounts_staff_material_create_edit_only()
     test_optional_invoice_roundoff_accounting()
     test_accounts_manager_finance_settings_permission()
+    test_google_sheets_retired_archives_preserved()
