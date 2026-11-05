@@ -29,10 +29,20 @@ function FinanceSettingsPage() {
     onError: (e) => toast.error(errMsg(e)),
   });
   if (q.isLoading) return <Loading />;
-  const ro = !can("company.manage");
+  if (q.error || !q.data) return (
+    <div role="alert" className="max-w-xl rounded-xl border border-destructive/30 bg-destructive/5 p-5">
+      <p className="font-semibold">Finance settings could not be loaded</p>
+      <p className="mt-2 text-sm text-muted-foreground">No settings have been changed. Check your connection or ask an administrator for access.</p>
+      <Button className="mt-3" variant="outline" disabled={q.isFetching} onClick={() => void q.refetch()}>
+        {q.isFetching ? "Retrying…" : "Try again"}
+      </Button>
+    </div>
+  );
+  const ro = !can("company.manage") && !can("tax.configure");
   return (
     <>
-      <PageHeader title="Finance Settings" subtitle="Used by the three-way match on vendor invoices. Differences within these limits count as Matched." />
+      <PageHeader title="Finance Settings" subtitle="Controls the vendor invoice three-way match, tolerance limits and TDS rate reference." />
+      {ro && <p className="mb-4 rounded-lg border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">Read-only access. Ask an administrator or your Accounts Manager to change finance settings.</p>}
       <div className="max-w-3xl space-y-4">
         <div className="grid gap-3 rounded-md border bg-card p-4 sm:grid-cols-3">
           <Field label="Quantity tolerance %"><Input type="number" min={0} disabled={ro} value={s.qty_tolerance_pct} onChange={(e) => setS({ ...s, qty_tolerance_pct: Number(e.target.value) })} /></Field>
