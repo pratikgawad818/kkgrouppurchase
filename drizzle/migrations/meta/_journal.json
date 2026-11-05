@@ -449,6 +449,13 @@
       "when": 1793880000000,
       "tag": "0063_accounts_material_edit",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793881000000,
+      "tag": "0064_optional_invoice_roundoff",
+      "breakpoints": true
     }
   ]
 }

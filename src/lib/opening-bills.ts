@@ -1,3 +1,5 @@
+import { optionalInvoiceRoundOff, type InvoiceRoundOffMode } from "./invoice-roundoff.ts";
+
 export type OpeningLine = {
   id: string; material_id?: string; description: string; hsn_sac: string; unit: string;
   quantity: string; rate: string; discount: string; tax_rate: string;
@@ -23,7 +25,7 @@ export const newHistoricPayment = (id:string,date:string):HistoricPayment => ({
 });
 export function evaluateOpeningBill(input:{
   lines:OpeningLine[];payments:HistoricPayment[];gstType:OpeningGST;
-  freight:string;otherCharges:string;tdsRate:string;legacyPaid?:number;
+  freight:string;otherCharges:string;tdsRate:string;legacyPaid?:number;roundOffMode?:InvoiceRoundOffMode;
 }) {
   const errors:string[]=[];
   if(!input.lines.length||input.lines.length>100)errors.push("Add between 1 and 100 bill items.");
@@ -51,8 +53,10 @@ export function evaluateOpeningBill(input:{
   const tdsRate=safe(input.tdsRate);
   if(tdsRate>100)errors.push("TDS rate cannot exceed 100%.");
   const gross=money(subtotal+taxTotal+safe(input.freight)+safe(input.otherCharges));
+  const roundOffAmount=optionalInvoiceRoundOff(gross,input.roundOffMode??"none");
+  const adjustedGross=money(gross+roundOffAmount);
   const tds=money(subtotal*tdsRate/100);
-  const net=money(gross-tds);
+  const net=money(adjustedGross-tds);
   if(net<=0)errors.push("Net payable must be positive.");
   if(input.payments.length>100)errors.push("At most 100 historical payments per bill.");
   let paid=0;
@@ -70,6 +74,6 @@ export function evaluateOpeningBill(input:{
   paid=money(paid);
   const legacyPaid=input.legacyPaid??0;
   if(legacyPaid+paid>net+0.001)errors.push("Historical payments cannot exceed the net payable.");
-  return {subtotal,taxTotal,computed,gross,tds,net,paid,legacyPaid,
+  return {subtotal,taxTotal,computed,gross,roundOffAmount,adjustedGross,tds,net,paid,legacyPaid,
     balance:money(net-paid-legacyPaid),errors};
 }

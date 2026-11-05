@@ -4428,6 +4428,8 @@ export type Database = {
       }
       vendor_invoices: {
         Row: {
+          round_off_mode: "none" | "nearest_rupee"
+          round_off_amount: number
           advance_adjusted: number
           amount_paid: number
           opening_legacy_paid: number
@@ -4469,6 +4471,8 @@ export type Database = {
           vendor_invoice_number: string
         }
         Insert: {
+          round_off_mode?: "none" | "nearest_rupee"
+          round_off_amount?: number
           advance_adjusted?: number
           amount_paid?: number
           opening_legacy_paid?: number
@@ -4510,6 +4514,8 @@ export type Database = {
           vendor_invoice_number: string
         }
         Update: {
+          round_off_mode?: "none" | "nearest_rupee"
+          round_off_amount?: number
           advance_adjusted?: number
           amount_paid?: number
           opening_legacy_paid?: number
