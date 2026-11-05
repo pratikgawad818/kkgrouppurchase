@@ -611,6 +611,68 @@ def test_accounts_staff_material_create_edit_only():
     print("PASS Accountant and Accounts Manager: material insert/edit permitted; delete, stock and category admin excluded")
 
 
+def test_optional_invoice_roundoff_accounting():
+    """Only opted-in vendor bills round gross totals, with separate balanced journals."""
+    with db() as c:
+        actor(c, ACCOUNTS)
+        header={"project_id":PROJECT,"vendor_id":VENDOR,
+            "vendor_invoice_number":"QA-ROUND-OFF-OLD",
+            "vendor_invoice_date":"2026-11-01",
+            "gst_type":"cgst_sgst","freight":"0.40",
+            "other_charges":"0","tds_rate":"0",
+            "round_off_mode":"nearest_rupee"}
+        lines=[{"description":"Historical cement", "unit":"NOS", "quantity":"2",
+            "rate":"500","discount":"0","tax_rate":"18"}]
+        paid=[{"payment_date":"2026-11-02","payment_mode":"upi","amount":"200"}]
+        doc=str(c.execute("SELECT save_opening_vendor_invoice_v2(%s::jsonb,%s::jsonb,%s::jsonb)",
+            (json.dumps(header),json.dumps(lines),json.dumps(paid))).fetchone()[0])
+        values=c.execute("""SELECT round_off_mode,round_off_amount,grand_total,
+            net_payable,amount_paid,balance_due FROM vendor_invoices WHERE id=%s""",(doc,)).fetchone()
+        assert (values[0],*[str(x) for x in values[1:]]) == (
+            "nearest_rupee","-0.40","1180.00","1180.00","200.00","980.00"),values
+        no_round=dict(header,vendor_invoice_number="QA-ROUND-OFF-EXACT",round_off_mode="none")
+        exact=str(c.execute("SELECT save_opening_vendor_invoice_v2(%s::jsonb,%s::jsonb,%s::jsonb)",
+            (json.dumps(no_round),json.dumps(lines),json.dumps(paid))).fetchone()[0])
+        values=c.execute("""SELECT round_off_amount,grand_total,balance_due
+            FROM vendor_invoices WHERE id=%s""",(exact,)).fetchone()
+        assert tuple(str(x) for x in values)==("0.00","1180.40","980.40"),values
+        actor(c, DIRECTOR)
+        c.execute("SELECT invoice_transition(%s,'approve','Verified historical invoice')",(doc,))
+        old_lines=c.execute("""SELECT a.code,jl.debit,jl.credit FROM journal_lines jl
+            JOIN accounts a ON a.id=jl.account_id JOIN journal_entries je ON je.id=jl.entry_id
+            WHERE je.source_id=%s ORDER BY a.code""",(doc,)).fetchall()
+        assert [(x[0],str(x[1]),str(x[2])) for x in old_lines]==[
+            ("2100","0.00","980.00"),("3000","980.00","0.00")],old_lines
+        # A regular matched invoice's adjustment must be separately posted to
+        # P&L instead of silently unbalancing Accounts Payable and Input GST.
+        def approve_regular(name,charges,rounding,net,delta,round_code):
+            actor(c, ACCOUNTS)
+            record=str(c.execute("""INSERT INTO vendor_invoices(
+                invoice_number,company_id,vendor_id,project_id,vendor_invoice_number,
+                vendor_invoice_date,subtotal,tax_total,freight,grand_total,
+                tds_amount,net_payable,balance_due,status,created_by,round_off_mode,round_off_amount)
+                VALUES(%s,%s,%s,%s,%s,'2026-11-01',100,18,%s,%s,0,%s,%s,
+                    'pending_review',%s,%s,%s) RETURNING id""",
+                (name,A,VENDOR,PROJECT,name,charges,net,net,net,ACCOUNTS,rounding,delta)).fetchone()[0])
+            actor(c, DIRECTOR)
+            assert c.execute("SELECT invoice_transition(%s,'approve','Checked supplier invoice')",
+                (record,)).fetchone()[0]=="approved"
+            journals=c.execute("""SELECT a.code,jl.debit,jl.credit FROM journal_lines jl
+                JOIN accounts a ON a.id=jl.account_id
+                JOIN journal_entries je ON je.id=jl.entry_id
+                WHERE je.source_id=%s ORDER BY a.code""",(record,)).fetchall()
+            amounts={x[0]:(x[1],x[2]) for x in journals}
+            assert sum(v[0] for v in amounts.values())==sum(v[1] for v in amounts.values())
+            assert str(amounts[round_code][0] if round_code=="5300" else amounts[round_code][1])=="0.25"
+            return amounts
+        gain=approve_regular("QA-ROUND-GAIN", "0.25", "nearest_rupee","118.00","-0.25","4300")
+        assert gain["2100"][1]==118 and gain["4300"][1]==0.25
+        loss=approve_regular("QA-ROUND-LOSS", "0.75", "nearest_rupee","119.00","0.25","5300")
+        assert loss["2100"][1]==119 and loss["5300"][0]==0.25
+        c.rollback()
+    print("PASS opt-in round-off, exact paise default, historical payments, and balanced gain/loss journals")
+
+
 if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
@@ -623,3 +685,4 @@ if __name__ == "__main__":
     test_staff_audit_classifier()
     test_structured_opening_bills_and_prior_paid()
     test_accounts_staff_material_create_edit_only()
+    test_optional_invoice_roundoff_accounting()
