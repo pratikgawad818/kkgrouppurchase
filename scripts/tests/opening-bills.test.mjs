@@ -71,3 +71,11 @@ test("historical bill round-off is explicit and leaves prior payments unchanged"
   assert.equal(before.paid,after.paid);
   assert.equal(after.balance,before.balance-0.4);
 });
+
+test("invalid intermediate amount with round-off selected reports errors instead of crashing",()=>{
+  const input={...base,roundOffMode:"nearest_rupee",lines:[{...base.lines[0],discount:"9999999"}],payments:[]};
+  const result=evaluateOpeningBill(input);
+  assert.ok(result.errors.some(message=>message.includes("discount")),result.errors);
+  assert.equal(result.roundOffAmount,0);
+  assert.ok(result.gross<0);
+});
