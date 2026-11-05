@@ -76,7 +76,7 @@ function InvoiceDetail() {
           <div className="text-xs text-muted-foreground">GSTIN {inv.vendors?.gstin ?? "—"}</div>
           <div className="text-xs text-muted-foreground">{[inv.vendors?.address, inv.vendors?.city, inv.vendors?.state].filter(Boolean).join(", ")}</div>
           <div className="mt-3 space-y-0.5 border-t pt-2 text-xs">
-            <div>PO <Link className="font-mono text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: inv.po_id }}>{inv.purchase_orders?.po_number}</Link> · {inr(inv.purchase_orders?.grand_total)}</div>
+            {inv.po_id ? <div>PO <Link className="font-mono text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: inv.po_id }}>{inv.purchase_orders?.po_number}</Link> · {inr(inv.purchase_orders?.grand_total)}</div> : <div className="text-muted-foreground">Old / opening bill — no PO or GRN</div>}
             <div>{inv.projects?.name}{inv.buildings?.name ? ` · ${inv.buildings.name}` : ""}</div>
             <div>Bill date {fmtDate(inv.vendor_invoice_date)} · Due {fmtDate(inv.due_date)}</div>
             <div>Entered by {inv.profiles?.full_name ?? "—"}</div>

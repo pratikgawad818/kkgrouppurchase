@@ -25,9 +25,9 @@ import { Route as AuthenticatedShellProjectsRouteImport } from './routes/_authen
 import { Route as AuthenticatedShellUnitsRouteImport } from './routes/_authenticated/_shell/units'
 import { Route as AuthenticatedShellVendorsRouteImport } from './routes/_authenticated/_shell/vendors'
 import { Route as AuthenticatedShellWarehousesRouteImport } from './routes/_authenticated/_shell/warehouses'
-import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
+import { Route as ApiPublicGoogleSheetsOauthRouteImport } from './routes/api/public/google-sheets-oauth'
 import { Route as ApiPublicGoogleSheetsSyncRouteImport } from './routes/api/public/google-sheets-sync'
-import { Route as ApiPublicGoogleSheetsOAuthRouteImport } from './routes/api/public/google-sheets-oauth'
+import { Route as ApiPublicPushDispatchRouteImport } from './routes/api/public/push-dispatch'
 import { Route as AuthenticatedShellFinancePayablesRouteImport } from './routes/_authenticated/_shell/finance.payables'
 import { Route as AuthenticatedShellFinancePaymentsRouteImport } from './routes/_authenticated/_shell/finance.payments'
 import { Route as AuthenticatedShellFinanceSmallExpensesRouteImport } from './routes/_authenticated/_shell/finance.small-expenses'
@@ -42,8 +42,8 @@ import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } fro
 import { Route as AuthenticatedShellReportsProjectCostControlRouteImport } from './routes/_authenticated/_shell/reports.project-cost-control'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsDataCleanupRouteImport } from './routes/_authenticated/_shell/settings.data-cleanup'
-import { Route as AuthenticatedShellSettingsGoogleSheetsRouteImport } from './routes/_authenticated/_shell/settings.google-sheets'
 import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
+import { Route as AuthenticatedShellSettingsGoogleSheetsRouteImport } from './routes/_authenticated/_shell/settings.google-sheets'
 import { Route as AuthenticatedShellSettingsUsersRouteImport } from './routes/_authenticated/_shell/settings.users'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -52,6 +52,7 @@ import { Route as AuthenticatedShellFinancePaymentsIdRouteImport } from './route
 import { Route as AuthenticatedShellFinanceVendorInvoicesIndexRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.index'
 import { Route as AuthenticatedShellFinanceVendorInvoicesIdRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.$id'
 import { Route as AuthenticatedShellFinanceVendorInvoicesNewRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.new'
+import { Route as AuthenticatedShellFinanceVendorInvoicesOpeningRouteImport } from './routes/_authenticated/_shell/finance.vendor-invoices.opening'
 import { Route as AuthenticatedShellInventoryDeliveryChallansIndexRouteImport } from './routes/_authenticated/_shell/inventory.delivery-challans.index'
 import { Route as AuthenticatedShellInventoryDeliveryChallansIdRouteImport } from './routes/_authenticated/_shell/inventory.delivery-challans.$id'
 import { Route as AuthenticatedShellInventoryGoodsReceivedIndexRouteImport } from './routes/_authenticated/_shell/inventory.goods-received.index'
@@ -157,19 +158,21 @@ const AuthenticatedShellWarehousesRoute =
     path: '/warehouses',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
+const ApiPublicGoogleSheetsOauthRoute =
+  ApiPublicGoogleSheetsOauthRouteImport.update({
+    id: '/api/public/google-sheets-oauth',
+    path: '/api/public/google-sheets-oauth',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicGoogleSheetsSyncRoute =
+  ApiPublicGoogleSheetsSyncRouteImport.update({
+    id: '/api/public/google-sheets-sync',
+    path: '/api/public/google-sheets-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPushDispatchRoute = ApiPublicPushDispatchRouteImport.update({
   id: '/api/public/push-dispatch',
   path: '/api/public/push-dispatch',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicGoogleSheetsSyncRoute = ApiPublicGoogleSheetsSyncRouteImport.update({
-  id: '/api/public/google-sheets-sync',
-  path: '/api/public/google-sheets-sync',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicGoogleSheetsOAuthRoute = ApiPublicGoogleSheetsOAuthRouteImport.update({
-  id: '/api/public/google-sheets-oauth',
-  path: '/api/public/google-sheets-oauth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedShellFinancePayablesRoute =
@@ -256,16 +259,16 @@ const AuthenticatedShellSettingsDataCleanupRoute =
     path: '/settings/data-cleanup',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
-const AuthenticatedShellSettingsGoogleSheetsRoute =
-  AuthenticatedShellSettingsGoogleSheetsRouteImport.update({
-    id: '/settings/google-sheets',
-    path: '/settings/google-sheets',
-    getParentRoute: () => AuthenticatedShellRoute,
-  } as any)
 const AuthenticatedShellSettingsFinanceRoute =
   AuthenticatedShellSettingsFinanceRouteImport.update({
     id: '/settings/finance',
     path: '/settings/finance',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellSettingsGoogleSheetsRoute =
+  AuthenticatedShellSettingsGoogleSheetsRouteImport.update({
+    id: '/settings/google-sheets',
+    path: '/settings/google-sheets',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellSettingsUsersRoute =
@@ -312,6 +315,12 @@ const AuthenticatedShellFinanceVendorInvoicesNewRoute =
   AuthenticatedShellFinanceVendorInvoicesNewRouteImport.update({
     id: '/finance/vendor-invoices/new',
     path: '/finance/vendor-invoices/new',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellFinanceVendorInvoicesOpeningRoute =
+  AuthenticatedShellFinanceVendorInvoicesOpeningRouteImport.update({
+    id: '/finance/vendor-invoices/opening',
+    path: '/finance/vendor-invoices/opening',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellInventoryDeliveryChallansIndexRoute =
@@ -432,9 +441,9 @@ export interface FileRoutesByFullPath {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
-  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
+  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOauthRoute
   '/api/public/google-sheets-sync': typeof ApiPublicGoogleSheetsSyncRoute
-  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOAuthRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/payments': typeof AuthenticatedShellFinancePaymentsRouteWithChildren
   '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
@@ -449,14 +458,15 @@ export interface FileRoutesByFullPath {
   '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
-  '/settings/google-sheets': typeof AuthenticatedShellSettingsGoogleSheetsRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
+  '/settings/google-sheets': typeof AuthenticatedShellSettingsGoogleSheetsRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  '/finance/vendor-invoices/opening': typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/inventory/material-issues/$id': typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -492,9 +502,9 @@ export interface FileRoutesByTo {
   '/units': typeof AuthenticatedShellUnitsRoute
   '/vendors': typeof AuthenticatedShellVendorsRoute
   '/warehouses': typeof AuthenticatedShellWarehousesRoute
-  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
+  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOauthRoute
   '/api/public/google-sheets-sync': typeof ApiPublicGoogleSheetsSyncRoute
-  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOAuthRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
   '/finance/vendor-ledger': typeof AuthenticatedShellFinanceVendorLedgerRoute
@@ -508,14 +518,15 @@ export interface FileRoutesByTo {
   '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
-  '/settings/google-sheets': typeof AuthenticatedShellSettingsGoogleSheetsRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
+  '/settings/google-sheets': typeof AuthenticatedShellSettingsGoogleSheetsRoute
   '/settings/users': typeof AuthenticatedShellSettingsUsersRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  '/finance/vendor-invoices/opening': typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   '/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   '/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/inventory/material-issues/$id': typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -554,9 +565,9 @@ export interface FileRoutesById {
   '/_authenticated/_shell/units': typeof AuthenticatedShellUnitsRoute
   '/_authenticated/_shell/vendors': typeof AuthenticatedShellVendorsRoute
   '/_authenticated/_shell/warehouses': typeof AuthenticatedShellWarehousesRoute
-  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
+  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOauthRoute
   '/api/public/google-sheets-sync': typeof ApiPublicGoogleSheetsSyncRoute
-  '/api/public/google-sheets-oauth': typeof ApiPublicGoogleSheetsOAuthRoute
+  '/api/public/push-dispatch': typeof ApiPublicPushDispatchRoute
   '/_authenticated/_shell/finance/payables': typeof AuthenticatedShellFinancePayablesRoute
   '/_authenticated/_shell/finance/payments': typeof AuthenticatedShellFinancePaymentsRouteWithChildren
   '/_authenticated/_shell/finance/small-expenses': typeof AuthenticatedShellFinanceSmallExpensesRoute
@@ -572,12 +583,14 @@ export interface FileRoutesById {
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
   '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
+  '/_authenticated/_shell/settings/google-sheets': typeof AuthenticatedShellSettingsGoogleSheetsRoute
   '/_authenticated/_shell/settings/users': typeof AuthenticatedShellSettingsUsersRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/_authenticated/_shell/finance/payments/$id': typeof AuthenticatedShellFinancePaymentsIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/$id': typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   '/_authenticated/_shell/finance/vendor-invoices/new': typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  '/_authenticated/_shell/finance/vendor-invoices/opening': typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   '/_authenticated/_shell/inventory/delivery-challans/$id': typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   '/_authenticated/_shell/inventory/goods-received/$id': typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   '/_authenticated/_shell/inventory/material-issues/$id': typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -615,8 +628,9 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
-    | '/api/public/push-dispatch'
+    | '/api/public/google-sheets-oauth'
     | '/api/public/google-sheets-sync'
+    | '/api/public/push-dispatch'
     | '/finance/payables'
     | '/finance/payments'
     | '/finance/small-expenses'
@@ -631,14 +645,15 @@ export interface FileRouteTypes {
     | '/reports/project-cost-control'
     | '/settings/company'
     | '/settings/data-cleanup'
-    | '/settings/google-sheets'
     | '/settings/finance'
+    | '/settings/google-sheets'
     | '/settings/users'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/finance/payments/$id'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
+    | '/finance/vendor-invoices/opening'
     | '/inventory/delivery-challans/$id'
     | '/inventory/goods-received/$id'
     | '/inventory/material-issues/$id'
@@ -674,8 +689,9 @@ export interface FileRouteTypes {
     | '/units'
     | '/vendors'
     | '/warehouses'
-    | '/api/public/push-dispatch'
+    | '/api/public/google-sheets-oauth'
     | '/api/public/google-sheets-sync'
+    | '/api/public/push-dispatch'
     | '/finance/payables'
     | '/finance/small-expenses'
     | '/finance/vendor-ledger'
@@ -689,14 +705,15 @@ export interface FileRouteTypes {
     | '/reports/project-cost-control'
     | '/settings/company'
     | '/settings/data-cleanup'
-    | '/settings/google-sheets'
     | '/settings/finance'
+    | '/settings/google-sheets'
     | '/settings/users'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/finance/payments/$id'
     | '/finance/vendor-invoices/$id'
     | '/finance/vendor-invoices/new'
+    | '/finance/vendor-invoices/opening'
     | '/inventory/delivery-challans/$id'
     | '/inventory/goods-received/$id'
     | '/inventory/material-issues/$id'
@@ -734,8 +751,9 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/units'
     | '/_authenticated/_shell/vendors'
     | '/_authenticated/_shell/warehouses'
-    | '/api/public/push-dispatch'
+    | '/api/public/google-sheets-oauth'
     | '/api/public/google-sheets-sync'
+    | '/api/public/push-dispatch'
     | '/_authenticated/_shell/finance/payables'
     | '/_authenticated/_shell/finance/payments'
     | '/_authenticated/_shell/finance/small-expenses'
@@ -751,12 +769,14 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/data-cleanup'
     | '/_authenticated/_shell/settings/finance'
+    | '/_authenticated/_shell/settings/google-sheets'
     | '/_authenticated/_shell/settings/users'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/_authenticated/_shell/finance/payments/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/$id'
     | '/_authenticated/_shell/finance/vendor-invoices/new'
+    | '/_authenticated/_shell/finance/vendor-invoices/opening'
     | '/_authenticated/_shell/inventory/delivery-challans/$id'
     | '/_authenticated/_shell/inventory/goods-received/$id'
     | '/_authenticated/_shell/inventory/material-issues/$id'
@@ -783,9 +803,9 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
+  ApiPublicGoogleSheetsOauthRoute: typeof ApiPublicGoogleSheetsOauthRoute
   ApiPublicGoogleSheetsSyncRoute: typeof ApiPublicGoogleSheetsSyncRoute
-  ApiPublicGoogleSheetsOAuthRoute: typeof ApiPublicGoogleSheetsOAuthRoute
+  ApiPublicPushDispatchRoute: typeof ApiPublicPushDispatchRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -904,11 +924,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellWarehousesRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
-    '/api/public/push-dispatch': {
-      id: '/api/public/push-dispatch'
-      path: '/api/public/push-dispatch'
-      fullPath: '/api/public/push-dispatch'
-      preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
+    '/api/public/google-sheets-oauth': {
+      id: '/api/public/google-sheets-oauth'
+      path: '/api/public/google-sheets-oauth'
+      fullPath: '/api/public/google-sheets-oauth'
+      preLoaderRoute: typeof ApiPublicGoogleSheetsOauthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/google-sheets-sync': {
@@ -918,11 +938,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicGoogleSheetsSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/google-sheets-oauth': {
-      id: '/api/public/google-sheets-oauth'
-      path: '/api/public/google-sheets-oauth'
-      fullPath: '/api/public/google-sheets-oauth'
-      preLoaderRoute: typeof ApiPublicGoogleSheetsOAuthRouteImport
+    '/api/public/push-dispatch': {
+      id: '/api/public/push-dispatch'
+      path: '/api/public/push-dispatch'
+      fullPath: '/api/public/push-dispatch'
+      preLoaderRoute: typeof ApiPublicPushDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_shell/finance/payables': {
@@ -1023,18 +1043,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellSettingsDataCleanupRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
-    '/_authenticated/_shell/settings/google-sheets': {
-      id: '/_authenticated/_shell/settings/google-sheets'
-      path: '/settings/google-sheets'
-      fullPath: '/settings/google-sheets'
-      preLoaderRoute: typeof AuthenticatedShellSettingsGoogleSheetsRouteImport
-      parentRoute: typeof AuthenticatedShellRoute
-    }
     '/_authenticated/_shell/settings/finance': {
       id: '/_authenticated/_shell/settings/finance'
       path: '/settings/finance'
       fullPath: '/settings/finance'
       preLoaderRoute: typeof AuthenticatedShellSettingsFinanceRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/settings/google-sheets': {
+      id: '/_authenticated/_shell/settings/google-sheets'
+      path: '/settings/google-sheets'
+      fullPath: '/settings/google-sheets'
+      preLoaderRoute: typeof AuthenticatedShellSettingsGoogleSheetsRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/settings/users': {
@@ -1091,6 +1111,13 @@ declare module '@tanstack/react-router' {
       path: '/finance/vendor-invoices/new'
       fullPath: '/finance/vendor-invoices/new'
       preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
+    '/_authenticated/_shell/finance/vendor-invoices/opening': {
+      id: '/_authenticated/_shell/finance/vendor-invoices/opening'
+      path: '/finance/vendor-invoices/opening'
+      fullPath: '/finance/vendor-invoices/opening'
+      preLoaderRoute: typeof AuthenticatedShellFinanceVendorInvoicesOpeningRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
     '/_authenticated/_shell/inventory/delivery-challans/': {
@@ -1259,11 +1286,12 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellReportsProjectCostControlRoute: typeof AuthenticatedShellReportsProjectCostControlRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsDataCleanupRoute: typeof AuthenticatedShellSettingsDataCleanupRoute
-  AuthenticatedShellSettingsGoogleSheetsRoute: typeof AuthenticatedShellSettingsGoogleSheetsRoute
   AuthenticatedShellSettingsFinanceRoute: typeof AuthenticatedShellSettingsFinanceRoute
+  AuthenticatedShellSettingsGoogleSheetsRoute: typeof AuthenticatedShellSettingsGoogleSheetsRoute
   AuthenticatedShellSettingsUsersRoute: typeof AuthenticatedShellSettingsUsersRoute
   AuthenticatedShellFinanceVendorInvoicesIdRoute: typeof AuthenticatedShellFinanceVendorInvoicesIdRoute
   AuthenticatedShellFinanceVendorInvoicesNewRoute: typeof AuthenticatedShellFinanceVendorInvoicesNewRoute
+  AuthenticatedShellFinanceVendorInvoicesOpeningRoute: typeof AuthenticatedShellFinanceVendorInvoicesOpeningRoute
   AuthenticatedShellInventoryDeliveryChallansIdRoute: typeof AuthenticatedShellInventoryDeliveryChallansIdRoute
   AuthenticatedShellInventoryGoodsReceivedIdRoute: typeof AuthenticatedShellInventoryGoodsReceivedIdRoute
   AuthenticatedShellInventoryMaterialIssuesIdRoute: typeof AuthenticatedShellInventoryMaterialIssuesIdRoute
@@ -1323,15 +1351,17 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
     AuthenticatedShellSettingsCompanyRoute,
   AuthenticatedShellSettingsDataCleanupRoute:
     AuthenticatedShellSettingsDataCleanupRoute,
-  AuthenticatedShellSettingsGoogleSheetsRoute:
-    AuthenticatedShellSettingsGoogleSheetsRoute,
   AuthenticatedShellSettingsFinanceRoute:
     AuthenticatedShellSettingsFinanceRoute,
+  AuthenticatedShellSettingsGoogleSheetsRoute:
+    AuthenticatedShellSettingsGoogleSheetsRoute,
   AuthenticatedShellSettingsUsersRoute: AuthenticatedShellSettingsUsersRoute,
   AuthenticatedShellFinanceVendorInvoicesIdRoute:
     AuthenticatedShellFinanceVendorInvoicesIdRoute,
   AuthenticatedShellFinanceVendorInvoicesNewRoute:
     AuthenticatedShellFinanceVendorInvoicesNewRoute,
+  AuthenticatedShellFinanceVendorInvoicesOpeningRoute:
+    AuthenticatedShellFinanceVendorInvoicesOpeningRoute,
   AuthenticatedShellInventoryDeliveryChallansIdRoute:
     AuthenticatedShellInventoryDeliveryChallansIdRoute,
   AuthenticatedShellInventoryGoodsReceivedIdRoute:
@@ -1389,9 +1419,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
+  ApiPublicGoogleSheetsOauthRoute: ApiPublicGoogleSheetsOauthRoute,
   ApiPublicGoogleSheetsSyncRoute: ApiPublicGoogleSheetsSyncRoute,
-  ApiPublicGoogleSheetsOAuthRoute: ApiPublicGoogleSheetsOAuthRoute,
+  ApiPublicPushDispatchRoute: ApiPublicPushDispatchRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }

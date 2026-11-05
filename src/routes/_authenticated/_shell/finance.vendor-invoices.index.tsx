@@ -90,12 +90,17 @@ function InvoiceList() {
         subtitle="Bills from vendors, checked against the purchase order and goods received before they become payable."
         actions={
           can("vendor_invoice.create") && (
+            <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/finance/vendor-invoices/opening">Old bill (no PO)</Link>
+            </Button>
             <Button asChild size="sm">
               <Link to="/finance/vendor-invoices/new">
                 <Plus className="mr-1 h-4 w-4" />
                 New vendor invoice
               </Link>
             </Button>
+            </div>
           )
         }
       />
@@ -221,13 +226,13 @@ function InvoiceList() {
                     <td className="px-4 py-3">{fmtDate(x.due_date)}</td>
                     <td className="px-4 py-3">{x.vendors?.company_name}</td>
                     <td className="px-4 py-3 font-medium tabular-nums text-xs">
-                      <Link
-                        className="hover:underline"
-                        to="/procurement/purchase-orders/$id"
-                        params={{ id: x.po_id }}
-                      >
-                        {x.purchase_orders?.po_number}
-                      </Link>
+                      {x.po_id ? (
+                        <Link className="hover:underline" to="/procurement/purchase-orders/$id" params={{ id: x.po_id }}>
+                          {x.purchase_orders?.po_number}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">Old bill</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">{x.projects?.name}</td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums">
