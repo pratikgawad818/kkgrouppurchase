@@ -135,7 +135,7 @@ function InvoiceDetail() {
             </tr>)}</tbody></table></div>}
         <p className="mt-2 text-xs text-muted-foreground">Historical bill items do not create GRNs or change current stock.</p>
       </div>}
-      {!isOpeningBill &&       <div className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      {!isOpeningBill && (<div className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">GRN</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Invoiced qty</th><th className="px-4 py-3 text-right">Available at GRN</th><th className="px-4 py-3 text-right">PO rate</th><th className="px-4 py-3 text-right">Bill rate</th><th className="px-4 py-3 text-right">PO GST</th><th className="px-4 py-3 text-right">Bill GST</th><th className="px-4 py-3 text-right">Line total</th><th className="px-4 py-3">Match</th></tr></thead>
           <tbody>{items.map((l) => (
@@ -148,14 +148,12 @@ function InvoiceDetail() {
               <td className="px-4 py-3 text-xs">{l.match_ok === null ? "—" : l.match_ok ? <span className="text-emerald-700">OK</span> : <span className="text-amber-700">Variance</span>}</td>
             </tr>))}</tbody>
         </table>
-      </div>
-
-      }
+      </div>)}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border bg-card p-4">
           <div className="mb-2 text-sm font-medium">Payments</div>
           {isOpeningBill && <p className="mb-2 text-xs text-muted-foreground">Already paid before ERP: {inr(priorPayments.reduce((n,p)=>n+Number(p.amount),Number(inv.opening_legacy_paid??0)))}. No director payment approval is required for historical settlements.</p>}
-          {isOpeningBill && priorPayments.length>0 && <ul className="mb-3 space-y-1 text-xs">{priorPayments.map(p=><li key={p.id} className="flex justify-between gap-2"><span>{fmtDate(p.payment_date)} · {p.payment_mode.toUpperCase()} · {p.reference??"Reference not supplied"}</span><strong>{inr(p.amount)}</strong></li>)}</ul>
+          {isOpeningBill && priorPayments.length>0 && <ul className="mb-3 space-y-1 text-xs">{priorPayments.map(p=><li key={p.id} className="flex justify-between gap-2"><span>{fmtDate(p.payment_date)} · {p.payment_mode.toUpperCase()} · {p.reference??"Reference not supplied"}</span><strong>{inr(p.amount)}</strong></li>)}</ul>}
           {payments.length + adjustments.length === 0 && priorPayments.length===0 && Number(inv.opening_legacy_paid??0)===0 ? <p className="text-xs text-muted-foreground">No payments yet.</p> : (<ul className="space-y-1 text-sm">
             {payments.map((p, i) => <li key={i} className="flex justify-between"><span className="font-mono text-xs">{p.vendor_payments?.payment_number} · {fmtDate(p.vendor_payments?.payment_date)} · {p.vendor_payments?.status}</span><span className="font-mono">{inr(p.amount)}</span></li>)}
             {adjustments.map((a, i) => <li key={`a${i}`} className="flex justify-between"><span className="text-xs">Advance {a.vendor_payments?.payment_number} adjusted · {fmtDate(a.created_at)}</span><span className="font-mono">{inr(a.amount)}</span></li>)}
