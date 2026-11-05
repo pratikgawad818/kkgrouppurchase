@@ -11,6 +11,7 @@ import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { PAYMENT_MODES, today, uploadVendorDoc } from "@/lib/finance";
+import { useCan } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import {
   evaluateOpeningBill, isRealDate, newHistoricPayment, newOpeningLine,
@@ -41,10 +42,12 @@ const box = "rounded-xl border bg-card p-4 sm:p-5";
 function OpeningBill() {
   const { id: editId } = Route.useSearch();
   const nav = useNavigate(), qc = useQueryClient();
+  const can = useCan();
   const [h, setH] = useState<Header>(initial);
   const [lines, setLines] = useState<OpeningLine[]>([newOpeningLine("initial")]);
   const [payments, setPayments] = useState<HistoricPayment[]>([]);
   const [legacyPaid, setLegacyPaid] = useState(0);
+  const [correctionReason, setCorrectionReason] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const set = (field: keyof Header, value: string) => setH(current => ({ ...current, [field]: value }));
   const changeLine = (id: string, field: keyof OpeningLine, value: string) =>
@@ -109,6 +112,9 @@ function OpeningBill() {
     })));
   }, [existing.data]);
 
+  const isApprovedCorrection = !!editId && ["approved","partially_paid","paid"].includes(existing.data?.invoice.status ?? "");
+  const canEdit = !editId || existing.data?.invoice.status === "pending_review" || (isApprovedCorrection && can("vendor_invoice.create") && can("vendor_invoice.approve"));
+  const financialEditable = !!canEdit && !isApprovedCorrection;
   const calc = evaluateOpeningBill({
     lines,payments,gstType:h.gst_type,freight:h.freight,
     otherCharges:h.other_charges,tdsRate:h.tds_rate,legacyPaid,
@@ -124,8 +130,12 @@ function OpeningBill() {
     ...(h.due_date && (!isRealDate(h.due_date) || h.due_date<h.vendor_invoice_date)
       ? ["Due date must not be earlier than the bill date."] : []),
     ...(payments.some(p=>p.payment_date>today()) ? ["Historical payments cannot be future-dated."] : []),
-    ...(editId && existing.data?.invoice.status !== "pending_review"
-      ? ["Only pending-review old bills may be edited. Approved bills are locked."] : []),
+    ...(editId && !canEdit ? ["This invoice requires an authorized Accounts user to edit it."] : []),
+    ...(isApprovedCorrection && (Math.abs(calc.subtotal-Number(existing.data?.invoice.subtotal??0)) > 0.001 ||
+      Math.abs(calc.taxTotal-Number(existing.data?.invoice.tax_total??0)) > 0.001)
+      ? ["For approved bills, the sum of item prices and GST must equal the original approved taxable and GST totals. Financial amendments require accounting review."] : []),
+    ...(isApprovedCorrection && (correctionReason.trim().length<10 || correctionReason.trim().length>500)
+      ? ["Enter a correction reason (10–500 characters) for the audit history."] : []),
   ];
   const save = useMutation({
     mutationFn: async () => {
@@ -143,7 +153,16 @@ function OpeningBill() {
           payment_date,payment_mode,reference,amount,remarks,
         })),
       };
-      const {data,error}=await supabase.rpc("save_opening_vendor_invoice_v2",payload);
+      const {data,error}=isApprovedCorrection
+        ? await supabase.rpc("correct_approved_opening_vendor_invoice",{
+            _id:editId!,
+            _lines:payload._lines,
+            _remarks:h.remarks,
+            _attachment_path:attachment_path,
+            _reason:correctionReason.trim(),
+            _expected_updated_at:existing.data!.invoice.updated_at,
+          })
+        : await supabase.rpc("save_opening_vendor_invoice_v2",payload);
       if(error){
         if(error.message.startsWith("DUPLICATE_INVOICE"))
           throw new Error("This vendor bill is already registered as "+(error.message.split("|")[2] ?? "another invoice")+".");
@@ -152,7 +171,7 @@ function OpeningBill() {
       return data as string;
     },
     onSuccess:(id)=>{
-      toast.success(editId?"Opening bill updated":"Old bill saved for verification");
+      toast.success(isApprovedCorrection?"Item details corrected; approved totals unchanged":editId?"Opening bill updated":"Old bill saved for verification");
       void qc.invalidateQueries({queryKey:["vendor-invoices"]});
       void qc.invalidateQueries({queryKey:["vi",id]});
       nav({to:"/finance/vendor-invoices/$id",params:{id}});
@@ -166,7 +185,6 @@ function OpeningBill() {
   </div>;
   const data=base.data!;
   const buildingOptions=data.buildings.filter(b=>b.project_id===h.project_id);
-  const canEdit = !editId || existing.data?.invoice.status === "pending_review";
   const canSave = canEdit && !save.isPending && !base.isFetching &&
     (!editId || !existing.isFetching) && validation.length===0;
 
