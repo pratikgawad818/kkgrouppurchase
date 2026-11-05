@@ -614,6 +614,16 @@ def test_accounts_staff_material_create_edit_only():
 def test_optional_invoice_roundoff_accounting():
     """Only opted-in vendor bills round gross totals, with separate balanced journals."""
     with db() as c:
+        # Disposable fixture requires the same core ledger accounts production has.
+        for code,name,kind in [
+            ("1300","Inventory / Project Materials","asset"),
+            ("1400","GST Input Credit","asset"),
+            ("2100","Accounts Payable - Vendors","liability"),
+            ("2200","TDS Payable","liability"),
+        ]:
+            c.execute("""INSERT INTO accounts(company_id,code,name,account_type)
+                VALUES(%s,%s,%s,%s) ON CONFLICT(company_id,code) DO NOTHING""",
+                (A,code,name,kind))
         actor(c, ACCOUNTS)
         header={"project_id":PROJECT,"vendor_id":VENDOR,
             "vendor_invoice_number":"QA-ROUND-OFF-OLD",
