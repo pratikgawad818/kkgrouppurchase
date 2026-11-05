@@ -122,7 +122,7 @@ function NewInvoice() {
   const tax = toPaise(active.reduce((a,l)=>a+toPaise(Number(l.quantity)*Number(l.rate)*Number(l.tax_rate_percent)/100),0));
   const extra = Number(h.freight||0)+Number(h.other_charges||0);
   const total = toPaise(sub+tax+extra);
-  const roundOffAmount = optionalInvoiceRoundOff(total,h.round_off_mode);
+  const roundOffAmount = Number.isFinite(total) && total >= 0 ? optionalInvoiceRoundOff(total,h.round_off_mode) : 0;
   const roundedTotal = toPaise(total+roundOffAmount);
   const tds = toPaise((sub+extra)*Number(h.tds_rate||0)/100);
   const tdsSections = base.data?.settings?.tds_sections ?? [];
