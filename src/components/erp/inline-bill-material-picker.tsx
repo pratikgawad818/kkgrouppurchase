@@ -8,38 +8,12 @@ import { requireSingleCompanyId } from "@/lib/company-scope";
 import { autoCode } from "@/lib/format";
 import { errMsg } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { filterBillMaterials, type BillMaterialOption, type BillMaterialReference } from "@/lib/bill-materials";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-
-export type BillMaterialOption = {
-  id: string;
-  name: string;
-  code: string;
-  hsn_sac: string | null;
-  category_id: string;
-  unit_id: string;
-  units_of_measure: { code: string; name: string } | null;
-};
-export type BillMaterialReference = { id: string; name: string; code: string };
-
-export function filterBillMaterials(materials: BillMaterialOption[], query: string): BillMaterialOption[] {
-  const q = query.trim().toLocaleLowerCase();
-  return materials
-    .filter(m => !q || [m.name, m.code, m.hsn_sac ?? ""].some(v => v.toLocaleLowerCase().includes(q)))
-    .slice(0, 25);
-}
-
-export function materialLineDefaults(material: BillMaterialOption) {
-  return {
-    material_id: material.id,
-    description: material.name,
-    unit: material.units_of_measure?.code ?? "",
-    hsn_sac: material.hsn_sac ?? "",
-  };
-}
 
 export function InlineBillMaterialPicker({
   itemId, value, materialId, disabled, materials, loading, error, canCreate,
