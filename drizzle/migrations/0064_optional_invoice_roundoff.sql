@@ -144,8 +144,7 @@ BEGIN
     jsonb_build_object('status','draft','vendor_bill', trim(_header->>'vendor_invoice_number'), 'grand_total', gt, 'net_payable', gt - tds),
     'purchase_order', po.id);
   RETURN vid;
-END $function$
-
+END $function$;
 
 CREATE OR REPLACE FUNCTION public.save_opening_vendor_invoice_v2(_header jsonb, _lines jsonb, _payments jsonb, _id uuid DEFAULT NULL::uuid)
  RETURNS uuid
@@ -345,8 +344,7 @@ BEGIN
     auth.uid(),'Historical invoice lines and past payments recorded; no cash/bank posting',
     CASE WHEN _id IS NULL THEN NULL ELSE 'pending_review'::invoice_status END,'pending_review');
   RETURN vid;
-END $function$
-
+END $function$;
 
 CREATE OR REPLACE FUNCTION public.invoice_transition(_id uuid, _action text, _comment text)
  RETURNS invoice_status
@@ -434,5 +432,4 @@ BEGIN
   INSERT INTO public.vendor_invoice_events(invoice_id,action,acted_by,comment,previous_status,new_status)
   VALUES (_id,_action,auth.uid(),nullif(btrim(_comment),''),inv.status,nxt);
   RETURN nxt;
-END $function$
-
+END $function$;
