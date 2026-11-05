@@ -13,6 +13,7 @@ import { TAX_RATES } from "@/lib/rfq";
 import { addDays, today, uploadVendorDoc, type FinanceSettings } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { inspectVendorInvoice } from "@/lib/invoice-preflight";
+import { optionalInvoiceRoundOff, toPaise, type InvoiceRoundOffMode } from "@/lib/invoice-roundoff";
 
 const META = "Enter a vendor bill against a purchase order and its goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/new")({
@@ -30,7 +31,7 @@ function NewInvoice() {
   const editId = sp.id;
   const [vendor, setVendor] = useState("");
   const [po, setPo] = useState(sp.po ?? "");
-  const [h, setH] = useState({ vendor_invoice_number: "", vendor_invoice_date: today(), due_date: "", freight: "0", other_charges: "0", tds_section: "", tds_rate: "0", remarks: "" });
+  const [h, setH] = useState({ vendor_invoice_number: "", vendor_invoice_date: today(), due_date: "", freight: "0", other_charges: "0", tds_section: "", tds_rate: "0", remarks: "", round_off_mode: "none" as InvoiceRoundOffMode });
   const [lines, setLines] = useState<Line[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [grnFilter, setGrnFilter] = useState<string>("");
@@ -51,7 +52,7 @@ function NewInvoice() {
     const e = existing.data?.inv;
     if (!e) return;
     setVendor(e.vendor_id); setPo(e.po_id ?? "");
-    setH({ vendor_invoice_number: e.vendor_invoice_number, vendor_invoice_date: e.vendor_invoice_date, due_date: e.due_date ?? "", freight: String(e.freight), other_charges: String(e.other_charges), tds_section: e.tds_section ?? "", tds_rate: String(e.tds_rate), remarks: e.remarks ?? "" });
+    setH({ vendor_invoice_number: e.vendor_invoice_number, vendor_invoice_date: e.vendor_invoice_date, due_date: e.due_date ?? "", freight: String(e.freight), other_charges: String(e.other_charges), tds_section: e.tds_section ?? "", tds_rate: String(e.tds_rate), remarks: e.remarks ?? "", round_off_mode: e.round_off_mode ?? "none" });
   }, [existing.data]);
 
   const base = useQuery({
@@ -117,11 +118,13 @@ function NewInvoice() {
   // The preflight reports them and blocks the save.
   const active = lines.filter((l) => l.include);
   const preflight = inspectVendorInvoice(active, h);
-  const sub = active.reduce((a, l) => a + Number(l.quantity) * Number(l.rate), 0);
-  const tax = active.reduce((a, l) => a + Number(l.quantity) * Number(l.rate) * Number(l.tax_rate_percent) / 100, 0);
-  const extra = Number(h.freight || 0) + Number(h.other_charges || 0);
-  const total = sub + tax + extra;
-  const tds = (sub + extra) * Number(h.tds_rate || 0) / 100;
+  const sub = toPaise(active.reduce((a,l)=>a+toPaise(Number(l.quantity)*Number(l.rate)),0));
+  const tax = toPaise(active.reduce((a,l)=>a+toPaise(Number(l.quantity)*Number(l.rate)*Number(l.tax_rate_percent)/100),0));
+  const extra = Number(h.freight||0)+Number(h.other_charges||0);
+  const total = toPaise(sub+tax+extra);
+  const roundOffAmount = optionalInvoiceRoundOff(total,h.round_off_mode);
+  const roundedTotal = toPaise(total+roundOffAmount);
+  const tds = toPaise((sub+extra)*Number(h.tds_rate||0)/100);
   const tdsSections = base.data?.settings?.tds_sections ?? [];
 
   const save = useMutation({
@@ -240,13 +243,22 @@ function NewInvoice() {
               </select>
             </Field>
             <Field label="TDS rate %"><Input type="number" min={0} value={h.tds_rate} onChange={(e) => setH({ ...h, tds_rate: e.target.value })} /></Field>
+            <Field label="Invoice round-off (optional)">
+              <select className={selectCls} value={h.round_off_mode} onChange={e=>setH(v=>({...v,round_off_mode:e.target.value as InvoiceRoundOffMode}))}>
+                <option value="none">No round-off — exact paise (default)</option>
+                <option value="nearest_rupee">Round gross to nearest rupee</option>
+              </select>
+            </Field>
           </div>
           {tdsSections.length === 0 && <p className="text-xs text-muted-foreground">TDS sections are configured in Finance Settings.</p>}
           <Field label="Remarks"><Textarea rows={2} value={h.remarks} onChange={(e) => setH({ ...h, remarks: e.target.value })} /></Field>
         </div>
         <div className="space-y-1 rounded-md border bg-card p-4 text-sm">
           {[["Taxable value", sub], ["GST", tax], ["Freight + other", extra], ["Gross invoice amount", total], ["TDS", -tds]].map(([k, v]) => <div key={k as string} className="flex justify-between"><span className="text-muted-foreground">{k}</span><span className="font-mono">{inr(v as number)}</span></div>)}
-          <div className="flex justify-between border-t pt-2 font-semibold"><span>Net payable</span><span className="font-mono">{inr(total - tds)}</span></div>
+          <div className="flex justify-between"><span>Round-off (only if selected)</span><span className="font-mono">{inr(roundOffAmount)}</span></div>
+           <div className="flex justify-between"><span>Gross after round-off</span><span className="font-mono">{inr(roundedTotal)}</span></div>
+           <div className="flex justify-between border-t pt-2 font-semibold"><span>Net payable</span><span className="font-mono">{inr(toPaise(roundedTotal - tds))}</span></div>
+           <p className="text-xs text-muted-foreground">Round-off is OFF unless selected. GST, tax base, rates and TDS are not rounded to whole rupees.</p>
           <div className="flex gap-2 pt-3">
             <Button variant="outline" disabled={!canSave || save.isPending} onClick={() => save.mutate(false)}>Save draft</Button>
             <Button disabled={!canSave || save.isPending} onClick={() => save.mutate(true)}>Save & run match</Button>
