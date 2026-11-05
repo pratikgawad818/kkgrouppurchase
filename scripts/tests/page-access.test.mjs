@@ -195,8 +195,7 @@ test("small expenses report is read-only for management and editable only inside
 });
 
 
-test("Google Sheets admin page is private to active Super Admin role",()=>{
-  assert.equal(canAccessPage("/settings/google-sheets",owner),true);
-  for(const role of ["director","purchase_manager","store_manager","accountant","auditor"])
+test("retired Google Sheets settings page remains inaccessible to every role",()=>{
+  for(const role of ["super_admin","director","accounts_manager","purchase_manager","accountant","auditor"])
     assert.equal(canAccessPage("/settings/google-sheets",subject(role,"users.manage","company.manage")),false);
 });
