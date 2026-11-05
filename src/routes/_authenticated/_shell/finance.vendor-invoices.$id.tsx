@@ -52,7 +52,8 @@ function InvoiceDetail() {
   if (q.error || !q.data) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { inv, items, events, payments, adjustments } = q.data;
   const mine = inv.created_by === me.data?.profile.id;
-  const ms = inv.match_summary as null | { qty_variances: number; rate_variances: number; tax_variances: number; expected_total: number; invoice_total: number; total_variance: number; matched_at?: string; exceptions?: { message: string }[]; tolerances: { qty_pct: number; rate_pct: number; value: number; source?: string } };
+  const ms = inv.match_summary as null | { opening?: boolean; note?: string; qty_variances?: number; rate_variances?: number; tax_variances?: number; expected_total?: number; invoice_total?: number; total_variance?: number; matched_at?: string; exceptions?: { message: string }[]; tolerances?: { qty_pct: number; rate_pct: number; value: number; source?: string } };
+  const isOpeningBill = !inv.po_id || ms?.opening === true;
   const needsComment = dlg === "reject" || dlg === "cancel" || dlg === "approve_exception";
   const editable = inv.status === "draft" || inv.status === "exception";
   return (
@@ -90,8 +91,16 @@ function InvoiceDetail() {
           <div className="flex justify-between font-semibold"><span>Balance due</span><span className="font-mono">{inv.status === "rejected" || inv.status === "cancelled" ? inr(0) : inr(inv.balance_due)}</span></div>
         </div>
         <div className="rounded-md border bg-card p-4 text-sm">
-          <div className="mb-2 font-medium">Three-way match</div>
-          {!ms ? <p className="text-xs text-muted-foreground">Run the match to compare this bill with the PO and goods received.</p> : (<div className="space-y-1 text-xs">
+          <div className="mb-2 font-medium">{isOpeningBill ? "Opening bill verification" : "Three-way match"}</div>
+          {isOpeningBill ? (
+            <div className="space-y-2 text-xs">
+              <p className="font-medium">Old / opening bill — no PO or GRN</p>
+              <p className="text-muted-foreground">{ms?.note ?? "This invoice was recorded as an opening payable without a purchase order or goods receipt."}</p>
+              <p className="text-muted-foreground">PO, GRN and three-way match tolerances do not apply. Review the invoice details before approval.</p>
+            </div>
+          ) : !ms ? <p className="text-xs text-muted-foreground">Run the match to compare this bill with the PO and goods received.</p> : !ms.tolerances || typeof ms.tolerances.value !== "number" ? (
+            <p className="text-xs text-muted-foreground">Three-way match details are unavailable for this invoice. Re-run the match to refresh the comparison.</p>
+          ) : (<div className="space-y-1 text-xs">
             <div className="flex justify-between"><span>Quantity variances</span><span>{ms.qty_variances}</span></div>
             <div className="flex justify-between"><span>Rate variances</span><span>{ms.rate_variances}</span></div>
             <div className="flex justify-between"><span>Tax variances</span><span>{ms.tax_variances}</span></div>
