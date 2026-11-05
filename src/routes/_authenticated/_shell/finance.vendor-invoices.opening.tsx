@@ -189,37 +189,38 @@ function OpeningBill() {
     (!editId || !existing.isFetching) && validation.length===0;
 
   return <div className="mx-auto max-w-7xl space-y-5 pb-20">
-    <PageHeader title={editId ? "Edit old vendor bill" : "Old vendor bill entry"}
-      subtitle="Record each item from an earlier supplier bill and payments that actually happened before ERP."/>
+    <PageHeader title={editId ? isApprovedCorrection ? "Correct approved old bill details" : "Edit old vendor bill" : "Old vendor bill entry"}
+      subtitle="General construction invoices: materials, equipment, supply, subcontract and labour, with item-wise unit prices and actual historical payments."/>
     <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:bg-sky-950/20 dark:text-sky-100">
       <strong>Historical entry, not a new purchase or payment.</strong> No PO or GRN is required. Previously completed payments are recorded without director payment approval and never create a new bank/cash transaction. Any fresh payment against an outstanding balance still follows the standard approval workflow.
     </div>
     {editId && existing.data?.lines.length===0 && <p className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950">
       This bill was entered using the old amount-only form. Enter the actual bill lines below to itemize it; verify the new total before saving. Previously recorded paid amounts remain preserved.
     </p>}
+    {isApprovedCorrection && <p className="rounded-lg border bg-muted/40 p-3 text-sm">This bill is already approved or paid. You can correct item descriptions, quantities, unit prices, GST breakdown, remarks and the attached document only if the original taxable value and GST remain exactly unchanged. Prior payments and posted accounts are locked. Provide a reason below; corrections are recorded in the invoice history.</p>}
     {!canEdit && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-      Approved old bills cannot be edited. Use a controlled correction with Accounts.
+      Only authorized Accounts staff can correct approved invoice documentation.
     </p>}
     <form className="space-y-5" onSubmit={e=>{e.preventDefault();if(canSave)save.mutate();}}>
       <section className={box}>
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><FileText className="h-4 w-4"/> Bill information</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Supplier / Vendor *"><select className={selectCls} value={h.vendor_id} disabled={!canEdit || !!editId}
+          <Field label="Supplier / Vendor *"><select className={selectCls} value={h.vendor_id} disabled={!financialEditable || !!editId}
             onChange={e=>set("vendor_id",e.target.value)}><option value="">Select vendor</option>
             {data.vendors.map(v=><option key={v.id} value={v.id}>{v.company_name}</option>)}</select></Field>
-          <Field label="Project *"><select className={selectCls} value={h.project_id} disabled={!canEdit || !!editId}
+          <Field label="Project *"><select className={selectCls} value={h.project_id} disabled={!financialEditable || !!editId}
             onChange={e=>setH(v=>({...v,project_id:e.target.value,building_id:""}))}><option value="">Select project</option>
             {data.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
-          <Field label="Building"><select className={selectCls} disabled={!canEdit} value={h.building_id}
+          <Field label="Building"><select className={selectCls} disabled={!financialEditable} value={h.building_id}
             onChange={e=>set("building_id",e.target.value)}><option value="">No specific building</option>
             {buildingOptions.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
-          <Field label="Supplier's bill number *"><Input disabled={!canEdit} maxLength={100} value={h.vendor_invoice_number}
+          <Field label="Supplier's bill number *"><Input disabled={!financialEditable} maxLength={100} value={h.vendor_invoice_number}
             onChange={e=>set("vendor_invoice_number",e.target.value)} placeholder="As printed on supplier invoice"/></Field>
-          <Field label="Original bill date *"><Input disabled={!canEdit} type="date" max={today()} value={h.vendor_invoice_date}
+          <Field label="Original bill date *"><Input disabled={!financialEditable} type="date" max={today()} value={h.vendor_invoice_date}
             onChange={e=>set("vendor_invoice_date",e.target.value)}/></Field>
-          <Field label="Due date"><Input disabled={!canEdit} type="date" min={h.vendor_invoice_date} value={h.due_date}
+          <Field label="Due date"><Input disabled={!financialEditable} type="date" min={h.vendor_invoice_date} value={h.due_date}
             onChange={e=>set("due_date",e.target.value)}/></Field>
-          <Field label="GST treatment"><select disabled={!canEdit} className={selectCls} value={h.gst_type}
+          <Field label="GST treatment"><select disabled={!financialEditable} className={selectCls} value={h.gst_type}
             onChange={e=>{const v=e.target.value as OpeningGST;set("gst_type",v);
               if(v==="none")setLines(prev=>prev.map(row=>({...row,tax_rate:"0"})));}}>
             <option value="cgst_sgst">CGST + SGST (intra-state)</option><option value="igst">IGST (inter-state)</option>
@@ -230,65 +231,99 @@ function OpeningBill() {
       </section>
 
       <section className={box}>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div><h2 className="font-semibold">Item-wise bill details</h2><p className="text-xs text-muted-foreground">Materials, service or labour charges exactly as shown on the original invoice.</p></div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Item-wise construction bill</h2>
+            <p className="text-xs text-muted-foreground">Enter every material, equipment charge, labour or service from the supplier's original bill. Unit prices are shown on each item.</p>
+          </div>
           <Button type="button" disabled={!canEdit || lines.length>=100} size="sm" variant="outline"
-            onClick={()=>setLines(current=>[...current,newOpeningLine(crypto.randomUUID())])}>
+            onClick={()=>setLines(rows=>[...rows,newOpeningLine(crypto.randomUUID())])}>
+            <Plus className="mr-1 h-4 w-4"/>Add another item
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {lines.map((item,index)=>{
+            const amount=calc.computed[index];
+            return <div key={item.id} className="rounded-lg border p-3 sm:p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold">Item {index+1}{item.description.trim() ? " · "+item.description.trim().slice(0,48) : ""}</div>
+                <div className="flex items-center gap-1">
+                  <Button type="button" size="sm" variant="ghost" disabled={!canEdit || lines.length>=100}
+                    onClick={()=>setLines(rows=>{
+                      const copy={...item,id:crypto.randomUUID()};
+                      return [...rows.slice(0,index+1),copy,...rows.slice(index+1)];
+                    })}>Duplicate</Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={!canEdit || lines.length===1}
+                    aria-label={"Remove item "+(index+1)} onClick={()=>setLines(rows=>rows.filter(x=>x.id!==item.id))}>
+                    <Trash2 className="h-4 w-4"/><span className="ml-1">Remove</span>
+                  </Button>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="sm:col-span-2">
+                  <Field label="Material / work / service description *">
+                    <Input aria-label={"Item "+(index+1)+" description"} disabled={!canEdit} maxLength={250}
+                      value={item.description} onChange={e=>changeLine(item.id,"description",e.target.value)}
+                      placeholder="e.g. reinforcement steel 12 mm, concrete, labour"/>
+                  </Field>
+                </div>
+                <Field label="HSN / SAC (if applicable)">
+                  <Input aria-label={"Item "+(index+1)+" HSN or SAC"} disabled={!canEdit} maxLength={30}
+                    value={item.hsn_sac} onChange={e=>changeLine(item.id,"hsn_sac",e.target.value)}/>
+                </Field>
+                <Field label="Unit *">
+                  <Input aria-label={"Item "+(index+1)+" unit"} disabled={!canEdit} maxLength={25} list="opening-bill-units"
+                    value={item.unit} onChange={e=>changeLine(item.id,"unit",e.target.value)} placeholder="Bag / MT / Kg"/>
+                </Field>
+                <Field label="Quantity / weight *">
+                  <Input aria-label={"Item "+(index+1)+" quantity"} disabled={!canEdit} inputMode="decimal"
+                    value={item.quantity} onChange={e=>changeLine(item.id,"quantity",e.target.value)}/>
+                </Field>
+                <Field label={"Unit price (₹ per "+(item.unit.trim()||"unit")+") *"}>
+                  <Input aria-label={"Item "+(index+1)+" unit price"} disabled={!canEdit} inputMode="decimal"
+                    value={item.rate} onChange={e=>changeLine(item.id,"rate",e.target.value)}
+                    placeholder="Enter price per unit"/>
+                </Field>
+                <Field label="Line discount (₹)">
+                  <Input aria-label={"Item "+(index+1)+" discount"} disabled={!canEdit} inputMode="decimal"
+                    value={item.discount} onChange={e=>changeLine(item.id,"discount",e.target.value)}/>
+                </Field>
+                <Field label="GST on this item (%)">
+                  <Input aria-label={"Item "+(index+1)+" GST rate"} disabled={!canEdit || h.gst_type==="none"}
+                    inputMode="decimal" value={item.tax_rate} onChange={e=>changeLine(item.id,"tax_rate",e.target.value)}/>
+                </Field>
+              </div>
+              <div className="mt-3 grid gap-2 border-t pt-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div><span className="text-muted-foreground">Quantity × unit price</span><div className="font-mono font-medium">{inr(Number(item.quantity||0)*Number(item.rate||0))}</div></div>
+                <div><span className="text-muted-foreground">After discount (taxable)</span><div className="font-mono font-medium">{inr(amount?.taxable??0)}</div></div>
+                <div><span className="text-muted-foreground">GST amount</span><div className="font-mono font-medium">{inr(amount?.taxAmount??0)}</div></div>
+                <div><span className="font-medium">Total for this item</span><div className="font-mono text-base font-semibold">{inr(amount?.total??0)}</div></div>
+              </div>
+            </div>;
+          })}
+        </div>
+        <datalist id="opening-bill-units">
+          <option value="Nos"/><option value="Bag"/><option value="Kg"/><option value="MT"/>
+          <option value="Tonne"/><option value="M3"/><option value="CFT"/><option value="Sq Ft"/>
+          <option value="Sq M"/><option value="Meter"/><option value="Litre"/><option value="Set"/><option value="Day"/>
+        </datalist>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+          <p className="text-xs text-muted-foreground">Each line has its own price and GST. Historical entries do not change today's stock.</p>
+          <Button type="button" size="sm" variant="outline" disabled={!canEdit || lines.length>=100}
+            onClick={()=>setLines(rows=>[...rows,newOpeningLine(crypto.randomUUID())])}>
             <Plus className="mr-1 h-4 w-4"/>Add item
           </Button>
         </div>
-        <div className="doc-table overflow-x-auto rounded-lg border">
-          <table className="min-w-[1000px] w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs text-muted-foreground"><tr>
-              <th className="px-2 py-2">#</th><th className="px-2 py-2">Material / description *</th>
-              <th className="px-2 py-2">HSN / SAC</th><th className="px-2 py-2">Unit</th>
-              <th className="px-2 py-2">Qty *</th><th className="px-2 py-2">Rate (₹) *</th>
-              <th className="px-2 py-2">Discount (₹)</th><th className="px-2 py-2">GST %</th>
-              <th className="px-2 py-2 text-right">Taxable</th><th className="px-2 py-2 text-right">Line total</th>
-              <th className="px-2 py-2"/>
-            </tr></thead>
-            <tbody>{lines.map((row,i)=><tr key={row.id} className="border-t">
-              <td className="px-2 py-2 text-muted-foreground">{i+1}</td>
-              <td className="px-2 py-2"><Input aria-label={"Item "+(i+1)+" description"} disabled={!canEdit}
-                className="h-9 min-w-48" value={row.description} maxLength={250}
-                onChange={e=>changeLine(row.id,"description",e.target.value)} placeholder="e.g. OPC Cement 53 Grade"/></td>
-              <td className="px-2 py-2"><Input aria-label={"Item "+(i+1)+" HSN SAC"} disabled={!canEdit}
-                className="h-9 w-28" value={row.hsn_sac} maxLength={30}
-                onChange={e=>changeLine(row.id,"hsn_sac",e.target.value)}/></td>
-              <td className="px-2 py-2"><Input aria-label={"Item "+(i+1)+" unit"} disabled={!canEdit}
-                className="h-9 w-20" maxLength={25} value={row.unit}
-                onChange={e=>changeLine(row.id,"unit",e.target.value)}/></td>
-              <td className="px-2 py-2"><Input aria-label={"Item "+(i+1)+" quantity"} disabled={!canEdit}
-                className="h-9 w-20 text-right" inputMode="decimal" value={row.quantity}
-                onChange={e=>changeLine(row.id,"quantity",e.target.value)}/></td>
-              <td className="px-2 py-2"><Input aria-label={"Item "+(i+1)+" rate"} disabled={!canEdit}
-                className="h-9 w-28 text-right" inputMode="decimal" value={row.rate}
-                onChange={e=>changeLine(row.id,"rate",e.target.value)}/></td>
-              <td className="px-2 py-2"><Input aria-label={"Item "+(i+1)+" discount"} disabled={!canEdit}
-                className="h-9 w-24 text-right" inputMode="decimal" value={row.discount}
-                onChange={e=>changeLine(row.id,"discount",e.target.value)}/></td>
-              <td className="px-2 py-2"><Input aria-label={"Item "+(i+1)+" GST rate"} disabled={!canEdit || h.gst_type==="none"}
-                className="h-9 w-20 text-right" inputMode="decimal" value={row.tax_rate}
-                onChange={e=>changeLine(row.id,"tax_rate",e.target.value)}/></td>
-              <td className="px-2 py-2 text-right font-mono">{inr(calc.computed[i]?.taxable??0)}</td>
-              <td className="px-2 py-2 text-right font-mono font-medium">{inr(calc.computed[i]?.total??0)}</td>
-              <td className="px-2 py-2 text-right"><Button type="button" disabled={!canEdit || lines.length===1}
-                size="icon" variant="ghost" aria-label={"Remove item "+(i+1)}
-                onClick={()=>setLines(prev=>prev.filter(l=>l.id!==row.id))}><Trash2 className="h-4 w-4"/></Button></td>
-            </tr>)}</tbody>
-          </table>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">For opening bills, item rows document historical expenses; they do not add or modify current stock quantities.</p>
       </section>
 
       <section className={box}>
         <h2 className="mb-3 font-semibold">Additional amounts and deductions</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Freight (₹)"><Input disabled={!canEdit} inputMode="decimal" value={h.freight} onChange={e=>set("freight",e.target.value)}/></Field>
-          <Field label="Other charges (₹)"><Input disabled={!canEdit} inputMode="decimal" value={h.other_charges} onChange={e=>set("other_charges",e.target.value)}/></Field>
-          <Field label="TDS section (if applicable)"><Input disabled={!canEdit} maxLength={30} placeholder="e.g. 194C"
+          <Field label="Freight (₹)"><Input disabled={!financialEditable} inputMode="decimal" value={h.freight} onChange={e=>set("freight",e.target.value)}/></Field>
+          <Field label="Other charges (₹)"><Input disabled={!financialEditable} inputMode="decimal" value={h.other_charges} onChange={e=>set("other_charges",e.target.value)}/></Field>
+          <Field label="TDS section (if applicable)"><Input disabled={!financialEditable} maxLength={30} placeholder="e.g. 194C"
             value={h.tds_section} onChange={e=>set("tds_section",e.target.value)}/></Field>
-          <Field label="TDS rate %"><Input disabled={!canEdit} inputMode="decimal" value={h.tds_rate} onChange={e=>set("tds_rate",e.target.value)}/></Field>
+          <Field label="TDS rate %"><Input disabled={!financialEditable} inputMode="decimal" value={h.tds_rate} onChange={e=>set("tds_rate",e.target.value)}/></Field>
         </div>
       </section>
 
@@ -296,7 +331,7 @@ function OpeningBill() {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div><h2 className="flex items-center gap-2 font-semibold"><ReceiptText className="h-4 w-4"/>Payments already made before ERP</h2>
             <p className="text-xs text-muted-foreground">Historical payment record only. No director payment approval, no new bank debit and no vendor-payment scheduling.</p></div>
-          <Button type="button" size="sm" variant="outline" disabled={!canEdit || payments.length>=100}
+          <Button type="button" size="sm" variant="outline" disabled={!financialEditable || payments.length>=100}
             onClick={()=>setPayments(prev=>[...prev,newHistoricPayment(crypto.randomUUID(),today())])}>
             <Plus className="mr-1 h-4 w-4"/>Add past payment
           </Button>
@@ -307,20 +342,20 @@ function OpeningBill() {
         </div>}
         {payments.length===0 && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No previous payments recorded. Add past payments only if money was actually paid before entering this bill into KK ERP.</div>}
         <div className="space-y-3">{payments.map((p,i)=><div key={p.id} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-6">
-          <Field label="Payment date"><Input disabled={!canEdit} type="date" max={today()} value={p.payment_date}
+          <Field label="Payment date"><Input disabled={!financialEditable} type="date" max={today()} value={p.payment_date}
             onChange={e=>changePayment(p.id,"payment_date",e.target.value)}/></Field>
-          <Field label="Payment mode"><select disabled={!canEdit} className={selectCls} value={p.payment_mode}
+          <Field label="Payment mode"><select disabled={!financialEditable} className={selectCls} value={p.payment_mode}
             onChange={e=>changePayment(p.id,"payment_mode",e.target.value)}>
             {PAYMENT_MODES.map(([code,label])=><option key={code} value={code}>{label}</option>)}
             <option value="card">Card</option></select></Field>
-          <Field label="Amount paid (₹)"><Input disabled={!canEdit} inputMode="decimal" value={p.amount}
+          <Field label="Amount paid (₹)"><Input disabled={!financialEditable} inputMode="decimal" value={p.amount}
             onChange={e=>changePayment(p.id,"amount",e.target.value)}/></Field>
-          <Field label="UTR / cheque / reference"><Input disabled={!canEdit} maxLength={150} value={p.reference}
+          <Field label="UTR / cheque / reference"><Input disabled={!financialEditable} maxLength={150} value={p.reference}
             onChange={e=>changePayment(p.id,"reference",e.target.value)}/></Field>
-          <Field label="Remarks"><Input disabled={!canEdit} maxLength={500} value={p.remarks}
+          <Field label="Remarks"><Input disabled={!financialEditable} maxLength={500} value={p.remarks}
             onChange={e=>changePayment(p.id,"remarks",e.target.value)}/></Field>
           <div className="flex items-end justify-end">
-            <Button type="button" disabled={!canEdit} size="sm" variant="ghost"
+            <Button type="button" disabled={!financialEditable} size="sm" variant="ghost"
               onClick={()=>setPayments(prev=>prev.filter(x=>x.id!==p.id))} aria-label={"Remove prior payment "+(i+1)}>
               <Trash2 className="mr-1 h-4 w-4"/>Remove
             </Button>
@@ -333,6 +368,8 @@ function OpeningBill() {
           value={h.remarks} onChange={e=>set("remarks",e.target.value)}
           placeholder="Old supplier bill, construction work, prior settlement details…"/></Field>
       </section>
+
+      {isApprovedCorrection && <section className={box}><Field label="Reason for correcting approved bill details *"><Textarea rows={2} minLength={10} maxLength={500} value={correctionReason} onChange={e=>setCorrectionReason(e.target.value)} placeholder="Explain which item details are being corrected and why, with reference to the original supplier bill."/></Field></section>}
 
       <section className={cn(box,"space-y-3")}>
         <h2 className="font-semibold">Bill and outstanding summary</h2>
@@ -354,7 +391,7 @@ function OpeningBill() {
           <p className="text-xs text-muted-foreground">
             Historical payments are archived immediately with the bill. Only its unpaid balance can enter the future payment-approval flow.
           </p>
-          <Button type="submit" disabled={!canSave}>{save.isPending?"Saving…":editId?"Update opening bill":"Save bill for verification"}</Button>
+          <Button type="submit" disabled={!canSave}>{save.isPending?"Saving…":isApprovedCorrection?"Save audited item correction":editId?"Update opening bill":"Save bill for verification"}</Button>
         </div>
       </section>
     </form>
