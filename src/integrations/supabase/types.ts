@@ -403,6 +403,427 @@ export type Database = {
         }
         Relationships: []
       }
+      erp_google_oauth_states: {
+        Row: {
+          actor_id: string
+          company_id: string
+          created_at: string
+          expires_at: string
+          spreadsheet_id: string
+          state_hash: string
+        }
+        Insert: {
+          actor_id: string
+          company_id: string
+          created_at?: string
+          expires_at: string
+          spreadsheet_id: string
+          state_hash: string
+        }
+        Update: {
+          actor_id?: string
+          company_id?: string
+          created_at?: string
+          expires_at?: string
+          spreadsheet_id?: string
+          state_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erp_google_oauth_states_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_google_oauth_states_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erp_google_sheet_connections: {
+        Row: {
+          company_id: string
+          configured_by: string | null
+          enabled: boolean
+          last_error: string | null
+          last_result: Json | null
+          last_synced_at: string | null
+          oauth_account_email: string | null
+          oauth_refresh_token_ciphertext: string | null
+          spreadsheet_id: string
+          spreadsheet_title: string
+          sync_lease_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          configured_by?: string | null
+          enabled?: boolean
+          last_error?: string | null
+          last_result?: Json | null
+          last_synced_at?: string | null
+          oauth_account_email?: string | null
+          oauth_refresh_token_ciphertext?: string | null
+          spreadsheet_id: string
+          spreadsheet_title?: string
+          sync_lease_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          configured_by?: string | null
+          enabled?: boolean
+          last_error?: string | null
+          last_result?: Json | null
+          last_synced_at?: string | null
+          oauth_account_email?: string | null
+          oauth_refresh_token_ciphertext?: string | null
+          spreadsheet_id?: string
+          spreadsheet_title?: string
+          sync_lease_until?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erp_google_sheet_connections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_google_sheet_connections_configured_by_fkey"
+            columns: ["configured_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erp_google_sheet_import_audit: {
+        Row: {
+          company_id: string
+          id: string
+          new_row: Json
+          occurred_at: string
+          operation: string
+          previous_row: Json | null
+          reference: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          new_row: Json
+          occurred_at?: string
+          operation: string
+          previous_row?: Json | null
+          reference: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          new_row?: Json
+          occurred_at?: string
+          operation?: string
+          previous_row?: Json | null
+          reference?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erp_google_sheet_import_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erp_historical_material_consumptions: {
+        Row: {
+          building_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          last_synced_hash: string | null
+          material_id: string
+          occurred_on: string
+          project_id: string
+          purpose: string
+          quantity: number
+          reference: string
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          building_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          last_synced_hash?: string | null
+          material_id: string
+          occurred_on: string
+          project_id: string
+          purpose?: string
+          quantity: number
+          reference: string
+          unit_cost: number
+          updated_at?: string
+        }
+        Update: {
+          building_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          last_synced_hash?: string | null
+          material_id?: string
+          occurred_on?: string
+          project_id?: string
+          purpose?: string
+          quantity?: number
+          reference?: string
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erp_historical_material_consumptions_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_historical_material_consumptions_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "erp_historical_material_consumptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_historical_material_consumptions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_historical_material_consumptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erp_project_cost_entries: {
+        Row: {
+          amount: number
+          building_id: string | null
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          payment_method: string | null
+          project_id: string
+          quantity: number | null
+          related_document: string | null
+          remarks: string | null
+          sheet_import_id: string
+          source_reference: string
+          spent_on: string
+          unit_rate: number | null
+          vendor_id: string | null
+        }
+        Insert: {
+          amount: number
+          building_id?: string | null
+          category: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          payment_method?: string | null
+          project_id: string
+          quantity?: number | null
+          related_document?: string | null
+          remarks?: string | null
+          sheet_import_id: string
+          source_reference: string
+          spent_on: string
+          unit_rate?: number | null
+          vendor_id?: string | null
+        }
+        Update: {
+          amount?: number
+          building_id?: string | null
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          payment_method?: string | null
+          project_id?: string
+          quantity?: number | null
+          related_document?: string | null
+          remarks?: string | null
+          sheet_import_id?: string
+          source_reference?: string
+          spent_on?: string
+          unit_rate?: number | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erp_project_cost_entries_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_project_cost_entries_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "v_building_stats"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "erp_project_cost_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_project_cost_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_project_cost_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_project_cost_entries_sheet_import_id_fkey"
+            columns: ["sheet_import_id"]
+            isOneToOne: true
+            referencedRelation: "erp_sheet_import_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_project_cost_entries_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erp_sheet_import_documents: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          company_id: string
+          created_at: string
+          document_type: string
+          erp_record_id: string | null
+          error_message: string | null
+          id: string
+          last_seen_at: string
+          payload: Json
+          source_hash: string
+          source_reference: string
+          source_type: string
+          status: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          company_id: string
+          created_at?: string
+          document_type: string
+          erp_record_id?: string | null
+          error_message?: string | null
+          id?: string
+          last_seen_at?: string
+          payload: Json
+          source_hash: string
+          source_reference: string
+          source_type?: string
+          status?: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          company_id?: string
+          created_at?: string
+          document_type?: string
+          erp_record_id?: string | null
+          error_message?: string | null
+          id?: string
+          last_seen_at?: string
+          payload?: Json
+          source_hash?: string
+          source_reference?: string
+          source_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erp_sheet_import_documents_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erp_sheet_import_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erp_sheet_sync_nonces: {
+        Row: {
+          created_at: string
+          expires_at: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       financial_periods: {
         Row: {
           company_id: string
@@ -1631,6 +2052,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profile_email_challenges: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          expires_at: string
+          id: string
+          new_email: string
+          new_hash: string
+          new_verified: boolean
+          old_email: string
+          old_hash: string | null
+          old_verified: boolean
+          sends: number
+          sent_at: string
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          expires_at: string
+          id: string
+          new_email: string
+          new_hash: string
+          new_verified?: boolean
+          old_email: string
+          old_hash?: string | null
+          old_verified?: boolean
+          sends?: number
+          sent_at?: string
+          user_id: string
+          window_started_at?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          expires_at?: string
+          id?: string
+          new_email?: string
+          new_hash?: string
+          new_verified?: boolean
+          old_email?: string
+          old_hash?: string | null
+          old_verified?: boolean
+          sends?: number
+          sent_at?: string
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -4752,6 +5224,16 @@ export type Database = {
         Args: { _advance_id: string; _amount: number; _invoice_id: string }
         Returns: undefined
       }
+      begin_profile_email_otp: {
+        Args: {
+          _email: string
+          _id: string
+          _new_hash: string
+          _old_hash: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       can_access_project: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
@@ -4833,6 +5315,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      erp_enqueue_google_sheets_sync: { Args: never; Returns: number }
       execute_stock_transfer: {
         Args: { _from: string; _items: Json; _reason: string; _to: string }
         Returns: string
@@ -5209,6 +5692,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      verify_profile_email_otp: {
+        Args: { _hash: string; _id: string; _side: string; _user_id: string }
+        Returns: Json
       }
       vi_can_view: { Args: { _invoice_id: string }; Returns: boolean }
       vi_refresh_balance: { Args: { _id: string }; Returns: undefined }
