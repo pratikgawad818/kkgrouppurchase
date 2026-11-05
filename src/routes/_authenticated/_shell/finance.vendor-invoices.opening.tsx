@@ -14,7 +14,8 @@ import { PAYMENT_MODES, today, uploadVendorDoc } from "@/lib/finance";
 import { useCan } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { InlineBillMaterialPicker, materialLineDefaults, type BillMaterialOption } from "@/components/erp/inline-bill-material-picker";
+import { InlineBillMaterialPicker } from "@/components/erp/inline-bill-material-picker";
+import { materialLineDefaults, type BillMaterialOption } from "@/lib/bill-materials";
 import {
   evaluateOpeningBill, isRealDate, newHistoricPayment, newOpeningLine,
   type OpeningGST, type OpeningLine, type HistoricPayment,
