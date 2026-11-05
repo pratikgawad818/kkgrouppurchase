@@ -13,7 +13,7 @@ ALTER TABLE public.vendor_invoices
 -- Existing companies get the two P&L accounts so the invoice approval journal balances.
 -- Future companies are handled lazily by invoice_transition.
 INSERT INTO public.accounts(company_id,code,name,account_type,is_system)
-SELECT company_id,code,name,account_type,true
+SELECT accounts_new.company_id,accounts_new.code,accounts_new.name,accounts_new.account_type,true
 FROM public.companies
 CROSS JOIN LATERAL (VALUES
   (companies.id,'4300','Invoice Round-off Gain','income'),
