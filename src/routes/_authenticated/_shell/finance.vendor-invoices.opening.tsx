@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { InlineBillMaterialPicker } from "@/components/erp/inline-bill-material-picker";
 import { materialLineDefaults, type BillMaterialOption } from "@/lib/bill-materials";
+import type { InvoiceRoundOffMode } from "@/lib/invoice-roundoff";
 import {
   evaluateOpeningBill, isRealDate, newHistoricPayment, newOpeningLine,
   type OpeningGST, type OpeningLine, type HistoricPayment,
@@ -31,12 +32,12 @@ export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invo
 
 type Header = {
   vendor_id: string; project_id: string; building_id: string; vendor_invoice_number: string;
-  vendor_invoice_date: string; due_date: string; gst_type: OpeningGST;
+  vendor_invoice_date: string; due_date: string; gst_type: OpeningGST; round_off_mode: InvoiceRoundOffMode;
   freight: string; other_charges: string; tds_section: string; tds_rate: string; remarks: string;
 };
 const initial: Header = {
   vendor_id: "", project_id: "", building_id: "", vendor_invoice_number: "",
-  vendor_invoice_date: today(), due_date: "", gst_type: "cgst_sgst",
+  vendor_invoice_date: today(), due_date: "", gst_type: "cgst_sgst", round_off_mode: "none",
   freight: "0", other_charges: "0", tds_section: "", tds_rate: "0", remarks: "",
 };
 const toStr = (v: string | number | null | undefined, fallback = "") => v == null ? fallback : String(v);
@@ -121,7 +122,7 @@ function OpeningBill() {
     setH({
       vendor_id:inv.vendor_id,project_id:inv.project_id,building_id:inv.building_id ?? "",
       vendor_invoice_number:inv.vendor_invoice_number,
-      vendor_invoice_date:inv.vendor_invoice_date,due_date:inv.due_date ?? "",
+      vendor_invoice_date:inv.vendor_invoice_date,due_date:inv.due_date ?? "",round_off_mode:inv.round_off_mode??"none",
       gst_type:(match['gst_type'] === "none" || match['gst_type'] === "igst" || match['gst_type'] === "cgst_sgst")
         ? match['gst_type'] : (Number(inv.igst)>0 ? "igst" : "cgst_sgst"),
       freight:toStr(inv.freight,"0"),other_charges:toStr(inv.other_charges,"0"),
@@ -144,7 +145,7 @@ function OpeningBill() {
   const financialEditable = !!canEdit && !isApprovedCorrection;
   const calc = evaluateOpeningBill({
     lines,payments,gstType:h.gst_type,freight:h.freight,
-    otherCharges:h.other_charges,tdsRate:h.tds_rate,legacyPaid,
+    otherCharges:h.other_charges,tdsRate:h.tds_rate,legacyPaid,roundOffMode:h.round_off_mode,
   });
   const validation = [
     ...calc.errors,
@@ -361,6 +362,13 @@ function OpeningBill() {
           <Field label="TDS section (if applicable)"><Input disabled={!financialEditable} maxLength={30} placeholder="e.g. 194C"
             value={h.tds_section} onChange={e=>set("tds_section",e.target.value)}/></Field>
           <Field label="TDS rate %"><Input disabled={!financialEditable} inputMode="decimal" value={h.tds_rate} onChange={e=>set("tds_rate",e.target.value)}/></Field>
+          <Field label="Invoice round-off (optional)">
+            <select disabled={!financialEditable} className={selectCls} value={h.round_off_mode}
+              onChange={e=>setH(v=>({...v,round_off_mode:e.target.value as InvoiceRoundOffMode}))}>
+              <option value="none">No round-off — exact paise (default)</option>
+              <option value="nearest_rupee">Apply nearest-rupee round-off</option>
+            </select>
+          </Field>
         </div>
       </section>
 
@@ -414,12 +422,14 @@ function OpeningBill() {
           {[
             ["Taxable value",calc.subtotal],["GST amount",calc.taxTotal],
             ["Freight + charges",Number(h.freight||0)+Number(h.other_charges||0)],
-            ["Gross invoice",calc.gross],["TDS",calc.tds],["Net payable",calc.net],
+            ["Before round-off",calc.gross],["Optional round-off",calc.roundOffAmount],
+            ["Gross invoice",calc.adjustedGross],["TDS",calc.tds],["Net payable",calc.net],
             ["Already paid (historic)",calc.paid+calc.legacyPaid],["Remaining unpaid",calc.balance],
           ].map(([label,value])=><div key={label as string} className="flex justify-between gap-3 rounded-lg bg-muted/40 p-3">
             <span className="text-muted-foreground">{label}</span><strong className="font-mono">{inr(value as number)}</strong>
           </div>)}
         </div>
+        <p className="text-xs text-muted-foreground">Round-off is OFF by default. When selected, only the final invoice gross changes by up to ₹0.50; item prices, taxable amounts, GST and TDS remain unchanged.</p>
         {validation.length>0 && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
           <p className="font-medium">Complete these fields before saving</p>
           <ul className="mt-1 list-disc space-y-1 pl-5">{validation.slice(0,15).map((e,i)=><li key={i}>{e}</li>)}</ul>
