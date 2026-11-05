@@ -4168,6 +4168,99 @@ export type Database = {
           },
         ]
       }
+      opening_vendor_invoice_lines: {
+        Row: {
+          id: string
+          invoice_id: string
+          line_no: number
+          description: string
+          hsn_sac: string | null
+          unit: string
+          quantity: number
+          rate: number
+          discount: number
+          tax_rate: number
+          taxable: number
+          tax_amount: number
+          line_total: number
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          line_no: number
+          description: string
+          hsn_sac?: string | null
+          unit?: string
+          quantity: number
+          rate: number
+          discount?: number
+          tax_rate?: number
+          taxable: number
+          tax_amount: number
+          line_total: number
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          line_no?: number
+          description?: string
+          hsn_sac?: string | null
+          unit?: string
+          quantity?: number
+          rate?: number
+          discount?: number
+          tax_rate?: number
+          taxable?: number
+          tax_amount?: number
+          line_total?: number
+        }
+        Relationships: [{
+          foreignKeyName: "opening_vendor_invoice_lines_invoice_id_fkey"
+          columns: ["invoice_id"]
+          isOneToOne: false
+          referencedRelation: "vendor_invoices"
+          referencedColumns: ["id"]
+        }]
+      }
+      opening_vendor_invoice_prior_payments: {
+        Row: {
+          id: string
+          invoice_id: string
+          line_no: number
+          payment_date: string
+          payment_mode: string
+          reference: string | null
+          amount: number
+          remarks: string | null
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          line_no: number
+          payment_date: string
+          payment_mode: string
+          reference?: string | null
+          amount: number
+          remarks?: string | null
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          line_no?: number
+          payment_date?: string
+          payment_mode?: string
+          reference?: string | null
+          amount?: number
+          remarks?: string | null
+        }
+        Relationships: [{
+          foreignKeyName: "opening_vendor_invoice_prior_payments_invoice_id_fkey"
+          columns: ["invoice_id"]
+          isOneToOne: false
+          referencedRelation: "vendor_invoices"
+          referencedColumns: ["id"]
+        }]
+      }
       vendor_invoice_events: {
         Row: {
           acted_at: string
@@ -4328,6 +4421,7 @@ export type Database = {
         Row: {
           advance_adjusted: number
           amount_paid: number
+          opening_legacy_paid: number
           approved_at: string | null
           approved_by: string | null
           attachment_path: string | null
@@ -4368,6 +4462,7 @@ export type Database = {
         Insert: {
           advance_adjusted?: number
           amount_paid?: number
+          opening_legacy_paid?: number
           approved_at?: string | null
           approved_by?: string | null
           attachment_path?: string | null
@@ -4408,6 +4503,7 @@ export type Database = {
         Update: {
           advance_adjusted?: number
           amount_paid?: number
+          opening_legacy_paid?: number
           approved_at?: string | null
           approved_by?: string | null
           attachment_path?: string | null
@@ -5599,6 +5695,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["match_status"]
       }
       save_opening_vendor_invoice: { Args: { _header: Json }; Returns: string }
+      save_opening_vendor_invoice_v2: { Args: { _header: Json; _lines: Json; _payments: Json; _id?: string | null }; Returns: string }
       save_purchase_request: {
         Args: {
           _expected_updated_at?: string

@@ -421,6 +421,13 @@
       "when": 1793863862424,
       "tag": "0059_accounts_manager_vendor_manage",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793870000000,
+      "tag": "0060_structured_opening_bills",
+      "breakpoints": true
     }
   ]
 }
