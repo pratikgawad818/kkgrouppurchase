@@ -42,10 +42,39 @@ function OpeningBill() {
   const gross = n(f.subtotal) + n(f.tax_total) + n(f.freight) + n(f.other_charges);
   const tds = Math.round(n(f.subtotal) * n(f.tds_rate)) / 100;
   const net = gross - tds;
+  const invalidAmounts = ([
+    ["Amount before tax", f.subtotal],
+    ["GST", f.tax_total],
+    ["Freight", f.freight],
+    ["Other charges", f.other_charges],
+    ["TDS rate", f.tds_rate],
+    ["Already paid", f.amount_paid],
+  ] as [string, string][]).filter(([label, value]) =>
+    value.trim() === "" && label !== "Amount before tax" ? false :
+    !/^\d+(?:\.\d{1,2})?$/.test(value.trim()) ||
+    !Number.isFinite(Number(value)) || Number(value) > 1_000_000_000 ||
+    (label === "TDS rate" && Number(value) > 100)
+  ).map(([label]) => label + " must be a valid nonnegative number (maximum 2 decimals).");
+  const validDate = (date:string) => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    !Number.isNaN(Date.parse(date+"T00:00:00Z")) &&
+    new Date(date+"T00:00:00Z").toISOString().slice(0,10)===date;
+  const validationErrors = [
+    ...invalidAmounts,
+    ...(!f.vendor_id ? ["Select a vendor."] : []),
+    ...(!f.project_id ? ["Select a project."] : []),
+    ...(f.building_id && !base.data?.buildings.some(b=>b.id===f.building_id && b.project_id===f.project_id)
+      ? ["Selected building does not belong to this project."] : []),
+    ...(!f.vendor_invoice_number.trim() ? ["Enter the vendor's actual bill number."] : []),
+    ...(!validDate(f.vendor_invoice_date) ? ["Enter a valid invoice date."] : []),
+    ...(f.due_date && !validDate(f.due_date) ? ["Enter a valid due date."] : []),
+    ...(n(f.subtotal) <= 0 ? ["Amount before tax must exceed zero."] : []),
+    ...(net < 0 ? ["TDS exceeds the invoice amount."] : []),
+    ...(n(f.amount_paid) > net ? ["Amount already paid cannot exceed net payable."] : []),
+  ];
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!f.vendor_id || !f.project_id) throw new Error("Choose the vendor and project.");
+      if (validationErrors.length) throw new Error(validationErrors.join(" "));
       const attachment_path = file ? await uploadVendorDoc("invoices", file) : "";
       const { data, error } = await supabase.rpc("save_opening_vendor_invoice", { _header: { ...f, attachment_path } });
       if (error) {
@@ -64,7 +93,8 @@ function OpeningBill() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Old vendor bill" subtitle="For bills from before the ERP — no purchase order or goods receipt needed. It goes for approval like any other bill, then can be paid." />
+      <PageHeader title="Old vendor bill" subtitle="Record earlier supplier bills without creating a fake PO or GRN. Bills require review before they become payable." />
+      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Opening bills are historical records, not three-way matched purchases. Verify the bill, earlier payments and any previous accounting entries before approving, to avoid duplicated liabilities or expenses.</p>
       <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Vendor *"><select className={selectCls} value={f.vendor_id} onChange={(e) => set("vendor_id", e.target.value)}><option value="">Select vendor</option>{d.vendors.map((v) => <option key={v.id} value={v.id}>{v.company_name}</option>)}</select></Field>
         <Field label="Project *"><select className={selectCls} value={f.project_id} onChange={(e) => setF((x) => ({ ...x, project_id: e.target.value, building_id: "" }))}><option value="">Select project</option>{d.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
@@ -83,9 +113,10 @@ function OpeningBill() {
         <Field label="Bill copy (optional)"><Input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
         <div className="sm:col-span-2 lg:col-span-3"><Field label="Remarks"><Textarea value={f.remarks} onChange={(e) => set("remarks", e.target.value)} /></Field></div>
       </div>
+      {validationErrors.length > 0 && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><p className="font-semibold">Correct these fields before saving</p><ul className="mt-1 list-disc pl-5">{validationErrors.map((error,i)=><li key={i}>{error}</li>)}</ul></div>}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
         <div className="text-sm">Bill total <span className="num font-semibold">{inr(gross)}</span> · TDS <span className="num">{inr(tds)}</span> · Net payable <span className="num font-semibold">{inr(net)}</span> · Balance <span className="num font-semibold">{inr(net - n(f.amount_paid))}</span></div>
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? "Saving…" : "Save old bill"}</Button>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || !!base.error || validationErrors.length > 0}>{save.isPending ? "Saving…" : "Save old bill for approval"}</Button>
       </div>
     </div>
   );

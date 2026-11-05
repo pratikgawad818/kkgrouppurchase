@@ -52,12 +52,13 @@ function InvoiceDetail() {
   if (q.error || !q.data) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { inv, items, events, payments, adjustments } = q.data;
   const mine = inv.created_by === me.data?.profile.id;
-  const ms = inv.match_summary as null | { qty_variances: number; rate_variances: number; tax_variances: number; expected_total: number; invoice_total: number; total_variance: number; matched_at?: string; exceptions?: { message: string }[]; tolerances: { qty_pct: number; rate_pct: number; value: number; source?: string } };
+  const ms = inv.match_summary as null | { opening?: boolean; note?: string; qty_variances?: number; rate_variances?: number; tax_variances?: number; expected_total?: number; invoice_total?: number; total_variance?: number; matched_at?: string; exceptions?: { message: string }[]; tolerances?: { qty_pct: number; rate_pct: number; value: number; source?: string } };
+  const isOpeningBill = !inv.po_id || ms?.opening === true;
   const needsComment = dlg === "reject" || dlg === "cancel" || dlg === "approve_exception";
   const editable = inv.status === "draft" || inv.status === "exception";
   return (
     <>
-      <PageHeader deleteAction={<PermanentDelete force kind="vendor_invoice" id={inv.id} name={inv.invoice_number} onDeleted={()=>window.location.assign("/finance/vendor-invoices")}/>} title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{MATCH_STATUS[inv.match_status].label}</span></span>}
+      <PageHeader deleteAction={<PermanentDelete force kind="vendor_invoice" id={inv.id} name={inv.invoice_number} onDeleted={()=>window.location.assign("/finance/vendor-invoices")}/>} title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{isOpeningBill ? "Opening bill · no PO/GRN" : MATCH_STATUS[inv.match_status].label}</span></span>}
         actions={<div className="flex flex-wrap gap-2">
           {inv.attachment_path && <><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!).catch((e) => toast.error(errMsg(e)))}>View invoice</Button><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!, true).catch((e) => toast.error(errMsg(e)))}>Download invoice</Button></>}
           {editable && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/new" search={{ id }}>{inv.status === "exception" ? "Resolve (edit)" : "Edit"}</Link></Button>}
@@ -85,19 +86,27 @@ function InvoiceDetail() {
         <div className="rounded-md border bg-card p-4 text-sm">
           {[["Taxable value", inv.subtotal], ["CGST", inv.cgst], ["SGST", inv.sgst], ["IGST", inv.igst], ["Freight", inv.freight], ["Other charges", inv.other_charges], ["Gross invoice amount", inv.grand_total], [`TDS ${inv.tds_section ?? ""} ${Number(inv.tds_rate) ? `(${inv.tds_rate}%)` : ""}`, -Number(inv.tds_amount)]].map(([k, v]) => <div key={k as string} className="flex justify-between"><span className="text-muted-foreground">{k}</span><span className="font-mono">{inr(v as number)}</span></div>)}
           <div className="flex justify-between border-t pt-1 font-semibold"><span>Net payable</span><span className="font-mono">{inr(inv.net_payable)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Paid</span><span className="font-mono">{inr(inv.amount_paid)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{isOpeningBill ? "Total paid (including pre-ERP amounts)" : "Paid"}</span><span className="font-mono">{inr(inv.amount_paid)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Advance adjusted</span><span className="font-mono">{inr(inv.advance_adjusted)}</span></div>
           <div className="flex justify-between font-semibold"><span>Balance due</span><span className="font-mono">{inv.status === "rejected" || inv.status === "cancelled" ? inr(0) : inr(inv.balance_due)}</span></div>
         </div>
         <div className="rounded-md border bg-card p-4 text-sm">
-          <div className="mb-2 font-medium">Three-way match</div>
-          {!ms ? <p className="text-xs text-muted-foreground">Run the match to compare this bill with the PO and goods received.</p> : (<div className="space-y-1 text-xs">
+          <div className="mb-2 font-medium">{isOpeningBill ? "Opening bill verification" : "Three-way match"}</div>
+          {isOpeningBill ? (
+            <div className="space-y-2 text-xs">
+              <p className="font-medium">Old / opening bill — no PO or GRN</p>
+              <p className="text-muted-foreground">{ms?.note ?? "This invoice was recorded as an opening payable without a purchase order or goods receipt."}</p>
+              <p className="text-muted-foreground">PO, GRN and three-way match tolerances do not apply. Review the invoice details before approval.</p>
+            </div>
+          ) : !ms ? <p className="text-xs text-muted-foreground">Run the match to compare this bill with the PO and goods received.</p> : !ms.tolerances || typeof ms.tolerances.value !== "number" ? (
+            <p className="text-xs text-muted-foreground">Three-way match details are unavailable for this invoice. Re-run the match to refresh the comparison.</p>
+          ) : (<div className="space-y-1 text-xs">
             <div className="flex justify-between"><span>Quantity variances</span><span>{ms.qty_variances}</span></div>
             <div className="flex justify-between"><span>Rate variances</span><span>{ms.rate_variances}</span></div>
             <div className="flex justify-between"><span>Tax variances</span><span>{ms.tax_variances}</span></div>
-            <div className="flex justify-between"><span>Expected (PO rate × qty + tax)</span><span className="font-mono">{inr(ms.expected_total)}</span></div>
-            <div className="flex justify-between"><span>Billed (lines + tax)</span><span className="font-mono">{inr(ms.invoice_total)}</span></div>
-            <div className={cn("flex justify-between font-medium", Math.abs(ms.total_variance) > ms.tolerances.value && "text-amber-700")}><span>Total variance</span><span className="font-mono">{inr(ms.total_variance)}</span></div>
+            <div className="flex justify-between"><span>Expected (PO rate × qty + tax)</span><span className="font-mono">{inr(ms.expected_total ?? 0)}</span></div>
+            <div className="flex justify-between"><span>Billed (lines + tax)</span><span className="font-mono">{inr(ms.invoice_total ?? 0)}</span></div>
+            <div className={cn("flex justify-between font-medium", Math.abs(ms.total_variance ?? 0) > ms.tolerances.value && "text-amber-700")}><span>Total variance</span><span className="font-mono">{inr(ms.total_variance ?? 0)}</span></div>
             {!!ms.exceptions?.length && <ul className="mt-1 space-y-0.5 rounded-sm border border-destructive/30 bg-destructive/5 p-2 text-destructive">{ms.exceptions.map((x, i) => <li key={i}>{x.message}</li>)}</ul>}
             <div className="mt-1 rounded-sm border bg-muted/40 p-2">
               <div className="font-medium text-foreground">Tolerance used for this match</div>
@@ -137,7 +146,7 @@ function InvoiceDetail() {
           <div className="mb-2 text-sm font-medium">History</div>
           <ol className="space-y-2 text-sm">{events.map((e) => (
             <li key={e.id} className="border-l-2 border-primary/40 pl-3"><div className="font-medium">{ACT_LABEL[e.action] ?? e.action} <span className="font-normal text-muted-foreground">by {e.profiles?.full_name ?? "—"} · {fmtDateTime(e.acted_at)}</span></div>
-              {e.new_status && <div className="text-xs text-muted-foreground">→ {INVOICE_STATUS[e.new_status].label}</div>}{e.comment && <div className="text-xs">“{e.comment}”</div>}</li>))}</ol>
+              {e.new_status && <div className="text-xs text-muted-foreground">→ {INVOICE_STATUS[e.new_status]?.label ?? e.new_status}</div>}{e.comment && <div className="text-xs">“{e.comment}”</div>}</li>))}</ol>
         </div>
       </div>
 
