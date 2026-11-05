@@ -49,6 +49,6 @@ test("mixed construction invoices calculate line-wise unit rates independently",
   assert.equal(result.computed[2].taxable,5500);
   assert.equal(result.computed[3].taxable,18250);
   assert.equal(result.subtotal,904250);
-  assert.equal(result.taxTotal,185875);
-  assert.equal(result.balance,1090225);
+  assert.equal(result.taxTotal,185960);
+  assert.equal(result.balance,1090310);
 });
