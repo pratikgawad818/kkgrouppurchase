@@ -53,7 +53,7 @@ export function evaluateOpeningBill(input:{
   const tdsRate=safe(input.tdsRate);
   if(tdsRate>100)errors.push("TDS rate cannot exceed 100%.");
   const gross=money(subtotal+taxTotal+safe(input.freight)+safe(input.otherCharges));
-  const roundOffAmount=optionalInvoiceRoundOff(gross,input.roundOffMode??"none");
+  const roundOffAmount=Number.isFinite(gross)&&gross>=0 ? optionalInvoiceRoundOff(gross,input.roundOffMode??"none") : 0;
   const adjustedGross=money(gross+roundOffAmount);
   const tds=money(subtotal*tdsRate/100);
   const net=money(adjustedGross-tds);
