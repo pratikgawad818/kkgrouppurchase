@@ -52,3 +52,22 @@ test("mixed construction invoices calculate line-wise unit rates independently",
   assert.equal(result.taxTotal,185960);
   assert.equal(result.balance,1090310);
 });
+
+test("historical bill round-off is explicit and leaves prior payments unchanged",()=>{
+  const withPaise={
+    ...base,
+    freight:"100.40",
+    roundOffMode:"nearest_rupee",
+  };
+  const before=evaluateOpeningBill({...withPaise,roundOffMode:"none"});
+  const after=evaluateOpeningBill(withPaise);
+  assert.deepEqual(after.errors,[]);
+  assert.equal(before.gross,4112.4);
+  assert.equal(before.roundOffAmount,0);
+  assert.equal(before.net,4112.4);
+  assert.equal(after.roundOffAmount,-0.4);
+  assert.equal(after.adjustedGross,4112);
+  assert.equal(after.net,4112);
+  assert.equal(before.paid,after.paid);
+  assert.equal(after.balance,before.balance-0.4);
+});
