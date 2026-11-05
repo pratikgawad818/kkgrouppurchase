@@ -646,7 +646,9 @@ def test_optional_invoice_roundoff_accounting():
         # A regular matched invoice's adjustment must be separately posted to
         # P&L instead of silently unbalancing Accounts Payable and Input GST.
         def approve_regular(name,charges,rounding,net,delta,round_code):
-            actor(c, ACCOUNTS)
+            # The QA fixture inserts a pre-matched payable directly as the
+            # privileged test setup role. Staff can only create via the RPC.
+            c.execute("RESET ROLE")
             record=str(c.execute("""INSERT INTO vendor_invoices(
                 invoice_number,company_id,vendor_id,project_id,vendor_invoice_number,
                 vendor_invoice_date,subtotal,tax_total,freight,grand_total,
