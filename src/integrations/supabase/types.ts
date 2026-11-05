@@ -403,109 +403,7 @@ export type Database = {
         }
         Relationships: []
       }
-      erp_google_oauth_states: {
-        Row: {
-          actor_id: string
-          company_id: string
-          created_at: string
-          expires_at: string
-          spreadsheet_id: string
-          state_hash: string
-        }
-        Insert: {
-          actor_id: string
-          company_id: string
-          created_at?: string
-          expires_at: string
-          spreadsheet_id: string
-          state_hash: string
-        }
-        Update: {
-          actor_id?: string
-          company_id?: string
-          created_at?: string
-          expires_at?: string
-          spreadsheet_id?: string
-          state_hash?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "erp_google_oauth_states_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "erp_google_oauth_states_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      erp_google_sheet_connections: {
-        Row: {
-          company_id: string
-          configured_by: string | null
-          enabled: boolean
-          last_error: string | null
-          last_result: Json | null
-          last_synced_at: string | null
-          oauth_account_email: string | null
-          oauth_refresh_token_ciphertext: string | null
-          spreadsheet_id: string
-          spreadsheet_title: string
-          sync_lease_until: string | null
-          updated_at: string
-        }
-        Insert: {
-          company_id: string
-          configured_by?: string | null
-          enabled?: boolean
-          last_error?: string | null
-          last_result?: Json | null
-          last_synced_at?: string | null
-          oauth_account_email?: string | null
-          oauth_refresh_token_ciphertext?: string | null
-          spreadsheet_id: string
-          spreadsheet_title?: string
-          sync_lease_until?: string | null
-          updated_at?: string
-        }
-        Update: {
-          company_id?: string
-          configured_by?: string | null
-          enabled?: boolean
-          last_error?: string | null
-          last_result?: Json | null
-          last_synced_at?: string | null
-          oauth_account_email?: string | null
-          oauth_refresh_token_ciphertext?: string | null
-          spreadsheet_id?: string
-          spreadsheet_title?: string
-          sync_lease_until?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "erp_google_sheet_connections_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: true
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "erp_google_sheet_connections_configured_by_fkey"
-            columns: ["configured_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      erp_google_sheet_import_audit: {
+      erp_historical_consumption_audit: {
         Row: {
           company_id: string
           id: string
@@ -805,24 +703,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      erp_sheet_sync_nonces: {
-        Row: {
-          created_at: string
-          expires_at: string
-          token_hash: string
-        }
-        Insert: {
-          created_at?: string
-          expires_at: string
-          token_hash: string
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string
-          token_hash?: string
-        }
-        Relationships: []
       }
       financial_periods: {
         Row: {
