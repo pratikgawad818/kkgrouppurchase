@@ -323,6 +323,10 @@ BEGIN
       -- Prior payments do not require payment approval: they are *records* of past outflows.
       -- Recognize only the outstanding opening liability, not another expense or historical GST.
       IF inv.balance_due>0 THEN
+        -- Supports companies created after this migration, too.
+        INSERT INTO public.accounts(company_id,code,name,account_type,is_system)
+        VALUES(inv.company_id,'3000','Opening Balance Clearing — CA Reconciliation','equity',true)
+        ON CONFLICT (company_id,code) DO NOTHING;
         PERFORM public.post_journal(inv.company_id,inv.vendor_invoice_date,'vendor_invoice',inv.id,
           inv.vendor_id,inv.project_id,'Opening vendor payable '||inv.invoice_number||' (CA clearing)',
           jsonb_build_array(jsonb_build_object('code','3000','debit',inv.balance_due),
