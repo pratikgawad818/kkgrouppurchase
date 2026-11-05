@@ -111,3 +111,20 @@ activation is no longer required.
 - Two-way data editing is intentionally **limited** to historical material usage. Other entry tabs stage one-way into ERP and are not general-purpose bidirectional financial editors.
 - Project historical costing is stored independently; the core Project Cost Control headline totals are unchanged until finance reconciles whether expenses duplicate posted invoices.
 - GitHub Actions can be delayed or skip a run. These functions are polling-based, not transactional zero-latency events.
+
+## Recovery from Google Testing-mode token expiry (2026-11)
+
+Google OAuth applications configured with an **External / Testing** consent screen issue refresh tokens that expire in about **7 days** when requesting the Sheets scope. The Supabase `pg_cron` scheduler can remain healthy while every HTTP synchronization returns `503`.
+
+After this change:
+1. The server differentiates Google `invalid_grant` (expired/revoked refresh token) from transient network/server errors and rejected client credentials.
+2. On `invalid_grant` **only**, the affected company's Google Sheets connection is paused (`enabled=false`), its last successful sync timestamp is preserved, and a clear reauthorization message is stored. Concurrently reauthorized credentials are not disabled.
+3. ERP Settings surfaces an **Automatic Google Sheets sync needs reconnection** alert, with a **Reconnect Google** button that reuses the existing workbook URL. OAuth callback re-enables and clears the error after the Super Admin reauthorizes.
+4. The PostgreSQL cron job remains active. Its dispatcher skips paused connections rather than generating repeated 503 responses. Financial imports continue to require Super Admin review.
+
+One-time operator action:
+- In the Google Cloud project that owns the OAuth client, navigate **Google Auth Platform → Audience** and change the publishing status from **Testing** to **In production**, subject to Google's review, verification and consent requirements.
+- In ERP **Settings → Google Sheets**, select **Reconnect Google**, authorize the same spreadsheet owner, and press **Sync now** to confirm the timestamp advances.
+- Do not share Google refresh tokens, app secrets or service-account credentials in chat. Publishing does not guarantee that Google will approve all requested scopes, and tokens can still be revoked for other reasons.
+
+Google official reference: https://developers.google.com/identity/protocols/oauth2/#expiration
