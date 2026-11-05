@@ -219,7 +219,7 @@ function MaterialConsumption() {
         <div>
           <h2 className="text-base font-semibold">Historical project consumption</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Pre-ERP material usage entered through Google Sheets, separate from posted issues/returns.
+            Archived pre-ERP material usage, separate from posted issues and returns.
             These quantities do not reduce warehouse stock or change the financial journal.
           </p>
         </div>
@@ -232,7 +232,7 @@ function MaterialConsumption() {
         historical.error?<p role="alert" className="mt-3 text-sm text-destructive">
           Historical register unavailable: {errMsg(historical.error)}</p>:
         !historicalFiltered.length?<p className="mt-3 text-sm text-muted-foreground">
-          No historical entries match these filters. A Super Admin can link Google Sheets from Settings.</p>:
+          No archived historical entries match these filters.</p>:
         <div className="mt-3 overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-muted/30 text-xs"><tr>
