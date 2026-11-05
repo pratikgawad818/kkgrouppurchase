@@ -519,11 +519,11 @@ def test_structured_opening_bills_and_prior_paid():
         assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
         c.execute("SELECT vi_refresh_balance(%s)",(doc,))
         assert str(c.execute("SELECT amount_paid FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0])=="200.00"
-        denied(c,lambda:save({...header, "vendor_id":FOREIGN_VENDOR}),"Vendor not found")
-        denied(c,lambda:save({...header, "vendor_invoice_number":"QA-OLD-101"},ps=[
-            {...paid,"amount":"1200"}]),"exceed")
-        denied(c,lambda:save({...header, "vendor_invoice_number":"QA-OLD-101"},ls=[
-            {...item,"quantity":"-2"}]),"Invalid quantity")
+        denied(c,lambda:save(dict(header, vendor_id=FOREIGN_VENDOR)),"Vendor not found")
+        denied(c,lambda:save(dict(header, vendor_invoice_number="QA-OLD-101"),ps=[
+            dict(paid[0],amount="1200")]),"exceed")
+        denied(c,lambda:save(dict(header, vendor_invoice_number="QA-OLD-101"),ls=[
+            dict(item[0],quantity="-2")]),"Invalid quantity")
         assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
         actor(c, OTHER_DIRECTOR)
         assert c.execute("SELECT count(*) FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0]==0
@@ -537,8 +537,8 @@ def test_structured_opening_bills_and_prior_paid():
           ("2100","0.00","980.00"),("3000","980.00","0.00")],rows
         assert c.execute("SELECT count(*) FROM journal_entries WHERE source_type='vendor_payment'").fetchone()[0]==0
         actor(c, ACCOUNTS)
-        header2={**header,"vendor_invoice_number":"QA-OLD-102"}
-        paid_all=[{**paid,"amount":"1180"}]
+        header2=dict(header,vendor_invoice_number="QA-OLD-102")
+        paid_all=[dict(paid[0],amount="1180")]
         fully_paid=save(header2,ps=paid_all)
         actor(c, DIRECTOR)
         assert c.execute("SELECT invoice_transition(%s,'approve','Paid earlier')",(fully_paid,)).fetchone()[0]=="paid"
