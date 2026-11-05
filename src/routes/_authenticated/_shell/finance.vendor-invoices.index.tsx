@@ -90,12 +90,17 @@ function InvoiceList() {
         subtitle="Bills from vendors, checked against the purchase order and goods received before they become payable."
         actions={
           can("vendor_invoice.create") && (
+            <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/finance/vendor-invoices/opening">Old bill (no PO)</Link>
+            </Button>
             <Button asChild size="sm">
               <Link to="/finance/vendor-invoices/new">
                 <Plus className="mr-1 h-4 w-4" />
                 New vendor invoice
               </Link>
             </Button>
+            </div>
           )
         }
       />
