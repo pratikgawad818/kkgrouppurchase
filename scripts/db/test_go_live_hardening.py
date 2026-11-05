@@ -517,7 +517,11 @@ def test_structured_opening_bills_and_prior_paid():
         assert c.execute("SELECT count(*) FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM opening_vendor_invoice_prior_payments WHERE invoice_id=%s",(doc,)).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
+        # Internal balance-refresh function must remain inaccessible to ordinary staff.
+        denied(c,lambda:c.execute("SELECT vi_refresh_balance(%s)",(doc,)),"permission denied")
+        c.execute("RESET ROLE")
         c.execute("SELECT vi_refresh_balance(%s)",(doc,))
+        actor(c, ACCOUNTS)
         assert str(c.execute("SELECT amount_paid FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0])=="200.00"
         denied(c,lambda:save(dict(header, vendor_id=FOREIGN_VENDOR)),"Vendor not found")
         denied(c,lambda:save(dict(header, vendor_invoice_number="QA-OLD-101"),ps=[
