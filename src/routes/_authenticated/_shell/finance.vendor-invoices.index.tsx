@@ -47,7 +47,7 @@ function InvoiceList() {
           await supabase
             .from("vendor_invoices")
             .select(
-              "id,invoice_number,vendor_invoice_number,vendor_invoice_date,due_date,grand_total,net_payable,balance_due,status,match_status,vendor_id,project_id,po_id,vendors(company_name),projects(name),purchase_orders(po_number)",
+              "id,invoice_number,vendor_invoice_number,vendor_invoice_date,due_date,grand_total,net_payable,balance_due,status,match_status,is_opening,vendor_id,project_id,po_id,vendors(company_name),projects(name),purchase_orders(po_number)",
               { count: "exact" },
             )
             .order("created_at", { ascending: false })
@@ -242,8 +242,8 @@ function InvoiceList() {
                       {inr(x.balance_due)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn(badge, MATCH_STATUS[x.match_status].cls)}>
-                        {MATCH_STATUS[x.match_status].label}
+                      <span className={cn(badge, x.is_opening ? "border-slate-300 bg-slate-50 text-slate-700" : MATCH_STATUS[x.match_status].cls)}>
+                        {x.is_opening ? "Opening · no 3-way match" : MATCH_STATUS[x.match_status].label}
                       </span>
                     </td>
                     <td className="px-4 py-3">
