@@ -493,6 +493,61 @@ def test_staff_audit_classifier():
     print("PASS recovered staff classifier tested against disposable PostgreSQL; no live database calls")
 
 
+
+def test_structured_opening_bills_and_prior_paid():
+    """Historical payment documentation never becomes a new vendor payment or bank posting."""
+    with db() as c:
+        c.execute("""INSERT INTO accounts(company_id,code,name,account_type)
+          VALUES(%s,'2100','QA Payables','liability') ON CONFLICT(company_id,code) DO NOTHING""",(A,))
+        actor(c, ACCOUNTS)
+        header={"project_id":PROJECT,"vendor_id":VENDOR,"vendor_invoice_number":"QA-OLD-100",
+            "vendor_invoice_date":"2026-11-01","gst_type":"cgst_sgst","freight":"0","other_charges":"0",
+            "tds_rate":"0","remarks":"Old supplier bill"}
+        item=[{"description":"Old cement delivery","hsn_sac":"2523","unit":"Bag",
+            "quantity":"2","rate":"500","discount":"0","tax_rate":"18"}]
+        paid=[{"payment_date":"2026-11-02","payment_mode":"upi","reference":"QA-UTR",
+            "amount":"200","remarks":"Already paid outside ERP"}]
+        def save(h, ls=item, ps=paid, old=None):
+            return str(c.execute("SELECT save_opening_vendor_invoice_v2(%s::jsonb,%s::jsonb,%s::jsonb,%s)",
+                (json.dumps(h),json.dumps(ls),json.dumps(ps),old)).fetchone()[0])
+        doc=save(header)
+        initial=c.execute("SELECT net_payable,amount_paid,balance_due,status FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()
+        assert tuple(map(str,initial[:3]))==("1180.00","200.00","980.00"),initial
+        assert initial[3]=="pending_review"
+        assert c.execute("SELECT count(*) FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM opening_vendor_invoice_prior_payments WHERE invoice_id=%s",(doc,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
+        c.execute("SELECT vi_refresh_balance(%s)",(doc,))
+        assert str(c.execute("SELECT amount_paid FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0])=="200.00"
+        denied(c,lambda:save({...header, "vendor_id":FOREIGN_VENDOR}),"Vendor not found")
+        denied(c,lambda:save({...header, "vendor_invoice_number":"QA-OLD-101"},ps=[
+            {...paid,"amount":"1200"}]),"exceed")
+        denied(c,lambda:save({...header, "vendor_invoice_number":"QA-OLD-101"},ls=[
+            {...item,"quantity":"-2"}]),"Invalid quantity")
+        assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
+        actor(c, OTHER_DIRECTOR)
+        assert c.execute("SELECT count(*) FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0]==0
+        actor(c, DIRECTOR)
+        assert c.execute("SELECT invoice_transition(%s,'approve','QA checked original bill')",(doc,)).fetchone()[0]=="approved"
+        rows=c.execute("""SELECT a.code, jl.debit, jl.credit FROM journal_lines jl
+          JOIN accounts a ON a.id=jl.account_id
+          JOIN journal_entries je ON je.id=jl.entry_id
+          WHERE je.source_type='vendor_invoice' AND je.source_id=%s ORDER BY a.code""",(doc,)).fetchall()
+        assert [(r[0],str(r[1]),str(r[2])) for r in rows]==[
+          ("2100","0.00","980.00"),("3000","980.00","0.00")],rows
+        assert c.execute("SELECT count(*) FROM journal_entries WHERE source_type='vendor_payment'").fetchone()[0]==0
+        actor(c, ACCOUNTS)
+        header2={**header,"vendor_invoice_number":"QA-OLD-102"}
+        paid_all=[{**paid,"amount":"1180"}]
+        fully_paid=save(header2,ps=paid_all)
+        actor(c, DIRECTOR)
+        assert c.execute("SELECT invoice_transition(%s,'approve','Paid earlier')",(fully_paid,)).fetchone()[0]=="paid"
+        assert c.execute("SELECT status,balance_due FROM vendor_invoices WHERE id=%s",(fully_paid,)).fetchone()==("paid",0)
+        assert c.execute("SELECT count(*) FROM journal_entries WHERE source_id=%s",(fully_paid,)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
+        c.rollback()
+    print("PASS historical vendor invoice lines, prior-paid preservation, scope, opening clearing and zero new payment approvals")
+
 if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
@@ -503,3 +558,4 @@ if __name__ == "__main__":
     test_super_admin_record_cleanup()
     test_concurrent_save_retries()
     test_staff_audit_classifier()
+    test_structured_opening_bills_and_prior_paid()
