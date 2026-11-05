@@ -171,7 +171,7 @@ BEGIN
     INSERT INTO public.vendor_invoices (
       invoice_number,company_id,vendor_id,po_id,project_id,building_id,
       vendor_invoice_number,vendor_invoice_date,due_date,
-      calc_subtotal,calc_tax_total,cgst,sgst,igst,freight,other_charges,grand_total,
+      subtotal,tax_total,cgst,sgst,igst,freight,other_charges,grand_total,
       tds_section,tds_rate,tds_amount,net_payable,amount_paid,balance_due,
       status,match_status,remarks,attachment_path,created_by,is_opening,match_summary
     ) VALUES (
