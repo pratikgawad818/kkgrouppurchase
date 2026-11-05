@@ -6,8 +6,8 @@ export type ProjectStatus = Database["public"]["Enums"]["project_status"];
 export type WorkStatus = Database["public"]["Enums"]["work_status"];
 export type AppRole = Database["public"]["Enums"]["app_role"];
 
-const inrFmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
-const numFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+const inrFmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const numFmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 });
 
 /** Display-only formatting. Authoritative amounts are computed in the database. */
 export function inr(v: number | string | null | undefined) {
@@ -15,13 +15,10 @@ export function inr(v: number | string | null | undefined) {
   return inrFmt.format(Number(v));
 }
 
-/** Compact Indian notation: ₹1.25 Cr, ₹45.2 L */
+/** Financial amounts must always show exact rupees and paise, even on summary cards. */
 export function inrShort(v: number | string | null | undefined) {
   if (v === null || v === undefined) return "—";
-  const n = Number(v);
-  if (Math.abs(n) >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
-  if (Math.abs(n) >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
-  return inrFmt.format(n);
+  return inrFmt.format(Number(v));
 }
 
 export function num(v: number | string | null | undefined) {

@@ -71,6 +71,7 @@ const rules: readonly Rule[] = [
 
   { pattern: /^\/reports\/project-cost-control\/?$/, any: ["financial.view"] },
   { pattern: /^\/finance\/vendor-invoices\/new\/?$/, any: ["vendor_invoice.create"] },
+  { pattern: /^\/finance\/vendor-invoices\/opening\/?$/, any: ["vendor_invoice.create"] },
   { pattern: /^\/finance\/vendor-invoices(?:\/[^/]+)?\/?$/, any: ["vendor_invoice.view"] },
   { pattern: /^\/finance\/payables\/?$/, any: ["payable.view"] },
   { pattern: /^\/finance\/payments(?:\/[^/]+)?\/?$/, any: ["payment.view"] },
