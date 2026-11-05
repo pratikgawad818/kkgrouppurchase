@@ -89,7 +89,7 @@ BEGIN
     THEN RAISE EXCEPTION 'Check the historical bill date and due date'; END IF;
   building := nullif(_header->>'building_id','')::uuid;
   IF building IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM public.buildings WHERE id=building AND project_id=pr.id AND company_id=pr.company_id
+    SELECT 1 FROM public.buildings WHERE id=building AND project_id=pr.id
   ) THEN RAISE EXCEPTION 'Building does not belong to the selected project'; END IF;
 
   IF _id IS NOT NULL THEN
