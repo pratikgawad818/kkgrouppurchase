@@ -5,7 +5,9 @@ VALUES ('materials.edit','Inventory','Create and edit material records, without 
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.role_permissions(role,permission_code)
-VALUES ('accountant','materials.edit'),
+VALUES ('accountant','materials.view'),
+       ('accountant','materials.edit'),
+       ('accounts_manager','materials.view'),
        ('accounts_manager','materials.edit')
 ON CONFLICT DO NOTHING;
 
