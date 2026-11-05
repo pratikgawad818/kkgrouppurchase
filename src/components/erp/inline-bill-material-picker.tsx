@@ -87,14 +87,12 @@ export function InlineBillMaterialPicker({
   });
 
   function startCreate() {
-    const suggestedUnit = selected ? selected.unit_id :
-      units.find(u => u.code.toLocaleLowerCase() === "nos")?.id ?? units[0]?.id ?? "";
     setForm({
       name: value.trim(),
       code: autoCode(),
-      category_id: categories[0]?.id ?? "",
-      unit_id: suggestedUnit,
-      hsn_sac: selected?.hsn_sac ?? "",
+      category_id: "",
+      unit_id: "",
+      hsn_sac: "",
     });
     setOpen(false);
     setCreateOpen(true);
