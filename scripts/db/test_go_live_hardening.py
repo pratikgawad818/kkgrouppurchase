@@ -540,6 +540,25 @@ def test_structured_opening_bills_and_prior_paid():
         assert [(r[0],str(r[1]),str(r[2])) for r in rows]==[
           ("2100","0.00","980.00"),("3000","980.00","0.00")],rows
         assert c.execute("SELECT count(*) FROM journal_entries WHERE source_type='vendor_payment'").fetchone()[0]==0
+        # An approved historical bill can receive audited item details, never new payable/bank amounts.
+        before=c.execute("SELECT updated_at,subtotal,tax_total,balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()
+        details=[dict(item[0], description="Corrected old cement 53 grade", hsn_sac="2523")]
+        reason="Verified item description against original supplier invoice"
+        def correct(lines=details,expected=before[0]):
+            return c.execute(
+                "SELECT correct_approved_opening_vendor_invoice(%s,%s::jsonb,%s,%s,%s,%s)",
+                (doc,json.dumps(lines),"Accounts validated historical item breakdown","",reason,expected)
+            ).fetchone()[0]
+        assert str(correct())==doc
+        after=c.execute("SELECT updated_at,subtotal,tax_total,balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()
+        assert after[1:]==before[1:]
+        assert c.execute("SELECT description FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0]=="Corrected old cement 53 grade"
+        assert c.execute("SELECT count(*) FROM vendor_invoice_events WHERE invoice_id=%s AND action='opening_details_corrected'",(doc,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM journal_entries WHERE source_id=%s",(doc,)).fetchone()[0]==1
+        denied(c,lambda:correct(), "changed since it was opened")
+        denied(c,lambda:correct([dict(details[0],rate="550")],after[0]),"must exactly match")
+        actor(c,PURCHASER)
+        denied(c,lambda:correct(details,after[0]),"Accounts approval permission")
         actor(c, ACCOUNTS)
         header2=dict(header,vendor_invoice_number="QA-OLD-102")
         paid_all=[dict(paid[0],amount="1180")]

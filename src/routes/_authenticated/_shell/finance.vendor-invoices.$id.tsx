@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invo
 });
 
 type Act = "submit" | "approve" | "approve_exception" | "reject" | "cancel";
-const ACT_LABEL: Record<string, string> = { opening_entry: "Historical bill entered", opening_updated: "Historical bill revised", created: "Created", edited: "Edited", submit: "Matched / submitted", approve: "Approved", approve_exception: "Exception approved", reject: "Rejected", cancel: "Cancelled" };
+const ACT_LABEL: Record<string, string> = { opening_entry: "Historical bill entered", opening_updated: "Historical bill revised", opening_details_corrected: "Approved bill details corrected", created: "Created", edited: "Edited", submit: "Matched / submitted", approve: "Approved", approve_exception: "Exception approved", reject: "Rejected", cancel: "Cancelled" };
 
 function InvoiceDetail() {
   const { id } = Route.useParams();
@@ -65,7 +65,7 @@ function InvoiceDetail() {
       <PageHeader deleteAction={<PermanentDelete force kind="vendor_invoice" id={inv.id} name={inv.invoice_number} onDeleted={()=>window.location.assign("/finance/vendor-invoices")}/>} title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{isOpeningBill ? "Opening bill · no PO/GRN" : MATCH_STATUS[inv.match_status].label}</span></span>}
         actions={<div className="flex flex-wrap gap-2">
           {inv.attachment_path && <><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!).catch((e) => toast.error(errMsg(e)))}>View invoice</Button><Button size="sm" variant="outline" onClick={() => openVendorDoc(inv.attachment_path!, true).catch((e) => toast.error(errMsg(e)))}>Download invoice</Button></>}
-          {isOpeningBill && inv.status==="pending_review" && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/opening" search={{id}}>Edit old bill</Link></Button>}
+          {isOpeningBill && (inv.status==="pending_review" || (["approved","partially_paid","paid"].includes(inv.status) && can("vendor_invoice.approve"))) && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/opening" search={{id}}>{inv.status==="pending_review" ? "Edit old bill" : "Correct item details"}</Link></Button>}
           {!isOpeningBill && editable && can("vendor_invoice.create") && <Button size="sm" variant="outline" asChild><Link to="/finance/vendor-invoices/new" search={{ id }}>{inv.status === "exception" ? "Resolve (edit)" : "Edit"}</Link></Button>}
           {!isOpeningBill && editable && (can("vendor_invoice.create") || can("vendor_invoice.review")) && <Button size="sm" onClick={() => act.mutate("submit")} disabled={act.isPending}>Run 3-way match</Button>}
           {inv.status === "pending_review" && can("vendor_invoice.approve") && !mine && <Button size="sm" onClick={() => setDlg("approve")}>Approve</Button>}
@@ -133,7 +133,7 @@ function InvoiceDetail() {
               <td className="p-2">{l.line_no}</td><td className="p-2">{l.description}</td><td className="p-2">{l.hsn_sac??"—"}</td><td className="p-2">{num(l.quantity)} {l.unit}</td>
               <td className="p-2 text-right">{inr(l.rate)}</td><td className="p-2 text-right">{inr(l.discount)}</td><td className="p-2 text-right">{num(l.tax_rate)}%</td><td className="p-2 text-right font-medium">{inr(l.line_total)}</td>
             </tr>)}</tbody></table></div>}
-        <p className="mt-2 text-xs text-muted-foreground">Historical bill items do not create GRNs or change current stock.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Historical bill items do not create GRNs or change current stock. Unit rates and quantity are preserved per line. Approved/paid invoices require authorized, audited corrections with unchanged total taxable value and GST.</p>
       </div>}
       {!isOpeningBill && (<div className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">

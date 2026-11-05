@@ -218,6 +218,7 @@ function InvoiceList() {
                       >
                         {x.invoice_number}
                       </Link>
+                      {x.is_opening && (x.status==="pending_review" || (["approved","partially_paid","paid"].includes(x.status) && can("vendor_invoice.approve"))) && can("vendor_invoice.create") && <Link className="mt-1 block text-xs font-medium text-primary hover:underline" to="/finance/vendor-invoices/opening" search={{id:x.id}}>{x.status==="pending_review"?"Edit bill & items":"Correct item details"}</Link>}
                     </td>
                     <td className="px-4 py-3 font-medium tabular-nums text-xs">
                       {x.vendor_invoice_number}
