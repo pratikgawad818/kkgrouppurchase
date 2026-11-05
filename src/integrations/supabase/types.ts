@@ -5695,6 +5695,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["match_status"]
       }
       save_opening_vendor_invoice: { Args: { _header: Json }; Returns: string }
+      correct_approved_opening_vendor_invoice: { Args: { _id: string; _lines: Json; _remarks: string; _attachment_path: string; _reason: string; _expected_updated_at: string }; Returns: string }
       save_opening_vendor_invoice_v2: { Args: { _header: Json; _lines: Json; _payments: Json; _id?: string | null }; Returns: string }
       save_purchase_request: {
         Args: {
