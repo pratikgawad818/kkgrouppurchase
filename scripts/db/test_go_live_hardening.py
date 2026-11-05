@@ -516,6 +516,14 @@ def test_structured_opening_bills_and_prior_paid():
         assert initial[3]=="pending_review"
         assert c.execute("SELECT count(*) FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM opening_vendor_invoice_prior_payments WHERE invoice_id=%s",(doc,)).fetchone()[0]==1
+        # A selected master material must retain its reference and use the master unit.
+        header_linked=dict(header,vendor_invoice_number="QA-MASTER-LINK-01")
+        with_material=[dict(item[0],material_id=MATERIAL,unit="NOS")]
+        linked_bill=save(header_linked,ls=with_material,ps=[])
+        stored=c.execute("SELECT material_id,unit,rate FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(linked_bill,)).fetchone()
+        assert (str(stored[0]),stored[1],str(stored[2]))==(MATERIAL,"NOS","500.00"),stored
+        denied(c,lambda:save(dict(header,vendor_invoice_number="QA-WRONG-UOM"),ls=[dict(item[0],material_id=MATERIAL,unit="Bag")],ps=[]),"Selected material and unit do not match")
+        denied(c,lambda:save(dict(header,vendor_invoice_number="QA-UNKNOWN-MATERIAL"),ls=[dict(item[0],material_id="33333333-3333-4333-8333-333333333333",unit="NOS")],ps=[]),"Selected material and unit do not match")
         assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
         # Internal balance-refresh function must remain inaccessible to ordinary staff.
         denied(c,lambda:c.execute("SELECT vi_refresh_balance(%s)",(doc,)),"permission denied")
@@ -542,7 +550,7 @@ def test_structured_opening_bills_and_prior_paid():
         assert c.execute("SELECT count(*) FROM journal_entries WHERE source_type='vendor_payment'").fetchone()[0]==0
         # An approved historical bill can receive audited item details, never new payable/bank amounts.
         before=c.execute("SELECT updated_at,subtotal,tax_total,balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()
-        details=[dict(item[0], description="Corrected old cement 53 grade", hsn_sac="2523")]
+        details=[dict(item[0], description="Corrected old cement 53 grade", hsn_sac="2523",material_id=MATERIAL,unit="NOS")]
         reason="Verified item description against original supplier invoice"
         def correct(lines=details,expected=before[0]):
             return c.execute(
@@ -553,6 +561,7 @@ def test_structured_opening_bills_and_prior_paid():
         after=c.execute("SELECT updated_at,subtotal,tax_total,balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()
         assert after[1:]==before[1:]
         assert c.execute("SELECT description FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0]=="Corrected old cement 53 grade"
+        assert str(c.execute("SELECT material_id FROM opening_vendor_invoice_lines WHERE invoice_id=%s",(doc,)).fetchone()[0])==MATERIAL
         assert c.execute("SELECT count(*) FROM vendor_invoice_events WHERE invoice_id=%s AND action='opening_details_corrected'",(doc,)).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM journal_entries WHERE source_id=%s",(doc,)).fetchone()[0]==1
         denied(c,lambda:correct(), "changed since it was opened")

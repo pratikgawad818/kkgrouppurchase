@@ -4170,6 +4170,7 @@ export type Database = {
       }
       opening_vendor_invoice_lines: {
         Row: {
+          material_id: string | null
           id: string
           invoice_id: string
           line_no: number
@@ -4185,6 +4186,7 @@ export type Database = {
           line_total: number
         }
         Insert: {
+          material_id?: string | null
           id?: string
           invoice_id: string
           line_no: number
@@ -4200,6 +4202,7 @@ export type Database = {
           line_total: number
         }
         Update: {
+          material_id?: string | null
           id?: string
           invoice_id?: string
           line_no?: number
@@ -4219,6 +4222,12 @@ export type Database = {
           columns: ["invoice_id"]
           isOneToOne: false
           referencedRelation: "vendor_invoices"
+          referencedColumns: ["id"]
+        }, {
+          foreignKeyName: "opening_vendor_invoice_lines_material_id_fkey"
+          columns: ["material_id"]
+          isOneToOne: false
+          referencedRelation: "items"
           referencedColumns: ["id"]
         }]
       }

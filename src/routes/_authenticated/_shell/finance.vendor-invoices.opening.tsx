@@ -13,6 +13,9 @@ import { selectCls } from "@/lib/po";
 import { PAYMENT_MODES, today, uploadVendorDoc } from "@/lib/finance";
 import { useCan } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { InlineBillMaterialPicker } from "@/components/erp/inline-bill-material-picker";
+import { materialLineDefaults, type BillMaterialOption } from "@/lib/bill-materials";
 import {
   evaluateOpeningBill, isRealDate, newHistoricPayment, newOpeningLine,
   type OpeningGST, type OpeningLine, type HistoricPayment,
@@ -52,6 +55,10 @@ function OpeningBill() {
   const set = (field: keyof Header, value: string) => setH(current => ({ ...current, [field]: value }));
   const changeLine = (id: string, field: keyof OpeningLine, value: string) =>
     setLines(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
+  const typeMaterial = (id: string, description: string) =>
+    setLines(prev=>prev.map(row=>row.id===id?{...row,description,material_id:""}:row));
+  const chooseMaterial = (id: string, material: BillMaterialOption) =>
+    setLines(prev=>prev.map(row=>row.id===id?{...row,...materialLineDefaults(material)}:row));
   const changePayment = (id: string, field: keyof HistoricPayment, value: string) =>
     setPayments(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
 
@@ -67,6 +74,26 @@ function OpeningBill() {
       if(p.error)throw p.error;
       if(b.error)throw b.error;
       return {vendors:v.data ?? [],projects:p.data ?? [],buildings:b.data ?? []};
+    },
+  });
+  const materials = useQuery({
+    queryKey: ["old-bill-materials"],
+    enabled: can("materials.view"),
+    queryFn: async () => loadCompleteRows(async (start,end) => await supabase.from("items")
+      .select("id,code,name,hsn_sac,category_id,unit_id,units_of_measure(code,name)",{count:"exact"})
+      .eq("status","active").order("name").order("id").range(start,end)),
+  });
+  const materialRefs = useQuery({
+    queryKey: ["old-bill-material-refs"],
+    enabled: can("materials.view"),
+    queryFn: async () => {
+      const [categories,units] = await Promise.all([
+        supabase.from("item_categories").select("id,code,name").eq("status","active").order("name"),
+        supabase.from("units_of_measure").select("id,code,name").eq("status","active").order("name"),
+      ]);
+      if(categories.error) throw categories.error;
+      if(units.error) throw units.error;
+      return {categories:categories.data??[],units:units.data??[]};
     },
   });
   const existing = useQuery({
@@ -102,7 +129,7 @@ function OpeningBill() {
     });
     setLegacyPaid(Number(inv.opening_legacy_paid) || 0);
     setLines(entry.lines.length ? entry.lines.map(row => ({
-      id:row.id,description:row.description,hsn_sac:row.hsn_sac ?? "",
+      id:row.id,material_id:row.material_id??"",description:row.description,hsn_sac:row.hsn_sac ?? "",
       unit:row.unit,quantity:toStr(row.quantity),rate:toStr(row.rate),
       discount:toStr(row.discount),tax_rate:toStr(row.tax_rate),
     })) : [newOpeningLine("initial")]);
@@ -146,8 +173,8 @@ function OpeningBill() {
       const payload={
         _id:editId ?? null,
         _header:{...h,attachment_path},
-        _lines:lines.map(({description,hsn_sac,unit,quantity,rate,discount,tax_rate})=>({
-          description,hsn_sac,unit,quantity,rate,discount,tax_rate,
+        _lines:lines.map(({material_id,description,hsn_sac,unit,quantity,rate,discount,tax_rate})=>({
+          material_id:material_id||null,description,hsn_sac,unit,quantity,rate,discount,tax_rate,
         })),
         _payments:payments.map(({payment_date,payment_mode,reference,amount,remarks})=>({
           payment_date,payment_mode,reference,amount,remarks,
@@ -241,6 +268,7 @@ function OpeningBill() {
             <Plus className="mr-1 h-4 w-4"/>Add another item
           </Button>
         </div>
+        <p className="mb-3 text-xs text-muted-foreground">Pick a saved material to autofill its master unit and HSN/SAC. No match? Authorized staff can create it here without losing this bill.</p>
         <div className="space-y-3">
           {lines.map((item,index)=>{
             const amount=calc.computed[index];
@@ -261,19 +289,30 @@ function OpeningBill() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="sm:col-span-2">
-                  <Field label="Material / work / service description *">
-                    <Input aria-label={"Item "+(index+1)+" description"} disabled={!canEdit} maxLength={250}
-                      value={item.description} onChange={e=>changeLine(item.id,"description",e.target.value)}
-                      placeholder="e.g. reinforcement steel 12 mm, concrete, labour"/>
+                  <Field label="Material / work / service *">
+                    <InlineBillMaterialPicker
+                      itemId={item.id}
+                      value={item.description}
+                      materialId={item.material_id??""}
+                      disabled={!canEdit}
+                      materials={(materials.data??[]) as BillMaterialOption[]}
+                      loading={can("materials.view") && materials.isLoading}
+                      error={!can("materials.view")?"You do not have Materials viewing permission.":materials.error?errMsg(materials.error):null}
+                      canCreate={can("materials.manage")}
+                      categories={materialRefs.data?.categories??[]}
+                      units={materialRefs.data?.units??[]}
+                      onType={description=>typeMaterial(item.id,description)}
+                      onPick={material=>chooseMaterial(item.id,material)}
+                    />
                   </Field>
                 </div>
                 <Field label="HSN / SAC (if applicable)">
                   <Input aria-label={"Item "+(index+1)+" HSN or SAC"} disabled={!canEdit} maxLength={30}
                     value={item.hsn_sac} onChange={e=>changeLine(item.id,"hsn_sac",e.target.value)}/>
                 </Field>
-                <Field label="Unit *">
-                  <Input aria-label={"Item "+(index+1)+" unit"} disabled={!canEdit} maxLength={25} list="opening-bill-units"
-                    value={item.unit} onChange={e=>changeLine(item.id,"unit",e.target.value)} placeholder="Bag / MT / Kg"/>
+                <Field label={item.material_id?"Unit (from Materials master) *":"Unit *"}>
+                  <Input aria-label={"Item "+(index+1)+" unit"} disabled={!canEdit || !!item.material_id} maxLength={25} list="opening-bill-units"
+                    value={item.unit} onChange={e=>changeLine(item.id,"unit",e.target.value)} placeholder="Select a material for its unit"/>
                 </Field>
                 <Field label="Quantity / weight *">
                   <Input aria-label={"Item "+(index+1)+" quantity"} disabled={!canEdit} inputMode="decimal"
@@ -303,9 +342,7 @@ function OpeningBill() {
           })}
         </div>
         <datalist id="opening-bill-units">
-          <option value="Nos"/><option value="Bag"/><option value="Kg"/><option value="MT"/>
-          <option value="Tonne"/><option value="M3"/><option value="CFT"/><option value="Sq Ft"/>
-          <option value="Sq M"/><option value="Meter"/><option value="Litre"/><option value="Set"/><option value="Day"/>
+          {materialRefs.data?.units.map(u=><option key={u.id} value={u.code} label={u.name}/>)}
         </datalist>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
           <p className="text-xs text-muted-foreground">Each line has its own price and GST. Historical entries do not change today's stock.</p>

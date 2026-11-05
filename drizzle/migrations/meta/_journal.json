@@ -435,6 +435,13 @@
       "when": 1793871000000,
       "tag": "0061_approved_old_invoice_item_correction",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793872000000,
+      "tag": "0062_opening_bill_master_material_links",
+      "breakpoints": true
     }
   ]
 }

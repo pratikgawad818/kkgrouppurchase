@@ -1,5 +1,5 @@
 export type OpeningLine = {
-  id: string; description: string; hsn_sac: string; unit: string;
+  id: string; material_id?: string; description: string; hsn_sac: string; unit: string;
   quantity: string; rate: string; discount: string; tax_rate: string;
 };
 export type HistoricPayment = {
@@ -16,7 +16,7 @@ export const isRealDate = (date:string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date+"T00:00:00Z")) &&
   new Date(date+"T00:00:00Z").toISOString().slice(0,10)===date;
 export const newOpeningLine = (id:string):OpeningLine => ({
-  id,description:"",hsn_sac:"",unit:"Nos",quantity:"1",rate:"",discount:"0",tax_rate:"18",
+  id,material_id:"",description:"",hsn_sac:"",unit:"Nos",quantity:"1",rate:"",discount:"0",tax_rate:"18",
 });
 export const newHistoricPayment = (id:string,date:string):HistoricPayment => ({
   id,payment_date:date,payment_mode:"neft",reference:"",amount:"",remarks:"",
