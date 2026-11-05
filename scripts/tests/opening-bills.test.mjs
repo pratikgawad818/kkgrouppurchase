@@ -33,3 +33,22 @@ test("validates real dates and maximum three quantity decimals",()=>{
   assert.equal(isRealDate("2026-02-28"),true);
   assert.match(evaluateOpeningBill({...base,lines:[{...base.lines[0],quantity:"1.1234"}]}).errors.join(" "),/max 3 decimals/);
 });
+
+test("mixed construction invoices calculate line-wise unit rates independently",()=>{
+  const items=[
+    {id:"a",description:"Rebar steel",hsn_sac:"7214",unit:"MT",quantity:"13.250",rate:"48200",discount:"0",tax_rate:"18"},
+    {id:"b",description:"Cement 53 grade",hsn_sac:"2523",unit:"Bag",quantity:"700",rate:"345.50",discount:"0",tax_rate:"28"},
+    {id:"c",description:"Sand",hsn_sac:"",unit:"CFT",quantity:"100",rate:"55",discount:"0",tax_rate:"0"},
+    {id:"d",description:"Electrician labour",hsn_sac:"",unit:"Day",quantity:"15",rate:"1250",discount:"500",tax_rate:"18"},
+  ];
+  const result=evaluateOpeningBill({...base,lines:items,payments:[],legacyPaid:0});
+  assert.deepEqual(result.errors,[]);
+  assert.equal(result.computed.length,4);
+  assert.equal(result.computed[0].taxable,638650);
+  assert.equal(result.computed[1].taxable,241850);
+  assert.equal(result.computed[2].taxable,5500);
+  assert.equal(result.computed[3].taxable,18250);
+  assert.equal(result.subtotal,904250);
+  assert.equal(result.taxTotal,185875);
+  assert.equal(result.balance,1090225);
+});
