@@ -1,6 +1,10 @@
 -- 0063: Grant Accounts staff add/edit access to the Materials master only.
 -- Does not grant category/unit administration, stock movements, or deletion.
 INSERT INTO public.permissions(code,module,description,sort_order)
+VALUES ('materials.view','Inventory','View materials, categories and units',82)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO public.permissions(code,module,description,sort_order)
 VALUES ('materials.edit','Inventory','Create and edit material records, without deletion, stock operations, or category/unit administration',84)
 ON CONFLICT (code) DO NOTHING;
 
