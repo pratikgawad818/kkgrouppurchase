@@ -21,7 +21,7 @@ const META = "Itemized historical vendor bills and payments made before KK ERP."
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/opening")({
   head: () => ({ meta: [{ title: "Old Vendor Bill — KK GROUP ERP" }, { name: "description", content: META }] }),
   validateSearch: (raw: Record<string, unknown>): { id?: string } =>
-    typeof raw.id === "string" ? { id: raw.id } : {},
+    typeof raw['id'] === "string" ? { id: raw['id'] } : {},
   component: OpeningBill,
 });
 
@@ -92,8 +92,8 @@ function OpeningBill() {
       vendor_id:inv.vendor_id,project_id:inv.project_id,building_id:inv.building_id ?? "",
       vendor_invoice_number:inv.vendor_invoice_number,
       vendor_invoice_date:inv.vendor_invoice_date,due_date:inv.due_date ?? "",
-      gst_type:(match.gst_type === "none" || match.gst_type === "igst" || match.gst_type === "cgst_sgst")
-        ? match.gst_type : (Number(inv.igst)>0 ? "igst" : "cgst_sgst"),
+      gst_type:(match['gst_type'] === "none" || match['gst_type'] === "igst" || match['gst_type'] === "cgst_sgst")
+        ? match['gst_type'] : (Number(inv.igst)>0 ? "igst" : "cgst_sgst"),
       freight:toStr(inv.freight,"0"),other_charges:toStr(inv.other_charges,"0"),
       tds_section:inv.tds_section ?? "",tds_rate:toStr(inv.tds_rate,"0"),remarks:inv.remarks ?? "",
     });
