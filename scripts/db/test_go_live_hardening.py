@@ -655,17 +655,18 @@ def test_optional_invoice_roundoff_accounting():
             ("2100","0.00","980.00"),("3000","980.00","0.00")],old_lines
         # A regular matched invoice's adjustment must be separately posted to
         # P&L instead of silently unbalancing Accounts Payable and Input GST.
+        synthetic_po=seed_po(c)
         def approve_regular(name,charges,rounding,net,delta,round_code):
             # The QA fixture inserts a pre-matched payable directly as the
             # privileged test setup role. Staff can only create via the RPC.
             c.execute("RESET ROLE")
             record=str(c.execute("""INSERT INTO vendor_invoices(
-                invoice_number,company_id,vendor_id,project_id,vendor_invoice_number,
+                invoice_number,company_id,vendor_id,project_id,po_id,vendor_invoice_number,
                 vendor_invoice_date,subtotal,tax_total,freight,grand_total,
                 tds_amount,net_payable,balance_due,status,created_by,round_off_mode,round_off_amount)
-                VALUES(%s,%s,%s,%s,%s,'2026-11-01',100,18,%s,%s,0,%s,%s,
+                VALUES(%s,%s,%s,%s,%s,%s,'2026-11-01',100,18,%s,%s,0,%s,%s,
                     'pending_review',%s,%s,%s) RETURNING id""",
-                (name,A,VENDOR,PROJECT,name,charges,net,net,net,ACCOUNTS,rounding,delta)).fetchone()[0])
+                (name,A,VENDOR,PROJECT,synthetic_po,name,charges,net,net,net,ACCOUNTS,rounding,delta)).fetchone()[0])
             actor(c, DIRECTOR)
             assert c.execute("SELECT invoice_transition(%s,'approve','Checked supplier invoice')",
                 (record,)).fetchone()[0]=="approved"
