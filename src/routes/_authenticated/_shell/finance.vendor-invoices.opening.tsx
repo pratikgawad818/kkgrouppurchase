@@ -51,11 +51,11 @@ function OpeningBill() {
     ["Already paid", f.amount_paid],
   ] as [string, string][]).filter(([label, value]) =>
     value.trim() === "" && label !== "Amount before tax" ? false :
-    !/^\\d+(?:\\.\\d{1,2})?$/.test(value.trim()) ||
+    !/^\d+(?:\.\d{1,2})?$/.test(value.trim()) ||
     !Number.isFinite(Number(value)) || Number(value) > 1_000_000_000 ||
     (label === "TDS rate" && Number(value) > 100)
   ).map(([label]) => label + " must be a valid nonnegative number (maximum 2 decimals).");
-  const validDate = (date:string) => /^\\d{4}-\\d{2}-\\d{2}$/.test(date) &&
+  const validDate = (date:string) => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
     !Number.isNaN(Date.parse(date+"T00:00:00Z")) &&
     new Date(date+"T00:00:00Z").toISOString().slice(0,10)===date;
   const validationErrors = [
