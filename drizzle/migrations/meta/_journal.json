@@ -414,6 +414,13 @@
       "when": 1793862558846,
       "tag": "0058_opening_vendor_bills",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793863862424,
+      "tag": "0059_accounts_manager_vendor_manage",
+      "breakpoints": true
     }
   ]
 }

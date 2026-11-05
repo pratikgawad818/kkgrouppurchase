@@ -1,0 +1,1 @@
+INSERT INTO public.role_permissions(role, permission_code) VALUES ('accounts_manager','vendors.manage') ON CONFLICT DO NOTHING;
