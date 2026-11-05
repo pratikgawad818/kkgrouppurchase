@@ -248,7 +248,7 @@ function ProjectCostControl() {
 
       <section className="mt-7 rounded-xl border bg-card p-4 sm:p-5">
         <h3 className="text-sm font-semibold">Imported historical project costing (separate register)</h3>
-        <p className="mt-2 text-xs text-muted-foreground">These amounts were imported from the Google Spreadsheet and are kept separate from posted material usage and approved supplier bills. Do not add them to other project cost figures until finance reconciles duplicate costs.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Historical entries are preserved separately from posted material usage and approved supplier bills. Do not add them to other project cost figures until Accounts reconciles possible duplicate costs.</p>
         {historicalCostsQ.isLoading?<p className="mt-3 text-sm text-muted-foreground">Loading historical costs…</p>:
           historicalCostsQ.error?<p role="alert" className="mt-3 text-sm text-destructive">Historical cost register is unavailable; no historical total is reported. The new migration may not yet be applied. {errMsg(historicalCostsQ.error)}</p>:(()=>{
             const visible=new Set(filtered.map(x=>x.project.id));

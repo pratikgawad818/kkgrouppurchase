@@ -463,6 +463,13 @@
       "when": 1793882000000,
       "tag": "0065_accounts_finance_settings_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1793883000000,
+      "tag": "0066_retire_google_sheets_integration",
+      "breakpoints": true
     }
   ]
 }
