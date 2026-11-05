@@ -62,10 +62,10 @@ DECLARE
   pr record; v record; old record; dup record; line jsonb; payment jsonb;
   vid uuid; vnum text; row_no integer := 0; pay_no integer := 0;
   q numeric; rate numeric; discount numeric; gst_rate numeric; taxable numeric; gst numeric;
-  subtotal numeric := 0; tax_total numeric := 0; freight numeric; other_charges numeric;
+  calc_subtotal numeric := 0; calc_tax_total numeric := 0; calc_freight numeric; calc_other_charges numeric;
   gst_type text; tdsrate numeric; tdsamt numeric; total numeric; net numeric;
   previously_paid numeric := 0; legacy_paid numeric := 0; paid numeric;
-  bill_date date; due_date date; payment_date date; building uuid;
+  bill_date date; v_due_date date; payment_date date; building uuid;
   description text; unit_name text; hsn text; payment_mode text;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.has_permission(auth.uid(),'vendor_invoice.create')
@@ -84,8 +84,8 @@ BEGIN
   IF length(btrim(coalesce(_header->>'vendor_invoice_number',''))) NOT BETWEEN 1 AND 100
     THEN RAISE EXCEPTION 'Vendor bill number must have 1-100 characters'; END IF;
   bill_date := (_header->>'vendor_invoice_date')::date;
-  due_date := nullif(_header->>'due_date','')::date;
-  IF bill_date IS NULL OR bill_date>CURRENT_DATE OR (due_date IS NOT NULL AND due_date<bill_date)
+  v_due_date := nullif(_header->>'due_date','')::date;
+  IF bill_date IS NULL OR bill_date>CURRENT_DATE OR (v_due_date IS NOT NULL AND v_due_date<bill_date)
     THEN RAISE EXCEPTION 'Check the historical bill date and due date'; END IF;
   building := nullif(_header->>'building_id','')::uuid;
   IF building IS NOT NULL AND NOT EXISTS (
@@ -133,21 +133,21 @@ BEGIN
     taxable := round(q*rate-discount,2);
     IF taxable<0 OR taxable>1000000000 THEN RAISE EXCEPTION 'Discount exceeds line amount on line %',row_no; END IF;
     gst := round(taxable*gst_rate/100,2);
-    subtotal := subtotal+taxable; tax_total := tax_total+gst;
-    IF subtotal>1000000000 OR tax_total>1000000000 THEN RAISE EXCEPTION 'Invoice total is too large'; END IF;
+    calc_subtotal := calc_subtotal+taxable; calc_tax_total := calc_tax_total+gst;
+    IF calc_subtotal>1000000000 OR calc_tax_total>1000000000 THEN RAISE EXCEPTION 'Invoice total is too large'; END IF;
   END LOOP;
 
-  freight := coalesce(nullif(_header->>'freight','')::numeric,0);
-  other_charges := coalesce(nullif(_header->>'other_charges','')::numeric,0);
+  calc_freight := coalesce(nullif(_header->>'freight','')::numeric,0);
+  calc_other_charges := coalesce(nullif(_header->>'other_charges','')::numeric,0);
   tdsrate := coalesce(nullif(_header->>'tds_rate','')::numeric,0);
-  IF freight<0 OR other_charges<0 OR freight>1000000000 OR other_charges>1000000000
-    OR round(freight,2)<>freight OR round(other_charges,2)<>other_charges
+  IF calc_freight<0 OR calc_other_charges<0 OR calc_freight>1000000000 OR calc_other_charges>1000000000
+    OR round(calc_freight,2)<>calc_freight OR round(calc_other_charges,2)<>calc_other_charges
     OR tdsrate<0 OR tdsrate>100 OR round(tdsrate,2)<>tdsrate
     THEN RAISE EXCEPTION 'Invalid freight, other charges or TDS rate'; END IF;
   IF length(coalesce(_header->>'remarks',''))>1500 OR length(coalesce(_header->>'tds_section',''))>30
     THEN RAISE EXCEPTION 'Remarks or TDS section is too long'; END IF;
-  total := round(subtotal+tax_total+freight+other_charges,2);
-  tdsamt := round(subtotal*tdsrate/100,2);
+  total := round(calc_subtotal+calc_tax_total+calc_freight+calc_other_charges,2);
+  tdsamt := round(calc_subtotal*tdsrate/100,2);
   net := total-tdsamt;
   IF net<=0 THEN RAISE EXCEPTION 'Net payable must be positive'; END IF;
 
@@ -171,17 +171,17 @@ BEGIN
     INSERT INTO public.vendor_invoices (
       invoice_number,company_id,vendor_id,po_id,project_id,building_id,
       vendor_invoice_number,vendor_invoice_date,due_date,
-      subtotal,tax_total,cgst,sgst,igst,freight,other_charges,grand_total,
+      calc_subtotal,calc_tax_total,cgst,sgst,igst,freight,other_charges,grand_total,
       tds_section,tds_rate,tds_amount,net_payable,amount_paid,balance_due,
       status,match_status,remarks,attachment_path,created_by,is_opening,match_summary
     ) VALUES (
       vnum,pr.company_id,v.id,NULL,pr.id,building,
-      btrim(_header->>'vendor_invoice_number'),bill_date,due_date,
-      subtotal,tax_total,
-      CASE WHEN gst_type='cgst_sgst' THEN round(tax_total/2,2) ELSE 0 END,
-      CASE WHEN gst_type='cgst_sgst' THEN tax_total-round(tax_total/2,2) ELSE 0 END,
-      CASE WHEN gst_type='igst' THEN tax_total ELSE 0 END,
-      freight,other_charges,total,nullif(btrim(coalesce(_header->>'tds_section','')),''),
+      btrim(_header->>'vendor_invoice_number'),bill_date,v_due_date,
+      calc_subtotal,calc_tax_total,
+      CASE WHEN gst_type='cgst_sgst' THEN round(calc_tax_total/2,2) ELSE 0 END,
+      CASE WHEN gst_type='cgst_sgst' THEN calc_tax_total-round(calc_tax_total/2,2) ELSE 0 END,
+      CASE WHEN gst_type='igst' THEN calc_tax_total ELSE 0 END,
+      calc_freight,calc_other_charges,total,nullif(btrim(coalesce(_header->>'tds_section','')),''),
       tdsrate,tdsamt,net,previously_paid,net-previously_paid,
       'pending_review','pending',nullif(btrim(coalesce(_header->>'remarks','')),''),
       nullif(_header->>'attachment_path',''),auth.uid(),true,
@@ -190,12 +190,12 @@ BEGIN
   ELSE
     UPDATE public.vendor_invoices SET
       vendor_invoice_number=btrim(_header->>'vendor_invoice_number'),
-      vendor_invoice_date=bill_date,due_date=due_date,building_id=building,
-      subtotal=subtotal,tax_total=tax_total,
-      cgst=CASE WHEN gst_type='cgst_sgst' THEN round(tax_total/2,2) ELSE 0 END,
-      sgst=CASE WHEN gst_type='cgst_sgst' THEN tax_total-round(tax_total/2,2) ELSE 0 END,
-      igst=CASE WHEN gst_type='igst' THEN tax_total ELSE 0 END,
-      freight=freight,other_charges=other_charges,grand_total=total,
+      vendor_invoice_date=bill_date,due_date=v_due_date,building_id=building,
+      subtotal=calc_subtotal,tax_total=calc_tax_total,
+      cgst=CASE WHEN gst_type='cgst_sgst' THEN round(calc_tax_total/2,2) ELSE 0 END,
+      sgst=CASE WHEN gst_type='cgst_sgst' THEN calc_tax_total-round(calc_tax_total/2,2) ELSE 0 END,
+      igst=CASE WHEN gst_type='igst' THEN calc_tax_total ELSE 0 END,
+      freight=calc_freight,other_charges=calc_other_charges,grand_total=total,
       tds_section=nullif(btrim(coalesce(_header->>'tds_section','')),''),
       tds_rate=tdsrate,tds_amount=tdsamt,net_payable=net,
       amount_paid=previously_paid+legacy_paid,
