@@ -90,7 +90,7 @@ BEGIN
   UPDATE public.vendor_invoices
     SET remarks=nullif(btrim(coalesce(_remarks,'')),''),
         attachment_path=coalesce(nullif(btrim(coalesce(_attachment_path,'')),''),attachment_path),
-        updated_at=now()
+        updated_at=clock_timestamp()
     WHERE id=_id;
   INSERT INTO public.vendor_invoice_events(invoice_id,action,acted_by,comment,previous_status,new_status)
   VALUES(_id,'opening_details_corrected',auth.uid(),btrim(_reason),inv.status,inv.status);
