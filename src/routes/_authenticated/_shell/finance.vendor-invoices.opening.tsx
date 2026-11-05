@@ -298,7 +298,7 @@ function OpeningBill() {
                       materials={(materials.data??[]) as BillMaterialOption[]}
                       loading={can("materials.view") && materials.isLoading}
                       error={!can("materials.view")?"You do not have Materials viewing permission.":materials.error?errMsg(materials.error):null}
-                      canCreate={can("materials.manage")}
+                      canCreate={can("materials.manage")||can("materials.edit")}
                       categories={materialRefs.data?.categories??[]}
                       units={materialRefs.data?.units??[]}
                       onType={description=>typeMaterial(item.id,description)}

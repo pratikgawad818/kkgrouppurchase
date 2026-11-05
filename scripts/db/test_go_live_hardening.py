@@ -580,6 +580,37 @@ def test_structured_opening_bills_and_prior_paid():
         c.rollback()
     print("PASS historical vendor invoice lines, prior-paid preservation, scope, opening clearing and zero new payment approvals")
 
+def test_accounts_staff_material_create_edit_only():
+    """Both Accounts roles can create/edit Materials; cannot delete or move stock."""
+    accountant_id="10000000-0000-4000-8000-000000000019"
+    with db() as c:
+        category=c.execute("SELECT category_id FROM items WHERE id=%s",(MATERIAL,)).fetchone()[0]
+        c.execute("INSERT INTO profiles(id,company_id,full_name,email,is_active) VALUES(%s,%s,%s,%s,true)",
+                  (accountant_id,A,"QA Accountant","qa-accountant@example.invalid"))
+        c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,'accountant')",(accountant_id,))
+        c.execute("INSERT INTO auth.users(id,email,email_confirmed_at) VALUES(%s,%s,now())",
+                  (accountant_id,"qa-accountant@example.invalid"))
+        for uid,code in ((ACCOUNTS,"QA-ACCT-M"),(accountant_id,"QA-ACCT-A")):
+            actor(c,uid)
+            perms=c.execute("""SELECT has_permission(auth.uid(),'materials.edit'),
+                has_permission(auth.uid(),'materials.view'),
+                has_permission(auth.uid(),'materials.manage'),
+                has_permission(auth.uid(),'inventory.adjust')""").fetchone()
+            assert perms==(True,True,False,False), (uid,perms)
+            inserted=c.execute("""INSERT INTO items(company_id,code,name,unit_id,category_id)
+                VALUES(%s,%s,'Accountant-created material',%s,%s) RETURNING id""",
+                (A,code,UNIT,category)).fetchone()
+            assert inserted,uid
+            changed=c.execute("UPDATE items SET name='Accounts corrected description' WHERE id=%s RETURNING name",
+                (inserted[0],)).fetchone()
+            assert changed==("Accounts corrected description",),changed
+            assert c.execute("DELETE FROM items WHERE id=%s RETURNING id",(inserted[0],)).fetchone() is None
+            assert c.execute("SELECT name FROM items WHERE id=%s",(inserted[0],)).fetchone()==("Accounts corrected description",)
+            c.execute("RESET ROLE")
+        c.rollback()
+    print("PASS Accountant and Accounts Manager: material insert/edit permitted; delete, stock and category admin excluded")
+
+
 if __name__ == "__main__":
     setup()
     test_atomic_requests_and_rfqs()
@@ -591,3 +622,4 @@ if __name__ == "__main__":
     test_concurrent_save_retries()
     test_staff_audit_classifier()
     test_structured_opening_bills_and_prior_paid()
+    test_accounts_staff_material_create_edit_only()
