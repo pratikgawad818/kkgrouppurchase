@@ -428,6 +428,13 @@
       "when": 1793870000000,
       "tag": "0060_structured_opening_bills",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1793871000000,
+      "tag": "0061_approved_old_invoice_item_correction",
+      "breakpoints": true
     }
   ]
 }
