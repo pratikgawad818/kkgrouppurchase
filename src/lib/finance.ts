@@ -46,7 +46,20 @@ export async function openVendorDoc(path: string, download = false) {
   // Short-lived link: it is opened immediately, so revoked staff can't reuse it later.
   const { data, error } = await supabase.storage.from("vendor-documents").createSignedUrl(path, 30, download ? { download: true } : undefined);
   if (error) throw error;
-  window.open(data.signedUrl, "_blank", "noopener");
+  if (download) { window.open(data.signedUrl, "_blank", "noopener"); return; }
+  // Fetch into memory right away so the short-lived link can expire while the viewer stays open.
+  const res = await fetch(data.signedUrl);
+  if (!res.ok) throw new Error("Could not load the file");
+  const blob = await res.blob();
+  const name = path.split("/").pop()?.replace(/^[0-9a-f-]{36}-/, "") ?? "document";
+  let type = blob.type;
+  if (!type || type === "application/octet-stream") {
+    const ext = name.split(".").pop()?.toLowerCase();
+    type = ext === "pdf" ? "application/pdf" : ext && ["png", "jpg", "jpeg", "webp", "gif"].includes(ext) ? `image/${ext === "jpg" ? "jpeg" : ext}` : type;
+  }
+  const url = URL.createObjectURL(new Blob([blob], { type }));
+  const { showDocument } = await import("@/components/erp/document-viewer");
+  showDocument({ url, type, name });
 }
 export const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
 export const addDays = (d: string, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
