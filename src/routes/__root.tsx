@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { DocumentViewer } from "@/components/erp/document-viewer";
 import { invalidateVerifiedRouteUser } from "@/lib/verified-auth";
 
 function NotFoundComponent() {
@@ -258,6 +259,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster richColors position="top-right" />
+      <DocumentViewer />
     </QueryClientProvider>
   );
 }
