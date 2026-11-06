@@ -122,7 +122,7 @@ function OpeningBill() {
     setH({
       vendor_id:inv.vendor_id,project_id:inv.project_id,building_id:inv.building_id ?? "",
       vendor_invoice_number:inv.vendor_invoice_number,
-      vendor_invoice_date:inv.vendor_invoice_date,due_date:inv.due_date ?? "",round_off_mode:inv.round_off_mode??"none",
+      vendor_invoice_date:inv.vendor_invoice_date,due_date:inv.due_date ?? "",round_off_mode:(inv.round_off_mode??"none") as InvoiceRoundOffMode,
       gst_type:(match['gst_type'] === "none" || match['gst_type'] === "igst" || match['gst_type'] === "cgst_sgst")
         ? match['gst_type'] : (Number(inv.igst)>0 ? "igst" : "cgst_sgst"),
       freight:toStr(inv.freight,"0"),other_charges:toStr(inv.other_charges,"0"),
@@ -190,7 +190,7 @@ function OpeningBill() {
             _reason:correctionReason.trim(),
             _expected_updated_at:existing.data!.invoice.updated_at,
           })
-        : await supabase.rpc("save_opening_vendor_invoice_v2",payload);
+        : await supabase.rpc("save_opening_vendor_invoice_v2",{...payload,_id:payload._id ?? undefined});
       if(error){
         if(error.message.startsWith("DUPLICATE_INVOICE"))
           throw new Error("This vendor bill is already registered as "+(error.message.split("|")[2] ?? "another invoice")+".");

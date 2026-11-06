@@ -52,7 +52,7 @@ function NewInvoice() {
     const e = existing.data?.inv;
     if (!e) return;
     setVendor(e.vendor_id); setPo(e.po_id ?? "");
-    setH({ vendor_invoice_number: e.vendor_invoice_number, vendor_invoice_date: e.vendor_invoice_date, due_date: e.due_date ?? "", freight: String(e.freight), other_charges: String(e.other_charges), tds_section: e.tds_section ?? "", tds_rate: String(e.tds_rate), remarks: e.remarks ?? "", round_off_mode: e.round_off_mode ?? "none" });
+    setH({ vendor_invoice_number: e.vendor_invoice_number, vendor_invoice_date: e.vendor_invoice_date, due_date: e.due_date ?? "", freight: String(e.freight), other_charges: String(e.other_charges), tds_section: e.tds_section ?? "", tds_rate: String(e.tds_rate), remarks: e.remarks ?? "", round_off_mode: (e.round_off_mode ?? "none") as InvoiceRoundOffMode });
   }, [existing.data]);
 
   const base = useQuery({
