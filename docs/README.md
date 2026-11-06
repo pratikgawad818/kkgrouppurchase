@@ -1,5 +1,12 @@
 # Documentation
 
+## Incoming maintainer — start here
+
+- [Handover, ownership transfer and acceptance](HANDOVER.md)
+- [Developer guide and code navigation](developer-guide.md)
+- [Operations runbook and incident response](operations-runbook.md)
+- [Staff, permissions and security handover](access-and-security.md)
+
 ## Development and operations
 
 - [Repository setup, commands and structure](../README.md)
@@ -8,7 +15,6 @@
 - [Database validation](database-migration-validation.md)
 - [Production acceptance gates](production-acceptance-gates.md)
 - [ERP data model](erp-data-model.md)
-- [Google Sheets integration and controlled historical backfill](google-sheets-integration.md)
 - [Route file conventions](../src/routes/README.md)
 
 ## Access and approvals
@@ -41,6 +47,9 @@
 - [Small expenses](small-expenses-0023.md)
 
 ## Historical evidence
+
+**Important:** Prior notes about Google Sheets, WhatsApp or three-director approval describe retired or superseded configurations. Use the active ERP, current migrations and [purchasing authority](purchasing-authority.md) as the reference for today's behavior.
+
 
 [Dated investigations and rollout notes](archive/) record what was observed at
 the time, not the current live deployment. The
