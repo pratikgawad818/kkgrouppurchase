@@ -1,69 +1,73 @@
-# KK Group ERP
+# KK GROUP ERP
 
-Internal web application for KK Group’s projects, procurement, inventory and finance.
+**Construction procurement, inventory, project operations and finance**
 
-- [Live application](https://kkgrouppurchase.lovable.app)
-- [Lovable editor](https://lovable.dev/projects/5c20d133-20b6-4d66-b67a-f410f9c23457)
-- [Documentation](docs/README.md)
+An internal web application for KK GROUP. This repository contains the application, database migration history, automated tests and operations documentation.
 
-## Application areas
+**Production application:** https://kkgrouppurchase.lovable.app  
+**New maintainer:** Begin with the [handover guide](docs/HANDOVER.md).
 
-Projects, buildings and property inventory; purchase requests, RFQs and purchase orders;
-delivery challans, goods receipts, stock and material consumption; vendor invoices,
-payments, advances, small expenses and cost reports; director approvals, user roles,
-profiles and in-app notifications. The installable app manifest and mobile layout
-are kept alongside these workflows.
+## Documentation
+
+| Read first | Purpose |
+| --- | --- |
+| [Maintainer handover](docs/HANDOVER.md) | System baseline, ownership transfer and signed acceptance checklist |
+| [Developer guide](docs/developer-guide.md) | Architecture, source navigation and code-maintenance rules |
+| [Operations runbook](docs/operations-runbook.md) | Release, backup, monitoring and incident procedures |
+| [Access and security](docs/access-and-security.md) | Permission boundaries, credentials and successor account setup |
+| [Documentation index](docs/README.md) | Detailed workflows and historical evidence |
+
+## Business modules
+
+- Projects, sites, buildings, floors and property units
+- Purchase requests, RFQs, vendor quotations and purchase orders
+- Vendor delivery challans, accepted goods receipts and stock registers
+- Material issues, returns, transfers, reorder planning and project consumption
+- Vendor invoices (including opening balances), advances, payments and small expenses
+- Project cost reports, director approvals, staff permissions and notifications
+
+**System of record:** Supabase/PostgreSQL. Business documents, stock movements and financial entries are linked by database foreign keys and audited transition functions. Google Sheets and WhatsApp ERP integrations were retired; they are not part of current operations.
 
 ## Local development
 
-Use Node.js 24 and Bun. Install the dependency versions recorded in `bun.lock`:
+Requires Node.js 24 and Bun. Use the versions pinned in `bun.lock`.
 
-```sh
+~~~sh
+git clone https://github.com/pratikgawad818/kkgrouppurchase.git
+cd kkgrouppurchase
+cp .env.example .env
+# Configure the approved publishable Supabase values.
 bun install --frozen-lockfile
 bun run dev
-```
+~~~
 
-Copy `.env.example` to `.env` and supply the deployment’s public Supabase values.
-Keep service-role keys, database passwords and other secrets in private server settings.
-The existing Lovable-managed `.env` is intentionally limited to public values.
+Never put service-role keys, database passwords, SMTP passwords or private provider tokens in `.env` or source control. Only publishable browser configuration belongs in `VITE_*` variables.
 
 ## Verification
 
-```sh
+~~~sh
 bun run check
-```
+bun run lint
+~~~
 
-This audits browser configuration, runs domain regression tests, builds the client
-and server bundles, and checks TypeScript. GitHub additionally runs migration,
-company isolation, finance, inventory and integration retirement tests against
-fresh disposable PostgreSQL databases. A successful build does not validate live
-credentials or authorize a production database migration.
+`check` runs the environment guard, domain tests, application build and TypeScript check. `lint` is separate. GitHub Actions also verifies migration replay and transactional rules against disposable PostgreSQL environments. A successful CI run does not prove live credentials, publication state or production backup recoverability.
 
-## Repository map
+## Source map
 
-| Directory | Purpose |
+| Path | Responsibility |
 | --- | --- |
-| `src/routes/` | File-based application routes and screens |
-| `src/components/erp/` | Shared business workflow components |
-| `src/components/ui/` | UI primitives actually used by the application |
-| `src/lib/` | Domain rules, formatting, queries and auth helpers |
-| `src/integrations/` | Supabase clients and request authentication |
-| `src/assets/` | Current brand asset reference |
-| `public/` | App icons, installable manifest and robots policy |
-| `drizzle/` | Schema, ordered migrations and immutable migration snapshots |
-| `supabase/` | Supabase configuration and original foundation migrations |
-| `scripts/tests/` | Offline domain regression tests |
-| `scripts/db/` | Guarded disposable PostgreSQL tests and read-only preflight SQL |
-| `docs/` | Current workflow and operations documentation |
-| `docs/archive/` | Dated investigation and rollout evidence |
+| `src/routes/` | TanStack file-based routes and business screens |
+| `src/components/erp/` | Shared operational components, forms and document tools |
+| `src/components/ui/` | Reusable UI controls |
+| `src/lib/` | Domain helpers, auth, formatting, preflight checks and calculations |
+| `src/integrations/supabase/` | Client and authentication integrations |
+| `drizzle/schema.ts`, `drizzle/migrations/` | SQL schema, ordered migrations and registry |
+| `supabase/` | Project configuration and original foundation migrations |
+| `scripts/tests/`, `scripts/db/` | Business regression and database verification |
+| `docs/` | Maintainer documentation and historical release notes |
 
-`src/routeTree.gen.ts` is generated by the router during development/build.
-Edit route source files rather than the generated tree. Keep the migration history
-and Supabase foundation files: these are required for replaying existing databases.
+`src/routeTree.gen.ts` and Supabase type definitions are generated artifacts; modify their sources and use the appropriate generation process. **Do not rewrite applied migrations or production Git history.**
 
-## Deployment
+## Change management
 
-Changes to the connected Git branch sync into Lovable. Publishing the app and
-applying database migrations are separate operations; verify the target and backup
-before applying them. See [publishing](docs/lovable-supabase-publish.md) and
-[integration retirement](docs/integration-retirement.md).
+Work on a branch, review the diff and tests, then use an approved PR. Syncing code to the connected hosting project, applying database migrations and publishing a production update are separate steps. Follow the [operations runbook](docs/operations-runbook.md) before making changes. During a handover, preserve all current application behavior and production records.
