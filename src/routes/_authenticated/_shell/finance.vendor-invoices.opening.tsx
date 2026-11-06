@@ -190,7 +190,7 @@ function OpeningBill() {
             _reason:correctionReason.trim(),
             _expected_updated_at:existing.data!.invoice.updated_at,
           })
-        : await supabase.rpc("save_opening_vendor_invoice_v2",{...payload,_id:payload._id ?? undefined});
+        : await supabase.rpc("save_opening_vendor_invoice_v2",(({_id,...rest})=>_id?{...rest,_id}:rest)(payload));
       if(error){
         if(error.message.startsWith("DUPLICATE_INVOICE"))
           throw new Error("This vendor bill is already registered as "+(error.message.split("|")[2] ?? "another invoice")+".");
