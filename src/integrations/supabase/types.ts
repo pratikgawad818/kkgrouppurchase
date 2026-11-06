@@ -1862,6 +1862,113 @@ export type Database = {
         }
         Relationships: []
       }
+      opening_vendor_invoice_lines: {
+        Row: {
+          description: string
+          discount: number
+          hsn_sac: string | null
+          id: string
+          invoice_id: string
+          line_no: number
+          line_total: number
+          material_id: string | null
+          quantity: number
+          rate: number
+          tax_amount: number
+          tax_rate: number
+          taxable: number
+          unit: string
+        }
+        Insert: {
+          description: string
+          discount?: number
+          hsn_sac?: string | null
+          id?: string
+          invoice_id: string
+          line_no: number
+          line_total: number
+          material_id?: string | null
+          quantity: number
+          rate: number
+          tax_amount: number
+          tax_rate?: number
+          taxable: number
+          unit?: string
+        }
+        Update: {
+          description?: string
+          discount?: number
+          hsn_sac?: string | null
+          id?: string
+          invoice_id?: string
+          line_no?: number
+          line_total?: number
+          material_id?: string | null
+          quantity?: number
+          rate?: number
+          tax_amount?: number
+          tax_rate?: number
+          taxable?: number
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opening_vendor_invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_vendor_invoice_lines_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opening_vendor_invoice_prior_payments: {
+        Row: {
+          amount: number
+          id: string
+          invoice_id: string
+          line_no: number
+          payment_date: string
+          payment_mode: string
+          reference: string | null
+          remarks: string | null
+        }
+        Insert: {
+          amount: number
+          id?: string
+          invoice_id: string
+          line_no: number
+          payment_date: string
+          payment_mode: string
+          reference?: string | null
+          remarks?: string | null
+        }
+        Update: {
+          amount?: number
+          id?: string
+          invoice_id?: string
+          line_no?: number
+          payment_date?: string
+          payment_mode?: string
+          reference?: string | null
+          remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opening_vendor_invoice_prior_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           code: string
@@ -4048,108 +4155,6 @@ export type Database = {
           },
         ]
       }
-      opening_vendor_invoice_lines: {
-        Row: {
-          material_id: string | null
-          id: string
-          invoice_id: string
-          line_no: number
-          description: string
-          hsn_sac: string | null
-          unit: string
-          quantity: number
-          rate: number
-          discount: number
-          tax_rate: number
-          taxable: number
-          tax_amount: number
-          line_total: number
-        }
-        Insert: {
-          material_id?: string | null
-          id?: string
-          invoice_id: string
-          line_no: number
-          description: string
-          hsn_sac?: string | null
-          unit?: string
-          quantity: number
-          rate: number
-          discount?: number
-          tax_rate?: number
-          taxable: number
-          tax_amount: number
-          line_total: number
-        }
-        Update: {
-          material_id?: string | null
-          id?: string
-          invoice_id?: string
-          line_no?: number
-          description?: string
-          hsn_sac?: string | null
-          unit?: string
-          quantity?: number
-          rate?: number
-          discount?: number
-          tax_rate?: number
-          taxable?: number
-          tax_amount?: number
-          line_total?: number
-        }
-        Relationships: [{
-          foreignKeyName: "opening_vendor_invoice_lines_invoice_id_fkey"
-          columns: ["invoice_id"]
-          isOneToOne: false
-          referencedRelation: "vendor_invoices"
-          referencedColumns: ["id"]
-        }, {
-          foreignKeyName: "opening_vendor_invoice_lines_material_id_fkey"
-          columns: ["material_id"]
-          isOneToOne: false
-          referencedRelation: "items"
-          referencedColumns: ["id"]
-        }]
-      }
-      opening_vendor_invoice_prior_payments: {
-        Row: {
-          id: string
-          invoice_id: string
-          line_no: number
-          payment_date: string
-          payment_mode: string
-          reference: string | null
-          amount: number
-          remarks: string | null
-        }
-        Insert: {
-          id?: string
-          invoice_id: string
-          line_no: number
-          payment_date: string
-          payment_mode: string
-          reference?: string | null
-          amount: number
-          remarks?: string | null
-        }
-        Update: {
-          id?: string
-          invoice_id?: string
-          line_no?: number
-          payment_date?: string
-          payment_mode?: string
-          reference?: string | null
-          amount?: number
-          remarks?: string | null
-        }
-        Relationships: [{
-          foreignKeyName: "opening_vendor_invoice_prior_payments_invoice_id_fkey"
-          columns: ["invoice_id"]
-          isOneToOne: false
-          referencedRelation: "vendor_invoices"
-          referencedColumns: ["id"]
-        }]
-      }
       vendor_invoice_events: {
         Row: {
           acted_at: string
@@ -4308,11 +4313,8 @@ export type Database = {
       }
       vendor_invoices: {
         Row: {
-          round_off_mode: "none" | "nearest_rupee"
-          round_off_amount: number
           advance_adjusted: number
           amount_paid: number
-          opening_legacy_paid: number
           approved_at: string | null
           approved_by: string | null
           attachment_path: string | null
@@ -4334,10 +4336,13 @@ export type Database = {
           match_tolerances: Json | null
           matched_at: string | null
           net_payable: number
+          opening_legacy_paid: number
           other_charges: number
           po_id: string | null
           project_id: string
           remarks: string | null
+          round_off_amount: number
+          round_off_mode: string
           sgst: number
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
@@ -4351,11 +4356,8 @@ export type Database = {
           vendor_invoice_number: string
         }
         Insert: {
-          round_off_mode?: "none" | "nearest_rupee"
-          round_off_amount?: number
           advance_adjusted?: number
           amount_paid?: number
-          opening_legacy_paid?: number
           approved_at?: string | null
           approved_by?: string | null
           attachment_path?: string | null
@@ -4377,10 +4379,13 @@ export type Database = {
           match_tolerances?: Json | null
           matched_at?: string | null
           net_payable?: number
+          opening_legacy_paid?: number
           other_charges?: number
           po_id?: string | null
           project_id: string
           remarks?: string | null
+          round_off_amount?: number
+          round_off_mode?: string
           sgst?: number
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
@@ -4394,11 +4399,8 @@ export type Database = {
           vendor_invoice_number: string
         }
         Update: {
-          round_off_mode?: "none" | "nearest_rupee"
-          round_off_amount?: number
           advance_adjusted?: number
           amount_paid?: number
-          opening_legacy_paid?: number
           approved_at?: string | null
           approved_by?: string | null
           attachment_path?: string | null
@@ -4420,10 +4422,13 @@ export type Database = {
           match_tolerances?: Json | null
           matched_at?: string | null
           net_payable?: number
+          opening_legacy_paid?: number
           other_charges?: number
           po_id?: string | null
           project_id?: string
           remarks?: string | null
+          round_off_amount?: number
+          round_off_mode?: string
           sgst?: number
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
@@ -5245,6 +5250,17 @@ export type Database = {
         Args: { _id: string }
         Returns: undefined
       }
+      correct_approved_opening_vendor_invoice: {
+        Args: {
+          _attachment_path: string
+          _expected_updated_at: string
+          _id: string
+          _lines: Json
+          _reason: string
+          _remarks: string
+        }
+        Returns: string
+      }
       create_goods_receipt: {
         Args: {
           _header: Json
@@ -5309,7 +5325,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      erp_enqueue_google_sheets_sync: { Args: never; Returns: number }
       execute_stock_transfer: {
         Args: { _from: string; _items: Json; _reason: string; _to: string }
         Returns: string
@@ -5590,8 +5605,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["match_status"]
       }
       save_opening_vendor_invoice: { Args: { _header: Json }; Returns: string }
-      correct_approved_opening_vendor_invoice: { Args: { _id: string; _lines: Json; _remarks: string; _attachment_path: string; _reason: string; _expected_updated_at: string }; Returns: string }
-      save_opening_vendor_invoice_v2: { Args: { _header: Json; _lines: Json; _payments: Json; _id?: string | null }; Returns: string }
+      save_opening_vendor_invoice_v2: {
+        Args: { _header: Json; _id?: string; _lines: Json; _payments: Json }
+        Returns: string
+      }
       save_purchase_request: {
         Args: {
           _expected_updated_at?: string
