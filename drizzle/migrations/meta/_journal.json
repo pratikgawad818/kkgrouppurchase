@@ -470,6 +470,13 @@
       "when": 1793883000000,
       "tag": "0066_retire_google_sheets_integration",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1793954053326,
+      "tag": "0067_ensure_profile_no_admin_bootstrap",
+      "breakpoints": true
     }
   ]
 }
