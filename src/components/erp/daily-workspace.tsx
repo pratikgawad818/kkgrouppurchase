@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { orderedTasks, taskDue, type TaskGroup, type WorkspaceTask } from "@/lib/workspace-tasks";
-import { PROJECT_STATUS_LABEL, inr, inrShort } from "@/lib/format";
+import { PROJECT_STATUS_LABEL, inr, inrCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type WorkspaceProject = { id: string; name: string; city: string | null; status: string };
@@ -92,8 +92,14 @@ export function DailyWorkspace({
     href: string,
     Icon: typeof Truck,
     tone: string,
+    exactAmount?: string,
   ) => (
-    <Link to={href} className="daily-metric">
+    <Link
+      to={href}
+      className="daily-metric"
+      title={exactAmount ? `${label}: ${exactAmount}` : undefined}
+      aria-label={exactAmount ? `${label}: ${exactAmount}` : undefined}
+    >
       <span className={cn("daily-metric-icon", tone)}>
         <Icon aria-hidden />
       </span>
@@ -101,7 +107,7 @@ export function DailyWorkspace({
         <span>{label}</span>
         <strong>
           <span className="daily-value-full">{value}</span>
-          <span className="daily-value-compact">{compact}</span>
+          <span className="daily-value-compact whitespace-nowrap text-[clamp(16px,4.2vw,21px)]">{compact}</span>
         </strong>
       </span>
     </Link>
@@ -184,10 +190,11 @@ export function DailyWorkspace({
           metric(
             "Vendor payables",
             data?.payable == null ? unknown : inr(data.payable),
-            data?.payable == null ? "—" : inrShort(data.payable),
+            data?.payable == null ? "—" : inrCompact(data.payable),
             "/finance/payables",
             Wallet,
             "amber",
+            data?.payable == null ? undefined : inr(data.payable),
           )}
         {!canOrders &&
           !canPayables &&
