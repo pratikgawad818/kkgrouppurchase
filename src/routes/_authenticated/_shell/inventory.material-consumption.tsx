@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useCan } from "@/lib/session";
+import { useInvoiceMaterialAllocations } from "@/lib/invoice-material-query";
+import { InvoiceProjectMaterials } from "@/components/erp/invoice-project-materials";
 import { Search, Boxes, PackageCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -19,6 +22,9 @@ export const Route = createFileRoute("/_authenticated/_shell/inventory/material-
 });
 
 function MaterialConsumption() {
+  const can = useCan();
+  const canViewInvoices = can("vendor_invoice.view");
+  const invoiceMaterials = useInvoiceMaterialAllocations(canViewInvoices);
   const [projectId, setProjectId] = useState("");
   const [buildingId, setBuildingId] = useState("");
   const [materialId, setMaterialId] = useState("");
@@ -80,11 +86,23 @@ function MaterialConsumption() {
   const historicalValue=historicalFiltered.reduce((total,x)=>total+Number(x.quantity)*Number(x.unit_cost),0);
   const all = q.data ?? [];
   const projects = projectOptions.data ?? [...new Map(all.map(x=>[x.project_id,{id:x.project_id,name:x.project_name}])).values()];
-  const buildings = [...new Map(all.filter(x=>x.building_id&&(!projectId||x.project_id===projectId))
-    .map(x=>[x.building_id!,{id:x.building_id!,name:x.building_name??"Building"}])).values()];
-  const materials = [...new Map(all.map(x=>[x.material_id,
-    {id:x.material_id,name:x.material_name,code:x.material_code,unit:x.unit_code}])).values()]
-    .sort((a,b)=>a.name.localeCompare(b.name));
+  // The filter options combine verified issues and read-only supplier bills.
+  // An invoice allocation is not recorded consumption or warehouse stock.
+  const invoiceRows = invoiceMaterials.data ?? [];
+  const buildings = [...new Map([
+    ...all.filter(x=>x.building_id&&(!projectId||x.project_id===projectId))
+      .map(x=>[x.building_id!,{id:x.building_id!,name:x.building_name??"Building"}] as const),
+    ...invoiceRows.filter(x=>x.buildingId&&(!projectId||x.projectId===projectId))
+      .map(x=>[x.buildingId!,{id:x.buildingId!,name:x.buildingName??"Building"}] as const),
+  ]) .values()];
+  const materials = [...new Map([
+    ...all.map(x=>[x.material_id,
+      {id:x.material_id,name:x.material_name,code:x.material_code,unit:x.unit_code}] as const),
+    ...invoiceRows.filter(x=>x.materialId)
+      .map(x=>[x.materialId!,{
+        id:x.materialId!,name:x.materialName,code:x.materialCode??"",unit:x.unit,
+      }] as const),
+  ]).values()].sort((a,b)=>a.name.localeCompare(b.name));
   const rows = all.filter(x =>
     (!buildingId || (buildingId==="general"?!x.building_id:x.building_id===buildingId)) &&
     (!materialId || x.material_id===materialId) &&
@@ -133,6 +151,16 @@ function MaterialConsumption() {
           placeholder="Search material, project or building" onChange={e=>{setSearch(e.target.value);setPage(0);}} />
       </div>
     </div>
+    <InvoiceProjectMaterials
+      lines={invoiceRows}
+      loading={invoiceMaterials.isLoading && canViewInvoices}
+      error={invoiceMaterials.error}
+      canView={canViewInvoices}
+      projectId={projectId}
+      buildingId={buildingId}
+      materialId={materialId}
+      search={search}
+    />
     {q.isLoading ? <Loading /> : q.error ? <p className="rounded-md border p-4 text-sm text-destructive">{errMsg(q.error)}</p> : <>
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Stat label="Material issued" value={inr(totals.issued)} />
