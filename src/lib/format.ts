@@ -21,6 +21,27 @@ export function inrShort(v: number | string | null | undefined) {
   return inrFmt.format(Number(v));
 }
 
+/**
+ * Compact display for narrow dashboard summary cards only.
+ * Invoices, registers and financial exports must continue to use inr().
+ */
+export function inrCompact(v: number | string | null | undefined) {
+  if (v === null || v === undefined || v === "") return "—";
+  const amount = Number(v);
+  if (!Number.isFinite(amount)) return "—";
+
+  const magnitude = Math.abs(amount);
+  const divisor = magnitude >= 10_000_000 ? 10_000_000
+    : magnitude >= 100_000 ? 100_000
+      : magnitude >= 1_000 ? 1_000 : 1;
+  const unit = divisor === 10_000_000 ? " Cr"
+    : divisor === 100_000 ? " L"
+      : divisor === 1_000 ? " K" : "";
+  const displayed = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 })
+    .format(magnitude / divisor);
+  return `${amount < 0 ? "-₹" : "₹"}${displayed}${unit}`;
+}
+
 export function num(v: number | string | null | undefined) {
   if (v === null || v === undefined || v === "") return "—";
   return numFmt.format(Number(v));
