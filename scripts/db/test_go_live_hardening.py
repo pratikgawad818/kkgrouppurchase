@@ -737,8 +737,48 @@ def test_google_sheets_retired_archives_preserved():
     print("PASS retired Google OAuth/sync and preserved audited historical registers")
 
 
+def test_count_units_seed_is_idempotent():
+    """New materials can select pieces, people or packets without altering stock."""
+    migration = (ROOT / "drizzle/migrations/0068_add_count_units.sql").read_text()
+    with db() as c:
+        original = c.execute(
+            "SELECT id FROM units_of_measure WHERE company_id=%s AND code='NOS'", (A,)
+        ).fetchone()[0]
+
+        # The migration runs before company fixtures in setup(). Simulate
+        # applying it to the existing companies, including a repeated rollout.
+        for _ in range(2):
+            c.execute(migration)
+
+        rows = c.execute("""
+            SELECT company_id,code,name,decimal_places,status::text,is_demo
+            FROM units_of_measure
+            WHERE code IN ('PCS','PERSON','PKT')
+            ORDER BY company_id,code
+        """).fetchall()
+        expected = {
+            (company,code,name,0,"active",False)
+            for company in (A,B)
+            for code,name in [
+                ("PCS","Pieces"),("PERSON","Person"),("PKT","Packets")
+            ]
+        }
+        normalized = {
+            (str(company),code,name,decimals,status,is_demo)
+            for company,code,name,decimals,status,is_demo in rows
+        }
+        assert normalized == expected, (normalized,expected)
+        assert len(rows) == len(expected), "Duplicate unit codes inserted"
+        assert c.execute(
+            "SELECT id FROM units_of_measure WHERE company_id=%s AND code='NOS'", (A,)
+        ).fetchone()[0] == original
+        c.rollback()
+    print("PASS PCS, PERSON and PKT units seeded per company, no duplicates or master changes")
+
+
 if __name__ == "__main__":
     setup()
+    test_count_units_seed_is_idempotent()
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
     test_director_origin_and_super_admin_purchasing()
