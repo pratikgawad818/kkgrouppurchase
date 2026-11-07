@@ -756,9 +756,14 @@ def test_count_units_seed_is_idempotent():
             WHERE code IN ('PCS','PERSON','PKT')
             ORDER BY company_id,code
         """).fetchall()
+        # Foundation migrations may create an additional bootstrap company.
+        # Seed every existing company, not just the two named QA companies.
+        companies = [
+            str(row[0]) for row in c.execute("SELECT id FROM companies").fetchall()
+        ]
         expected = {
             (company,code,name,0,"active",False)
-            for company in (A,B)
+            for company in companies
             for code,name in [
                 ("PCS","Pieces"),("PERSON","Person"),("PKT","Packets")
             ]
