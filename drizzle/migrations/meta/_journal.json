@@ -477,6 +477,13 @@
       "when": 1793954053326,
       "tag": "0067_ensure_profile_no_admin_bootstrap",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794051000000,
+      "tag": "0068_add_count_units",
+      "breakpoints": true
     }
   ]
 }
