@@ -15,7 +15,7 @@ export function useInvoiceMaterialAllocations(enabled: boolean) {
   return useQuery({
     queryKey: ["project-invoiced-materials"],
     enabled,
-    staleTime: 30_000,
+    // Refetch when returning from vendor invoice entry or review.
     queryFn: async (): Promise<InvoiceMaterialAllocation[]> => {
       const invoices = await loadCompleteRows(async (start, end) => {
         const { data, count, error } = await supabase
