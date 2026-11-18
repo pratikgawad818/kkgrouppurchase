@@ -781,6 +781,79 @@ def test_count_units_seed_is_idempotent():
     print("PASS PCS, PERSON and PKT units seeded per company, no duplicates or master changes")
 
 
+
+def test_accounts_manager_small_expense_corrections():
+    """Accounts Manager can record and correct, not void freely or bypass project scope."""
+    with db() as c:
+        actor(c, ACCOUNTS)
+        assert c.execute(
+            "SELECT has_permission(auth.uid(),'small_expense.manage')"
+        ).fetchone()[0] is True
+        expense_day = c.execute(
+            "SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date"
+        ).fetchone()[0]
+        create_sql = """SELECT public.record_site_small_expense(
+            %s::uuid,%s::uuid,%s::uuid,%s::date,%s,%s::numeric,%s,%s,%s,%s
+        )"""
+        old_key = str(uuid4())
+        old_args = (old_key, PROJECT, None, expense_day, "office", "225.75",
+                    "upi", "Site supplier", "Electrical fitting site delivery", "REF-41")
+        old_id = c.execute(create_sql, old_args).fetchone()[0]
+        assert c.execute(create_sql, old_args).fetchone()[0] == old_id
+
+        correct_sql = """SELECT public.correct_site_small_expense(
+            %s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::date,
+            %s,%s::numeric,%s,%s,%s,%s,%s
+        )"""
+        new_key = str(uuid4())
+        reason = "Corrected the paid amount after verifying the receipt"
+        revised = (old_id,new_key,PROJECT,None,expense_day,"office",
+                   "250.50","upi","Site supplier","Electrical fitting site delivery",
+                   "REF-41",reason)
+        # Refuse invalid scope without changing either expense.
+        denied(c, lambda: c.execute(correct_sql,
+            (old_id,str(uuid4()),OTHER_PROJECT,None,expense_day,"office",
+             "250.50","upi","Site supplier","Electrical fitting site delivery",
+             "REF-41",reason)))
+        assert c.execute(
+            "SELECT status FROM site_small_expenses WHERE id=%s",(old_id,)
+        ).fetchone()[0] == "recorded"
+
+        # Site staff cannot use the privileged function even with a known document ID.
+        actor(c, SITE)
+        denied(c, lambda: c.execute(create_sql, (
+            str(uuid4()), PROJECT, None, expense_day, "office", "50.00",
+            "cash", "Site supplier", "Unauthorized expense", None)))
+        denied(c, lambda: c.execute(correct_sql, revised))
+
+        actor(c, ACCOUNTS)
+        new_id = c.execute(correct_sql, revised).fetchone()[0]
+        assert new_id != old_id
+        assert c.execute(correct_sql, revised).fetchone()[0] == new_id
+        assert c.execute("""
+            SELECT status,voided_by,void_reason FROM site_small_expenses
+            WHERE id=%s
+        """,(old_id,)).fetchone() == ("voided", ACCOUNTS, "Corrected: "+reason)
+        assert c.execute("""
+            SELECT status,amount,replaces_expense_id,created_by
+            FROM site_small_expenses WHERE id=%s
+        """,(new_id,)).fetchone() == ("recorded", 250.50, old_id, ACCOUNTS)
+        assert c.execute("""
+            SELECT action,reason FROM site_small_expense_events
+            WHERE expense_id=%s ORDER BY created_at,id
+        """,(old_id,)).fetchall()[-1] == ("voided","Corrected: "+reason)
+        assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id IN (%s,%s)",
+                         (old_id,new_id)).fetchone()[0] == 2
+        denied(c, lambda: c.execute(correct_sql, (*revised[:-1],"Another reason that should fail")))
+        denied(c, lambda: c.execute(correct_sql, (old_id,str(uuid4()),*revised[2:])))
+        # Standalone voids remain restricted to Super Admin.
+        denied(c, lambda: c.execute(
+            "SELECT public.void_site_small_expense(%s::uuid,%s)",(new_id,"Not authorized")))
+        c.rollback()
+    print("PASS Accounts Manager record/correct, atomic audit, retries, scope, and restricted void")
+
+
+
 if __name__ == "__main__":
     setup()
     test_count_units_seed_is_idempotent()
@@ -796,4 +869,5 @@ if __name__ == "__main__":
     test_accounts_staff_material_create_edit_only()
     test_optional_invoice_roundoff_accounting()
     test_accounts_manager_finance_settings_permission()
+    test_accounts_manager_small_expense_corrections()
     test_google_sheets_retired_archives_preserved()
