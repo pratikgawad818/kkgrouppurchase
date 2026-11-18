@@ -484,6 +484,13 @@
       "when": 1794051000000,
       "tag": "0068_add_count_units",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794996000000,
+      "tag": "0069_accounts_manager_small_expenses",
+      "breakpoints": true
     }
   ]
 }
