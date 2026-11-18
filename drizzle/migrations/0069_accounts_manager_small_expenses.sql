@@ -8,7 +8,8 @@ ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.role_permissions (role,permission_code)
 VALUES ('super_admin','small_expense.manage'),
-       ('accounts_manager','small_expense.manage')
+       ('accounts_manager','small_expense.manage'),
+       ('accounts_manager','financial.view')
 ON CONFLICT DO NOTHING;
 
 ALTER TABLE public.site_small_expenses
