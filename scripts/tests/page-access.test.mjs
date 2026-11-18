@@ -182,11 +182,19 @@ test("removed integration settings have no page access", () => {
   assert.equal(canAccessPage("/settings/whatsapp", subject("director", "users.manage")), false);
 });
 
-test("small expenses report is read-only for management and editable only inside superadmin's page", () => {
+test("Small Expenses route is available to Accounts Manager and finance viewers", () => {
   assert.equal(canAccessPage("/finance/small-expenses", owner), true);
+  assert.equal(
+    canAccessPage("/finance/small-expenses", subject("accounts_manager", "financial.view", "small_expense.manage")),
+    true,
+  );
   assert.equal(
     canAccessPage("/finance/small-expenses", subject("auditor", "financial.view")),
     true,
+  );
+  assert.equal(
+    canAccessPage("/finance/small-expenses", subject("accounts_manager", "small_expense.manage")),
+    false,
   );
   assert.equal(
     canAccessPage("/finance/small-expenses", subject("store_manager", "inventory.view")),

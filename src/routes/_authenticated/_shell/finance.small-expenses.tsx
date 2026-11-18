@@ -42,10 +42,13 @@ function SmallExpenses() {
   const me=useMe(), qc=useQueryClient();
   const companyId=me.data?.profile.company_id;
   const permitted=!!me.data?.permissions.has("financial.view") && !!companyId;
-  const canWrite=!!me.data?.profile.is_active && !!me.data?.roles.includes("super_admin") && permitted;
+  const canWrite=!!me.data?.profile.is_active && !!me.data?.permissions.has("small_expense.manage") && permitted;
+  const canVoid=!!me.data?.profile.is_active && !!me.data?.roles.includes("super_admin") && permitted;
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState<Form>(createForm);
   const [entryKey,setEntryKey]=useState(()=>crypto.randomUUID());
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [correctionReason,setCorrectionReason]=useState("");
   const [projectFilter,setProjectFilter]=useState("");
   const [buildingFilter,setBuildingFilter]=useState("");
   const [categoryFilter,setCategoryFilter]=useState("");
@@ -79,31 +82,40 @@ function SmallExpenses() {
 
   const save=useMutation({
     mutationFn:async()=>{
-      if(!canWrite)throw new Error("Only the company super administrator can record small expenses.");
+      if(!canWrite)throw new Error("Small expense recording permission is required.");
+      if(editingId && (correctionReason.trim().length<10||correctionReason.trim().length>400))
+        throw new Error("Explain the correction in 10 to 400 characters.");
       const amount=parseSmallExpenseAmount(form.amount);
       if(amount===null)throw new Error("Enter a positive amount up to ₹50,000 with at most two decimal places.");
       if(form.paidTo.trim().length<2||form.description.trim().length<3)throw new Error("Enter the person paid and a meaningful description.");
       if(!form.spentOn||form.spentOn>todayIst())throw new Error("Select a valid date that is not in the future.");
       if(form.buildingId&&!form.projectId)throw new Error("Select a project for this building.");
-      const {data,error}=await untypedDb.rpc("record_site_small_expense",{
+      const fields={
         _entry_key:entryKey,_project_id:form.projectId||null,_building_id:form.buildingId||null,
         _spent_on:form.spentOn,_category:form.category,_amount:amount,_payment_method:form.method,
         _paid_to:form.paidTo.trim(),_description:form.description.trim(),
         _receipt_reference:form.reference.trim()||null,
-      });
+      };
+      const {data,error}=editingId
+        ? await untypedDb.rpc("correct_site_small_expense",{
+            ...fields,_expense_id:editingId,_reason:correctionReason.trim(),
+          })
+        : await untypedDb.rpc("record_site_small_expense",fields);
       if(error)throw error;
       return data;
     },
     onSuccess:async()=>{
+      const corrected=!!editingId;
       await qc.invalidateQueries({queryKey:["small-expenses"]});
       setOpen(false);setForm(createForm());setEntryKey(crypto.randomUUID());
-      toast.success("Small expense recorded with audit history");
+      setEditingId(null);setCorrectionReason("");
+      toast.success(corrected?"Expense corrected; original retained in audit":"Small expense recorded with audit history");
     },
     onError:e=>toast.error(errMsg(e)),
   });
   const voidExpense=useMutation({
     mutationFn:async()=>{
-      if(!canWrite||!voidId)throw new Error("Not authorized.");
+      if(!canVoid||!voidId)throw new Error("Only Super Admin can void an expense.");
       if(voidReason.trim().length<5)throw new Error("Enter a clear void reason (at least 5 characters).");
       const {error}=await untypedDb.rpc("void_site_small_expense",{_expense_id:voidId,_reason:voidReason.trim()});
       if(error)throw error;
@@ -127,14 +139,26 @@ function SmallExpenses() {
     .map(x=>[x.building_id!,{id:x.building_id!,name:x.buildings?.name??"Building",project:x.projects?.name??"Project"}]))
     .values()].sort((a,b)=>(a.project+" "+a.name).localeCompare(b.project+" "+b.name));
   const setField=<K extends keyof Form>(key:K,value:Form[K])=>setForm(current=>({...current,[key]:value}));
+  const beginCorrection=(record: typeof all[number])=>{
+    setEditingId(record.id);
+    setEntryKey(crypto.randomUUID());
+    setCorrectionReason("");
+    setForm({
+      spentOn:record.spent_on,category:record.category,amount:String(record.amount),
+      method:record.payment_method,paidTo:record.paid_to,description:record.description,
+      reference:record.receipt_reference??"",projectId:record.project_id??"",
+      buildingId:record.building_id??"",
+    });
+    setOpen(true);
+  };
 
   return <div className="pb-16">
     <PageHeader title="Small Expenses" subtitle="Record actual petty expenses paid for your sites and office. Project/building breakdown, receipts and correction history."
-      actions={canWrite&&<Button size="sm" onClick={()=>{setEntryKey(crypto.randomUUID());setForm(createForm());setOpen(true);}}>
+      actions={canWrite&&<Button size="sm" onClick={()=>{setEditingId(null);setCorrectionReason("");setEntryKey(crypto.randomUUID());setForm(createForm());setOpen(true);}}>
         <Plus className="mr-1 h-4 w-4"/>Record expense</Button>} />
     <p className="mb-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
       These are incidental expenses actually paid—not supplier invoices, purchase orders or material consumption.
-      Do not enter a bill/payment already tracked elsewhere. Corrections must be voided, never overwritten.
+      Do not enter a bill/payment already tracked elsewhere. Corrections retain the original and create an audited replacement; they never overwrite recorded history.
     </p>
     {register.isLoading?<Loading/>:register.error?
       <div role="alert" className="rounded-lg border border-destructive/30 p-5 text-sm text-destructive">
@@ -200,8 +224,13 @@ function SmallExpenses() {
           <td className="p-3">{x.receipt_reference??"—"}</td>
           <td className="p-3 text-right font-medium tabular-nums">{inr(x.amount)}</td>
           <td className="p-3">{x.status==="voided"?<span title={x.void_reason??""} className="text-destructive">Voided</span>:"Recorded"}</td>
-          <td className="p-3">{canWrite&&x.status==="recorded"?
-            <Button size="sm" variant="outline" onClick={()=>{setVoidId(x.id);setVoidReason("");}}><Undo2 className="mr-1 h-3.5 w-3.5"/>Void</Button>:"—"}<PermanentDelete force kind="small_expense" id={x.id} name={x.paid_to ?? "expense"}/></td>
+          <td className="p-3">
+            <div className="flex items-center gap-2">
+              {canWrite&&x.status==="recorded"&&<Button size="sm" variant="outline" onClick={()=>beginCorrection(x)}>Correct</Button>}
+              {canVoid&&x.status==="recorded"&&<Button size="sm" variant="outline" onClick={()=>{setVoidId(x.id);setVoidReason("");}}><Undo2 className="mr-1 h-3.5 w-3.5"/>Void</Button>}
+              <PermanentDelete force kind="small_expense" id={x.id} name={x.paid_to??"expense"}/>
+            </div>
+          </td>
         </tr>)}
           {!rows.length&&<tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No small-expense entries match.</td></tr>}
         </tbody></table>
@@ -211,8 +240,10 @@ function SmallExpenses() {
     </>}
     <Dialog open={open} onOpenChange={value=>{if(!save.isPending)setOpen(value);}}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>Record a small expense</DialogTitle><DialogDescription>
-          Records money already spent. Entries cannot be edited or deleted. A correction must be voided with reason and entered again.
+        <DialogHeader><DialogTitle>{editingId?"Correct a small expense":"Record a small expense"}</DialogTitle><DialogDescription>
+          {editingId
+            ?"The corrected entry is saved and the original voided in one transaction. Both records remain in the audit trail."
+            :"Records money already spent. Corrections create an audited replacement rather than overwrite the original."}
         </DialogDescription></DialogHeader>
         {context.error&&<p role="alert" className="text-sm text-destructive">{errMsg(context.error)}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
@@ -230,10 +261,16 @@ function SmallExpenses() {
           <div><label className="text-sm font-medium">Receipt / bill reference</label><Input maxLength={120} placeholder="Optional receipt number" value={form.reference} onChange={e=>setField("reference",e.target.value)}/></div>
           <div className="sm:col-span-2"><label className="text-sm font-medium">What was paid for? *</label><Textarea rows={3} maxLength={500} placeholder="Purpose and site details" value={form.description} onChange={e=>setField("description",e.target.value)}/></div>
         </div>
+        {editingId&&<div className="mt-3">
+          <label className="text-sm font-medium" htmlFor="small-expense-correction-reason">Correction reason * (10–400 characters)</label>
+          <Textarea id="small-expense-correction-reason" rows={2} minLength={10} maxLength={400}
+            placeholder="Explain what was wrong and why this replacement is required"
+            value={correctionReason} onChange={e=>setCorrectionReason(e.target.value)}/>
+        </div>}
         <p className="text-xs text-muted-foreground">No file upload, bank transaction or vendor-payment journal is generated. Keep the receipt separately for Accounts review.</p>
         <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)} disabled={save.isPending}>Cancel</Button>
-          <Button onClick={()=>save.mutate()} disabled={save.isPending||context.isLoading||!!context.error}>
-            <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":"Record paid expense"}</Button></DialogFooter>
+          <Button onClick={()=>save.mutate()} disabled={save.isPending||context.isLoading||!!context.error||!!(editingId&&correctionReason.trim().length<10)}>
+            <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":editingId?"Save audited correction":"Record paid expense"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
     <Dialog open={!!voidId} onOpenChange={value=>{if(!voidExpense.isPending&&!value)setVoidId(null);}}>
