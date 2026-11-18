@@ -12,8 +12,8 @@ VALUES ('super_admin','small_expense.manage'),
 ON CONFLICT DO NOTHING;
 
 ALTER TABLE public.site_small_expenses
-  ADD COLUMN replaces_expense_id uuid REFERENCES public.site_small_expenses(id);
-CREATE UNIQUE INDEX site_small_expenses_one_replacement_idx
+  ADD COLUMN IF NOT EXISTS replaces_expense_id uuid REFERENCES public.site_small_expenses(id);
+CREATE UNIQUE INDEX IF NOT EXISTS site_small_expenses_one_replacement_idx
   ON public.site_small_expenses (replaces_expense_id)
   WHERE replaces_expense_id IS NOT NULL;
 
