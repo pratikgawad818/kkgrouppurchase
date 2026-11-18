@@ -1,6 +1,6 @@
 # KK GROUP ERP — Small expenses register (0023)
 
-**Staging-only / not deployed.** The register tracks **actual paid incidental
+**Operational: enabled in the connected database.** The register tracks **actual paid incidental
 expenses** (site tea, local transport, fuel, minor consumables, cleaning,
 repairs, office needs) with date, project, optional building, payee, method,
 amount, purpose, receipt reference, operator and immutable audit.
@@ -11,9 +11,10 @@ vendor bill totals or material consumption costs without accounting-level
 deduplication. If an expense relates to a formal bill/PO/payment, use the
 procurement/finance workflow instead.
 
-The initial write role is **super_admin only**, matching the user's single
-purchase operator. Management Viewer can **read**, not modify, once the
-staged DB changes are activated. Amount limited to ₹50,000 per entry and two
+The original 0023 write role was **super_admin only**. From migration 0069,
+**Accounts Manager** and **Super Admin** can record expenses and create audited
+corrections; Management Viewer remains read-only. Accounts Manager cannot
+standalone-void an expense or bypass permanent-deletion safeguards. Amount limited to ₹50,000 per entry and two
 decimal places. Greater expenses belong in a reviewed vendor payment flow.
 
 ## Corrections and audit
@@ -30,11 +31,11 @@ decimal places. Greater expenses belong in a reviewed vendor payment flow.
 
 ## Activation prerequisites
 
-Schema migration 0023 depends on prior migrations 0019–0022 having been
-reviewed in order. **Do not apply directly to production.** Require backup,
-staging, RLS and workflow acceptance, and type regeneration against the
-actual deployed schema. This PR does not touch live Supabase data, add
-payment integrations, publish, or spend Lovable credits.
+Schema migration 0023 depends on migrations 0019–0022 and has already been
+applied to the connected production database. For future modifications, require
+staging replay, a backup, RLS and workflow acceptance, and type regeneration
+against the actual deployed schema. Do not replay old migrations against a
+running production database.
 
 ## Release-readiness improvement (India date and building reporting)
 
@@ -48,3 +49,25 @@ payment integrations, publish, or spend Lovable credits.
   building totals are a *breakdown*, not extra spending to add again.
 - Existing `0023` remains **not applied** in production. This change adjusts
   the pending migration source before a future reviewed deployment.
+
+## Accounts Manager permissions and audited corrections (0069)
+
+Migration `0069_accounts_manager_small_expenses.sql` grants
+`small_expense.manage` to **Accounts Manager** and **Super Admin**.
+Existing `financial.view` controls read access and project-scoped RLS.
+Accountants, store staff and management viewers do not gain write privileges.
+
+- **Record expense:** same validations and duplicate-submit protection as 0023.
+- **Correct expense:** choose **Correct**, edit the prefilled fields, supply a
+  reason of 10–400 characters and submit. The database creates a new expense,
+  links `replaces_expense_id` to the original, and voids the original within
+  **one transaction**. Both audit events remain available; failures roll back
+  the entire correction.
+- **Void without replacement:** remains limited to **Super Admin** and always
+  requires a reason. Permanent deletion is not granted by this permission.
+- **No finance posting side effects:** neither recording nor correction
+  creates an invoice, bank payment, journal entry, or stock movement.
+
+The incoming maintainer should verify this against authorized Accounts
+Manager and Super Admin test accounts in staging, including retry protection,
+project isolation, date limits and cross-company access.
