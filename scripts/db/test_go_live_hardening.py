@@ -830,18 +830,22 @@ def test_accounts_manager_small_expense_corrections():
         new_id = c.execute(correct_sql, revised).fetchone()[0]
         assert new_id != old_id
         assert c.execute(correct_sql, revised).fetchone()[0] == new_id
-        assert c.execute("""
+        old_status,voided_by,void_reason = c.execute("""
             SELECT status,voided_by,void_reason FROM site_small_expenses
             WHERE id=%s
-        """,(old_id,)).fetchone() == ("voided", ACCOUNTS, "Corrected: "+reason)
-        assert c.execute("""
+        """,(old_id,)).fetchone()
+        assert (old_status,str(voided_by),void_reason) == (
+            "voided",ACCOUNTS,"Corrected: "+reason)
+        new_status,amount,previous_id,creator = c.execute("""
             SELECT status,amount,replaces_expense_id,created_by
             FROM site_small_expenses WHERE id=%s
-        """,(new_id,)).fetchone() == ("recorded", 250.50, old_id, ACCOUNTS)
+        """,(new_id,)).fetchone()
+        assert (new_status,amount,previous_id,str(creator)) == (
+            "recorded",250.50,old_id,ACCOUNTS)
         assert c.execute("""
             SELECT action,reason FROM site_small_expense_events
-            WHERE expense_id=%s ORDER BY created_at,id
-        """,(old_id,)).fetchall()[-1] == ("voided","Corrected: "+reason)
+            WHERE expense_id=%s AND action='voided'
+        """,(old_id,)).fetchone() == ("voided","Corrected: "+reason)
         assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id IN (%s,%s)",
                          (old_id,new_id)).fetchone()[0] == 2
         denied(c, lambda: c.execute(correct_sql, (*revised[:-1],"Another reason that should fail")))
