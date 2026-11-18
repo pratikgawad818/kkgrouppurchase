@@ -782,6 +782,53 @@ def test_count_units_seed_is_idempotent():
 
 
 
+
+def test_services_and_hours_master_seed():
+    """JCB hire can use a Services category and fractional billable hours."""
+    migration = (ROOT / "drizzle/migrations/0070_services_and_hours_unit.sql").read_text()
+    with db() as c:
+        existing_items = c.execute("SELECT count(*) FROM items").fetchone()[0]
+        existing_stock = c.execute("SELECT count(*) FROM inventory_transactions").fetchone()[0]
+        companies = [str(row[0]) for row in c.execute("SELECT id FROM companies").fetchall()]
+        assert companies, "Expected foundation and fixture companies"
+
+        # Reapplication must leave one category and one hourly unit per company.
+        for _ in range(2):
+            c.execute(migration)
+
+        categories = c.execute("""
+            SELECT company_id,code,name,status::text,is_demo
+            FROM item_categories WHERE code='SERVICES'
+        """).fetchall()
+        units = c.execute("""
+            SELECT company_id,code,name,decimal_places,status::text,is_demo
+            FROM units_of_measure WHERE code='HRS'
+        """).fetchall()
+        actual_categories = {
+            (str(company),code,name,status,is_demo)
+            for company,code,name,status,is_demo in categories
+        }
+        actual_units = {
+            (str(company),code,name,decimal_places,status,is_demo)
+            for company,code,name,decimal_places,status,is_demo in units
+        }
+        expected_categories = {
+            (company,"SERVICES","Services","active",False) for company in companies
+        }
+        expected_units = {
+            (company,"HRS","Hours",2,"active",False) for company in companies
+        }
+        assert actual_categories == expected_categories
+        assert actual_units == expected_units
+        assert len(categories) == len(companies), "Duplicated service categories"
+        assert len(units) == len(companies), "Duplicated hourly units"
+        assert c.execute("SELECT count(*) FROM items").fetchone()[0] == existing_items
+        assert c.execute("SELECT count(*) FROM inventory_transactions").fetchone()[0] == existing_stock
+        c.rollback()
+    print("PASS Services category + HRS hourly unit seed per company; no stock or item changes")
+
+
+
 def test_accounts_manager_small_expense_corrections():
     """Accounts Manager can record and correct, not void freely or bypass project scope."""
     with db() as c:
@@ -861,6 +908,7 @@ def test_accounts_manager_small_expense_corrections():
 if __name__ == "__main__":
     setup()
     test_count_units_seed_is_idempotent()
+    test_services_and_hours_master_seed()
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
     test_director_origin_and_super_admin_purchasing()
