@@ -268,7 +268,7 @@ function PoDetail() {
                         setApprovalOpen(true);
                       }}
                     >
-                      Reject
+                      Revert for correction
                     </Button>
                     <Button
                       className="approval-action min-h-12"
