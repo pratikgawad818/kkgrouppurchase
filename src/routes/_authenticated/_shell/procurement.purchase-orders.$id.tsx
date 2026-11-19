@@ -125,6 +125,18 @@ function PoDetail() {
   const me = useMe();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["po", id], queryFn: () => loadPo(id) });
+  const correctionPr = useQuery({
+    queryKey:["po-correction-pr",q.data?.po.purchase_request_id],
+    enabled:!!q.data?.po.purchase_request_id,
+    queryFn:async () => {
+      const {data,error}=await supabase.from("purchase_requests")
+        .select("id,pr_number")
+        .eq("revision_of_pr_id",q.data!.po.purchase_request_id)
+        .maybeSingle();
+      if(error)throw error;
+      return data;
+    },
+  });
   const [dlg, setDlg] = useState<null | PoAction>(null);
   const [approvalDecision, setApprovalDecision] = useState<"approved" | "rejected">("approved");
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -215,16 +227,17 @@ function PoDetail() {
           _po_id: id, _reason: reason,
         });
         if (error) throw error;
-        return "PO returned to purchasing for correction.";
+        return {message:"PO returned to purchasing for correction.", revisionId:null as string|null};
       }
-      const { error } = await supabase.rpc("return_pr_to_site_engineer_from_po", {
+      const { data, error } = await supabase.rpc("return_pr_to_site_engineer_from_po", {
         _po_id: id, _reason: reason,
       });
       if (error) throw error;
-      return "PR returned to its Site Engineer. The previous PO/RFQ are cancelled but retained for audit.";
+      return {message:"A linked correction PR has been created for the original Site Engineer. The old PO/RFQ remain cancelled for audit.",revisionId:data};
     },
-    onSuccess: (message) => {
+    onSuccess: ({message,revisionId}) => {
       toast.success(message);
+      if (revisionId) qc.invalidateQueries({queryKey:["po-correction-pr"]});
       setCorrectionMode(null);
       setCorrectionReason("");
       for (const key of ["pr","prs","rfq","rfqs"]) qc.invalidateQueries({queryKey:[key]});
@@ -500,6 +513,21 @@ function PoDetail() {
           )}
         </section>
 
+        {po.status === "cancelled" && correctionPr.data && (
+          <section className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+            <h2 className="font-semibold">Correction request assigned to Site Engineer</h2>
+            <p className="mt-1 text-muted-foreground">
+              The original purchasing cycle is retained for audit. The Site Engineer
+              should edit and resubmit the linked PR; purchasing must obtain fresh quotations afterward.
+            </p>
+            <Button size="sm" variant="outline" className="mt-3" asChild>
+              <Link to="/procurement/purchase-requests/$id"
+                params={{id:correctionPr.data.id}}>
+                Open {correctionPr.data.pr_number}
+              </Link>
+            </Button>
+          </section>
+        )}
         {(po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path) && (
           <section className="mt-4 rounded-xl border bg-card p-4 print:hidden">
             <h2 className="mb-2 text-sm font-semibold">Supporting documents for approval</h2>
