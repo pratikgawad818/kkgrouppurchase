@@ -1,7 +1,7 @@
 import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ApprovalDecisionDialog } from "@/components/erp/approval-decision-dialog";
 import { documentActorNames } from "@/lib/document-actors";
@@ -25,6 +25,8 @@ import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from
 import { PrintPo } from "@/components/erp/print-po";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
+import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
+import { PoDraftEditor } from "@/components/erp/po-draft-editor";
 import { cn } from "@/lib/utils";
 
 const META = "Purchase order details, approval and goods receipts.";
@@ -131,13 +133,7 @@ function PoDetail() {
   const [sc, setSc] = useState<null | { id: string; max: number; name: string }>(null);
   const [scQty, setScQty] = useState("");
   const [scReason, setScReason] = useState("");
-  const [terms, setTerms] = useState({
-    delivery_warehouse_id: "",
-    expected_delivery_date: "",
-    payment_terms: "",
-    delivery_terms: "",
-    remarks: "",
-  });
+  const [poEditorOpen, setPoEditorOpen] = useState(false);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["po", id] });
     qc.invalidateQueries({ queryKey: ["pos"] });
@@ -146,38 +142,6 @@ function PoDetail() {
     qc.invalidateQueries({ queryKey: ["approval-decisions"] });
   };
 
-  useEffect(() => {
-    const p = q.data?.po;
-    if (p)
-      setTerms({
-        delivery_warehouse_id: p.delivery_warehouse_id ?? "",
-        expected_delivery_date: p.expected_delivery_date ?? "",
-        payment_terms: p.payment_terms ?? "",
-        delivery_terms: p.delivery_terms ?? "",
-        remarks: p.remarks ?? "",
-      });
-  }, [q.data?.po]);
-
-  const saveTerms = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("purchase_orders")
-        .update({
-          delivery_warehouse_id: terms.delivery_warehouse_id || null,
-          expected_delivery_date: terms.expected_delivery_date || null,
-          payment_terms: terms.payment_terms || null,
-          delivery_terms: terms.delivery_terms || null,
-          remarks: terms.remarks || null,
-        })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Saved");
-      refresh();
-    },
-    onError: (e) => toast.error(errMsg(e)),
-  });
   const act = useMutation({
     mutationFn: async (a: PoAction) => {
       const { error } = await supabase.rpc("po_transition", {
@@ -269,28 +233,20 @@ function PoDetail() {
             }
             actions={
               <div className="flex flex-wrap gap-2">
+                {draft && can("purchase_order.create") && (
+                  <Button size="sm" variant="outline" onClick={() => setPoEditorOpen((current) => !current)}>
+                    {poEditorOpen ? "Close PO editor" : "Edit PO"}
+                  </Button>
+                )}
                 {(draft || (po.status === "pending_approval" && finalizeOwn)) &&
                   can("purchase_order.create") && (
                     <Button
                       size="sm"
-                      disabled={act.isPending || saveTerms.isPending}
-                      onClick={async () => {
-                        if (!terms.delivery_warehouse_id) {
-                          toast.error("Select a delivery store and click Save terms first");
+                      disabled={act.isPending || poEditorOpen}
+                      onClick={() => {
+                        if (!po.delivery_warehouse_id) {
+                          toast.error("Use Edit PO to save a delivery store before submitting");
                           return;
-                        }
-                        if (
-                          terms.delivery_warehouse_id !== (po.delivery_warehouse_id ?? "") ||
-                          terms.expected_delivery_date !== (po.expected_delivery_date ?? "") ||
-                          terms.payment_terms !== (po.payment_terms ?? "") ||
-                          terms.delivery_terms !== (po.delivery_terms ?? "") ||
-                          terms.remarks !== (po.remarks ?? "")
-                        ) {
-                          try {
-                            await saveTerms.mutateAsync();
-                          } catch {
-                            return;
-                          }
                         }
                         act.mutate("submitted");
                       }}
@@ -460,59 +416,17 @@ function PoDetail() {
           </section>
         )}
         {draft && can("purchase_order.create") && (
-          <section className="mt-4 rounded-md border bg-card p-4">
-            <div className="mb-3 text-sm font-semibold">Delivery & terms</div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <Field label="Delivery store *">
-                <select
-                  className={selectCls}
-                  value={terms.delivery_warehouse_id}
-                  onChange={(e) => setTerms({ ...terms, delivery_warehouse_id: e.target.value })}
-                >
-                  <option value="">Select store</option>
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Expected delivery">
-                <Input
-                  type="date"
-                  value={terms.expected_delivery_date}
-                  onChange={(e) => setTerms({ ...terms, expected_delivery_date: e.target.value })}
-                />
-              </Field>
-              <Field label="Payment terms">
-                <Input
-                  value={terms.payment_terms}
-                  onChange={(e) => setTerms({ ...terms, payment_terms: e.target.value })}
-                />
-              </Field>
-              <Field label="Delivery terms">
-                <Input
-                  value={terms.delivery_terms}
-                  onChange={(e) => setTerms({ ...terms, delivery_terms: e.target.value })}
-                />
-              </Field>
-              <Field label="Remarks" className="md:col-span-2">
-                <Input
-                  value={terms.remarks}
-                  onChange={(e) => setTerms({ ...terms, remarks: e.target.value })}
-                />
-              </Field>
-            </div>
-            <Button
-              className="mt-3"
-              size="sm"
-              variant="outline"
-              disabled={saveTerms.isPending}
-              onClick={() => saveTerms.mutate()}
-            >
-              Save terms
-            </Button>
-          </section>
+          <div className="mt-4">
+            {poEditorOpen ? (
+              <PoDraftEditor po={po} items={items} warehouses={warehouses}
+                onDone={() => setPoEditorOpen(false)} />
+            ) : (
+              <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                Correct material quantities, rates, GST, delivery store or terms using <strong>Edit PO</strong>.
+                Save a revision before resubmitting. The original PO number is retained.
+              </p>
+            )}
+          </div>
         )}
 
         <section className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
@@ -752,6 +666,7 @@ function PoDetail() {
           />
         </div>
 
+        <ProcurementRevisionHistory kind="purchase_order" documentId={id} />
         <ApprovalDecisionDialog
           open={approvalOpen}
           target={{
