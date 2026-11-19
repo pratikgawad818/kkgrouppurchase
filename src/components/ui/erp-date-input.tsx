@@ -43,6 +43,10 @@ export const ErpDateInput = React.forwardRef<
     (!max || parsed <= String(max));
   const invalid = display.length > 0 && !withinBounds;
 
+  React.useEffect(() => {
+    textRef.current?.setCustomValidity(invalid ? "Enter DD/MM/YYYY." : "");
+  }, [invalid]);
+
   function forwardIso(
     iso: string,
     event?: React.ChangeEvent<HTMLInputElement>,
@@ -55,11 +59,11 @@ export const ErpDateInput = React.forwardRef<
     const wrapped = {
       ...(event ?? {}),
       target: {
-        value: iso, name: target?.name ?? props.name ?? "",
+        value: iso, name: props.name ?? target?.name ?? "",
         id: target?.id ?? id ?? "", checked: false,
       },
       currentTarget: {
-        value: iso, name: target?.name ?? props.name ?? "",
+        value: iso, name: props.name ?? target?.name ?? "",
         id: target?.id ?? id ?? "", checked: false,
       },
     } as React.ChangeEvent<HTMLInputElement>;
