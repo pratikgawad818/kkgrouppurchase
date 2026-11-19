@@ -2,7 +2,7 @@ import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, ReceiptText, Undo2 } from "lucide-react";
+import { Plus, ReceiptText, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 // These backend objects are not yet installed in the live database (pending approved rollout), so they are absent from generated types.
@@ -22,6 +22,9 @@ import { Pager } from "@/components/erp/pager";
 import { PAGE } from "@/lib/fy";
 import { inr, fmtDate, errMsg } from "@/lib/format";
 import { selectCls } from "@/lib/po";
+import { SmallExpenseDetail, getSmallExpenseBills, type SmallExpenseRecord } from "@/components/erp/small-expense-detail";
+import { uploadSmallExpenseBill, removeSmallExpenseBill, validateSmallExpenseBill,
+  SMALL_EXPENSE_BILL_ACCEPT, SMALL_EXPENSE_MAX_BILLS, type ExpenseBill } from "@/lib/small-expense-bills";
 
 export const Route = createFileRoute("/_authenticated/_shell/finance/small-expenses")({
   head: () => ({meta:[{title:"Small Expenses — KK GROUP ERP"},{name:"description",content:"Audited site and office petty expenses by project and building."}]}),
@@ -44,33 +47,41 @@ function SmallExpenses() {
   const me=useMe(), qc=useQueryClient();
   const companyId=me.data?.profile.company_id;
   const permitted=!!me.data?.permissions.has("financial.view") && !!companyId;
-  const canWrite=!!me.data?.profile.is_active && !!me.data?.permissions.has("small_expense.manage") && permitted;
-  const canVoid=!!me.data?.profile.is_active && !!me.data?.roles.includes("super_admin") && permitted;
+  const isSuperAdmin=!!me.data?.roles.includes("super_admin");
+  const isDirector=!!me.data?.roles.includes("director");
+  const isAccountsManager=!!me.data?.roles.includes("accounts_manager");
+  const canEdit=!!me.data?.profile.is_active && permitted &&
+    !!me.data?.permissions.has("small_expense.manage") &&
+    (isSuperAdmin || (isAccountsManager && !isDirector));
+  const canCreate=canEdit && isSuperAdmin;
+  const canDelete=canCreate;
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState<Form>(createForm);
   const [entryKey,setEntryKey]=useState(()=>crypto.randomUUID());
   const [editingId,setEditingId]=useState<string|null>(null);
   const [correctionReason,setCorrectionReason]=useState("");
+  const [editingVersion,setEditingVersion]=useState<string|null>(null);
+  const [viewing,setViewing]=useState<SmallExpenseRecord|null>(null);
+  const [newBills,setNewBills]=useState<File[]>([]);
+  const [removedBillPaths,setRemovedBillPaths]=useState<string[]>([]);
   const [projectFilter,setProjectFilter]=useState("");
   const [buildingFilter,setBuildingFilter]=useState("");
   const [categoryFilter,setCategoryFilter]=useState("");
   const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
   const [page,setPage]=useState(0);
-  const [voidId,setVoidId]=useState<string|null>(null);
-  const [voidReason,setVoidReason]=useState("");
 
   const register=useQuery({
     queryKey:["small-expenses",companyId],enabled:permitted,staleTime:30_000,
     queryFn:()=>loadCompleteRows<any>(async (start,end)=>{
       const {data,count,error}=await untypedDb.from("site_small_expenses")
-        .select("id,spent_on,project_id,building_id,category,other_category_detail,amount,payment_method,paid_to,description,receipt_reference,status,created_at,void_reason,projects(name),buildings(name)",{count:"exact"})
-        .eq("company_id",companyId!).order("id").range(start,end);
+        .select("id,spent_on,project_id,building_id,category,other_category_detail,amount,payment_method,paid_to,description,receipt_reference,status,created_at,updated_at,projects(name),buildings(name)",{count:"exact"})
+        .eq("company_id",companyId!).eq("status","recorded").order("id").range(start,end);
       return {data,count,error};
     },{maxRows:10000}),
   });
   const context=useQuery({
-    queryKey:["small-expense-context",companyId],enabled:canWrite&&open,
+    queryKey:["small-expense-context",companyId],enabled:canEdit&&open,
     queryFn:async()=>{
       const [projects,buildings]=await Promise.all([
         supabase.from("projects").select("id,name,company_id").eq("company_id",companyId!).order("name").limit(3000),
@@ -82,19 +93,41 @@ function SmallExpenses() {
     },
   });
 
+  const editBills=useQuery<ExpenseBill[]>({
+    queryKey:["small-expense-bills",editingId],
+    enabled:!!editingId&&open,
+    queryFn:()=>getSmallExpenseBills(editingId!),
+    staleTime:0,
+  });
+
+  const startNew=()=>{
+    setEditingId(null);setEditingVersion(null);setCorrectionReason("");
+    setEntryKey(crypto.randomUUID());setForm(createForm());
+    setNewBills([]);setRemovedBillPaths([]);setOpen(true);
+  };
+  const addBillFiles=(selected: File[])=>{
+    try {
+      selected.forEach(validateSmallExpenseBill);
+      const remaining=(editBills.data??[]).filter(b=>!removedBillPaths.includes(b.storage_path)).length;
+      if (remaining+newBills.length+selected.length>SMALL_EXPENSE_MAX_BILLS)
+        throw new Error("Maximum 8 bill images or PDFs per expense.");
+      setNewBills(old=>[...old,...selected]);
+    } catch(error) { toast.error(errMsg(error)); }
+  };
+
   const save=useMutation({
     mutationFn:async()=>{
-      if(!canWrite)throw new Error("Small expense recording permission is required.");
-      if(editingId && (correctionReason.trim().length<10||correctionReason.trim().length>400))
-        throw new Error("Explain the correction in 10 to 400 characters.");
+      if(editingId ? !canEdit : !canCreate)
+        throw new Error("This role cannot create or edit expenses.");
       const amount=parseSmallExpenseAmount(form.amount);
       if(amount===null)throw new Error("Enter a positive amount with up to two decimal places.");
-      if(form.paidTo.trim().length<2||form.description.trim().length<3)throw new Error("Enter the person paid and a meaningful description.");
-      if(!form.spentOn||form.spentOn>todayIst())throw new Error("Select a valid date that is not in the future.");
-      const otherCategoryDetail = form.category === "other"
-        ? form.otherCategoryDetail.trim() : "";
-      if(otherCategoryDetail && (otherCategoryDetail.length < 2 || otherCategoryDetail.length > 120))
-        throw new Error("The optional Other category description must be 2–120 characters.");
+      if(form.paidTo.trim().length<2||form.description.trim().length<3)
+        throw new Error("Enter the person paid and a meaningful description.");
+      if(!form.spentOn||form.spentOn>todayIst())
+        throw new Error("Select a valid date that is not in the future.");
+      const otherCategoryDetail=form.category==="other"?form.otherCategoryDetail.trim():"";
+      if(otherCategoryDetail&&(otherCategoryDetail.length<2||otherCategoryDetail.length>120))
+        throw new Error("Other category details must be 2–120 characters.");
       if(form.buildingId&&!form.projectId)throw new Error("Select a project for this building.");
       const fields={
         _entry_key:entryKey,_project_id:form.projectId||null,_building_id:form.buildingId||null,
@@ -103,31 +136,53 @@ function SmallExpenses() {
         _receipt_reference:form.reference.trim()||null,
         _other_category_detail:otherCategoryDetail||null,
       };
+      if(editingId && !editingVersion)throw new Error("Reload this expense before editing.");
       const {data,error}=editingId
-        ? await untypedDb.rpc("correct_site_small_expense_detailed",{
-            ...fields,_expense_id:editingId,_reason:correctionReason.trim(),
-          })
+        ? await untypedDb.rpc("edit_site_small_expense",{
+          _expense_id:editingId,_expected_updated_at:editingVersion,
+          _payload:{
+            project_id:fields._project_id,building_id:fields._building_id,
+            spent_on:fields._spent_on,category:fields._category,amount:fields._amount,
+            payment_method:fields._payment_method,paid_to:fields._paid_to,
+            description:fields._description,receipt_reference:fields._receipt_reference,
+            other_category_detail:fields._other_category_detail,
+          },
+          _reason:correctionReason.trim()||null,
+        })
         : await untypedDb.rpc("record_site_small_expense_detailed",fields);
       if(error)throw error;
-      return data;
+      const expenseId=String(data);
+      let attached=0;
+      const billFailures:string[]=[];
+      // The financial row is saved before storage operations. If an upload
+      // fails, report partial success without creating a second expense.
+      for(const path of removedBillPaths){
+        try {await removeSmallExpenseBill(expenseId,path);}
+        catch(error){billFailures.push("Could not remove an old bill: "+errMsg(error));}
+      }
+      for(const file of newBills){
+        try {
+          await uploadSmallExpenseBill(file,companyId!,me.data!.profile.id,expenseId);
+          attached++;
+        } catch(error){billFailures.push(file.name+": "+errMsg(error));}
+      }
+      return {expenseId,corrected:!!editingId,attached,billFailures};
     },
-    onSuccess:async()=>{
-      const corrected=!!editingId;
+    onSuccess:async(result)=>{
       await qc.invalidateQueries({queryKey:["small-expenses"]});
+      await qc.invalidateQueries({queryKey:["small-expense-bills",result.expenseId]});
+      await qc.invalidateQueries({queryKey:["small-expense-detail",result.expenseId]});
       setOpen(false);setForm(createForm());setEntryKey(crypto.randomUUID());
-      setEditingId(null);setCorrectionReason("");
-      toast.success(corrected?"Expense corrected; original retained in audit":"Small expense recorded with audit history");
+      setEditingId(null);setEditingVersion(null);setCorrectionReason("");
+      setNewBills([]);setRemovedBillPaths([]);
+      if(result.billFailures.length)toast.warning("Expense saved, but some bills failed. Open the expense to check.",{
+        description:result.billFailures.slice(0,2).join(" | "),
+        duration:9000,
+      });
+      else toast.success(result.corrected
+        ?"Expense updated in place — no duplicate or void entry"
+        :result.attached?"Expense and bills recorded":"Expense recorded");
     },
-    onError:e=>toast.error(errMsg(e)),
-  });
-  const voidExpense=useMutation({
-    mutationFn:async()=>{
-      if(!canVoid||!voidId)throw new Error("Only Super Admin can void an expense.");
-      if(voidReason.trim().length<5)throw new Error("Enter a clear void reason (at least 5 characters).");
-      const {error}=await untypedDb.rpc("void_site_small_expense",{_expense_id:voidId,_reason:voidReason.trim()});
-      if(error)throw error;
-    },
-    onSuccess:async()=>{await qc.invalidateQueries({queryKey:["small-expenses"]});setVoidId(null);setVoidReason("");toast.success("Expense voided; original entry retained for audit");},
     onError:e=>toast.error(errMsg(e)),
   });
   if(me.isLoading)return <Loading />;
@@ -148,6 +203,8 @@ function SmallExpenses() {
   const setField=<K extends keyof Form>(key:K,value:Form[K])=>setForm(current=>({...current,[key]:value}));
   const beginCorrection=(record: typeof all[number])=>{
     setEditingId(record.id);
+    setEditingVersion(record.updated_at);
+    setNewBills([]);setRemovedBillPaths([]);
     setEntryKey(crypto.randomUUID());
     setCorrectionReason("");
     setForm({
@@ -162,21 +219,20 @@ function SmallExpenses() {
 
   return <div className="pb-16">
     <PageHeader title="Small Expenses" subtitle="Record actual petty expenses paid for your sites and office. Project/building breakdown, receipts and correction history."
-      actions={canWrite&&<Button size="sm" onClick={()=>{setEditingId(null);setCorrectionReason("");setEntryKey(crypto.randomUUID());setForm(createForm());setOpen(true);}}>
+      actions={canCreate&&<Button size="sm" onClick={startNew}>
         <Plus className="mr-1 h-4 w-4"/>Record expense</Button>} />
     <p className="mb-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
       These are incidental expenses actually paid—not supplier invoices, purchase orders or material consumption.
-      Do not enter a bill/payment already tracked elsewhere. Corrections retain the original and create an audited replacement; they never overwrite recorded history.
+      Do not enter a bill/payment already tracked elsewhere. You can view full details and attached bills; authorized edits update the same expense without creating a replacement.
     </p>
     {register.isLoading?<Loading/>:register.error?
       <div role="alert" className="rounded-lg border border-destructive/30 p-5 text-sm text-destructive">
         Could not load the full small-expense register. The database migration may not be deployed yet.
         No partial totals are shown. {errMsg(register.error)}
       </div>:<>
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <Stat label="Actual small expenses" value={inr(total.total)} hint="Excludes voided entries"/>
-        <Stat label="Recorded entries" value={total.count}/>
-        <Stat label="Voided entries" value={total.voided} hint="Retained in audit history"/>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <Stat label="Total paid expenses" value={inr(total.total)} hint="Current recorded expenses"/>
+        <Stat label="Expense entries" value={total.count}/>
       </div>
       <div className="mb-3 flex flex-wrap gap-2">
         <select aria-label="Project filter" className={selectCls} value={projectFilter} onChange={e=>{setProjectFilter(e.target.value);setBuildingFilter("");setPage(0);}}>
@@ -222,7 +278,7 @@ function SmallExpenses() {
         <table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b bg-muted/30 text-xs"><tr>
           <th className="p-3">Date</th><th className="p-3">Project / building</th><th className="p-3">Category</th>
           <th className="p-3">Paid to / purpose</th><th className="p-3">Method</th><th className="p-3">Receipt</th>
-          <th className="p-3 text-right">Amount</th><th className="p-3">Status</th><th className="p-3">Action</th>
+          <th className="p-3 text-right">Amount</th><th className="p-3">Actions</th>
         </tr></thead><tbody>{pageRows.map(x=><tr key={x.id} className="border-b last:border-0">
           <td className="p-3">{fmtDate(x.spent_on)}</td>
           <td className="p-3">{x.projects?.name??"Office"}{x.buildings?.name?" / "+x.buildings.name:""}</td>
@@ -237,27 +293,28 @@ function SmallExpenses() {
           <td className="p-3">{optionLabel(x.payment_method,SMALL_EXPENSE_PAYMENTS)}</td>
           <td className="p-3">{x.receipt_reference??"—"}</td>
           <td className="p-3 text-right font-medium tabular-nums">{inr(x.amount)}</td>
-          <td className="p-3">{x.status==="voided"?<span title={x.void_reason??""} className="text-destructive">Voided</span>:"Recorded"}</td>
           <td className="p-3">
             <div className="flex items-center gap-2">
-              {canWrite&&x.status==="recorded"&&<Button size="sm" variant="outline" onClick={()=>beginCorrection(x)}>Correct</Button>}
-              {canVoid&&x.status==="recorded"&&<Button size="sm" variant="outline" onClick={()=>{setVoidId(x.id);setVoidReason("");}}><Undo2 className="mr-1 h-3.5 w-3.5"/>Void</Button>}
-              <PermanentDelete force kind="small_expense" id={x.id} name={x.paid_to??"expense"}/>
+              <Button size="sm" variant="outline" onClick={()=>setViewing(x as SmallExpenseRecord)}>View</Button>
+              {canEdit&&<Button size="sm" variant="outline" onClick={()=>beginCorrection(x)}>Edit</Button>}
+              {canDelete&&<PermanentDelete labelled force kind="small_expense" id={x.id}
+                name={x.paid_to??"expense"} onDeleted={()=>void qc.invalidateQueries({queryKey:["small-expenses"]})}/>}
             </div>
           </td>
         </tr>)}
-          {!rows.length&&<tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No small-expense entries match.</td></tr>}
+          {!rows.length&&<tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No small-expense entries match.</td></tr>}
         </tbody></table>
       </div>
       <Pager page={filteredPage} size={PAGE} total={rows.length} onPage={setPage}/>
       <div className="mt-3 text-xs text-muted-foreground">Small-expense totals are paid outgoings, separate from warehouse stock and approved vendor bills. <Link to="/inventory/material-consumption" className="text-primary underline">View material consumption</Link>.</div>
     </>}
+    <SmallExpenseDetail expense={viewing} onClose={()=>setViewing(null)}/>
     <Dialog open={open} onOpenChange={value=>{if(!save.isPending)setOpen(value);}}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>{editingId?"Correct a small expense":"Record a small expense"}</DialogTitle><DialogDescription>
+        <DialogHeader><DialogTitle>{editingId?"Edit existing expense":"Record a small expense"}</DialogTitle><DialogDescription>
           {editingId
-            ?"The corrected entry is saved and the original voided in one transaction. Both records remain in the audit trail."
-            :"Records money already spent. Corrections create an audited replacement rather than overwrite the original."}
+            ?"Save changes to this same expense. No replacement entry and no void. Previous values remain in the audit history."
+            :"Record an actual payment and attach up to 8 bill images or PDFs."}
         </DialogDescription></DialogHeader>
         {context.error&&<p role="alert" className="text-sm text-destructive">{errMsg(context.error)}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
@@ -298,25 +355,55 @@ function SmallExpenses() {
           <div><label className="text-sm font-medium">Receipt / bill reference</label><Input maxLength={120} placeholder="Optional receipt number" value={form.reference} onChange={e=>setField("reference",e.target.value)}/></div>
           <div className="sm:col-span-2"><label className="text-sm font-medium">What was paid for? *</label><Textarea rows={3} maxLength={500} placeholder="Purpose and site details" value={form.description} onChange={e=>setField("description",e.target.value)}/></div>
         </div>
+        <section className="mt-4 rounded-xl border bg-muted/20 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Paperclip className="h-4 w-4"/>Bill images / invoice photos / PDFs
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Add JPG, PNG, WebP or PDF receipts (10 MB each, up to 8 per expense).
+            Only authorized company finance viewers can open attached bills.
+          </p>
+          {editingId&&editBills.isLoading&&<p className="mt-2 text-xs">Loading existing bills…</p>}
+          {editingId&&editBills.error&&<p role="alert" className="text-xs text-destructive">{errMsg(editBills.error)}</p>}
+          {!!editingId&&!!editBills.data?.length&&
+            <div className="mt-2 space-y-2">
+              {editBills.data.map(b=>(
+                <label key={b.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-xs">
+                  <input type="checkbox" checked={removedBillPaths.includes(b.storage_path)}
+                    onChange={e=>setRemovedBillPaths(current=>e.target.checked
+                      ?[...current,b.storage_path]:current.filter(path=>path!==b.storage_path))}/>
+                  <span className="min-w-0 flex-1 truncate">{b.file_name}</span>
+                  <span className="text-muted-foreground">{removedBillPaths.includes(b.storage_path)?"Remove on save":"Keep"}</span>
+                </label>
+              ))}
+            </div>}
+          <input type="file" multiple accept={SMALL_EXPENSE_BILL_ACCEPT}
+            aria-label="Attach bill photos or PDFs"
+            className="mt-3 block w-full min-w-0 text-xs file:mr-3 file:rounded file:border file:bg-background file:px-3 file:py-2"
+            onChange={e=>{
+              addBillFiles(Array.from(e.target.files??[]));
+              e.target.value="";
+            }}/>
+          {!!newBills.length&&<ul className="mt-3 space-y-1">
+            {newBills.map((f,i)=><li key={i} className="flex items-center justify-between gap-2 text-xs">
+              <span className="min-w-0 truncate">{f.name} · {Math.ceil(f.size/1024)} KB</span>
+              <Button type="button" size="icon" variant="ghost" aria-label={`Remove selected ${f.name}`}
+                onClick={()=>setNewBills(v=>v.filter((_,j)=>j!==i))}>
+                <X className="h-4 w-4"/>
+              </Button>
+            </li>)}
+          </ul>}
+        </section>
         {editingId&&<div className="mt-3">
-          <label className="text-sm font-medium" htmlFor="small-expense-correction-reason">Correction reason * (10–400 characters)</label>
-          <Textarea id="small-expense-correction-reason" rows={2} minLength={10} maxLength={400}
-            placeholder="Explain what was wrong and why this replacement is required"
+          <label className="text-sm font-medium" htmlFor="small-expense-correction-reason">Edit note (optional)</label>
+          <Textarea id="small-expense-correction-reason" rows={2} maxLength={400}
+            placeholder="What was changed? The previous values are saved automatically."
             value={correctionReason} onChange={e=>setCorrectionReason(e.target.value)}/>
         </div>}
-        <p className="text-xs text-muted-foreground">No file upload, bank transaction or vendor-payment journal is generated. Keep the receipt separately for Accounts review.</p>
         <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)} disabled={save.isPending}>Cancel</Button>
-          <Button onClick={()=>save.mutate()} disabled={save.isPending||context.isLoading||!!context.error||!!(editingId&&correctionReason.trim().length<10)}>
-            <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":editingId?"Save audited correction":"Record paid expense"}</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
-    <Dialog open={!!voidId} onOpenChange={value=>{if(!voidExpense.isPending&&!value)setVoidId(null);}}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Void expense entry?</DialogTitle>
-          <DialogDescription>Original data and audit event are retained. This removes the entry from active totals; it does not reverse a bank transfer.</DialogDescription></DialogHeader>
-        <Textarea rows={3} minLength={5} maxLength={500} placeholder="Reason for correction" value={voidReason} onChange={e=>setVoidReason(e.target.value)}/>
-        <DialogFooter><Button variant="outline" disabled={voidExpense.isPending} onClick={()=>setVoidId(null)}>Cancel</Button>
-          <Button variant="destructive" disabled={voidExpense.isPending||voidReason.trim().length<5} onClick={()=>voidExpense.mutate()}>Void entry</Button></DialogFooter>
+          <Button onClick={()=>save.mutate()} disabled={save.isPending||context.isLoading||!!context.error||
+            (!!editingId&&(editBills.isLoading||!!editBills.error))}>
+            <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":editingId?"Save changes":"Record paid expense"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </div>;
