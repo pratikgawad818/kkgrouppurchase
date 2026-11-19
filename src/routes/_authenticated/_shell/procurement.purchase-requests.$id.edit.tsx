@@ -61,6 +61,7 @@ function EditPr() {
         <PrForm
           id={id}
           expectedUpdatedAt={pr.updated_at}
+          initialAttachmentPath={pr.attachment_path}
           initial={{
             project_id: pr.project_id,
             building_id: pr.building_id ?? "",
