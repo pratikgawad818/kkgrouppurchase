@@ -1412,6 +1412,9 @@ def test_po_review_correction_handoff():
         assert str(c.execute("SELECT return_po_for_correction(%s,%s)",(
             po,"Please verify material specification with site")).fetchone()[0])==po
         assert c.execute("SELECT status FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]=="rejected"
+        # A Director cannot SELECT another user's private notifications through
+        # notification RLS. Inspect test-only rows as fixture owner instead.
+        c.execute("RESET ROLE")
         assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND title LIKE 'PO %%returned for correction'",
             (PURCHASER,)).fetchone()[0]>=1
         actor(c,DIRECTOR)
