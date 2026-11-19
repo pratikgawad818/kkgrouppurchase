@@ -127,6 +127,54 @@ def save_pr(c, token=None, doc=None, version=None, lines=None, submit=False, pur
         (token or str(uuid4()),doc,json.dumps(header),json.dumps(lines),submit,version)).fetchone()[0])
 
 
+
+def test_site_engineer_requires_project_assignment_for_pr():
+    """A Site Engineer sees a project only after an authorized admin assigns it."""
+    with db() as c:
+        actor(c, ADMIN)
+        deleted = c.execute("""
+            DELETE FROM user_project_assignments
+            WHERE user_id=%s AND project_id=%s
+            RETURNING project_id
+        """, (SITE, PROJECT)).fetchone()
+        assert deleted is not None, "Expected fixture project assignment"
+
+        actor(c, SITE)
+        assert c.execute(
+            "SELECT has_permission(auth.uid(),'purchase_request.create')"
+        ).fetchone()[0] is True
+        assert c.execute(
+            "SELECT can_access_project(auth.uid(),%s::uuid)", (PROJECT,)
+        ).fetchone()[0] is False
+        assert c.execute(
+            "SELECT count(*) FROM projects WHERE id=%s", (PROJECT,)
+        ).fetchone()[0] == 0, "Unassigned project must be hidden by RLS"
+        denied(c, lambda: save_pr(c), "Project is not accessible")
+
+        actor(c, ADMIN)
+        c.execute("""
+            INSERT INTO user_project_assignments(user_id,project_id)
+            VALUES(%s,%s)
+        """, (SITE, PROJECT))
+
+        actor(c, SITE)
+        assert c.execute(
+            "SELECT can_access_project(auth.uid(),%s::uuid)", (PROJECT,)
+        ).fetchone()[0] is True
+        assert c.execute(
+            "SELECT count(*) FROM projects WHERE id=%s", (PROJECT,)
+        ).fetchone()[0] == 1, "Assigned project should appear in the PR dropdown"
+        assert save_pr(c), "Site Engineer should create a PR for assigned project"
+
+        # Role alone must not permit self-assigning a cross-company project.
+        denied(c, lambda: c.execute("""
+            INSERT INTO user_project_assignments(user_id,project_id)
+            VALUES(%s,%s)
+        """, (SITE, OTHER_PROJECT)))
+        c.rollback()
+    print("PASS Site Engineer project assignment enables PR without widening RLS")
+
+
 def test_atomic_requests_and_rfqs():
     with db() as c:
         actor(c, PURCHASER)
@@ -909,6 +957,7 @@ if __name__ == "__main__":
     setup()
     test_count_units_seed_is_idempotent()
     test_services_and_hours_master_seed()
+    test_site_engineer_requires_project_assignment_for_pr()
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
     test_director_origin_and_super_admin_purchasing()
