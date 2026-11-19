@@ -102,6 +102,27 @@ function PrDetail() {
     },
   });
 
+  const origin = useQuery({
+    queryKey:["pr-correction-origin",q.data?.pr.revision_of_pr_id],
+    enabled:!!q.data?.pr.revision_of_pr_id,
+    queryFn:async () => {
+      const {data,error}=await supabase.from("purchase_requests")
+        .select("id,pr_number").eq("id",q.data!.pr.revision_of_pr_id!).maybeSingle();
+      if(error)throw error;
+      return data;
+    },
+  });
+  const successor = useQuery({
+    queryKey:["pr-correction-successor",id],
+    enabled:q.data?.pr.status==="cancelled",
+    queryFn:async () => {
+      const {data,error}=await supabase.from("purchase_requests")
+        .select("id,pr_number").eq("revision_of_pr_id",id).maybeSingle();
+      if(error)throw error;
+      return data;
+    },
+  });
+
   const run = useMutation({
     mutationFn: async (a: PrAction) => {
       const { error } = await supabase.rpc("pr_transition", {
@@ -215,6 +236,32 @@ function PrDetail() {
         </div>
       </section>
 
+      {origin.data && (
+        <section className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <h2 className="font-semibold">Correction requested by Purchase Manager</h2>
+          <p className="mt-1 text-muted-foreground">
+            This is an editable correction draft. Review the reasons in Remarks
+            and Approval history, update any incorrect material lines, and resubmit for approval.
+          </p>
+          <Link className="mt-2 inline-block font-medium text-primary hover:underline"
+            to="/procurement/purchase-requests/$id" params={{id:origin.data.id}}>
+            Original request: {origin.data.pr_number}
+          </Link>
+        </section>
+      )}
+      {pr.status==="cancelled" && successor.data && (
+        <section className="mt-4 rounded-xl border p-4 text-sm">
+          <h2 className="font-semibold">Superseded by a correction draft</h2>
+          <p className="mt-1 text-muted-foreground">
+            The original request and supplier quotation are retained for audit.
+            The Site Engineer can continue using the linked correction PR.
+          </p>
+          <Link className="mt-2 inline-block font-medium text-primary hover:underline"
+            to="/procurement/purchase-requests/$id" params={{id:successor.data.id}}>
+            Open correction {successor.data.pr_number}
+          </Link>
+        </section>
+      )}
       {pr.attachment_path && (
         <section className="mt-4 rounded-md border bg-card p-4">
           <h2 className="mb-2 text-sm font-semibold">Quotation / supporting document</h2>
