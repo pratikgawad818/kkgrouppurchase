@@ -143,12 +143,12 @@ export function workflowPresentation(
       finished: true, blocked: true,
     };
     if (status === "draft" || status === "rejected") return {
-      stateLabel: status === "rejected" ? "PO rejected — revision needed" : "Draft PO",
+      stateLabel: status === "rejected" ? (lastAction === "returned" ? "Returned to purchasing for correction" : "PO rejected — revision needed") : "Draft PO",
       stages: progress(labels, 0, 0),
-      nextTitle: status === "rejected" ? "Revise the PO and resubmit" : "Complete and submit the PO",
+      nextTitle: status === "rejected" ? "Review corrections and resubmit or escalate to Site Engineer" : "Complete and submit the PO",
       nextOwner: "Purchase Manager / PO creator",
       nextDescription: status === "rejected"
-        ? "Address the rejection reason shown below, update the draft and submit again."
+        ? (lastAction === "returned" ? "Review the recorded correction reason. Update PO terms and resubmit, or return the original PR to its Site Engineer when PR items need correction." : "Address the rejection reason shown below, update the draft and submit again.")
         : "Confirm delivery store, item values and supporting quotations before submitting.",
       finished: false, blocked: status === "rejected",
     };
@@ -261,6 +261,7 @@ const ACTION_LABELS: Record<WorkflowKind, Record<string, string>> = {
     submitted: "Submitted for Director approval",
     approved: "Purchase Order approved",
     rejected: "Purchase Order rejected",
+    returned: "Returned to Purchase Manager for correction",
     sent: "Sent to vendor",
     cancelled: "Purchase Order cancelled",
     closed: "Purchase Order closed",

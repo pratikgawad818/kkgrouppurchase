@@ -24,6 +24,10 @@ import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PrintPo } from "@/components/erp/print-po";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
+import { showDocument } from "@/components/erp/document-viewer";
+import { generatePoReviewPdf } from "@/lib/po-review-pdf";
+import { PROCUREMENT_ATTACHMENT_BUCKET, procurementAttachmentContentType } from "@/lib/procurement-attachments";
+import { FileSearch, FileText, RotateCcw, AlertCircle } from "lucide-react";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { cn } from "@/lib/utils";
 
@@ -121,12 +125,28 @@ function PoDetail() {
   const me = useMe();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["po", id], queryFn: () => loadPo(id) });
+  const correctionPr = useQuery({
+    queryKey:["po-correction-pr",q.data?.po.purchase_request_id],
+    enabled:!!q.data?.po.purchase_request_id,
+    queryFn:async () => {
+      const {data,error}=await supabase.from("purchase_requests")
+        .select("id,pr_number")
+        .eq("revision_of_pr_id",q.data!.po.purchase_request_id)
+        .maybeSingle();
+      if(error)throw error;
+      return data;
+    },
+  });
   const [dlg, setDlg] = useState<null | PoAction>(null);
   const [approvalDecision, setApprovalDecision] = useState<"approved" | "rejected">("approved");
   const [approvalOpen, setApprovalOpen] = useState(false);
   const approvalTrigger = useRef<HTMLButtonElement | null>(null);
   const orderHeading = useRef<HTMLDivElement | null>(null);
   const [comment, setComment] = useState("");
+  const [correctionMode, setCorrectionMode] = useState<null | "po" | "site">(null);
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [sc, setSc] = useState<null | { id: string; max: number; name: string }>(null);
   const [scQty, setScQty] = useState("");
@@ -197,6 +217,35 @@ function PoDetail() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
+  const correction = useMutation({
+    mutationFn: async (mode: "po" | "site") => {
+      const reason = correctionReason.trim();
+      if (reason.length < 10 || reason.length > 2000)
+        throw new Error("Explain the correction in 10–2000 characters.");
+      if (mode === "po") {
+        const { error } = await supabase.rpc("return_po_for_correction", {
+          _po_id: id, _reason: reason,
+        });
+        if (error) throw error;
+        return {message:"PO returned to purchasing for correction.", revisionId:null as string|null};
+      }
+      const { data, error } = await supabase.rpc("return_pr_to_site_engineer_from_po", {
+        _po_id: id, _reason: reason,
+      });
+      if (error) throw error;
+      return {message:"A linked correction PR has been created for the original Site Engineer. The old PO/RFQ remain cancelled for audit.",revisionId:data};
+    },
+    onSuccess: ({message,revisionId}) => {
+      toast.success(message);
+      if (revisionId) qc.invalidateQueries({queryKey:["po-correction-pr"]});
+      setCorrectionMode(null);
+      setCorrectionReason("");
+      for (const key of ["pr","prs","rfq","rfqs"]) qc.invalidateQueries({queryKey:[key]});
+      refresh();
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
+
   const shortClose = useMutation({
     mutationFn: async () => {
       const qty = Number(scQty);
@@ -224,6 +273,41 @@ function PoDetail() {
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { po, items, history, grns, warehouses, challans, grnItems } = q.data!;
   const mine = po.created_by === me.data?.profile.id;
+  const directorReviewer = (me.data?.roles ?? []).some(role =>
+    role === "director" || role === "super_admin");
+  const returnedToPurchase = po.status === "rejected" &&
+    history.at(-1)?.action === "returned";
+  const canEscalateToSite = returnedToPurchase &&
+    (me.data?.roles ?? []).includes("purchase_manager");
+
+  function viewPo() {
+    try {
+      const pdf = generatePoReviewPdf(po, items);
+      showDocument({url: URL.createObjectURL(pdf), type:"application/pdf",
+        name: `${po.po_number}.pdf`});
+    } catch(error) {toast.error(errMsg(error));}
+  }
+
+  async function viewQuotation() {
+    const path = po.vendor_quotations?.attachment_path ||
+      po.purchase_requests?.attachment_path;
+    if (!path) {
+      setQuoteError("No quotation attached. Ask the Site Engineer or Purchase Manager to upload a PDF or JPG before approval.");
+      return;
+    }
+    setQuoteLoading(true);
+    try {
+      const type = procurementAttachmentContentType(path);
+      if (!type) throw new Error("Unsupported quotation attachment type.");
+      const {data,error} = await supabase.storage.from(PROCUREMENT_ATTACHMENT_BUCKET).download(path);
+      if (error) throw error;
+      if (!data) throw new Error("The quotation attachment could not be read.");
+      showDocument({url:URL.createObjectURL(new Blob([data],{type})),
+        type,name:`Quotation-${po.po_number}.${path.split(".").pop()?.toLowerCase()||"pdf"}`});
+    } catch(error) {
+      setQuoteError("Unable to open quotation. " + errMsg(error));
+    } finally {setQuoteLoading(false);}
+  }
   const finalizeOwn = mine && directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
@@ -256,7 +340,7 @@ function PoDetail() {
                       st.cls,
                     )}
                   >
-                    {st.label}
+                    {returnedToPurchase ? "Returned for correction" : st.label}
                   </span>
                   {po.vendors?.company_name} · {po.projects?.name}
                   {po.buildings?.name ? ` · ${po.buildings.name}` : ""}
@@ -298,49 +382,49 @@ function PoDetail() {
                       {finalizeOwn ? "Finalize order" : "Submit to Director"}
                     </Button>
                   )}
-                {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
-                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-                    <Button
-                      className="approval-action min-h-12"
-                      variant="outline"
-                      disabled={act.isPending}
-                      onClick={(event) => {
-                        approvalTrigger.current = event.currentTarget;
-                        act.reset();
-                        setComment("");
-                        setApprovalDecision("rejected");
-                        setApprovalOpen(true);
-                      }}
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      className="approval-action min-h-12"
-                      disabled={act.isPending}
-                      onClick={(event) => {
-                        approvalTrigger.current = event.currentTarget;
-                        act.reset();
-                        setComment("");
-                        setApprovalDecision("approved");
-                        setApprovalOpen(true);
-                      }}
-                    >
-                      Approve
-                    </Button>
-                  </div>
-                )}
-                {po.status === "pending_approval" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const { error } = await supabase.rpc("remind_po_approvers", { _po_id: id });
-                      if (error) toast.error(errMsg(error));
-                      else toast.success("Reminder sent to directors");
-                    }}
-                  >
-                    Remind directors
+                <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                  onClick={viewPo}>
+                  <FileText className="h-4 w-4" /> View PO
+                </Button>
+                <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                  disabled={quoteLoading} onClick={() => void viewQuotation()}>
+                  <FileSearch className="h-4 w-4" />
+                  {quoteLoading ? "Opening…" : "View quotation"}
+                </Button>
+                {po.status === "pending_approval" && directorReviewer && (
+                  <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                    disabled={correction.isPending}
+                    onClick={() => { setCorrectionReason("");setCorrectionMode("po"); }}>
+                    <RotateCcw className="h-4 w-4" /> Revert for correction
                   </Button>
+                )}
+                {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
+                  <Button size="sm" className="approval-action min-h-11"
+                    disabled={act.isPending}
+                    onClick={(event) => {
+                      approvalTrigger.current=event.currentTarget;
+                      act.reset();
+                      setComment("");
+                      setApprovalDecision("approved");
+                      setApprovalOpen(true);
+                    }}>
+                    Approve
+                  </Button>
+                )}
+                {canEscalateToSite && (
+                  <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                    disabled={correction.isPending}
+                    onClick={() => { setCorrectionReason("");setCorrectionMode("site"); }}>
+                    <RotateCcw className="h-4 w-4" /> Return PR to Site Engineer
+                  </Button>
+                )}
+                {po.status === "pending_approval" && !directorReviewer &&
+                  can("purchase_order.create") && (
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    const {error}=await supabase.rpc("remind_po_approvers",{_po_id:id});
+                    if(error)toast.error(errMsg(error));
+                    else toast.success("Reminder sent to directors");
+                  }}>Remind directors</Button>
                 )}
                 {po.status === "approved" && can("purchase_order.create") && (
                   <Button
@@ -372,7 +456,7 @@ function PoDetail() {
                       Close PO
                     </Button>
                   )}
-                {["draft", "pending_approval", "approved", "rejected", "sent"].includes(
+                {!directorReviewer && ["draft", "pending_approval", "approved", "rejected", "sent"].includes(
                   po.status,
                 ) &&
                   grns.length === 0 &&
@@ -381,21 +465,6 @@ function PoDetail() {
                       Cancel
                     </Button>
                   )}
-                <Button size="sm" variant="ghost" onClick={() => window.print()}>
-                  Print
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    const t = document.title;
-                    document.title = po.po_number;
-                    window.print();
-                    document.title = t;
-                  }}
-                >
-                  Download PDF
-                </Button>
               </div>
             }
           />
@@ -444,6 +513,21 @@ function PoDetail() {
           )}
         </section>
 
+        {po.status === "cancelled" && correctionPr.data && (
+          <section className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+            <h2 className="font-semibold">Correction request assigned to Site Engineer</h2>
+            <p className="mt-1 text-muted-foreground">
+              The original purchasing cycle is retained for audit. The Site Engineer
+              should edit and resubmit the linked PR; purchasing must obtain fresh quotations afterward.
+            </p>
+            <Button size="sm" variant="outline" className="mt-3" asChild>
+              <Link to="/procurement/purchase-requests/$id"
+                params={{id:correctionPr.data.id}}>
+                Open {correctionPr.data.pr_number}
+              </Link>
+            </Button>
+          </section>
+        )}
         {(po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path) && (
           <section className="mt-4 rounded-xl border bg-card p-4 print:hidden">
             <h2 className="mb-2 text-sm font-semibold">Supporting documents for approval</h2>
@@ -751,6 +835,58 @@ function PoDetail() {
             ]}
           />
         </div>
+
+        <Dialog open={!!quoteError} onOpenChange={(open) => !open && setQuoteError(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <span className="mb-2 grid h-11 w-11 place-items-center rounded-full bg-destructive/10 text-destructive">
+                <AlertCircle className="h-5 w-5" aria-hidden="true"/>
+              </span>
+              <DialogTitle>Quotation unavailable</DialogTitle>
+              <DialogDescription>{quoteError}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setQuoteError(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={!!correctionMode}
+          onOpenChange={(open) => {
+            if (!open && !correction.isPending) setCorrectionMode(null);
+          }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{correctionMode === "site"
+                ? "Return request to Site Engineer" : "Revert PO for correction"}</DialogTitle>
+              <DialogDescription>
+                {correctionMode === "site"
+                  ? "The original Site Engineer can edit and resubmit their PR. The old PO and RFQs will be cancelled but retained for audit. Purchasing must start a fresh quotation cycle after the PR is reapproved."
+                  : "Return this pending PO to purchasing for changes. It will not count as a Director rejection vote."}
+              </DialogDescription>
+            </DialogHeader>
+            <label htmlFor="po-correction-reason" className="text-sm font-medium">
+              What must be corrected? *
+            </label>
+            <Textarea id="po-correction-reason" rows={4}
+              maxLength={2000} required value={correctionReason}
+              placeholder={correctionMode === "site"
+                ? "Describe the correction required in the original Site Engineer's request…"
+                : "Explain the material, tax, price or delivery-term error…"}
+              onChange={(event) => setCorrectionReason(event.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              Your name, reason and date are recorded. Minimum 10 characters.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" disabled={correction.isPending}
+                onClick={() => setCorrectionMode(null)}>Back</Button>
+              <Button disabled={correction.isPending ||
+                correctionReason.trim().length < 10}
+                onClick={() => correctionMode && correction.mutate(correctionMode)}>
+                {correction.isPending ? "Returning…" : "Confirm return"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <ApprovalDecisionDialog
           open={approvalOpen}

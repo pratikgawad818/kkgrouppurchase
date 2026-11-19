@@ -25,7 +25,7 @@ const cents = (amount: number | string | null | undefined): number =>
 /** Splitting in integer paise avoids CGST/SGST discrepancies from float halves. */
 export function poCommercialSummary(
   po: PoCommercialTotals,
-  items: PoTaxItem[],
+  items: readonly PoTaxItem[],
 ) {
   let cgst = 0;
   let sgst = 0;
