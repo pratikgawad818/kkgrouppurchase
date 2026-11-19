@@ -29,3 +29,13 @@ export function lineCalc(qty: number, rate: number, disc: number, taxPct: number
   return { taxable: Math.round(taxable * 100) / 100, tax: Math.round(tax * 100) / 100, total: Math.round((taxable + tax) * 100) / 100 };
 }
 
+
+/** GST on an explicitly taxable quotation-level charge; never on exempt charges. */
+export function chargeGst(amount: number, taxType: string, ratePercent: number) {
+  if (!Number.isFinite(amount) || amount < 0) throw new Error("Charge amount must be non-negative");
+  if (!Number.isFinite(ratePercent) || ratePercent < 0 || ratePercent > 28)
+    throw new Error("Charge GST percentage must be between 0 and 28");
+  if (!["none", "cgst_sgst", "igst"].includes(taxType))
+    throw new Error("Invalid charge tax type");
+  return taxType === "none" ? 0 : Math.round(amount * ratePercent) / 100;
+}

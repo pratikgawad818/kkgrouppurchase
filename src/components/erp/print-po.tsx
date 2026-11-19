@@ -5,6 +5,8 @@ type Vendor = { company_name: string; gstin: string | null; pan: string | null; 
 type Po = {
   po_number: string; po_date: string; expected_delivery_date: string | null; payment_terms: string | null; delivery_terms: string | null; remarks: string | null;
   subtotal: number; discount_total: number; freight: number; other_charges: number; grand_total: number; approved_at: string | null;
+  freight_tax_type?: string; freight_tax_rate_percent?: number; freight_tax_amount?: number;
+  other_charges_tax_type?: string; other_charges_tax_rate_percent?: number; other_charges_tax_amount?: number;
   companies: Company; vendors: Vendor; projects: { name: string } | null; buildings: { name: string } | null; warehouses: { name: string; address: string | null } | null;
   rfqs: { rfq_number: string } | null; purchase_requests: { pr_number: string } | null;
 };
@@ -16,10 +18,14 @@ export function PrintPo({ po, items, history }: { po: Po; items: Item[]; history
   const c = po.companies;
   const v = po.vendors;
   let cgst = 0, sgst = 0, igst = 0;
-  for (const i of items) {
-    const t = Number(i.tax_amount);
-    if (i.tax_type === "igst") igst += t; else if (i.tax_type === "cgst_sgst") { cgst += t / 2; sgst += t / 2; }
-  }
+  const addTax = (amount: number, taxType: string) => {
+    if (taxType === "igst") igst += amount;
+    else if (taxType === "cgst_sgst") { cgst += amount / 2; sgst += amount / 2; }
+  };
+  for (const i of items) addTax(Number(i.tax_amount), i.tax_type);
+  // Charge GST is included in the PO header, not allocated to product lines.
+  addTax(Number(po.freight_tax_amount ?? 0), po.freight_tax_type ?? "none");
+  addTax(Number(po.other_charges_tax_amount ?? 0), po.other_charges_tax_type ?? "none");
   const approver = [...history].reverse().find((h) => h.action === "approved")?.profiles?.full_name;
   const creator = history.find((h) => h.action === "created")?.profiles?.full_name;
   const addr = c?.registered_address || c?.office_address;
@@ -66,7 +72,7 @@ export function PrintPo({ po, items, history }: { po: Po; items: Item[]; history
           </tr>))}</tbody>
       </table>
       <div className="mt-2 ml-auto w-64">
-        {([["Subtotal", po.subtotal], ["Discount", -Number(po.discount_total)], ["CGST", cgst], ["SGST", sgst], ["IGST", igst], ["Freight", po.freight], ["Other charges", po.other_charges]] as const).map(([l, x]) => (
+        {([["Subtotal", po.subtotal], ["Discount", -Number(po.discount_total)], ["Freight", po.freight], ["Other charges", po.other_charges], ["CGST (incl. charges)", cgst], ["SGST (incl. charges)", sgst], ["IGST (incl. charges)", igst]] as const).map(([l, x]) => (
           <div key={l} className="flex justify-between"><span>{l}</span><span className="font-mono">{inr(x)}</span></div>
         ))}
         <div className="mt-1 flex justify-between border-t pt-1 font-bold"><span>Grand total</span><span className="font-mono">{inr(po.grand_total)}</span></div>

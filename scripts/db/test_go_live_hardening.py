@@ -175,6 +175,109 @@ def test_site_engineer_requires_project_assignment_for_pr():
     print("PASS Site Engineer project assignment enables PR without widening RLS")
 
 
+
+def test_quote_freight_gst_matches_supplier_and_po():
+    """Invoice-style GST on freight must survive quotation, header edits, and PO creation."""
+    with db() as c:
+        actor(c, PURCHASER)
+        lines = [
+            {"material_id": MATERIAL, "unit_id": UNIT, "quantity": 20},
+            {"material_id": MATERIAL, "unit_id": UNIT, "quantity": 8},
+        ]
+        request_id = save_pr(c, lines=lines, submit=True)
+        actor(c, DIRECTOR)
+        c.execute("SELECT pr_transition(%s,'approved','QA approved')", (request_id,))
+        actor(c, PURCHASER)
+        rfq = c.execute("""
+            SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])
+        """, (
+            str(uuid4()), request_id,
+            json.dumps({"response_due_date":"2026-12-01"}), [VENDOR]
+        )).fetchone()[0]
+        item_ids = [r[0] for r in c.execute(
+            "SELECT id FROM rfq_items WHERE rfq_id=%s ORDER BY line_no", (rfq,)
+        ).fetchall()]
+        assert len(item_ids) == 2
+        c.execute("SELECT rfq_transition(%s,'send','QA sent')", (rfq,))
+        rfq_vendor_id = c.execute(
+            "SELECT id FROM rfq_vendors WHERE rfq_id=%s", (rfq,)
+        ).fetchone()[0]
+        quote = c.execute("""
+            INSERT INTO vendor_quotations(
+              rfq_id,rfq_vendor_id,vendor_id,quotation_number,freight,
+              freight_tax_type,freight_tax_rate_percent,created_by
+            ) VALUES(%s,%s,%s,'QA-AXNOY-18NOV',3500,'cgst_sgst',18,%s)
+            RETURNING id
+        """, (rfq,rfq_vendor_id,VENDOR,PURCHASER)).fetchone()[0]
+        line_ids = []
+        for rfq_item_id,qty,rate in [
+            (item_ids[0],20,1300),(item_ids[1],8,475)
+        ]:
+            line_ids.append(c.execute("""
+                INSERT INTO vendor_quotation_items(
+                    quotation_id,rfq_item_id,quoted_quantity,rate,
+                    tax_type,tax_rate_percent
+                ) VALUES(%s,%s,%s,%s,'cgst_sgst',18) RETURNING id
+            """, (quote,rfq_item_id,qty,rate)).fetchone()[0])
+
+        values = c.execute("""
+            SELECT subtotal,discount_total,tax_total,freight,
+                   freight_tax_amount,other_charges_tax_amount,grand_total
+            FROM vendor_quotations WHERE id=%s
+        """, (quote,)).fetchone()
+        assert tuple(map(float,values)) == (29800,0,5994,3500,630,0,39294), values
+
+        # Changing only the charge/tax header must recalculate totals too.
+        c.execute("""
+            UPDATE vendor_quotations SET freight=4000,
+                other_charges=100,other_charges_tax_type='igst',
+                other_charges_tax_rate_percent=12 WHERE id=%s
+        """, (quote,))
+        changed = c.execute("""
+            SELECT freight_tax_amount,other_charges_tax_amount,tax_total,grand_total
+            FROM vendor_quotations WHERE id=%s
+        """, (quote,)).fetchone()
+        assert tuple(map(float,changed)) == (720,12,6096,39996), changed
+
+        # Reset to the quoted value before awarding and creating the PO.
+        c.execute("""
+            UPDATE vendor_quotations SET freight=3500,other_charges=0,
+                other_charges_tax_type='none',other_charges_tax_rate_percent=0
+            WHERE id=%s
+        """, (quote,))
+        assert float(c.execute(
+            "SELECT grand_total FROM vendor_quotations WHERE id=%s", (quote,)
+        ).fetchone()[0]) == 39294
+
+        actor(c, PURCHASER)
+        selections = [
+            {"rfq_item_id": str(rfq_item), "quotation_item_id": str(quote_item)}
+            for rfq_item,quote_item in zip(item_ids,line_ids)
+        ]
+        assert c.execute(
+            "SELECT record_vendor_selection(%s,%s::jsonb,%s)",
+            (rfq,json.dumps(selections),"Supplier quote matches landed delivery")
+        ).fetchone()[0] == 2
+        po = c.execute(
+            "SELECT create_po_from_selection(%s,%s)", (rfq,quote)
+        ).fetchone()[0]
+        po_values = c.execute("""
+            SELECT subtotal,tax_total,freight,freight_tax_amount,
+                   freight_tax_type,freight_tax_rate_percent,grand_total
+            FROM purchase_orders WHERE id=%s
+        """, (po,)).fetchone()
+        assert tuple(map(float,(po_values[0],po_values[1],po_values[2],po_values[3],po_values[5],po_values[6]))) == (
+            29800,5994,3500,630,18,39294
+        ), po_values
+        assert po_values[4] == 'cgst_sgst', po_values
+        assert float(c.execute(
+            "SELECT sum(tax_amount) FROM purchase_order_items WHERE po_id=%s", (po,)
+        ).fetchone()[0]) == 5364
+        c.rollback()
+    print("PASS Axnoy quotation GST on freight 39294, header updates, and PO tax sync")
+
+
+
 def test_atomic_requests_and_rfqs():
     with db() as c:
         actor(c, PURCHASER)
@@ -1002,6 +1105,7 @@ if __name__ == "__main__":
     test_services_and_hours_master_seed()
     test_square_metre_unit_seed_is_idempotent()
     test_site_engineer_requires_project_assignment_for_pr()
+    test_quote_freight_gst_matches_supplier_and_po()
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
     test_director_origin_and_super_admin_purchasing()
