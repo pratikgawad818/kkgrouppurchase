@@ -104,7 +104,20 @@ export function DocumentViewer() {
             )}
           </TransformWrapper>
         ) : isPdf ? (
-          <iframe ref={iframe} src={doc.url + "#zoom=" + pdfZoom} title={doc.name} className="h-full w-full border-0" />
+          <>
+            <iframe ref={iframe} src={doc.url + "#zoom=" + pdfZoom} title={doc.name} className="h-full w-full border-0" />
+            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-lg border bg-card/95 p-1 shadow-lg sm:hidden">
+              <Button variant="ghost" size="icon" aria-label="Zoom PDF out"
+                disabled={pdfZoom<=50} onClick={() => setPdfZoom(z=>Math.max(50,z-25))}>
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="w-10 text-center text-xs tabular-nums">{pdfZoom}%</span>
+              <Button variant="ghost" size="icon" aria-label="Zoom PDF in"
+                disabled={pdfZoom>=250} onClick={() => setPdfZoom(z=>Math.min(250,z+25))}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
             <p>This file type can't be previewed here.</p>
