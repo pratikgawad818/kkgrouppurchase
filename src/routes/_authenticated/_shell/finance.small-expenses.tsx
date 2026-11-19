@@ -32,10 +32,12 @@ type Form = {
   spentOn: string; category: SmallExpenseCategory; amount: string;
   method: SmallExpensePayment; paidTo: string; description: string;
   reference: string; projectId: string; buildingId: string;
+  otherCategoryDetail: string;
 };
 const createForm = (): Form => ({
   spentOn: todayIst(), category:"transport", amount:"", method:"cash",
   paidTo:"", description:"", reference:"", projectId:"",buildingId:"",
+  otherCategoryDetail:"",
 });
 const optionLabel = (value: string, options: Record<string, string>) => options[value] ?? value.replace(/_/g," ");
 function SmallExpenses() {
@@ -62,7 +64,7 @@ function SmallExpenses() {
     queryKey:["small-expenses",companyId],enabled:permitted,staleTime:30_000,
     queryFn:()=>loadCompleteRows<any>(async (start,end)=>{
       const {data,count,error}=await untypedDb.from("site_small_expenses")
-        .select("id,spent_on,project_id,building_id,category,amount,payment_method,paid_to,description,receipt_reference,status,created_at,void_reason,projects(name),buildings(name)",{count:"exact"})
+        .select("id,spent_on,project_id,building_id,category,other_category_detail,amount,payment_method,paid_to,description,receipt_reference,status,created_at,void_reason,projects(name),buildings(name)",{count:"exact"})
         .eq("company_id",companyId!).order("id").range(start,end);
       return {data,count,error};
     },{maxRows:10000}),
@@ -89,18 +91,23 @@ function SmallExpenses() {
       if(amount===null)throw new Error("Enter a positive amount up to ₹50,000 with at most two decimal places.");
       if(form.paidTo.trim().length<2||form.description.trim().length<3)throw new Error("Enter the person paid and a meaningful description.");
       if(!form.spentOn||form.spentOn>todayIst())throw new Error("Select a valid date that is not in the future.");
+      const otherCategoryDetail = form.category === "other"
+        ? form.otherCategoryDetail.trim() : "";
+      if(otherCategoryDetail && (otherCategoryDetail.length < 2 || otherCategoryDetail.length > 120))
+        throw new Error("The optional Other category description must be 2–120 characters.");
       if(form.buildingId&&!form.projectId)throw new Error("Select a project for this building.");
       const fields={
         _entry_key:entryKey,_project_id:form.projectId||null,_building_id:form.buildingId||null,
         _spent_on:form.spentOn,_category:form.category,_amount:amount,_payment_method:form.method,
         _paid_to:form.paidTo.trim(),_description:form.description.trim(),
         _receipt_reference:form.reference.trim()||null,
+        _other_category_detail:otherCategoryDetail||null,
       };
       const {data,error}=editingId
-        ? await untypedDb.rpc("correct_site_small_expense",{
+        ? await untypedDb.rpc("correct_site_small_expense_detailed",{
             ...fields,_expense_id:editingId,_reason:correctionReason.trim(),
           })
-        : await untypedDb.rpc("record_site_small_expense",fields);
+        : await untypedDb.rpc("record_site_small_expense_detailed",fields);
       if(error)throw error;
       return data;
     },
@@ -147,6 +154,7 @@ function SmallExpenses() {
       spentOn:record.spent_on,category:record.category,amount:String(record.amount),
       method:record.payment_method,paidTo:record.paid_to,description:record.description,
       reference:record.receipt_reference??"",projectId:record.project_id??"",
+      otherCategoryDetail:record.other_category_detail??"",
       buildingId:record.building_id??"",
     });
     setOpen(true);
@@ -218,7 +226,13 @@ function SmallExpenses() {
         </tr></thead><tbody>{pageRows.map(x=><tr key={x.id} className="border-b last:border-0">
           <td className="p-3">{fmtDate(x.spent_on)}</td>
           <td className="p-3">{x.projects?.name??"Office"}{x.buildings?.name?" / "+x.buildings.name:""}</td>
-          <td className="p-3">{optionLabel(x.category,SMALL_EXPENSE_CATEGORIES)}</td>
+          <td className="p-3">
+            <span>{optionLabel(x.category,SMALL_EXPENSE_CATEGORIES)}</span>
+            {x.category==="other"&&x.other_category_detail&&
+              <span className="mt-0.5 block max-w-[180px] break-words text-xs text-muted-foreground">
+                {x.other_category_detail}
+              </span>}
+          </td>
           <td className="p-3"><span className="font-medium">{x.paid_to}</span><p className="max-w-[260px] whitespace-normal text-xs text-muted-foreground">{x.description}</p></td>
           <td className="p-3">{optionLabel(x.payment_method,SMALL_EXPENSE_PAYMENTS)}</td>
           <td className="p-3">{x.receipt_reference??"—"}</td>
@@ -249,8 +263,31 @@ function SmallExpenses() {
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label className="text-sm font-medium">Date *</label><Input type="date" max={todayIst()} value={form.spentOn} onChange={e=>setField("spentOn",e.target.value)}/></div>
           <div><label className="text-sm font-medium">Amount (₹) *</label><Input inputMode="decimal" placeholder="e.g. 350.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
-          <div><label className="text-sm font-medium">Category *</label><select className={selectCls} value={form.category} onChange={e=>setField("category",e.target.value as SmallExpenseCategory)}>
-            {Object.entries(SMALL_EXPENSE_CATEGORIES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+          <div>
+            <label className="text-sm font-medium" htmlFor="small-expense-category">Category *</label>
+            <select id="small-expense-category" className={selectCls} value={form.category}
+              onChange={e=>setForm(previous=>({
+                ...previous,
+                category:e.target.value as SmallExpenseCategory,
+                otherCategoryDetail:e.target.value==="other" ? previous.otherCategoryDetail : "",
+              }))}>
+              {Object.entries(SMALL_EXPENSE_CATEGORIES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          {form.category==="other"&&
+            <div>
+              <label className="text-sm font-medium" htmlFor="small-expense-other-category">
+                Specify category <span className="font-normal text-muted-foreground">(optional)</span>
+              </label>
+              <Input id="small-expense-other-category" maxLength={120}
+                placeholder="e.g. Pest control, equipment hire"
+                value={form.otherCategoryDetail}
+                onChange={e=>setField("otherCategoryDetail",e.target.value)}/>
+              <p className="mt-1 text-xs text-muted-foreground">
+                This label will appear with Other in the expense register.
+              </p>
+            </div>
+          }
           <div><label className="text-sm font-medium">Paid through *</label><select className={selectCls} value={form.method} onChange={e=>setField("method",e.target.value as SmallExpensePayment)}>
             {Object.entries(SMALL_EXPENSE_PAYMENTS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
           <div><label className="text-sm font-medium">Project</label><select className={selectCls} value={form.projectId} onChange={e=>{setForm(v=>({...v,projectId:e.target.value,buildingId:""}));}}>
