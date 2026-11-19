@@ -24,6 +24,10 @@ import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PrintPo } from "@/components/erp/print-po";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
+import { showDocument } from "@/components/erp/document-viewer";
+import { generatePoReviewPdf } from "@/lib/po-review-pdf";
+import { PROCUREMENT_ATTACHMENT_BUCKET, procurementAttachmentContentType } from "@/lib/procurement-attachments";
+import { FileSearch, FileText, RotateCcw, AlertCircle } from "lucide-react";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { cn } from "@/lib/utils";
 
@@ -127,6 +131,10 @@ function PoDetail() {
   const approvalTrigger = useRef<HTMLButtonElement | null>(null);
   const orderHeading = useRef<HTMLDivElement | null>(null);
   const [comment, setComment] = useState("");
+  const [correctionMode, setCorrectionMode] = useState<null | "po" | "site">(null);
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [sc, setSc] = useState<null | { id: string; max: number; name: string }>(null);
   const [scQty, setScQty] = useState("");
@@ -197,6 +205,34 @@ function PoDetail() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
+  const correction = useMutation({
+    mutationFn: async (mode: "po" | "site") => {
+      const reason = correctionReason.trim();
+      if (reason.length < 10 || reason.length > 2000)
+        throw new Error("Explain the correction in 10–2000 characters.");
+      if (mode === "po") {
+        const { error } = await supabase.rpc("return_po_for_correction", {
+          _po_id: id, _reason: reason,
+        });
+        if (error) throw error;
+        return "PO returned to purchasing for correction.";
+      }
+      const { error } = await supabase.rpc("return_pr_to_site_engineer_from_po", {
+        _po_id: id, _reason: reason,
+      });
+      if (error) throw error;
+      return "PR returned to its Site Engineer. The previous PO/RFQ are cancelled but retained for audit.";
+    },
+    onSuccess: (message) => {
+      toast.success(message);
+      setCorrectionMode(null);
+      setCorrectionReason("");
+      for (const key of ["pr","prs","rfq","rfqs"]) qc.invalidateQueries({queryKey:[key]});
+      refresh();
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
+
   const shortClose = useMutation({
     mutationFn: async () => {
       const qty = Number(scQty);
@@ -224,6 +260,41 @@ function PoDetail() {
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { po, items, history, grns, warehouses, challans, grnItems } = q.data!;
   const mine = po.created_by === me.data?.profile.id;
+  const directorReviewer = (me.data?.roles ?? []).some(role =>
+    role === "director" || role === "super_admin");
+  const returnedToPurchase = po.status === "rejected" &&
+    history.at(-1)?.action === "returned";
+  const canEscalateToSite = returnedToPurchase &&
+    (me.data?.roles ?? []).includes("purchase_manager");
+
+  function viewPo() {
+    try {
+      const pdf = generatePoReviewPdf(po, items);
+      showDocument({url: URL.createObjectURL(pdf), type:"application/pdf",
+        name: `${po.po_number}.pdf`});
+    } catch(error) {toast.error(errMsg(error));}
+  }
+
+  async function viewQuotation() {
+    const path = po.vendor_quotations?.attachment_path ||
+      po.purchase_requests?.attachment_path;
+    if (!path) {
+      setQuoteError("No quotation attached. Ask the Site Engineer or Purchase Manager to upload a PDF or JPG before approval.");
+      return;
+    }
+    setQuoteLoading(true);
+    try {
+      const type = procurementAttachmentContentType(path);
+      if (!type) throw new Error("Unsupported quotation attachment type.");
+      const {data,error} = await supabase.storage.from(PROCUREMENT_ATTACHMENT_BUCKET).download(path);
+      if (error) throw error;
+      if (!data) throw new Error("The quotation attachment could not be read.");
+      showDocument({url:URL.createObjectURL(new Blob([data],{type})),
+        type,name:`Quotation-${po.po_number}.${path.split(".").pop()?.toLowerCase()||"pdf"}`});
+    } catch(error) {
+      setQuoteError("Unable to open quotation. " + errMsg(error));
+    } finally {setQuoteLoading(false);}
+  }
   const finalizeOwn = mine && directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
