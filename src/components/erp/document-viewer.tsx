@@ -1,13 +1,54 @@
 import { useEffect, useRef, useState } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { ArrowLeft, Download, ExternalLink, Minus, Plus, Printer, RotateCcw } from "lucide-react";
+import { AlertCircle, ArrowLeft, Download, ExternalLink, Loader2, Minus, Plus, Printer, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export type ViewerDoc = { url: string; type: string; name: string };
+export type ViewerDoc = {
+  url: string;
+  type: string;
+  name: string;
+  /** A4 page images avoid unsupported embedded-PDF plugins on Android. */
+  pages?: string[];
+  /** Used to prevent an async preview from reopening after Back is pressed. */
+  previewId?: string;
+  message?: string;
+};
 const EVENT = "erp:view-document";
+const UPDATE = "erp:update-document";
+const LOADING = "application/x-kk-po-loading";
+const FAILED = "application/x-kk-po-error";
+
+function revoke(doc: ViewerDoc | null) {
+  if (!doc) return;
+  for (const url of [doc.url, ...(doc.pages ?? [])]) {
+    if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+  }
+}
 
 export function showDocument(doc: ViewerDoc) {
   window.dispatchEvent(new CustomEvent<ViewerDoc>(EVENT, { detail: doc }));
+}
+
+/**
+ * Display the viewer synchronously when View PO is tapped, then fill it when
+ * the database and PDF render complete. Closing the viewer invalidates the
+ * token, so late promises cannot reopen a dismissed preview.
+ */
+export function beginDocumentPreview(name: string) {
+  const previewId = crypto.randomUUID();
+  showDocument({ url: "", type: LOADING, name, previewId });
+  return {
+    show(file: Omit<ViewerDoc, "previewId">) {
+      window.dispatchEvent(new CustomEvent<ViewerDoc>(UPDATE, {
+        detail: { ...file, previewId },
+      }));
+    },
+    fail(message: string) {
+      window.dispatchEvent(new CustomEvent<ViewerDoc>(UPDATE, {
+        detail: { url: "", type: FAILED, name, message, previewId },
+      }));
+    },
+  };
 }
 
 /** Full-screen in-app viewer for invoices and payment proofs. Mounted once in the root layout. */
@@ -17,9 +58,28 @@ export function DocumentViewer() {
   const iframe = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const onOpen = (e: Event) => { setPdfZoom(100); setDoc((e as CustomEvent<ViewerDoc>).detail); };
+    const onOpen = (e: Event) => {
+      setPdfZoom(100);
+      const next = (e as CustomEvent<ViewerDoc>).detail;
+      setDoc(previous => { revoke(previous); return next; });
+    };
+    const onUpdate = (e: Event) => {
+      const next = (e as CustomEvent<ViewerDoc>).detail;
+      setDoc(previous => {
+        if (!previous || !previous.previewId || previous.previewId !== next.previewId) {
+          revoke(next); // Viewer was closed or a newer preview replaced it.
+          return previous;
+        }
+        revoke(previous);
+        return next;
+      });
+    };
     window.addEventListener(EVENT, onOpen);
-    return () => window.removeEventListener(EVENT, onOpen);
+    window.addEventListener(UPDATE, onUpdate);
+    return () => {
+      window.removeEventListener(EVENT, onOpen);
+      window.removeEventListener(UPDATE, onUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -33,7 +93,7 @@ export function DocumentViewer() {
   }, [doc]);
 
   function close() {
-    setDoc((d) => { if (d) URL.revokeObjectURL(d.url); return null; });
+    setDoc(previous => { revoke(previous); return null; });
   }
 
   function printDocument() {
@@ -54,6 +114,8 @@ export function DocumentViewer() {
   }
 
   if (!doc) return null;
+  const loading = doc.type === LOADING;
+  const failed = doc.type === FAILED;
   const isImage = doc.type.startsWith("image/");
   const isPdf = doc.type === "application/pdf";
 
@@ -77,18 +139,52 @@ export function DocumentViewer() {
             </Button>
           </div>
         )}
-        <Button variant="ghost" size="icon" onClick={printDocument} aria-label="Print document">
+        <Button variant="ghost" size="icon" onClick={printDocument} aria-label="Print document"
+          disabled={loading || failed}>
           <Printer className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" asChild aria-label="Download">
-          <a href={doc.url} download={doc.name}><Download className="h-4 w-4" /></a>
-        </Button>
-        <Button variant="ghost" size="icon" asChild aria-label="Open in new tab">
-          <a href={doc.url} target="_blank" rel="noopener"><ExternalLink className="h-4 w-4" /></a>
-        </Button>
+        {!loading && !failed && (
+          <>
+            <Button variant="ghost" size="icon" asChild aria-label="Download">
+              <a href={doc.url} download={doc.name}><Download className="h-4 w-4" /></a>
+            </Button>
+            <Button variant="ghost" size="icon" asChild aria-label="Open in new tab">
+              <a href={doc.url} target="_blank" rel="noopener"><ExternalLink className="h-4 w-4" /></a>
+            </Button>
+          </>
+        )}
       </div>
       <div className="relative min-h-0 flex-1 bg-muted">
-        {isImage ? (
+        {loading ? (
+          <div role="status" className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-foreground" aria-hidden="true" />
+            <p className="text-sm font-medium">Preparing purchase order…</p>
+            <p className="text-xs text-muted-foreground">The PDF opens here automatically when ready.</p>
+          </div>
+        ) : failed ? (
+          <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+            <h2 className="font-semibold">Could not open this purchase order</h2>
+            <p className="max-w-md text-sm text-muted-foreground">{doc.message || "The document could not be prepared."}</p>
+            <Button type="button" variant="outline" onClick={close}>Go back</Button>
+          </div>
+        ) : isPdf && doc.pages?.length ? (
+          <div className="h-full overflow-auto overscroll-contain p-2 sm:p-5"
+            aria-label="Zoomable purchase order pages">
+            <div className="mx-auto flex flex-col items-center gap-4"
+              style={{ width: pdfZoom + "%", maxWidth: (820 * pdfZoom / 100) + "px" }}>
+              {doc.pages.map((url, index) => (
+                <img key={url} src={url} alt={"Purchase Order " + doc.name + ", page " + (index + 1)}
+                  draggable={false}
+                  className="h-auto w-full bg-white shadow-md ring-1 ring-black/10"
+                  style={{ aspectRatio: "595.28 / 841.89" }} />
+              ))}
+              <p className="pb-6 text-xs text-muted-foreground">
+                {doc.pages.length} page{doc.pages.length !== 1 ? "s" : ""} · Zoom with + / −
+              </p>
+            </div>
+          </div>
+        ) : isImage ? (
           <TransformWrapper minScale={0.5} maxScale={8} centerOnInit wheel={{ step: 0.15 }} doubleClick={{ mode: "toggle" }}>
             {({ zoomIn, zoomOut, resetTransform }) => (
               <>
