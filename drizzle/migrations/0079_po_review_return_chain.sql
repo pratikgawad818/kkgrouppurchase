@@ -86,8 +86,8 @@ BEGIN
     PERFORM public.po_transition(_po_id,'rejected'::public.po_action,reason_text);
   END IF;
 
-  -- Always notify active Purchase Managers, not only the PO creator (who
-  -- might be Super Admin). Preserve the existing notification to creator.
+  -- Notify every active Purchase Manager, including the PO creator when
+  -- that person is the Manager responsible for correcting the order.
   INSERT INTO public.notifications(user_id,title,body,link)
   SELECT DISTINCT manager.id,
     'PO '||p.po_number||' returned for correction',
@@ -97,8 +97,7 @@ BEGIN
   JOIN public.profiles manager ON manager.id=roles.user_id
   WHERE roles.role='purchase_manager'
     AND manager.is_active AND manager.company_id=p.company_id
-    AND public.can_access_project(manager.id,p.project_id)
-    AND manager.id IS DISTINCT FROM p.created_by;
+    AND public.can_access_project(manager.id,p.project_id);
   RETURN _po_id;
 END $$;
 REVOKE ALL ON FUNCTION public.return_po_for_correction(uuid,text) FROM PUBLIC,anon;
