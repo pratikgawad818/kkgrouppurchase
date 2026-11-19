@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import { formatErpDate, formatErpDateTime } from "./date-format.ts";
 
 export type UnitStatus = Database["public"]["Enums"]["unit_status"];
 export type UnitType = Database["public"]["Enums"]["unit_type"];
@@ -47,15 +48,8 @@ export function num(v: number | string | null | undefined) {
   return numFmt.format(Number(v));
 }
 
-export function fmtDate(v: string | null | undefined) {
-  if (!v) return "—";
-  return new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-export function fmtDateTime(v: string | null | undefined) {
-  if (!v) return "—";
-  return new Date(v).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
+export const fmtDate = formatErpDate;
+export const fmtDateTime = formatErpDateTime;
 
 export const UNIT_STATUS: Record<UnitStatus, { label: string; tone: string }> = {
   available: { label: "Available", tone: "available" },

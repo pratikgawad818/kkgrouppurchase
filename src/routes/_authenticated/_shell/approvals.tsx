@@ -26,7 +26,7 @@ import {
 import { loadApprovalDecisions, type ApprovalHistoryDocument } from "@/lib/approval-history-query";
 import { PO_STATUS, type PoStatus } from "@/lib/po";
 import { PAYMENT_STATUS, type PaymentStatus } from "@/lib/finance";
-import { errMsg, inr } from "@/lib/format";
+import { errMsg, inr, fmtDateTime } from "@/lib/format";
 
 type Kind = "purchase_order" | "vendor_payment";
 type Request = ApprovalHistoryDocument & {
@@ -462,7 +462,7 @@ function DirectorApprovals() {
                     (mine ? (
                       <p className="mt-4 rounded-lg bg-muted p-3 text-sm">
                         Your decision: {mine.decision} ·{" "}
-                        {new Date(mine.occurredAt).toLocaleString()}
+                        {fmtDateTime(mine.occurredAt)}
                       </p>
                     ) : r.createdBy === me.data?.profile.id ? (
                       <p className="mt-4 text-sm text-muted-foreground">

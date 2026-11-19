@@ -207,7 +207,7 @@ const STALE_CHUNK_RECOVERY = `(function () {
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en-GB">
       <head>
         <script dangerouslySetInnerHTML={{ __html: STALE_CHUNK_RECOVERY }} />
         <HeadContent />
