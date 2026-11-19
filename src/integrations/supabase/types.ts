@@ -2005,6 +2005,48 @@ export type Database = {
         }
         Relationships: []
       }
+      procurement_document_revisions: {
+        Row: {
+          id: string
+          company_id: string
+          document_type: string
+          document_id: string
+          revision_no: number
+          actor_id: string
+          request_id: string | null
+          reason: string
+          before_snapshot: Json
+          after_snapshot: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          document_type: string
+          document_id: string
+          revision_no: number
+          actor_id: string
+          request_id?: string | null
+          reason: string
+          before_snapshot: Json
+          after_snapshot: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          document_type?: string
+          document_id?: string
+          revision_no?: number
+          actor_id?: string
+          request_id?: string | null
+          reason?: string
+          before_snapshot?: Json
+          after_snapshot?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       procurement_save_receipts: {
         Row: {
           actor_id: string
