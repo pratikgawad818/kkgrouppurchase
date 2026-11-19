@@ -487,20 +487,25 @@ def test_po_return_and_site_engineer_escalation():
             "SELECT return_pr_to_site_engineer_from_po(%s,%s)",(po,reason)),"Only an authorized Purchase Manager")
         actor(c,PURCHASER)
         got = c.execute("SELECT return_pr_to_site_engineer_from_po(%s,%s)",(po,reason)).fetchone()[0]
-        assert str(got)==str(pr)
+        assert str(got)!=str(pr), "RFQ-linked historical PR must be immutable"
         assert c.execute("SELECT status FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]=="cancelled"
-        assert c.execute("SELECT status FROM purchase_requests WHERE id=%s",(pr,)).fetchone()[0]=="draft"
-        assert c.execute("SELECT approved_at IS NULL,approved_by IS NULL FROM purchase_requests WHERE id=%s",(pr,)).fetchone()==(True,True)
+        assert c.execute("SELECT status FROM purchase_requests WHERE id=%s",(pr,)).fetchone()[0]=="cancelled"
         assert c.execute("SELECT status FROM rfqs WHERE id=%s",(rfq,)).fetchone()[0]=="cancelled"
         assert c.execute("SELECT count(*) FROM vendor_quotations WHERE id=%s",(qt,)).fetchone()[0]==1
-        assert c.execute("SELECT action FROM purchase_request_approvals WHERE purchase_request_id=%s ORDER BY acted_at DESC,id DESC LIMIT 1",(pr,)).fetchone()[0]=="returned"
+        copy=c.execute("SELECT status,requested_by,revision_of_pr_id,pr_number FROM purchase_requests WHERE id=%s",(got,)).fetchone()
+        assert copy[0]=="draft" and str(copy[1])==SITE and str(copy[2])==str(pr),copy
+        assert c.execute("SELECT count(*) FROM purchase_request_items WHERE purchase_request_id=%s",(pr,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM purchase_request_items WHERE purchase_request_id=%s",(got,)).fetchone()[0]==1
+        assert c.execute("SELECT action FROM purchase_request_approvals WHERE purchase_request_id=%s ORDER BY acted_at DESC,id DESC LIMIT 1",(got,)).fetchone()[0]=="returned"
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",(SITE,"/procurement/purchase-requests/"+str(got))).fetchone()[0]==1
         denied(c,lambda:c.execute("SELECT create_po_from_selection(%s,%s)",(rfq,qt)),"not ready")
         denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','should not reuse')",(po,)),"Only draft or rejected")
+        denied(c,lambda:c.execute("SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])",(str(uuid4()),pr,json.dumps({"response_due_date":"2026-12-01"}),[VENDOR])),"approved purchase request")
         actor(c,SITE)
-        version=c.execute("SELECT updated_at FROM purchase_requests WHERE id=%s",(pr,)).fetchone()[0]
-        assert save_pr(c,doc=str(pr),version=version,purpose="Corrected request") == str(pr)
+        version=c.execute("SELECT updated_at FROM purchase_requests WHERE id=%s",(got,)).fetchone()[0]
+        assert save_pr(c,doc=str(got),version=version,purpose="Corrected request") == str(got)
         c.rollback()
-    print("PASS separate Director return, zero rejected votes, guarded Purchase Manager escalation, preserved audit and Site Engineer PR edit")
+    print("PASS separate Director return, zero rejected votes, guarded Purchase Manager escalation, preserved supplier history and new Site Engineer correction draft")
 
 
 
