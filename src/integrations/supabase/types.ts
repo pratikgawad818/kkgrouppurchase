@@ -2005,6 +2005,48 @@ export type Database = {
         }
         Relationships: []
       }
+      procurement_document_revisions: {
+        Row: {
+          id: string
+          company_id: string
+          document_type: string
+          document_id: string
+          revision_no: number
+          actor_id: string
+          request_id: string | null
+          reason: string
+          before_snapshot: Json
+          after_snapshot: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          document_type: string
+          document_id: string
+          revision_no: number
+          actor_id: string
+          request_id?: string | null
+          reason: string
+          before_snapshot: Json
+          after_snapshot: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          document_type?: string
+          document_id?: string
+          revision_no?: number
+          actor_id?: string
+          request_id?: string | null
+          reason?: string
+          before_snapshot?: Json
+          after_snapshot?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       procurement_save_receipts: {
         Row: {
           actor_id: string
@@ -5623,6 +5665,39 @@ export type Database = {
       procurement_attachment_owned: {
         Args: { _path: string; _company: string; _actor: string }
         Returns: boolean
+      }
+      save_purchase_request_revision: {
+        Args: {
+          _request_id: string
+          _id: string
+          _header: Json
+          _items: Json
+          _submit: boolean
+          _expected_updated_at: string
+          _reason: string
+        }
+        Returns: string
+      }
+      revise_rfq_draft: {
+        Args: {
+          _rfq_id: string
+          _expected_updated_at: string
+          _header: Json
+          _items: Json
+          _vendor_ids: string[]
+          _reason: string
+        }
+        Returns: string
+      }
+      revise_po_draft: {
+        Args: {
+          _po_id: string
+          _expected_updated_at: string
+          _header: Json
+          _items: Json
+          _reason: string
+        }
+        Returns: string
       }
       save_purchase_request: {
         Args: {

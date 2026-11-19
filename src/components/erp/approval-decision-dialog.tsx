@@ -46,6 +46,7 @@ export function ApprovalDecisionDialog({
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const reject = decision === "rejected";
+  const correction = reject && target?.kind === "purchase_order";
   const disabled = busy || (reject && !comment.trim());
   return (
     <Dialog
@@ -76,7 +77,7 @@ export function ApprovalDecisionDialog({
           </span>
           <DialogTitle ref={heading} tabIndex={-1} className="outline-none">
             {reject
-              ? "Reject this order?"
+              ? correction ? "Return this PO for correction?" : "Reject this payment?"
               : target?.kind === "vendor_payment"
                 ? "Approve this payment?"
                 : "Approve this order?"}
@@ -108,7 +109,7 @@ export function ApprovalDecisionDialog({
         >
           <div className="space-y-2">
             <Label htmlFor="director-decision-comment">
-              {reject ? "Reason for rejection" : "Comment (optional)"}
+              {correction ? "Correction required *" : reject ? "Reason for rejection" : "Comment (optional)"}
             </Label>
             <Textarea
               id="director-decision-comment"
@@ -149,7 +150,7 @@ export function ApprovalDecisionDialog({
               variant={reject ? "destructive" : "default"}
               disabled={disabled}
             >
-              {busy ? "Saving…" : reject ? "Reject" : "Approve"}
+              {busy ? "Saving…" : correction ? "Return for correction" : reject ? "Reject" : "Approve"}
             </Button>
           </DialogFooter>
         </form>

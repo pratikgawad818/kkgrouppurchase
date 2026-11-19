@@ -65,6 +65,7 @@ export function PrForm({
   const attempt = useRef<{ signature: string; id: string } | null>(null);
   const uploaded = useRef<{ file: File; path: string } | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [revisionReason, setRevisionReason] = useState("");
   const me = useMe();
   const staffId = me.data?.profile.id;
   const finalizeOwn = directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
@@ -144,6 +145,7 @@ export function PrForm({
           throw new Error("Each item needs a quantity greater than 0.");
         if (!l.unit_id) throw new Error("Each item needs a unit.");
       }
+      if (id && revisionReason.trim().length < 3) throw new Error("Explain why this PR is being corrected (at least 3 characters).");
       const header = {
         project_id: h.project_id,
         building_id: h.building_id || null,
@@ -183,10 +185,18 @@ export function PrForm({
         }
       }
       attempt.current = saveAttempt(attempt.current, payload);
-      const { data: prId, error } = await supabase.rpc("save_purchase_request", {
-        ...payload,
-        _request_id: attempt.current.id,
-      });
+      const { data: prId, error } = id
+        ? await supabase.rpc("save_purchase_request_revision", {
+            ...payload,
+            _id: id,
+            _expected_updated_at: expectedUpdatedAt!,
+            _request_id: attempt.current.id,
+            _reason: revisionReason.trim(),
+          })
+        : await supabase.rpc("save_purchase_request", {
+            ...payload,
+            _request_id: attempt.current.id,
+          });
       if (error) throw error;
       if (!prId) throw new Error("The request could not be saved. Please retry.");
       if (attachmentPath) {
@@ -210,6 +220,7 @@ export function PrForm({
       );
       qc.invalidateQueries({ queryKey: ["prs"] });
       qc.invalidateQueries({ queryKey: ["pr", prId] });
+      qc.invalidateQueries({ queryKey: ["procurement-revisions", "purchase_request", prId] });
       navigate({ to: "/procurement/purchase-requests/$id", params: { id: prId } });
     },
     onError: (e) => toast.error(errMsg(e)),
@@ -474,6 +485,16 @@ export function PrForm({
         <p className="text-sm text-muted-foreground">
           Your request will be ready for RFQ immediately. No additional approval is needed.
         </p>
+      )}
+      {id && (
+        <section className="rounded-lg border bg-card p-4">
+          <Label htmlFor="pr-revision-reason">Reason for correcting this purchase request *</Label>
+          <Textarea id="pr-revision-reason" rows={2} value={revisionReason}
+            onChange={(event) => setRevisionReason(event.target.value)}
+            placeholder="What changed and why? This is saved with the permanent revision history."
+            className="mt-2" />
+          <p className="mt-1 text-xs text-muted-foreground">The PR number stays the same. Returned PRs require fresh approval after resubmission.</p>
+        </section>
       )}
       <div className="flex justify-end gap-2">
         <Button type="submit" variant="outline" disabled={save.isPending}>

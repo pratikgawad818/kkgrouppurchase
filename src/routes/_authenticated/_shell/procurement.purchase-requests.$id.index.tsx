@@ -18,6 +18,7 @@ import {
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
+import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
 import { errMsg, fmtDate, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
@@ -146,7 +147,7 @@ function PrDetail() {
             {pr.status === "draft" && mine && can("purchase_request.edit") && (
               <Button asChild size="sm" variant="outline">
                 <Link to="/procurement/purchase-requests/$id/edit" params={{ id }}>
-                  Edit draft
+                  Edit / correct PR
                 </Link>
               </Button>
             )}
@@ -302,6 +303,7 @@ function PrDetail() {
         }))}
       />
 
+      <ProcurementRevisionHistory kind="purchase_request" documentId={id} />
       <Dialog open={!!act} onOpenChange={(o) => !o && setAct(null)}>
         <DialogContent>
           <DialogHeader>
