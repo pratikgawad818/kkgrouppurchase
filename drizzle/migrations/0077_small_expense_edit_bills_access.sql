@@ -279,15 +279,9 @@ DROP POLICY IF EXISTS "Small expense bill view" ON storage.objects;
 CREATE POLICY "Small expense bill view" ON storage.objects FOR SELECT
 TO authenticated USING (
   bucket_id='small-expense-bills'
-  AND (
-    -- Own staged uploads may be inspected before linking.
-    ((storage.foldername(name))[2]=auth.uid()::text
-      AND (storage.foldername(name))[1]=(
-        SELECT p.company_id::text FROM public.profiles p
-        WHERE p.id=auth.uid() AND p.is_active
-      ))
-    OR public.can_view_site_small_expense_bill(name)
-  )
+  -- Only actively linked bills are downloadable, even by the uploader.
+  -- Revoked project access and archived bill links cannot bypass RLS.
+  AND public.can_view_site_small_expense_bill(name)
 );
 
 CREATE OR REPLACE FUNCTION public.manage_site_small_expense_bill(
