@@ -25,17 +25,17 @@ CREATE POLICY "Read accessible document revisions" ON public.procurement_documen
    public.actor_in_company(company_id) AND (
      (document_type='purchase_request' AND EXISTS (
        SELECT 1 FROM public.purchase_requests d
-       WHERE d.id=document_id AND d.company_id=company_id
+       WHERE d.id=document_id AND d.company_id=public.procurement_document_revisions.company_id
          AND public.can_access_project(auth.uid(),d.project_id)
          AND public.has_permission(auth.uid(),'purchase_request.view')
      )) OR
      (document_type='rfq' AND EXISTS (
        SELECT 1 FROM public.rfqs d
-       WHERE d.id=document_id AND d.company_id=company_id AND public.rfq_can_view(d.id)
+       WHERE d.id=document_id AND d.company_id=public.procurement_document_revisions.company_id AND public.rfq_can_view(d.id)
      )) OR
      (document_type='purchase_order' AND EXISTS (
        SELECT 1 FROM public.purchase_orders d
-       WHERE d.id=document_id AND d.company_id=company_id AND public.po_can_view(d.id)
+       WHERE d.id=document_id AND d.company_id=public.procurement_document_revisions.company_id AND public.po_can_view(d.id)
      ))
    )
  );
