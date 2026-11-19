@@ -1300,7 +1300,7 @@ def test_accounts_manager_small_expense_corrections():
 
 
 def test_small_expense_in_place_and_bills():
-    """New 0077 contract: Admin records, Accounts edits same row, Director only views."""
+    """0078: Admin and Accounts record, Accounts edit, Director only views."""
     with db() as c:
         actor(c, ADMIN)
         day=c.execute("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date").fetchone()[0]
@@ -1322,7 +1322,17 @@ def test_small_expense_in_place_and_bills():
         edit="""SELECT edit_site_small_expense(%s::uuid,%s::timestamptz,%s::jsonb,%s)"""
         actor(c, ACCOUNTS)
         assert c.execute("SELECT has_permission(auth.uid(),'small_expense.manage')").fetchone()[0]
-        denied(c,lambda:c.execute(create,(str(uuid4()),*args[1:])))
+        # Accounts Manager now creates original paid-expense entries and their
+        # receipt/bill attachments (same retry-safe RPC as Super Admin).
+        manager_args=(str(uuid4()),PROJECT,None,day,"transport","341.00","cash",
+                      "Local transporter","Vehicle hire for site","REC-341",None)
+        manager_created=c.execute(create,manager_args).fetchone()[0]
+        assert manager_created != original
+        assert c.execute(create,manager_args).fetchone()[0] == manager_created
+        assert c.execute("SELECT created_by::text,amount,status FROM site_small_expenses WHERE id=%s",
+                         (manager_created,)).fetchone() == (ACCOUNTS,341.00,"recorded")
+        assert c.execute("SELECT count(*) FROM site_small_expense_events WHERE expense_id=%s AND action='recorded'",
+                         (manager_created,)).fetchone()[0] == 1
         denied(c,lambda:c.execute(edit,(original,version,
                json.dumps({**payload,"project_id":OTHER_PROJECT}),"Wrong company")))
         assert c.execute(edit,(original,version,json.dumps(payload),"Verified bill details")).fetchone()[0]==original
@@ -1351,10 +1361,16 @@ def test_small_expense_in_place_and_bills():
         assert c.execute("SELECT is_active FROM site_small_expense_bills WHERE id=%s",
                          (bill,)).fetchone()[0]
         actor(c,SITE)
+        denied(c,lambda:c.execute(create,(
+            str(uuid4()),PROJECT,None,day,"transport","45.00","cash",
+            "Local transporter","Unauthorized new expense",None,None)))
         denied(c,lambda:c.execute(edit,(original,version,json.dumps(payload),"No access")))
         denied(c,lambda:c.execute("SELECT manage_site_small_expense_bill(%s,%s,NULL,NULL,NULL,true)",
                                  (original,bill_path)))
         actor(c,DIRECTOR)
+        denied(c,lambda:c.execute(create,(
+            str(uuid4()),PROJECT,None,day,"transport","45.00","cash",
+            "Local transporter","Director cannot create bills",None,None)))
         assert c.execute("SELECT has_permission(auth.uid(),'financial.view')").fetchone()[0]
         assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id=%s",(original,)).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM site_small_expense_bills WHERE id=%s",(bill,)).fetchone()[0]==1
@@ -1364,6 +1380,7 @@ def test_small_expense_in_place_and_bills():
         assert c.execute("SELECT count(*) FROM site_small_expense_bills WHERE id=%s",(bill,)).fetchone()[0]==0
         assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(bill_path,)).fetchone()[0]==0
         actor(c,ACCOUNTS)
+        denied(c,lambda:c.execute("SELECT super_admin_force_delete('small_expense',%s)",(manager_created,)))
         assert c.execute("SELECT manage_site_small_expense_bill(%s,%s,NULL,NULL,NULL,true)",
                          (original,bill_path)).fetchone()[0]==bill
         assert c.execute("SELECT is_active FROM site_small_expense_bills WHERE id=%s",(bill,)).fetchone()[0] is False
@@ -1373,7 +1390,7 @@ def test_small_expense_in_place_and_bills():
         c.execute("SELECT super_admin_force_delete('small_expense',%s)",(original,))
         assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id=%s",(original,)).fetchone()[0]==0
         c.rollback()
-    print("PASS 0077 same-ID edits, non-void audit, large values, private bills, strict roles, deletion")
+    print("PASS 0078 Accounts Manager creates new expenses, same-ID edits, Director view-only, bill privacy, admin deletion")
 
 
 if __name__ == "__main__":
