@@ -1,4 +1,5 @@
 import { PermanentDelete } from "@/components/erp/permanent-delete";
+import { StaffProjectAssignments } from "@/components/erp/staff-project-assignments";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -126,7 +127,7 @@ function UsersPage() {
       </div>
 
       <Dialog open={!!staff} onOpenChange={(o) => !o && setStaff(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Staff access</DialogTitle><DialogDescription>{staff?.full_name || staff?.email}</DialogDescription></DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div><Label>Phone</Label><Input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></div>
@@ -135,6 +136,7 @@ function UsersPage() {
             <div className="sm:col-span-2"><Label>Operational role</Label><RoleSelect allowNone value={edit.role} onChange={(v) => setEdit({ ...edit, role: v })} disabled={isSuper} />{isSuper && <p className="mt-1 text-xs text-muted-foreground">Super Admin role is kept; contact details can still be edited.</p>}</div>
             <div className="flex items-center justify-between rounded-md border p-3 sm:col-span-2"><div><div className="text-sm font-medium">Active access</div><div className="text-xs text-muted-foreground">Inactive staff cannot use the workspace.</div></div><Switch checked={edit.active} onCheckedChange={(v) => setEdit({ ...edit, active: v })} disabled={isSuper} /></div>
           </div>
+          {staff && !isSuper && <StaffProjectAssignments key={staff.id} staffId={staff.id} />}
           <DialogFooter><Button variant="outline" onClick={() => setStaff(null)}>Cancel</Button><Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
