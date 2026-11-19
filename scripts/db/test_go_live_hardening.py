@@ -79,8 +79,8 @@ def setup():
           ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
           GRANT USAGE ON SCHEMA public,auth,storage TO authenticated,anon,service_role;
           GRANT ALL ON storage.objects TO authenticated,service_role;
-          CREATE FUNCTION storage.foldername(text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $ SELECT string_to_array($1,'/') $;
-          CREATE FUNCTION storage.filename(text) RETURNS text LANGUAGE sql IMMUTABLE AS $ SELECT split_part($1,'/',array_length(string_to_array($1,'/'),1)) $;
+          CREATE FUNCTION storage.foldername(text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $stub1$ SELECT string_to_array($1,'/') $stub1$;
+          CREATE FUNCTION storage.filename(text) RETURNS text LANGUAGE sql IMMUTABLE AS $stub2$ SELECT split_part($1,'/',array_length(string_to_array($1,'/'),1)) $stub2$;
           CREATE PUBLICATION supabase_realtime;
           CREATE TABLE public.qa_http_requests(url text,body jsonb,headers jsonb,timeout_ms integer);
           CREATE FUNCTION net.http_post(url text,body jsonb,headers jsonb,timeout_milliseconds integer DEFAULT 5000) RETURNS bigint LANGUAGE plpgsql AS $$
