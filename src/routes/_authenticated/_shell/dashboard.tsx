@@ -7,6 +7,7 @@ import { useMe } from "@/lib/session";
 import { canAccessPage } from "@/lib/page-access";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { today } from "@/lib/finance";
+import { fmtDate } from "@/lib/format";
 import { Loading } from "@/components/erp/common";
 import { DailyWorkspace, type WorkspaceSnapshot } from "@/components/erp/daily-workspace";
 import type { WorkspaceTask } from "@/lib/workspace-tasks";
@@ -264,13 +265,9 @@ function Dashboard() {
       canInvoices={canInvoices}
       canRfqs={canRfqs}
       today={day}
-      dateLabel={new Intl.DateTimeFormat("en-IN", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: "Asia/Kolkata",
-      }).format(new Date())}
+      dateLabel={new Intl.DateTimeFormat("en-GB", {
+        weekday: "long", timeZone: "Asia/Kolkata",
+      }).format(new Date()) + ", " + fmtDate(new Date().toISOString())}
     >
       {projects.isError && (
         <div role="alert" className="daily-error">
