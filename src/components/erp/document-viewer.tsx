@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { ArrowLeft, Download, ExternalLink, Minus, Plus, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Minus, Plus, Printer, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export type ViewerDoc = { url: string; type: string; name: string };
@@ -13,9 +13,11 @@ export function showDocument(doc: ViewerDoc) {
 /** Full-screen in-app viewer for invoices and payment proofs. Mounted once in the root layout. */
 export function DocumentViewer() {
   const [doc, setDoc] = useState<ViewerDoc | null>(null);
+  const [pdfZoom, setPdfZoom] = useState(100);
+  const iframe = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const onOpen = (e: Event) => setDoc((e as CustomEvent<ViewerDoc>).detail);
+    const onOpen = (e: Event) => { setPdfZoom(100); setDoc((e as CustomEvent<ViewerDoc>).detail); };
     window.addEventListener(EVENT, onOpen);
     return () => window.removeEventListener(EVENT, onOpen);
   }, []);
@@ -34,6 +36,23 @@ export function DocumentViewer() {
     setDoc((d) => { if (d) URL.revokeObjectURL(d.url); return null; });
   }
 
+  function printDocument() {
+    if (!doc) return;
+    if (doc.type === "application/pdf" && iframe.current?.contentWindow) {
+      try {
+        iframe.current.contentWindow.focus();
+        iframe.current.contentWindow.print();
+        return;
+      } catch {
+        // Some mobile PDF plugins cannot expose print across frame boundaries.
+      }
+    }
+    // A temporary browser document lets images/PDFs print without printing
+    // the underlying ERP screen; its source is already a local/private blob.
+    const tab = window.open(doc.url, "_blank", "noopener,noreferrer");
+    if (!tab) throw new Error("Allow pop-ups to print the document.");
+  }
+
   if (!doc) return null;
   const isImage = doc.type.startsWith("image/");
   const isPdf = doc.type === "application/pdf";
@@ -45,6 +64,22 @@ export function DocumentViewer() {
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         <p className="min-w-0 flex-1 truncate text-sm font-medium" title={doc.name}>{doc.name}</p>
+        {isPdf && (
+          <div className="hidden items-center gap-0.5 sm:flex" aria-label="PDF zoom controls">
+            <Button variant="ghost" size="icon" aria-label="Zoom PDF out"
+              disabled={pdfZoom<=50} onClick={() => setPdfZoom(z=>Math.max(50,z-25))}>
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="w-10 text-center text-xs tabular-nums">{pdfZoom}%</span>
+            <Button variant="ghost" size="icon" aria-label="Zoom PDF in"
+              disabled={pdfZoom>=250} onClick={() => setPdfZoom(z=>Math.min(250,z+25))}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <Button variant="ghost" size="icon" onClick={printDocument} aria-label="Print document">
+          <Printer className="h-4 w-4" />
+        </Button>
         <Button variant="ghost" size="icon" asChild aria-label="Download">
           <a href={doc.url} download={doc.name}><Download className="h-4 w-4" /></a>
         </Button>
@@ -69,7 +104,7 @@ export function DocumentViewer() {
             )}
           </TransformWrapper>
         ) : isPdf ? (
-          <iframe src={doc.url} title={doc.name} className="h-full w-full border-0" />
+          <iframe ref={iframe} src={doc.url + "#zoom=" + pdfZoom} title={doc.name} className="h-full w-full border-0" />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
             <p>This file type can't be previewed here.</p>
