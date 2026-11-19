@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ProcurementAttachmentInput } from "@/components/erp/procurement-attachment";
+import { MaterialSearchSelect } from "@/components/erp/material-search-select";
 import { uploadProcurementAttachment } from "@/lib/procurement-attachments";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -381,26 +382,18 @@ export function PrForm({
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-12">
                   <div className="lg:col-span-5">
                     <Label>Material</Label>
-                    <select
-                      aria-label="Material"
-                      className={sel}
+                    <MaterialSearchSelect
                       value={l.material_id}
-                      onChange={(e) => {
-                        const mm = r.materials.find((x) => x.id === e.target.value);
+                      materials={r.materials}
+                      onChange={(materialId) => {
+                        const material = r.materials.find((item) => item.id === materialId);
                         setLine(i, {
-                          material_id: e.target.value,
-                          unit_id: mm?.unit_id ?? "",
+                          material_id: materialId,
+                          unit_id: material?.unit_id ?? "",
                           estimated_rate: null,
                         });
                       }}
-                    >
-                      <option value="">Select material</option>
-                      {r.materials.map((x) => (
-                        <option key={x.id} value={x.id}>
-                          {x.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <div className="lg:col-span-2">
                     <Label>Quantity</Label>
