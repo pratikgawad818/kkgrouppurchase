@@ -72,7 +72,7 @@ CREATE TABLE purchase_orders(
   discount_total numeric DEFAULT 0,tax_total numeric DEFAULT 0,grand_total numeric DEFAULT 0
 );
 CREATE TABLE purchase_order_items(
-  id uuid PRIMARY KEY,po_id uuid,description text,
+  id uuid PRIMARY KEY,po_id uuid,line_no integer,description text,
   ordered_quantity numeric,rate numeric,discount_amount numeric,
   tax_type text,tax_rate_percent numeric,received_quantity numeric DEFAULT 0,
   taxable_amount numeric,tax_amount numeric,line_total numeric
@@ -161,7 +161,7 @@ def main() -> None:
         conn.execute("INSERT INTO warehouses VALUES (%s,%s,'active')", (warehouse, company))
         conn.execute("INSERT INTO purchase_orders(id,company_id,project_id,status,updated_at,freight,freight_tax_amount) VALUES (%s,%s,%s,'draft',%s,50,9)",
                      (po, company, project, now))
-        conn.execute("INSERT INTO purchase_order_items VALUES (%s,%s,'Cement',10,100,0,'cgst_sgst',18,0,1000,180,1180)",
+        conn.execute("INSERT INTO purchase_order_items VALUES (%s,%s,1,'Cement',10,100,0,'cgst_sgst',18,0,1000,180,1180)",
                      (po_item, po))
         conn.execute("SELECT set_config('test.actor',%s,false)", (str(actor),))
 
