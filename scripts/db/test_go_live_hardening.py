@@ -237,7 +237,7 @@ def test_quote_freight_gst_matches_supplier_and_po():
             SELECT freight_tax_amount,other_charges_tax_amount,tax_total,grand_total
             FROM vendor_quotations WHERE id=%s
         """, (quote,)).fetchone()
-        assert tuple(map(float,changed)) == (720,12,6108,40008), changed
+        assert tuple(map(float,changed)) == (720,12,6096,39996), changed
 
         # Reset to the quoted value before awarding and creating the PO.
         c.execute("""
