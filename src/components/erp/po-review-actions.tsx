@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { showDocument } from "@/components/erp/document-viewer";
-import { buildPoReviewPdf } from "@/lib/po-pdf";
+import { beginDocumentPreview, showDocument } from "@/components/erp/document-viewer";
+import { buildPoReviewDocument } from "@/lib/po-pdf";
 import { procurementAttachmentContentType, PROCUREMENT_ATTACHMENT_BUCKET } from "@/lib/procurement-attachments";
 import { errMsg } from "@/lib/format";
 
@@ -18,13 +18,13 @@ export async function fetchPoReviewPdf(poId: string) {
       .select("*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email,bank_account_name,bank_name,bank_account_number,ifsc), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)")
       .eq("id", poId).single(),
     supabase.from("purchase_order_items")
-      .select("line_no,ordered_quantity,rate,discount_amount,taxable_amount,tax_type,tax_rate_percent,tax_amount,line_total,items(code,name),units_of_measure(code)")
+      .select("line_no,description,ordered_quantity,rate,discount_amount,taxable_amount,tax_type,tax_rate_percent,tax_amount,line_total,items(code,name),units_of_measure(code)")
       .eq("po_id", poId).order("line_no"),
   ]);
   if (order.error) throw order.error;
   if (lines.error) throw lines.error;
   if (!lines.data?.length) throw new Error("This purchase order has no material lines to preview.");
-  return buildPoReviewPdf(order.data, lines.data);
+  return buildPoReviewDocument(order.data, lines.data);
 }
 
 export function PoReviewActions({
@@ -40,17 +40,26 @@ export function PoReviewActions({
 
   async function openPo() {
     if (busy) return;
+    // Open the viewer in the same click frame. This works on mobile and
+    // avoids the impression that the first tap did nothing while loading.
+    const preview = beginDocumentPreview(poNumber + ".pdf");
     setBusy("po");
     try {
-      const document = await fetchPoReviewPdf(poId);
-      showDocument({
-        url: URL.createObjectURL(document),
+      const result = await fetchPoReviewPdf(poId);
+      const url = URL.createObjectURL(result.pdf);
+      const pages = result.previewPages.map(page => URL.createObjectURL(page));
+      preview.show({
+        url,
+        pages,
         type: "application/pdf",
         name: poNumber + ".pdf",
       });
     } catch (error) {
+      preview.fail(errMsg(error));
       toast.error("Could not prepare the PO PDF", { description: errMsg(error) });
-    } finally { setBusy(null); }
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function openQuotation() {
