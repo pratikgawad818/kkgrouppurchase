@@ -10,6 +10,7 @@ import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { ApprovalDecisionDialog } from "@/components/erp/approval-decision-dialog";
 import { Loading, PageHeader } from "@/components/erp/common";
+import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { ClearHistory } from "@/components/erp/clear-history";
 import { Pager } from "@/components/erp/pager";
 import { ApprovalKindTabs } from "@/components/erp/approval-kind-tabs";
@@ -38,6 +39,8 @@ type Request = ApprovalHistoryDocument & {
   project: string;
   vendor: string;
   createdBy: string;
+  quoteAttachmentPath?: string | null;
+  requestAttachmentPath?: string | null;
 };
 
 export const Route = createFileRoute("/_authenticated/_shell/approvals")({
@@ -108,7 +111,7 @@ function DirectorApprovals() {
               const query = supabase
                 .from("purchase_orders")
                 .select(
-                  "id,po_number,grand_total,status,project_id,created_by,approved_by,approved_at,approver:profiles!purchase_orders_approved_by_fkey(full_name),projects(name),vendors(company_name)",
+                  "id,po_number,grand_total,status,project_id,created_by,approved_by,approved_at,approver:profiles!purchase_orders_approved_by_fkey(full_name),projects(name),vendors(company_name),vendor_quotations(attachment_path),purchase_requests(attachment_path)",
                   { count: "exact" },
                 );
               const filtered = search.id
@@ -149,6 +152,8 @@ function DirectorApprovals() {
           project: x.projects?.name ?? "Project",
           vendor: x.vendors?.company_name ?? "Vendor",
           createdBy: x.created_by,
+          quoteAttachmentPath: x.vendor_quotations?.attachment_path,
+          requestAttachmentPath: x.purchase_requests?.attachment_path,
           approvedBy: x.approved_by,
           approvedAt: x.approved_at,
           approverName: x.approver?.full_name ?? null,
@@ -417,8 +422,14 @@ function DirectorApprovals() {
                     href={approvalDetailsPath(r.kind, r.id)}
                     className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    Full details <ExternalLink className="h-3.5 w-3.5" />
+                    View details &amp; PO PDF <ExternalLink className="h-3.5 w-3.5" />
                   </a>
+                  {r.kind === "purchase_order" && (r.quoteAttachmentPath || r.requestAttachmentPath) && (
+                    <div className="mt-3 flex flex-wrap gap-2" aria-label="Documents for approval">
+                      {r.quoteAttachmentPath && <ProcurementAttachmentLink path={r.quoteAttachmentPath} label="View supplier quotation" />}
+                      {r.requestAttachmentPath && <ProcurementAttachmentLink path={r.requestAttachmentPath} label="View site request attachment" />}
+                    </div>
+                  )}
                   {isAdmin && waiting && history.isSuccess && directors.length > 0 && (
                     <div className="mt-4 rounded-xl border p-3">
                       <h3 className="mb-2 text-sm font-semibold">Director decisions</h3>

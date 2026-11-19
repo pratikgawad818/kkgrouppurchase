@@ -5,6 +5,8 @@ import { Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { ProcurementAttachmentInput } from "@/components/erp/procurement-attachment";
+import { uploadProcurementAttachment } from "@/lib/procurement-attachments";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,13 +53,17 @@ export function PrForm({
   initial,
   initialLines,
   expectedUpdatedAt,
+  initialAttachmentPath,
 }: {
   id?: string;
   initial?: PrHeader;
   initialLines?: PrLine[];
   expectedUpdatedAt?: string;
+  initialAttachmentPath?: string | null;
 }) {
   const attempt = useRef<{ signature: string; id: string } | null>(null);
+  const uploaded = useRef<{ file: File; path: string } | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
   const me = useMe();
   const staffId = me.data?.profile.id;
   const finalizeOwn = directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
@@ -162,6 +168,19 @@ export function PrForm({
         _submit: submit,
         _expected_updated_at: (expectedUpdatedAt ?? null) as string,
       };
+      // Upload once per selected file; retry the same immutable object path
+      // if the save or attachment-link request is interrupted.
+      let attachmentPath: string | null = null;
+      if (attachment) {
+        if (uploaded.current?.file === attachment) {
+          attachmentPath = uploaded.current.path;
+        } else {
+          attachmentPath = await uploadProcurementAttachment(
+            attachment, me.data!.profile.company_id!, staffId!,
+          );
+          uploaded.current = { file: attachment, path: attachmentPath };
+        }
+      }
       attempt.current = saveAttempt(attempt.current, payload);
       const { data: prId, error } = await supabase.rpc("save_purchase_request", {
         ...payload,
@@ -169,6 +188,15 @@ export function PrForm({
       });
       if (error) throw error;
       if (!prId) throw new Error("The request could not be saved. Please retry.");
+      if (attachmentPath) {
+        const linked = await supabase.rpc("set_purchase_request_attachment", {
+          _id: prId, _path: attachmentPath,
+        });
+        if (linked.error) throw new Error(
+          "Purchase Request saved, but attaching the quotation failed: " +
+          linked.error.message + ". Retry to finish linking it.",
+        );
+      }
       return prId;
     },
     onSuccess: (prId, submit) => {
@@ -326,6 +354,12 @@ export function PrForm({
         </div>
       </section>
 
+      <ProcurementAttachmentInput
+        file={attachment}
+        setFile={(file) => { setAttachment(file); uploaded.current = null; }}
+        existingPath={initialAttachmentPath}
+        label="Quotation / site supporting PDF or photo (optional)"
+      />
       <section className="rounded-md border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold">Items</h2>

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loading, PageHeader } from "@/components/erp/common";
+import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
 import { loadRfq } from "@/lib/rfq-data";
@@ -66,6 +67,7 @@ function Compare() {
                 <th key={qt.id} className="min-w-48 p-2 align-top">
                   <div className="font-semibold">{v?.vendors?.company_name}</div>
                   <div className="font-normal text-muted-foreground">Ref {qt.quotation_number} · valid {fmtDate(qt.valid_until)}{qt.valid_until && qt.valid_until < today ? " (expired)" : ""}</div>
+                   {qt.attachment_path && <div className="mt-2"><ProcurementAttachmentLink path={qt.attachment_path} label="View vendor quotation" /></div>}
                   {canSelect && <Button size="sm" variant="outline" className="mt-1 h-7" onClick={() => awardAll(qt.id)}>Award all quoted items</Button>}
                 </th>))}</tr>
             </thead>

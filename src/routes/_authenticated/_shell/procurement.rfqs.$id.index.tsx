@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
+import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
 import { loadRfq } from "@/lib/rfq-data";
@@ -91,7 +92,7 @@ function RfqDetail() {
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <h2 className="p-3 text-sm font-semibold">Vendor responses</h2>
         <table className="w-full text-sm">
-          <thead className="border-y bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Response</th><th className="px-4 py-3">Quote ref</th><th className="px-4 py-3">Valid until</th><th className="px-4 py-3 text-right">Grand total</th><th className="px-4 py-3"></th></tr></thead>
+          <thead className="border-y bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Response</th><th className="px-4 py-3">Quote ref</th><th className="px-4 py-3">Valid until</th><th className="px-4 py-3 text-right">Grand total</th><th className="px-4 py-3">Uploaded quotation</th><th className="px-4 py-3"></th></tr></thead>
           <tbody>{vendors.map((v) => { const qt = quotes.find((x) => x.rfq_vendor_id === v.id); return (
             <tr key={v.id} className="border-b last:border-0 hover:bg-muted/40">
               <td className="px-4 py-3"><div className="font-medium">{v.vendors?.company_name}</div><div className="text-xs text-muted-foreground">{[v.vendors?.contact_person, v.vendors?.mobile, v.vendors?.email].filter(Boolean).join(" · ")}</div></td>
@@ -99,6 +100,7 @@ function RfqDetail() {
               <td className="px-4 py-3 font-medium tabular-nums text-xs">{qt?.quotation_number ?? "—"}</td>
               <td className="px-4 py-3">{qt ? fmtDate(qt.valid_until) : "—"}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{qt ? inr(qt.grand_total) : "—"}</td>
+              <td className="px-4 py-3">{qt?.attachment_path && <ProcurementAttachmentLink path={qt.attachment_path} label="View PDF / photo" />}</td>
               <td className="px-4 py-3 text-right whitespace-nowrap">
                 {rfq.status === "draft" && can("rfq.edit") && <Button size="sm" variant="ghost" onClick={() => removeVendor.mutate(v.id)}>Remove</Button>}
                 {open && can("quotation.create") && (!qt || ["draft", "submitted"].includes(qt.status)) && v.status !== "declined" && <Button asChild size="sm" variant="outline"><Link to="/procurement/rfqs/$id/quotation" params={{ id }} search={{ vendor: v.id }}>{qt ? "Edit quote" : "Enter quote"}</Link></Button>}

@@ -23,6 +23,7 @@ import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PrintPo } from "@/components/erp/print-po";
+import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { cn } from "@/lib/utils";
 
 const META = "Purchase order details, approval and goods receipts.";
@@ -45,7 +46,7 @@ async function loadPo(id: string) {
     supabase
       .from("purchase_orders")
       .select(
-        "*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email,bank_account_name,bank_name,bank_account_number,ifsc), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)",
+        "*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email,bank_account_name,bank_name,bank_account_number,ifsc), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number,attachment_path), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks,attachment_path), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)",
       )
       .eq("id", id)
       .single(),
@@ -442,6 +443,21 @@ function PoDetail() {
           )}
         </section>
 
+        {(po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path) && (
+          <section className="mt-4 rounded-xl border bg-card p-4 print:hidden">
+            <h2 className="mb-2 text-sm font-semibold">Supporting documents for approval</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              {po.vendor_quotations?.attachment_path && (
+                <ProcurementAttachmentLink path={po.vendor_quotations.attachment_path}
+                  label="View supplier quotation PDF / photo" />
+              )}
+              {po.purchase_requests?.attachment_path && (
+                <ProcurementAttachmentLink path={po.purchase_requests.attachment_path}
+                  label="View Site Engineer request document" />
+              )}
+            </div>
+          </section>
+        )}
         {draft && can("purchase_order.create") && (
           <section className="mt-4 rounded-md border bg-card p-4">
             <div className="mb-3 text-sm font-semibold">Delivery & terms</div>
