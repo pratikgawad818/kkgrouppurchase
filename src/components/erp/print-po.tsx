@@ -72,13 +72,27 @@ export function PrintPo({
   const isDraft = po.status === "draft" || po.status === "rejected";
   const showDiscrepancy = Math.abs(amounts.difference) >= 0.01 ||
     Math.abs(amounts.gstDifference) >= 0.01;
+  const taxableRate = (type: string, rate: number) =>
+    type === "none" ? "Exempt" : `${num(rate)}%`;
+  const taxSplit = (type: string, rate: number) =>
+    type === "cgst_sgst"
+      ? `CGST ${num(rate / 2)}% + SGST ${num(rate / 2)}%`
+      : type === "igst" ? `IGST ${num(rate)}%` : "No GST";
+  const chargeTaxNotes = [
+    Number(po.freight) > 0
+      ? `Freight: ${taxSplit(po.freight_tax_type ?? "none", Number(po.freight_tax_rate_percent ?? 0))}`
+      : null,
+    Number(po.other_charges) > 0
+      ? `Other charges: ${taxSplit(po.other_charges_tax_type ?? "none", Number(po.other_charges_tax_rate_percent ?? 0))}`
+      : null,
+  ].filter(Boolean);
 
   return (
-    <article className="hidden print:block text-[10px] leading-[1.4] text-black">
-      <header className="border-2 border-black">
-        <div className="flex items-start justify-between gap-5 p-3">
+    <article className="mx-auto hidden max-w-[190mm] font-sans text-[9.5px] leading-[1.45] text-slate-900 print:block [print-color-adjust:exact]">
+      <header className="overflow-hidden rounded-sm border border-slate-500">
+        <div className="flex items-start justify-between gap-5 border-t-[5px] border-emerald-700 px-4 py-3">
           <div className="min-w-0">
-            <div className="text-[17px] font-bold uppercase tracking-wide">{issuer}</div>
+            <div className="text-[19px] font-extrabold uppercase tracking-tight">{issuer}</div>
             <div className="mt-1 max-w-[410px] whitespace-pre-line">{issuerAddress}</div>
             <div className="mt-1">
               {[company?.gstin && "GSTIN: " + company.gstin,
@@ -87,14 +101,14 @@ export function PrintPo({
             <div>{[company?.phone, company?.email].filter(Boolean).join("  |  ")}</div>
           </div>
           <div className="shrink-0 text-right">
-            <div className="text-[16px] font-bold">PURCHASE ORDER</div>
+            <div className="text-[17px] font-extrabold tracking-wide">PURCHASE ORDER</div>
             <div className="mt-1 text-[12px] font-semibold">{po.po_number}</div>
             <div>PO Date: {fmtDate(po.po_date)}</div>
             {isDraft && <div className="mt-1 border border-black px-2 py-0.5 font-bold">DRAFT — NOT APPROVED</div>}
           </div>
         </div>
-        <div className="grid grid-cols-2 border-t border-black">
-          <div className="border-r border-black p-2">
+        <div className="grid grid-cols-2 border-t border-slate-400 bg-slate-50">
+          <div className="border-r border-slate-300 px-4 py-3">
             <div className="text-[9px] font-bold uppercase">Vendor / supplier</div>
             <div className="mt-1 text-[12px] font-semibold">{vendor?.company_name || "Vendor not recorded"}</div>
             <div>{vendorAddress}</div>
@@ -104,7 +118,7 @@ export function PrintPo({
                 .filter(Boolean).join("  |  ")}
             </div>
           </div>
-          <div className="p-2">
+          <div className="px-4 py-3">
             <div className="text-[9px] font-bold uppercase">Delivery / project</div>
             <div className="mt-1 text-[12px] font-semibold">{po.projects?.name || "Project not recorded"}</div>
             <div>{po.buildings?.name ? "Building: " + po.buildings.name : "Building not assigned"}</div>
@@ -113,58 +127,69 @@ export function PrintPo({
             <div>Expected delivery: {fmtDate(po.expected_delivery_date)}</div>
           </div>
         </div>
-        <div className="grid grid-cols-2 border-t border-black">
-          <div className="border-r border-black p-2">
+        <div className="grid grid-cols-2 border-t border-slate-300">
+          <div className="border-r border-slate-300 px-4 py-2">
             <span className="font-semibold">Supplier quotation:</span>{" "}
             {quote?.quotation_number || "Not linked"}
             {quote?.quotation_date && <div>Quotation date: {fmtDate(quote.quotation_date)}</div>}
           </div>
-          <div className="p-2">
+          <div className="px-4 py-2">
             <div>Purchase request: {po.purchase_requests?.pr_number || "—"}</div>
             <div>RFQ: {po.rfqs?.rfq_number || "—"}</div>
           </div>
         </div>
       </header>
 
-      <table className="mt-3 w-full table-fixed border-collapse border border-black text-[10px]">
+      <div className="mt-4 flex items-center justify-between border-b-2 border-slate-700 pb-1">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest">01 / Items &amp; pricing</h2>
+        <span className="text-[9px] text-slate-600">All amounts in Indian Rupees (₹)</span>
+      </div>
+      <table className="mt-2 w-full table-fixed border-collapse border border-slate-400 text-[9px]">
         <thead className="table-header-group">
-          <tr className="bg-gray-100 text-left">
-            <th className="w-[5%] border border-black p-1 text-center">#</th>
-            <th className="w-[44%] border border-black p-1">Description</th>
-            <th className="w-[8%] border border-black p-1 text-right">Qty</th>
-            <th className="w-[8%] border border-black p-1 text-center">UOM</th>
-            <th className="w-[12%] border border-black p-1 text-right">Rate (₹)</th>
-            <th className="w-[10%] border border-black p-1 text-right">Disc. (₹)</th>
-            <th className="w-[13%] border border-black p-1 text-right">Amount (₹)</th>
+          <tr className="bg-slate-100 text-left font-bold uppercase tracking-wide">
+            <th className="w-[4%] border border-slate-400 p-1 text-center">#</th>
+            <th className="w-[29%] border border-slate-400 p-1">Material / description</th>
+            <th className="w-[7%] border border-slate-400 p-1 text-right">Qty</th>
+            <th className="w-[7%] border border-slate-400 p-1 text-center">UOM</th>
+            <th className="w-[12%] border border-slate-400 p-1 text-right">Rate (₹)</th>
+            <th className="w-[9%] border border-slate-400 p-1 text-right">Disc.</th>
+            <th className="w-[13%] border border-slate-400 p-1 text-right">Taxable (₹)</th>
+            <th className="w-[8%] border border-slate-400 p-1 text-center">GST %</th>
+            <th className="w-[11%] border border-slate-400 p-1 text-right">GST (₹)</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id} className="break-inside-avoid align-top">
-              <td className="border border-black p-1 text-center">{item.line_no}</td>
-              <td className="break-words border border-black p-1">
+              <td className="border border-slate-300 p-1 text-center">{item.line_no}</td>
+              <td className="break-words border border-slate-300 p-1">
                 <span className="font-medium">{item.items?.name || "Material"}</span>
                 {item.items?.code && <div className="text-[9px] text-gray-600">Code: {item.items.code}</div>}
               </td>
-              <td className="border border-black p-1 text-right">{num(item.ordered_quantity)}</td>
-              <td className="border border-black p-1 text-center">{item.units_of_measure?.code || "—"}</td>
-              <td className="border border-black p-1 text-right">{inr(item.rate)}</td>
-              <td className="border border-black p-1 text-right">{inr(item.discount_amount)}</td>
-              <td className="border border-black p-1 text-right font-semibold">{inr(item.taxable_amount)}</td>
+              <td className="border border-slate-300 p-1 text-right">{num(item.ordered_quantity)}</td>
+              <td className="border border-slate-300 p-1 text-center">{item.units_of_measure?.code || "—"}</td>
+              <td className="border border-slate-300 p-1 text-right">{inr(item.rate)}</td>
+              <td className="border border-slate-300 p-1 text-right">{inr(item.discount_amount)}</td>
+              <td className="border border-slate-300 p-1 text-right font-semibold">{inr(item.taxable_amount)}</td>
+              <td className="border border-slate-300 p-1 text-center font-semibold">
+                {taxableRate(item.tax_type, Number(item.tax_rate_percent))}
+              </td>
+              <td className="border border-slate-300 p-1 text-right">{inr(item.tax_amount)}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <div className="mt-0.5 text-right text-[9px] text-gray-700">
-        Item amounts above exclude GST. Quantities and UOM are as recorded in the Purchase Order.
+        GST rate shown per item (CGST+SGST combined, or IGST). Each taxable amount excludes GST;
+        quantities and units reflect the approved purchasing records.
       </div>
 
-      <section className="mt-3 break-inside-avoid border border-black">
-        <div className="border-b border-black bg-gray-100 px-2 py-1 font-bold uppercase">
-          Terms &amp; commercial total
+      <section className="mt-4 break-inside-avoid overflow-hidden border border-slate-400">
+        <div className="border-b border-slate-400 bg-slate-100 px-3 py-2 text-[11px] font-bold uppercase tracking-wide">
+          02 / Commercial terms &amp; totals
         </div>
-        <div className="grid grid-cols-[1fr_270px]">
-          <div className="border-r border-black p-2">
+        <div className="grid grid-cols-[1fr_255px]">
+          <div className="border-r border-slate-300 p-3">
             <div className="font-semibold">Payment terms</div>
             <p className="mt-0.5 whitespace-pre-line">{paymentTerms || "Not recorded — confirm before issuing PO"}</p>
             <div className="mt-2 font-semibold">Delivery and installation terms</div>
@@ -180,7 +205,7 @@ export function PrintPo({
               <p className="whitespace-pre-line">{quote.remarks}</p>
             </>}
           </div>
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full border-collapse text-[9.5px]">
             <tbody>
               {([
                 ["Goods subtotal (ex-GST)", Number(po.subtotal)],
@@ -192,12 +217,12 @@ export function PrintPo({
                 ["SGST", amounts.sgst],
                 ["IGST", amounts.igst],
               ] as const).map(([label, amount], index) => (
-                <tr key={label} className={index === 4 ? "border-y border-black font-semibold" : ""}>
+                <tr key={label} className={index === 4 ? "border-y border-slate-500 bg-slate-50 font-semibold" : ""}>
                   <td className="px-2 py-0.5">{label}</td>
                   <td className="px-2 py-0.5 text-right tabular-nums">{inr(amount)}</td>
                 </tr>
               ))}
-              <tr className="border-t-2 border-black bg-gray-100 font-bold">
+              <tr className="border-t-2 border-slate-700 bg-slate-100 font-bold">
                 <td className="px-2 py-1">GRAND TOTAL</td>
                 <td className="px-2 py-1 text-right text-[12px] tabular-nums">
                   {inr(po.grand_total)}
@@ -205,6 +230,15 @@ export function PrintPo({
               </tr>
             </tbody>
           </table>
+        </div>
+        {chargeTaxNotes.length > 0 && (
+          <div className="border-t border-slate-300 px-3 py-2 text-[9px]">
+            <span className="font-semibold">Charge GST rates:</span> {chargeTaxNotes.join(" · ")}.
+          </div>
+        )}
+        <div className="border-t border-slate-300 px-3 py-2 text-[9px]">
+          Tax rates are displayed on each material line. CGST and SGST above are their
+          aggregated central/state components; IGST is shown separately where applicable.
         </div>
         {(amounts.freightGst > 0 || amounts.otherGst > 0) && (
           <div className="border-t border-black px-2 py-1 text-[9px]">
