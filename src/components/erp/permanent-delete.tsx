@@ -94,7 +94,9 @@ export function PermanentDelete({
             <DialogTitle>Permanently delete {name}?</DialogTitle>
             <DialogDescription>
               {force
-                ? "This cannot be undone. Everything created from it (including linked quotations, orders, receipts, invoices, payments and stock or account entries) will also be deleted, and stock balances corrected."
+                ? kind === "small_expense"
+                  ? "This permanently removes the expense and its linked bill references and activity. It cannot be undone. Any real bank, UPI or cash payment is NOT reversed."
+                  : "This cannot be undone. Everything created from it (including linked quotations, orders, receipts, invoices, payments and stock or account entries) will also be deleted, and stock balances corrected."
                 : "This cannot be undone. Linked purchases, stock, payments and history are protected. A deletion entry is retained in the audit log."}
             </DialogDescription>
           </DialogHeader>
