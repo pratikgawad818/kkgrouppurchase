@@ -1,12 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loading, PageHeader } from "@/components/erp/common";
+import { ProcurementAttachmentInput } from "@/components/erp/procurement-attachment";
+import { uploadProcurementAttachment } from "@/lib/procurement-attachments";
+import { useMe } from "@/lib/session";
 import { errMsg, inr, num } from "@/lib/format";
 import { chargeGst, lineCalc, TAX_RATES, TAX_TYPES } from "@/lib/rfq";
 import { loadRfq } from "@/lib/rfq-data";
@@ -30,6 +33,9 @@ function QuoteEntry() {
   const { vendor } = Route.useSearch();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const me = useMe();
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const uploaded = useRef<{ file: File; path: string } | null>(null);
   const q = useQuery({ queryKey: ["rfq", id], queryFn: () => loadRfq(id) });
   const [h, setH] = useState({ quotation_number: "", quotation_date: new Date().toISOString().slice(0, 10), valid_until: "", delivery_days: "", payment_terms: "", freight: "0", other_charges: "0", freight_tax_type: "none", freight_tax_rate_percent: "0", other_charges_tax_type: "none", other_charges_tax_rate_percent: "0", remarks: "" });
   const [lines, setLines] = useState<Line[]>([]);
@@ -77,7 +83,20 @@ function QuoteEntry() {
       // Validate tax selections before any database write.
       chargeGst(freight, h.freight_tax_type, Number(h.freight_tax_rate_percent));
       chargeGst(otherCharges, h.other_charges_tax_type, Number(h.other_charges_tax_rate_percent));
+      let attachmentPath = ex?.attachment_path ?? null;
+      if (attachment) {
+        if (uploaded.current?.file === attachment) {
+          attachmentPath = uploaded.current.path;
+        } else {
+          attachmentPath = await uploadProcurementAttachment(
+            attachment, me.data?.profile.company_id ?? "",
+            me.data?.profile.id ?? "",
+          );
+          uploaded.current = { file: attachment, path: attachmentPath };
+        }
+      }
       const head = {
+        attachment_path: attachmentPath,
         quotation_number: h.quotation_number.trim(), quotation_date: h.quotation_date,
         valid_until: h.valid_until || null,
         delivery_days: h.delivery_days ? Number(h.delivery_days) : null,
@@ -152,6 +171,14 @@ function QuoteEntry() {
         {hf("payment_terms", "Payment terms")}{hf("freight", "Freight (₹)", "number")}{hf("other_charges", "Other charges (₹)", "number")}{hf("remarks", "Remarks")}
         {chargeTaxFields("freight")}{chargeTaxFields("other_charges")}
       </section>
+      <div className="mt-4">
+        <ProcurementAttachmentInput
+          file={attachment}
+          setFile={(next) => { setAttachment(next); uploaded.current = null; }}
+          existingPath={d.quotes.find((quote) => quote.rfq_vendor_id === vendor)?.attachment_path}
+          label="Vendor quotation PDF / JPG / PNG (optional)"
+        />
+      </div>
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Quoted</th><th className="px-4 py-3">Material</th><th className="px-4 py-3">Qty</th><th className="px-4 py-3">Rate (₹)</th><th className="px-4 py-3">Discount (₹)</th><th className="px-4 py-3">Tax</th><th className="px-4 py-3">Days</th><th className="px-4 py-3 text-right">Line total</th></tr></thead>
