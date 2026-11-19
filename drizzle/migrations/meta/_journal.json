@@ -547,6 +547,13 @@
       "when": 1795136400000,
       "tag": "0077_small_expense_edit_bills_access",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795137000000,
+      "tag": "0078_accounts_manager_create_small_expenses",
+      "breakpoints": true
     }
   ]
 }
