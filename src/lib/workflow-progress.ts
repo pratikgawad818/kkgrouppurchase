@@ -91,6 +91,7 @@ export function workflowPresentation(
       const rfqSent = rfqStatuses?.some((s) => ["sent", "partially_responded", "fully_responded"].includes(s));
       const rfqDraft = rfqStatuses?.some((s) => s === "draft");
       const rfqCancelled = rfqStatuses?.length && rfqStatuses.every((s) => s === "cancelled");
+      const rfqClosed = rfqStatuses?.some((s) => s === "closed");
       const selectedQuotes = rfqStatuses?.some((s) => s === "fully_responded");
       let nextTitle = "Manage RFQ and vendor quotations";
       let nextDescription = "Procurement can issue an RFQ, collect quotations and prepare the next Purchase Order.";
@@ -98,8 +99,11 @@ export function workflowPresentation(
         nextTitle = "Create the RFQ";
         nextDescription = "The approved request is ready for procurement staff to create an RFQ.";
       } else if (rfqReady) {
-        nextTitle = "Create the Purchase Order";
-        nextDescription = "A linked RFQ is ready for PO creation. The PO will then follow its own approval process.";
+        nextTitle = "Continue Purchase Order processing";
+        nextDescription = "A linked RFQ is ready for PO processing. Procurement should check for an existing PO before creating another.";
+      } else if (rfqClosed) {
+        nextTitle = "Check linked PO and RFQ closeout";
+        nextDescription = "A linked RFQ is closed. Procurement should review the related PO, if one exists, and confirm the next delivery step.";
       } else if (selectedQuotes) {
         nextTitle = "Compare quotations and select the supplier";
         nextDescription = "All invited supplier responses are recorded; procurement must compare and select quotations.";
@@ -115,7 +119,7 @@ export function workflowPresentation(
       }
       return {
         stateLabel: "PR approved",
-        stages: progress(labels, rfqReady ? 3 : 2, rfqReady ? 3 : 2),
+        stages: progress(labels, rfqReady || rfqClosed ? 3 : 2, rfqReady || rfqClosed ? 3 : 2),
         nextTitle, nextOwner: "Authorized procurement staff",
         nextDescription, finished: false, blocked: false,
       };
