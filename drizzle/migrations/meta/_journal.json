@@ -498,6 +498,13 @@
       "when": 1795002000000,
       "tag": "0070_services_and_hours_unit",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795080000000,
+      "tag": "0071_add_square_metre_unit",
+      "breakpoints": true
     }
   ]
 }
