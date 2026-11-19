@@ -505,6 +505,13 @@
       "when": 1795080000000,
       "tag": "0071_add_square_metre_unit",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795090000000,
+      "tag": "0072_rfq_taxable_freight_charges",
+      "breakpoints": true
     }
   ]
 }
