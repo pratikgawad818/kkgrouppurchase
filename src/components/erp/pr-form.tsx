@@ -59,6 +59,7 @@ export function PrForm({
 }) {
   const attempt = useRef<{ signature: string; id: string } | null>(null);
   const me = useMe();
+  const staffId = me.data?.profile.id;
   const finalizeOwn = directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -79,9 +80,10 @@ export function PrForm({
   );
 
   const refs = useQuery({
-    queryKey: ["pr-refs"],
+    queryKey: ["pr-refs", staffId],
+    enabled: !!staffId,
     queryFn: async () => {
-      const { data: auth } = await supabase.auth.getUser();
+      if (!staffId) throw new Error("Your staff session could not be verified.");
       const [p, b, f, m, u, perm] = await Promise.all([
         supabase
           .from("projects")
@@ -98,15 +100,16 @@ export function PrForm({
           .eq("status", "active")
           .order("name"),
         supabase.from("units_of_measure").select("id,code").eq("status", "active").order("code"),
-        supabase.rpc("has_permission", { _user_id: auth.user!.id, _code: "projects.view_all" }),
+        supabase.rpc("has_permission", { _user_id: staffId, _code: "projects.view_all" }),
       ]);
-      for (const r of [p, b, f, m, u]) if (r.error) throw r.error;
+      for (const r of [p, b, f, m, u, perm]) if (r.error) throw r.error;
       let projects = p.data ?? [];
       if (!perm.data) {
         const a = await supabase
           .from("user_project_assignments")
           .select("project_id")
-          .eq("user_id", auth.user!.id);
+          .eq("user_id", staffId);
+        if (a.error) throw a.error;
         const ok = new Set((a.data ?? []).map((x) => x.project_id));
         projects = projects.filter((x) => ok.has(x.id));
       }
@@ -183,8 +186,10 @@ export function PrForm({
     onError: (e) => toast.error(errMsg(e)),
   });
 
-  if (refs.isLoading) return <Loading />;
-  if (refs.error) return <div className="text-sm text-destructive">{errMsg(refs.error)}</div>;
+  if (me.isPending) return <Loading />;
+  if (me.error || !staffId) return <div role="alert" className="text-sm text-destructive">Could not verify your staff account. Sign in again.</div>;
+  if (refs.isPending) return <Loading />;
+  if (refs.error) return <div role="alert" className="text-sm text-destructive">{errMsg(refs.error)}</div>;
   const r = refs.data!;
   const buildings = r.buildings.filter((b) => b.project_id === h.project_id);
   const floors = r.floors.filter((f) => f.building_id === h.building_id);
@@ -201,8 +206,9 @@ export function PrForm({
     >
       {r.projects.length === 0 && (
         <div className="rounded-md border bg-card p-3 text-sm text-muted-foreground">
-          You are not assigned to any project yet. Ask an administrator to assign you before raising
-          requests.
+          No active projects are assigned to your account. Ask a Super Admin to open
+          Settings → Users &amp; Permissions → Edit your account → Project access,
+          then refresh this form.
         </div>
       )}
       <section className="rounded-md border bg-card p-4">
