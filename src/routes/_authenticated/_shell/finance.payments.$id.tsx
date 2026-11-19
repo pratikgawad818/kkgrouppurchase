@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { loadApprovalDecisions } from "@/lib/approval-history-query";
 import { ApprovalDecisionHistory } from "@/components/erp/approval-decision-history";
+import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { Button } from "@/components/ui/button";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { PAYMENT_MODES, PAYMENT_STATUS, openVendorDoc } from "@/lib/finance";
@@ -132,13 +133,6 @@ function PaymentDetail() {
     );
   const { payment: p, allocations, adjustments, decisions, events, remaining } = q.data!;
   const status = PAYMENT_STATUS[p.status];
-  const eventLabels: Record<string, string> = {
-    schedule: "Scheduled",
-    scheduled: "Scheduled",
-    approve: "Approved",
-    record: "Payment recorded",
-    cancel: "Cancelled",
-  };
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-16">
       <PageHeader deleteAction={<PermanentDelete force kind="vendor_payment" id={p.id} name={p.payment_number} onDeleted={()=>window.location.assign("/finance/payments")}/>}
@@ -251,31 +245,17 @@ function PaymentDetail() {
           </ul>
         </section>
       )}
-      <section className="rounded-xl border bg-card p-4">
-        <h2 className="mb-3 font-semibold">Payment history</h2>
-        {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No lifecycle events recorded.</p>
-        ) : (
-          <ol className="space-y-4 border-l pl-4">
-            {events.map((event) => (
-              <li key={event.id} className="text-sm">
-                <p className="font-medium">
-                  {eventLabels[event.action] ?? event.action} ·{" "}
-                  {event.actor?.full_name ?? "Staff name unavailable"}
-                </p>
-                <time className="text-xs text-muted-foreground" dateTime={event.acted_at}>
-                  {fmtDateTime(event.acted_at)}
-                </time>
-                {event.comment && (
-                  <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">
-                    {event.comment}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+      <WorkflowTimeline
+        kind="vendor_payment"
+        status={p.status}
+        events={events.map((event) => ({
+          id: event.id,
+          action: event.action,
+          occurredAt: event.acted_at,
+          actorName: event.actor?.full_name,
+          comment: event.comment,
+        }))}
+      />
     </div>
   );
 }
