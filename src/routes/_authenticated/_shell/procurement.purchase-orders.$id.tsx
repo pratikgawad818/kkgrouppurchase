@@ -301,7 +301,7 @@ function PoDetail() {
                     )}
                   </div>
                 )}
-                {po.status === "pending_approval" && !isDirector && (
+                {po.status === "pending_approval" && !isDirector && !isAdmin && (
                   <Button
                     size="sm"
                     variant="outline"
