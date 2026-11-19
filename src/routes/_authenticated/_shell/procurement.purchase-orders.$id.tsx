@@ -327,7 +327,7 @@ function PoDetail() {
                       st.cls,
                     )}
                   >
-                    {st.label}
+                    {returnedToPurchase ? "Returned for correction" : st.label}
                   </span>
                   {po.vendors?.company_name} · {po.projects?.name}
                   {po.buildings?.name ? ` · ${po.buildings.name}` : ""}
@@ -369,49 +369,49 @@ function PoDetail() {
                       {finalizeOwn ? "Finalize order" : "Submit to Director"}
                     </Button>
                   )}
-                {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
-                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-                    <Button
-                      className="approval-action min-h-12"
-                      variant="outline"
-                      disabled={act.isPending}
-                      onClick={(event) => {
-                        approvalTrigger.current = event.currentTarget;
-                        act.reset();
-                        setComment("");
-                        setApprovalDecision("rejected");
-                        setApprovalOpen(true);
-                      }}
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      className="approval-action min-h-12"
-                      disabled={act.isPending}
-                      onClick={(event) => {
-                        approvalTrigger.current = event.currentTarget;
-                        act.reset();
-                        setComment("");
-                        setApprovalDecision("approved");
-                        setApprovalOpen(true);
-                      }}
-                    >
-                      Approve
-                    </Button>
-                  </div>
-                )}
-                {po.status === "pending_approval" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const { error } = await supabase.rpc("remind_po_approvers", { _po_id: id });
-                      if (error) toast.error(errMsg(error));
-                      else toast.success("Reminder sent to directors");
-                    }}
-                  >
-                    Remind directors
+                <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                  onClick={viewPo}>
+                  <FileText className="h-4 w-4" /> View PO
+                </Button>
+                <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                  disabled={quoteLoading} onClick={() => void viewQuotation()}>
+                  <FileSearch className="h-4 w-4" />
+                  {quoteLoading ? "Opening…" : "View quotation"}
+                </Button>
+                {po.status === "pending_approval" && directorReviewer && (
+                  <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                    disabled={correction.isPending}
+                    onClick={() => { setCorrectionReason("");setCorrectionMode("po"); }}>
+                    <RotateCcw className="h-4 w-4" /> Revert for correction
                   </Button>
+                )}
+                {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
+                  <Button size="sm" className="approval-action min-h-11"
+                    disabled={act.isPending}
+                    onClick={(event) => {
+                      approvalTrigger.current=event.currentTarget;
+                      act.reset();
+                      setComment("");
+                      setApprovalDecision("approved");
+                      setApprovalOpen(true);
+                    }}>
+                    Approve
+                  </Button>
+                )}
+                {canEscalateToSite && (
+                  <Button size="sm" variant="outline" className="min-h-11 gap-2"
+                    disabled={correction.isPending}
+                    onClick={() => { setCorrectionReason("");setCorrectionMode("site"); }}>
+                    <RotateCcw className="h-4 w-4" /> Return PR to Site Engineer
+                  </Button>
+                )}
+                {po.status === "pending_approval" && !directorReviewer &&
+                  can("purchase_order.create") && (
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    const {error}=await supabase.rpc("remind_po_approvers",{_po_id:id});
+                    if(error)toast.error(errMsg(error));
+                    else toast.success("Reminder sent to directors");
+                  }}>Remind directors</Button>
                 )}
                 {po.status === "approved" && can("purchase_order.create") && (
                   <Button
@@ -443,7 +443,7 @@ function PoDetail() {
                       Close PO
                     </Button>
                   )}
-                {["draft", "pending_approval", "approved", "rejected", "sent"].includes(
+                {!directorReviewer && ["draft", "pending_approval", "approved", "rejected", "sent"].includes(
                   po.status,
                 ) &&
                   grns.length === 0 &&
@@ -452,21 +452,6 @@ function PoDetail() {
                       Cancel
                     </Button>
                   )}
-                <Button size="sm" variant="ghost" onClick={() => window.print()}>
-                  Print
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    const t = document.title;
-                    document.title = po.po_number;
-                    window.print();
-                    document.title = t;
-                  }}
-                >
-                  Download PDF
-                </Button>
               </div>
             }
           />
