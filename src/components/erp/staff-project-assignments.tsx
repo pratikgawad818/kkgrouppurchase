@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Project access is granted explicitly, not inferred from a job title.
- * The assignments table enforces active-admin, company and project scope
- * through RLS. Each switch saves a single assignment atomically.
+ * Existing Storage/DB RLS enforces company and project scope.
+ * Each checkbox saves one assignment immediately, without a modal-wide save.
  */
 export function StaffProjectAssignments({ staffId }: { staffId: string }) {
   const qc = useQueryClient();
+  const [search, setSearch] = useState("");
   const assignments = useQuery({
     queryKey: ["staff-project-access", staffId],
     queryFn: async () => {
@@ -61,43 +65,78 @@ export function StaffProjectAssignments({ staffId }: { staffId: string }) {
     onError: (error) => toast.error(error.message),
   });
 
+  const projects = assignments.data?.projects ?? [];
+  const assignedCount = projects.filter((project) =>
+    assignments.data?.assignedIds.has(project.id),
+  ).length;
+  const query = search.trim().toLowerCase();
+  const visible = projects.filter((project) =>
+    `${project.name} ${project.code ?? ""}`.toLowerCase().includes(query),
+  );
+
   return (
-    <section className="space-y-3 rounded-lg border p-3 sm:col-span-2" aria-label="Staff project access">
-      <div>
-        <h3 className="text-sm font-semibold">Project access</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Site Engineers can raise Purchase Requests only for assigned projects.
-          Select the sites this staff member is responsible for. Changes save immediately.
-        </p>
+    <section className="overflow-hidden rounded-xl border bg-card" aria-label="Staff project access">
+      <div className="space-y-3 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold">Project access</h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Site Engineers can create Purchase Requests only for assigned projects.
+              Select the sites this staff member may access.
+            </p>
+          </div>
+          {!assignments.isPending && !assignments.error && (
+            <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-semibold tabular-nums text-foreground">
+              {assignedCount} of {projects.length} assigned
+            </span>
+          )}
+        </div>
+        {projects.length > 5 && (
+          <div className="relative">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <label htmlFor="staff-project-search" className="sr-only">Search projects</label>
+            <Input id="staff-project-search" type="search" value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by project name or code…" className="pl-9" />
+          </div>
+        )}
       </div>
+
       {assignments.isPending ? (
-        <p className="text-xs text-muted-foreground">Loading available projects…</p>
+        <p role="status" className="border-t px-4 py-4 text-sm text-muted-foreground">
+          Loading available projects…
+        </p>
       ) : assignments.error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="border-t px-4 py-4 text-sm text-destructive">
           Could not load project assignments: {assignments.error.message}
         </p>
-      ) : assignments.data.projects.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
+      ) : projects.length === 0 ? (
+        <p className="border-t px-4 py-4 text-sm text-muted-foreground">
           No active projects are available to assign.
         </p>
       ) : (
-        <div className="max-h-52 space-y-1 overflow-y-auto" role="group" aria-label="Assign projects">
-          {assignments.data.projects.map((project) => {
-            const checked = assignments.data.assignedIds.has(project.id);
-            const busy = update.isPending;
+        <div className="divide-y border-t" role="group" aria-label="Assign projects">
+          {visible.length === 0 ? (
+            <p className="px-4 py-4 text-sm text-muted-foreground">
+              No matching projects. Try another name or code.
+            </p>
+          ) : visible.map((project) => {
+            const checked = assignments.data?.assignedIds.has(project.id) ?? false;
             return (
               <label key={project.id}
-                className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-muted/50">
-                <span className="min-w-0 text-sm">
-                  <span className="block font-medium">{project.name}</span>
-                  <span className="block text-xs text-muted-foreground">{project.code}</span>
+                className="flex min-h-14 cursor-pointer items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/30">
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words text-sm font-medium">{project.name}</span>
+                  <span className="mt-0.5 block break-words text-xs text-muted-foreground">
+                    {project.code || "Project"}
+                  </span>
                 </span>
                 <input
                   type="checkbox"
-                  className="h-4 w-4 shrink-0 accent-primary"
+                  className="h-5 w-5 shrink-0 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait"
                   aria-label={`Allow access to ${project.name}`}
                   checked={checked}
-                  disabled={busy}
+                  disabled={update.isPending}
                   onChange={(event) => update.mutate({
                     projectId: project.id,
                     allow: event.target.checked,
@@ -108,13 +147,11 @@ export function StaffProjectAssignments({ staffId }: { staffId: string }) {
           })}
         </div>
       )}
-      {update.isPending && <p role="status" className="text-xs text-muted-foreground">Saving project access…</p>}
-      {assignments.data && (
-        <p className="text-xs text-muted-foreground">
-          {assignments.data.assignedIds.size} assigned project(s).
-          Staff should refresh their Purchase Request form after any changes.
-        </p>
-      )}
+      <div className="border-t bg-muted/20 px-4 py-3 text-xs leading-relaxed text-muted-foreground" aria-live="polite">
+        {update.isPending
+          ? "Saving project access…"
+          : "Changes save automatically. Staff may need to refresh the Purchase Request form."}
+      </div>
     </section>
   );
 }
