@@ -139,7 +139,7 @@ export function workflowPresentation(
       finished: true, blocked: true,
     };
     if (status === "draft" || status === "rejected") return {
-      stateLabel: status === "rejected" ? "Returned after rejection" : "Draft PO",
+      stateLabel: status === "rejected" ? "PO rejected — revision needed" : "Draft PO",
       stages: progress(labels, 0, 0),
       nextTitle: status === "rejected" ? "Revise the PO and resubmit" : "Complete and submit the PO",
       nextOwner: "Purchase Manager / PO creator",
@@ -260,7 +260,7 @@ const ACTION_LABELS: Record<WorkflowKind, Record<string, string>> = {
     sent: "Sent to vendor",
     cancelled: "Purchase Order cancelled",
     closed: "Purchase Order closed",
-    goods_received: "Goods receipt posted",
+    goods_received: "Goods receipt recorded",
     goods_cancelled: "Goods receipt cancelled",
   },
   vendor_payment: {
