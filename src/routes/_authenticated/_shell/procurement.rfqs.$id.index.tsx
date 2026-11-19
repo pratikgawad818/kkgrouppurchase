@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
+import { RfqDraftEditor } from "@/components/erp/rfq-draft-editor";
+import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
 import { loadRfq } from "@/lib/rfq-data";
@@ -24,6 +26,7 @@ function RfqDetail() {
   const can = useCan();
   const qc = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [reason, setReason] = useState("");
   const q = useQuery({ queryKey: ["rfq", id], queryFn: () => loadRfq(id) });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["rfq", id] }); qc.invalidateQueries({ queryKey: ["rfqs"] }); };
@@ -60,11 +63,13 @@ function RfqDetail() {
         title={rfq.rfq_number}
         subtitle={<span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${st.cls}`}>{st.label}</span>}
         actions={<>
-          {rfq.status === "draft" && can("rfq.send") && <Button size="sm" disabled={act.isPending} onClick={() => act.mutate("send")}>Mark as sent</Button>}
+          {rfq.status === "draft" && can("rfq.edit") && <Button size="sm" variant="outline" onClick={() => setEditOpen((open) => !open)}>{editOpen ? "Close editor" : "Edit RFQ"}</Button>}
+          {rfq.status === "draft" && !editOpen && can("rfq.send") && <Button size="sm" disabled={act.isPending} onClick={() => act.mutate("send")}>Mark as sent</Button>}
           {responded && can("quotation.compare") && <Button asChild size="sm" variant="outline"><Link to="/procurement/rfqs/$id/compare" params={{ id }}>Compare quotations</Link></Button>}
           {!["ready_for_po", "closed", "cancelled"].includes(rfq.status) && can("rfq.cancel") && <Button size="sm" variant="ghost" onClick={() => setCancelOpen(true)}>Cancel RFQ</Button>}
         </>}
       />
+      {editOpen && <RfqDraftEditor data={q.data!} onDone={() => setEditOpen(false)} />}
       <section className="rounded-md border bg-card p-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Purchase request">{rfq.purchase_requests && <Link className="text-primary hover:underline" to="/procurement/purchase-requests/$id" params={{ id: rfq.purchase_requests.id }}>{rfq.purchase_requests.pr_number}</Link>}</Field>
@@ -119,6 +124,7 @@ function RfqDetail() {
         </section>
       )}
 
+      <ProcurementRevisionHistory kind="rfq" documentId={id} />
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Cancel RFQ</DialogTitle><DialogDescription>A reason is required and is recorded permanently.</DialogDescription></DialogHeader>
