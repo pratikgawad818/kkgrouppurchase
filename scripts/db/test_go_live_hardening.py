@@ -368,8 +368,8 @@ def test_atomic_requests_and_rfqs():
     print("PASS atomic draft saves, stale edits, retry tokens, failed-submit rollback and RFQ vendor scope")
 
 
-def seed_po(c, creator=PURCHASER):
-    actor(c,PURCHASER)
+def seed_po(c, creator=PURCHASER, requester=PURCHASER):
+    actor(c,requester)
     request_id=save_pr(c,submit=True)
     actor(c,DIRECTOR)
     c.execute("SELECT pr_transition(%s,'approved','QA')",(request_id,))
@@ -1396,12 +1396,9 @@ def test_small_expense_in_place_and_bills():
 def test_po_review_correction_handoff():
     """0079: Director/Admin return, manager escalation, assigned site response and guard."""
     with db() as c:
-        po=seed_po(c,PURCHASER)
-        # Synthetic fixture: a real Site Engineer PR starts this PO's source
-        # chain; preserve links and approved status without altering real data.
-        c.execute("RESET ROLE")
-        pr=c.execute("SELECT purchase_request_id FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]
-        c.execute("UPDATE purchase_requests SET requested_by=%s WHERE id=%s",(SITE,pr))
+        # Real fixture: Site Engineer creates and submits source PR, Director
+        # approves it, then Purchase Manager creates the downstream PO.
+        po=seed_po(c,PURCHASER,SITE)
         actor(c,PURCHASER)
         assert c.execute("SELECT po_transition(%s,'submitted','Send to Director')",(po,)).fetchone()[0]=="pending_approval"
         actor(c,OTHER_DIRECTOR)
