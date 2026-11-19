@@ -2805,6 +2805,7 @@ export type Database = {
       purchase_requests: {
         Row: {
           approved_at: string | null
+          attachment_path: string | null
           approved_by: string | null
           building_id: string | null
           company_id: string
@@ -2828,6 +2829,7 @@ export type Database = {
         }
         Insert: {
           approved_at?: string | null
+          attachment_path?: string | null
           approved_by?: string | null
           building_id?: string | null
           company_id: string
@@ -2851,6 +2853,7 @@ export type Database = {
         }
         Update: {
           approved_at?: string | null
+          attachment_path?: string | null
           approved_by?: string | null
           building_id?: string | null
           company_id?: string
@@ -5608,6 +5611,18 @@ export type Database = {
       save_opening_vendor_invoice_v2: {
         Args: { _header: Json; _id?: string; _lines: Json; _payments: Json }
         Returns: string
+      }
+      set_purchase_request_attachment: {
+        Args: { _id: string; _path: string | null }
+        Returns: undefined
+      }
+      can_read_procurement_attachment: {
+        Args: { _path: string }
+        Returns: boolean
+      }
+      procurement_attachment_owned: {
+        Args: { _path: string; _company: string; _actor: string }
+        Returns: boolean
       }
       save_purchase_request: {
         Args: {
