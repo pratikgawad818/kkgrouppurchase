@@ -121,7 +121,7 @@ export function StaffProjectAssignments({ staffId }: { staffId: string }) {
               No matching projects. Try another name or code.
             </p>
           ) : visible.map((project) => {
-            const checked = assignments.data.assignedIds.has(project.id);
+            const checked = assignments.data?.assignedIds.has(project.id) ?? false;
             return (
               <label key={project.id}
                 className="flex min-h-14 cursor-pointer items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/30">
