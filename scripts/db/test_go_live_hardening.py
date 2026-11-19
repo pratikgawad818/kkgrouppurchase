@@ -1172,10 +1172,11 @@ def test_small_expenses_above_fifty_thousand():
         )
         expense = c.execute(record_sql, base_args).fetchone()[0]
         assert c.execute(record_sql, base_args).fetchone()[0] == expense
-        assert c.execute(
+        large_amount,large_status = c.execute(
             "SELECT amount,status FROM site_small_expenses WHERE id=%s",
             (expense,)
-        ).fetchone() == (75000.01, "recorded")
+        ).fetchone()
+        assert (float(large_amount),large_status) == (75000.01, "recorded")
         denied(c, lambda: c.execute(record_sql,
             (*base_args[:5], "75000.02", *base_args[6:])), "cannot be overwritten")
 
