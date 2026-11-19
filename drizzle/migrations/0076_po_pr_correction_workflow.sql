@@ -37,8 +37,8 @@ BEGIN
   UPDATE public.purchase_orders SET status='rejected',updated_at=now(),
     approved_by=NULL,approved_at=NULL WHERE id=_po_id;
   INSERT INTO public.purchase_order_approvals
-    (po_id,action,acted_by,comment,previous_status,new_status)
-  VALUES(_po_id,'returned',actor,why,doc.status,'rejected');
+    (po_id,action,acted_by,comment,previous_status,new_status,acted_at)
+  VALUES(_po_id,'returned',actor,why,doc.status,'rejected',clock_timestamp());
   PERFORM public.log_event('po_returned','PO',doc.po_number,doc.id,why,
     jsonb_build_object('status',doc.status),
     jsonb_build_object('status','rejected','correction_target','purchase_manager'));
@@ -103,6 +103,15 @@ BEGIN
   -- Existing PO cancellation routine preserves normal status audit and guards.
   PERFORM public.po_transition(doc.id,'cancelled',
     'Escalated to original Site Engineer for PR correction: '||why);
+  -- Preserve actual intra-transaction order even when the entire workflow
+  -- occurs inside one test/client transaction (now() is transaction-stable).
+  UPDATE public.purchase_order_approvals
+  SET acted_at=clock_timestamp()
+  WHERE id=(
+    SELECT a.id FROM public.purchase_order_approvals a
+    WHERE a.po_id=doc.id AND a.action='cancelled'
+    ORDER BY a.acted_at DESC,a.id DESC LIMIT 1
+  );
   -- RFQs are historic evidence, not to be reused after the underlying PR
   -- changes. Cancellation makes it impossible to create a PO from old quotes.
   PERFORM set_config('app.rfq_source','rpc',true);
@@ -119,10 +128,10 @@ BEGIN
   WHERE id=req.id;
   PERFORM set_config('app.pr_source','',true);
   INSERT INTO public.purchase_request_approvals
-    (purchase_request_id,action,acted_by,comment,previous_status,new_status)
+    (purchase_request_id,action,acted_by,comment,previous_status,new_status,acted_at)
   VALUES(req.id,'returned',actor,
     'Returned from '||doc.po_number||' to original Site Engineer: '||why,
-    req.status,'draft');
+    req.status,'draft',clock_timestamp());
   PERFORM public.log_event('pr_returned_from_po','PR',req.pr_number,req.id,why,
     jsonb_build_object('status',req.status,'po',doc.po_number),
     jsonb_build_object('status','draft','correction_target','site_engineer'));
