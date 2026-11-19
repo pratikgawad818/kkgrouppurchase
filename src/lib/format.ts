@@ -1,5 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
-import { formatErpDate, formatErpDateTime } from "@/lib/date-format";
+import { formatErpDate, formatErpDateTime } from "./date-format.ts";
 
 export type UnitStatus = Database["public"]["Enums"]["unit_status"];
 export type UnitType = Database["public"]["Enums"]["unit_type"];
