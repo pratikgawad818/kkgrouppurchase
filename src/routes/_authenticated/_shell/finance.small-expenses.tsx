@@ -53,8 +53,8 @@ function SmallExpenses() {
   const canEdit=!!me.data?.profile.is_active && permitted &&
     !!me.data?.permissions.has("small_expense.manage") &&
     (isSuperAdmin || (isAccountsManager && !isDirector));
-  const canCreate=canEdit && isSuperAdmin;
-  const canDelete=canCreate;
+  const canCreate=canEdit;
+  const canDelete=canEdit && isSuperAdmin;
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState<Form>(createForm);
   const [entryKey,setEntryKey]=useState(()=>crypto.randomUUID());
