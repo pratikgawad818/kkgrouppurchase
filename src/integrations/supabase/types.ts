@@ -2818,6 +2818,7 @@ export type Database = {
           project_id: string
           purpose: string | null
           remarks: string | null
+          revision_of_pr_id: string | null
           request_date: string
           request_type: Database["public"]["Enums"]["pr_request_type"]
           requested_by: string
@@ -2842,6 +2843,7 @@ export type Database = {
           project_id: string
           purpose?: string | null
           remarks?: string | null
+          revision_of_pr_id?: string | null
           request_date?: string
           request_type?: Database["public"]["Enums"]["pr_request_type"]
           requested_by: string
@@ -2866,6 +2868,7 @@ export type Database = {
           project_id?: string
           purpose?: string | null
           remarks?: string | null
+          revision_of_pr_id?: string | null
           request_date?: string
           request_type?: Database["public"]["Enums"]["pr_request_type"]
           requested_by?: string
