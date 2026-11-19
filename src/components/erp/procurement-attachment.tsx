@@ -61,7 +61,7 @@ export function ProcurementAttachmentInput({
 }: {
   file: File | null;
   setFile: (next: File | null) => void;
-  existingPath?: string | null;
+  existingPath?: string | null | undefined;
   label?: string;
 }) {
   return (
