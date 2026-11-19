@@ -877,6 +877,49 @@ def test_services_and_hours_master_seed():
 
 
 
+
+def test_square_metre_unit_seed_is_idempotent():
+    """Area-based materials can use SQM without changing existing stock or units."""
+    migration = (ROOT / "drizzle/migrations/0071_add_square_metre_unit.sql").read_text()
+    with db() as c:
+        companies = [str(row[0]) for row in c.execute("SELECT id FROM companies").fetchall()]
+        assert companies, "Expected a fixture company"
+        item_count = c.execute("SELECT count(*) FROM items").fetchone()[0]
+        stock_count = c.execute("SELECT count(*) FROM inventory_transactions").fetchone()[0]
+        old_units = c.execute("""
+            SELECT id,company_id,code,name,decimal_places
+            FROM units_of_measure WHERE code <> 'SQM'
+            ORDER BY company_id,code
+        """).fetchall()
+
+        for _ in range(2):
+            c.execute(migration)
+
+        sqm_rows = c.execute("""
+            SELECT company_id,code,name,decimal_places,status::text,is_demo
+            FROM units_of_measure WHERE code='SQM'
+        """).fetchall()
+        actual = {
+            (str(company),code,name,decimals,status,is_demo)
+            for company,code,name,decimals,status,is_demo in sqm_rows
+        }
+        assert actual == {
+            (company,"SQM","Square Metre",2,"active",False)
+            for company in companies
+        }
+        assert len(sqm_rows) == len(companies), "Duplicate SQM unit inserted"
+        assert c.execute("""
+            SELECT id,company_id,code,name,decimal_places
+            FROM units_of_measure WHERE code <> 'SQM'
+            ORDER BY company_id,code
+        """).fetchall() == old_units
+        assert c.execute("SELECT count(*) FROM items").fetchone()[0] == item_count
+        assert c.execute("SELECT count(*) FROM inventory_transactions").fetchone()[0] == stock_count
+        c.rollback()
+    print("PASS SQM registered per company with two decimals and no inventory changes")
+
+
+
 def test_accounts_manager_small_expense_corrections():
     """Accounts Manager can record and correct, not void freely or bypass project scope."""
     with db() as c:
@@ -957,6 +1000,7 @@ if __name__ == "__main__":
     setup()
     test_count_units_seed_is_idempotent()
     test_services_and_hours_master_seed()
+    test_square_metre_unit_seed_is_idempotent()
     test_site_engineer_requires_project_assignment_for_pr()
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
