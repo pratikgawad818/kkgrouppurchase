@@ -519,6 +519,13 @@
       "when": 1795134000000,
       "tag": "0073_procurement_document_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1795134600000,
+      "tag": "0074_security_guard_small_expenses",
+      "breakpoints": true
     }
   ]
 }
