@@ -19,7 +19,7 @@ export const PO_STATUS: Record<PoStatus, { label: string; cls: string }> = {
 };
 
 export const PO_ACTION_LABEL: Record<PoAction, string> = {
-  created: "Created", submitted: "Submitted for approval", approved: "Approved", rejected: "Rejected", sent: "Marked as sent", cancelled: "Cancelled", closed: "Closed",
+  created: "Created", submitted: "Submitted for approval", approved: "Approved", rejected: "Rejected", returned: "Returned for correction", sent: "Marked as sent", cancelled: "Cancelled", closed: "Closed",
 };
 
 export const TX_LABEL: Record<InvTxType, string> = {
