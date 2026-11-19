@@ -22,7 +22,7 @@ export type SmallExpensePayment = keyof typeof SMALL_EXPENSE_PAYMENTS;
  */
 export function parseSmallExpenseAmount(value: string): number | null {
   const raw = value.trim();
-  if (!/^(?:[1-9]\\d{0,11}|0)(?:\\.\\d{1,2})?$/.test(raw)) return null;
+  if (!/^(?:[1-9]\d{0,11}|0)(?:\.\d{1,2})?$/.test(raw)) return null;
   const [rupees = "", fractional = ""] = raw.split(".");
   const paise = BigInt(rupees) * 100n + BigInt(fractional.padEnd(2, "0") || "0");
   if (paise < 1n || paise > 99_999_999_999_999n) return null;
