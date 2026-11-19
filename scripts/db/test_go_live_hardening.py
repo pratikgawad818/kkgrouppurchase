@@ -1329,7 +1329,7 @@ def test_small_expense_in_place_and_bills():
         manager_created=c.execute(create,manager_args).fetchone()[0]
         assert manager_created != original
         assert c.execute(create,manager_args).fetchone()[0] == manager_created
-        assert c.execute("SELECT created_by,amount,status FROM site_small_expenses WHERE id=%s",
+        assert c.execute("SELECT created_by::text,amount,status FROM site_small_expenses WHERE id=%s",
                          (manager_created,)).fetchone() == (ACCOUNTS,341.00,"recorded")
         assert c.execute("SELECT count(*) FROM site_small_expense_events WHERE expense_id=%s AND action='recorded'",
                          (manager_created,)).fetchone()[0] == 1
