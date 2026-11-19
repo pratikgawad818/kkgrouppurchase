@@ -1462,8 +1462,8 @@ def test_po_review_correction_handoff():
         actor(c,PURCHASER)
         c.execute("SELECT po_transition(%s,'submitted','send to reviewers')",(po,))
         actor(c,ADMIN)
-        assert c.execute("SELECT return_po_for_correction(%s,%s)",(
-            po,"Accounts checked the quotation; return to the Purchase Manager")).fetchone()[0]==po
+        assert str(c.execute("SELECT return_po_for_correction(%s,%s)",(
+            po,"Accounts checked the quotation; return to the Purchase Manager")).fetchone()[0])==po
         assert c.execute("SELECT status FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]=="rejected"
         assert c.execute("SELECT count(*) FROM director_approval_votes WHERE entity_id=%s",(po,)).fetchone()[0]==0
         assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='rejected'",
