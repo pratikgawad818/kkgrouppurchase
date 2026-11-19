@@ -47,7 +47,7 @@ export function ApprovalDecisionDialog({
   const heading = useRef<HTMLHeadingElement>(null);
   const reject = decision === "rejected";
   const correction = reject && target?.kind === "purchase_order";
-  const disabled = busy || (reject && !comment.trim());
+  const disabled = busy || (reject && comment.trim().length < (correction ? 10 : 1));
   return (
     <Dialog
       open={open}
@@ -125,7 +125,7 @@ export function ApprovalDecisionDialog({
             />
             <p id="director-decision-help" className="text-xs text-muted-foreground">
               {reject
-                ? "A reason is required so the team can correct the order."
+                ? correction ? "Describe the correction needed (at least 10 characters). The Purchase Manager will receive it." : "A reason is required so the team can correct the order."
                 : "Your name and decision time are saved automatically."}
             </p>
           </div>
