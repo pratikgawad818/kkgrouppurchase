@@ -497,7 +497,9 @@ def test_po_return_and_site_engineer_escalation():
         assert c.execute("SELECT count(*) FROM purchase_request_items WHERE purchase_request_id=%s",(pr,)).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM purchase_request_items WHERE purchase_request_id=%s",(got,)).fetchone()[0]==1
         assert c.execute("SELECT action FROM purchase_request_approvals WHERE purchase_request_id=%s ORDER BY acted_at DESC,id DESC LIMIT 1",(got,)).fetchone()[0]=="returned"
+        actor(c,SITE)
         assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",(SITE,"/procurement/purchase-requests/"+str(got))).fetchone()[0]==1
+        actor(c,PURCHASER)
         denied(c,lambda:c.execute("SELECT create_po_from_selection(%s,%s)",(rfq,qt)),"not ready")
         denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','should not reuse')",(po,)),"Only draft or rejected")
         denied(c,lambda:c.execute("SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])",(str(uuid4()),pr,json.dumps({"response_due_date":"2026-12-01"}),[VENDOR])),"approved purchase request")
