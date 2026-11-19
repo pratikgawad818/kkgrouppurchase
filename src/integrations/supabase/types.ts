@@ -5624,6 +5624,39 @@ export type Database = {
         Args: { _path: string; _company: string; _actor: string }
         Returns: boolean
       }
+      save_purchase_request_revision: {
+        Args: {
+          _request_id: string
+          _id: string
+          _header: Json
+          _items: Json
+          _submit: boolean
+          _expected_updated_at: string
+          _reason: string
+        }
+        Returns: string
+      }
+      revise_rfq_draft: {
+        Args: {
+          _rfq_id: string
+          _expected_updated_at: string
+          _header: Json
+          _items: Json
+          _vendor_ids: string[]
+          _reason: string
+        }
+        Returns: string
+      }
+      revise_po_draft: {
+        Args: {
+          _po_id: string
+          _expected_updated_at: string
+          _header: Json
+          _items: Json
+          _reason: string
+        }
+        Returns: string
+      }
       save_purchase_request: {
         Args: {
           _expected_updated_at?: string
