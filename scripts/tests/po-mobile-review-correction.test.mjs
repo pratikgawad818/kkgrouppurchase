@@ -31,7 +31,7 @@ test("View PO produces in-memory real A4 PDF with 39,294 and correct tax breakdo
     assert.ok(text.includes(term),term);
   assert.ok(text.includes("/MediaBox [0 0 595.28 841.89]"));
   assert.ok(text.includes("%%EOF"));
-  const xref=Number(text.match(/startxref\\n(\\d+)/)?.[1]);
+  const xref=Number(text.match(/startxref\n(\d+)/)?.[1]);
   assert.equal(text.slice(xref,xref+4),"xref");
 });
 
