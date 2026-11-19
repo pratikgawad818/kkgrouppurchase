@@ -8,7 +8,7 @@ export const PO_STATUS: Record<PoStatus, { label: string; cls: string }> = {
   draft: { label: "Draft", cls: "bg-muted text-muted-foreground" },
   pending_approval: { label: "Pending approval", cls: "bg-warning/15 text-warning-foreground border-warning/40" },
   approved: { label: "Approved", cls: "bg-primary/10 text-primary border-primary/30" },
-  rejected: { label: "Rejected", cls: "bg-destructive/10 text-destructive border-destructive/30" },
+  rejected: { label: "Returned for correction", cls: "bg-destructive/10 text-destructive border-destructive/30" },
   sent: { label: "Sent to vendor", cls: "bg-primary/10 text-primary border-primary/30" },
   partially_received: { label: "Partially received", cls: "bg-warning/15 text-warning-foreground border-warning/40" },
   partially_accepted: { label: "Partially accepted", cls: "bg-warning/15 text-warning-foreground border-warning/40" },
@@ -19,7 +19,7 @@ export const PO_STATUS: Record<PoStatus, { label: string; cls: string }> = {
 };
 
 export const PO_ACTION_LABEL: Record<PoAction, string> = {
-  created: "Created", submitted: "Submitted for approval", approved: "Approved", rejected: "Rejected", sent: "Marked as sent", cancelled: "Cancelled", closed: "Closed",
+  created: "Created", submitted: "Submitted for approval", approved: "Approved", rejected: "Returned for correction", sent: "Marked as sent", cancelled: "Cancelled", closed: "Closed",
 };
 
 export const TX_LABEL: Record<InvTxType, string> = {
