@@ -74,7 +74,7 @@ def setup():
           CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('role',true) $$;
           CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb $$;
           CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);
-          CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text,owner uuid);
+          CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text,owner uuid,metadata jsonb);
           CREATE TABLE storage.buckets(id text PRIMARY KEY,name text NOT NULL,public boolean NOT NULL DEFAULT false,file_size_limit bigint,allowed_mime_types text[]);
           ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
           GRANT USAGE ON SCHEMA public,auth,storage TO authenticated,anon,service_role;
@@ -1299,6 +1299,83 @@ def test_accounts_manager_small_expense_corrections():
 
 
 
+def test_small_expense_in_place_and_bills():
+    """New 0077 contract: Admin records, Accounts edits same row, Director only views."""
+    with db() as c:
+        actor(c, ADMIN)
+        day=c.execute("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date").fetchone()[0]
+        create="""SELECT record_site_small_expense_detailed(
+            %s::uuid,%s::uuid,%s::uuid,%s::date,%s,%s::numeric,%s,%s,%s,%s,%s)"""
+        args=(str(uuid4()),PROJECT,None,day,"other","75000.01","upi",
+              "Supplier of goods","General office supplies","BILL-01","Office miscellaneous")
+        original=c.execute(create,args).fetchone()[0]
+        assert c.execute(create,args).fetchone()[0]==original
+        assert c.execute("SELECT other_category_detail FROM site_small_expenses WHERE id=%s",
+                         (original,)).fetchone()[0]=="Office miscellaneous"
+        version=c.execute("SELECT updated_at FROM site_small_expenses WHERE id=%s",
+                          (original,)).fetchone()[0]
+        payload={"project_id":PROJECT,"building_id":None,"spent_on":day.isoformat(),
+                 "category":"other","amount":125000.50,"payment_method":"bank",
+                 "paid_to":"Supplier of goods","description":"Site materials paid",
+                 "receipt_reference":"BILL-02",
+                 "other_category_detail":"Emergency site supplies"}
+        edit="""SELECT edit_site_small_expense(%s::uuid,%s::timestamptz,%s::jsonb,%s)"""
+        actor(c, ACCOUNTS)
+        assert c.execute("SELECT has_permission(auth.uid(),'small_expense.manage')").fetchone()[0]
+        denied(c,lambda:c.execute(create,(str(uuid4()),*args[1:])))
+        denied(c,lambda:c.execute(edit,(original,version,
+               json.dumps({**payload,"project_id":OTHER_PROJECT}),"Wrong company")))
+        assert c.execute(edit,(original,version,json.dumps(payload),"Verified bill details")).fetchone()[0]==original
+        denied(c,lambda:c.execute(edit,(original,version,json.dumps(payload),"Stale edit")),"Reload")
+        assert c.execute("SELECT status,amount,other_category_detail FROM site_small_expenses WHERE id=%s",
+                         (original,)).fetchone()==("recorded",125000.50,"Emergency site supplies")
+        assert c.execute("SELECT count(*) FROM site_small_expenses WHERE replaces_expense_id=%s",
+                         (original,)).fetchone()[0]==0
+        assert c.execute("""SELECT action,before_values->>'other_category_detail',
+              after_values->>'other_category_detail' FROM site_small_expense_events
+              WHERE expense_id=%s AND action='edited'""",(original,)).fetchone() == (
+              "edited","Office miscellaneous","Emergency site supplies")
+        denied(c,lambda:c.execute("SELECT void_site_small_expense(%s,%s)",
+                                 (original,"Void forbidden")))
+        denied(c,lambda:c.execute("""SELECT correct_site_small_expense_detailed(
+           %s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::date,%s,%s::numeric,
+           %s,%s,%s,%s,%s,%s)""",(
+           original,str(uuid4()),PROJECT,None,day,"other","200.00",
+           "cash","Supplier of goods","Old duplicate","BILL-01",
+           "Legacy correction","Waste")), "permission")
+        bill_path=f"{A}/{ACCOUNTS}/{uuid4()}.jpg"
+        c.execute("INSERT INTO storage.objects(bucket_id,name,metadata) VALUES('small-expense-bills',%s,%s::jsonb)",
+                  (bill_path,json.dumps({"mimetype":"image/jpeg","size":2345})))
+        bill=c.execute("SELECT manage_site_small_expense_bill(%s,%s,%s,%s,%s,%s)",(
+            original,bill_path,"bill.jpg","image/jpeg",2345,False)).fetchone()[0]
+        assert c.execute("SELECT is_active FROM site_small_expense_bills WHERE id=%s",
+                         (bill,)).fetchone()[0]
+        actor(c,SITE)
+        denied(c,lambda:c.execute(edit,(original,version,json.dumps(payload),"No access")))
+        denied(c,lambda:c.execute("SELECT manage_site_small_expense_bill(%s,%s,NULL,NULL,NULL,true)",
+                                 (original,bill_path)))
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT has_permission(auth.uid(),'financial.view')").fetchone()[0]
+        assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id=%s",(original,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM site_small_expense_bills WHERE id=%s",(bill,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(bill_path,)).fetchone()[0]==1
+        denied(c,lambda:c.execute(edit,(original,version,json.dumps(payload),"Director edit denied")))
+        actor(c,OTHER_DIRECTOR)
+        assert c.execute("SELECT count(*) FROM site_small_expense_bills WHERE id=%s",(bill,)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(bill_path,)).fetchone()[0]==0
+        actor(c,ACCOUNTS)
+        assert c.execute("SELECT manage_site_small_expense_bill(%s,%s,NULL,NULL,NULL,true)",
+                         (original,bill_path)).fetchone()[0]==bill
+        assert c.execute("SELECT is_active FROM site_small_expense_bills WHERE id=%s",(bill,)).fetchone()[0] is False
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(bill_path,)).fetchone()[0]==0
+        actor(c,ADMIN)
+        c.execute("SELECT super_admin_force_delete('small_expense',%s)",(original,))
+        assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id=%s",(original,)).fetchone()[0]==0
+        c.rollback()
+    print("PASS 0077 same-ID edits, non-void audit, large values, private bills, strict roles, deletion")
+
+
 if __name__ == "__main__":
     setup()
     test_count_units_seed_is_idempotent()
@@ -1319,7 +1396,5 @@ if __name__ == "__main__":
     test_accounts_staff_material_create_edit_only()
     test_optional_invoice_roundoff_accounting()
     test_accounts_manager_finance_settings_permission()
-    test_accounts_manager_small_expense_corrections()
-    test_small_expenses_above_fifty_thousand()
-    test_optional_other_expense_category_detail()
+    test_small_expense_in_place_and_bills()
     test_google_sheets_retired_archives_preserved()
