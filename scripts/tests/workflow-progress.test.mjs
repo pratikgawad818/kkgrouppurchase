@@ -40,7 +40,10 @@ test("Approved PR follows actual RFQ visibility; does not claim no RFQ for unaut
   const quoted = workflowPresentation("purchase_request", "approved", ["fully_responded"]);
   assert.equal(quoted.nextTitle, "Compare quotations and select the supplier");
   const ready = workflowPresentation("purchase_request", "approved", ["ready_for_po"]);
-  assert.equal(ready.nextTitle, "Create the Purchase Order");
+  assert.equal(ready.nextTitle, "Continue Purchase Order processing");
+  assert.match(ready.nextDescription, /check for an existing PO/);
+  const closed = workflowPresentation("purchase_request", "approved", ["closed"]);
+  assert.equal(closed.nextTitle, "Check linked PO and RFQ closeout");
   assert.equal(ready.stages[2].state, "complete");
 });
 
