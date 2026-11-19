@@ -540,6 +540,13 @@
       "when": 1795135800000,
       "tag": "0076_procurement_in_place_revisions",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795136400000,
+      "tag": "0077_small_expense_edit_bills_access",
+      "breakpoints": true
     }
   ]
 }
