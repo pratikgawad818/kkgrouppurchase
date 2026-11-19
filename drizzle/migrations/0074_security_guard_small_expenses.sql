@@ -78,3 +78,133 @@ BEGIN
 END
 $$;
 
+
+-- "Other" is a catch-all accounting classification, but staff may optionally
+-- describe the actual cost type. Keep that label separately from the payment
+-- purpose, so reporting and audited corrections do not corrupt either field.
+ALTER TABLE public.site_small_expenses
+  ADD COLUMN IF NOT EXISTS other_category_detail text;
+
+ALTER TABLE public.site_small_expenses
+  ADD CONSTRAINT site_small_expenses_other_category_detail_check
+  CHECK (
+    other_category_detail IS NULL
+    OR (
+      category = 'other'
+      AND char_length(other_category_detail) BETWEEN 2 AND 120
+      AND other_category_detail = btrim(other_category_detail)
+    )
+  );
+
+-- The existing record/correct RPC signatures remain callable, so older
+-- clients and historical entries are unaffected by the additional field.
+-- New forms use the _detailed variants to save the optional label atomically.
+CREATE OR REPLACE FUNCTION public.record_site_small_expense_detailed(
+  _entry_key uuid, _project_id uuid, _building_id uuid, _spent_on date,
+  _category text, _amount numeric, _payment_method text, _paid_to text,
+  _description text, _receipt_reference text, _other_category_detail text
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=public,pg_temp AS $$
+DECLARE
+  company uuid;
+  clean_detail text := nullif(btrim(coalesce(_other_category_detail,'')),'');
+  prior_detail text;
+  already_saved boolean;
+  saved_id uuid;
+BEGIN
+  IF _entry_key IS NULL THEN RAISE EXCEPTION 'Expense entry key is required'; END IF;
+  IF clean_detail IS NOT NULL AND (
+    char_length(clean_detail) NOT BETWEEN 2 AND 120
+    OR _category IS DISTINCT FROM 'other'
+  ) THEN
+    RAISE EXCEPTION 'Other category description must be 2 to 120 characters and category must be Other';
+  END IF;
+  SELECT company_id INTO company
+  FROM public.profiles WHERE id=auth.uid() AND is_active;
+  IF company IS NULL THEN RAISE EXCEPTION 'Active company is required'; END IF;
+
+  -- Serialize same-key retries before reading to prevent changing metadata
+  -- of an existing recorded expense even during simultaneous submissions.
+  PERFORM pg_advisory_xact_lock(hashtextextended(_entry_key::text, 74));
+  SELECT other_category_detail INTO prior_detail
+  FROM public.site_small_expenses
+  WHERE company_id=company AND entry_key=_entry_key FOR UPDATE;
+  already_saved := FOUND;
+  IF already_saved AND prior_detail IS DISTINCT FROM clean_detail THEN
+    RAISE EXCEPTION 'Other category description differs from saved expense';
+  END IF;
+
+  -- Existing function remains the authority for permissions, amounts,
+  -- dates, project scope, duplicate keys, audit events and entry status.
+  saved_id := public.record_site_small_expense(
+    _entry_key,_project_id,_building_id,_spent_on,
+    _category,_amount,_payment_method,_paid_to,_description,_receipt_reference
+  );
+  IF NOT already_saved AND clean_detail IS NOT NULL THEN
+    UPDATE public.site_small_expenses
+    SET other_category_detail=clean_detail WHERE id=saved_id;
+  END IF;
+  RETURN saved_id;
+END $$;
+
+REVOKE ALL ON FUNCTION public.record_site_small_expense_detailed(
+  uuid,uuid,uuid,date,text,numeric,text,text,text,text,text
+) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.record_site_small_expense_detailed(
+  uuid,uuid,uuid,date,text,numeric,text,text,text,text,text
+) TO authenticated;
+
+-- Correction is still a single database transaction: a replacement is
+-- created and the original voided, with its original category detail intact.
+CREATE OR REPLACE FUNCTION public.correct_site_small_expense_detailed(
+  _expense_id uuid, _entry_key uuid, _project_id uuid, _building_id uuid,
+  _spent_on date, _category text, _amount numeric, _payment_method text,
+  _paid_to text, _description text, _receipt_reference text, _reason text,
+  _other_category_detail text
+) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=public,pg_temp AS $$
+DECLARE
+  company uuid;
+  clean_detail text := nullif(btrim(coalesce(_other_category_detail,'')),'');
+  prior_detail text;
+  already_saved boolean;
+  replacement_id uuid;
+BEGIN
+  IF _entry_key IS NULL THEN RAISE EXCEPTION 'Correction entry key is required'; END IF;
+  IF clean_detail IS NOT NULL AND (
+    char_length(clean_detail) NOT BETWEEN 2 AND 120
+    OR _category IS DISTINCT FROM 'other'
+  ) THEN
+    RAISE EXCEPTION 'Other category description must be 2 to 120 characters and category must be Other';
+  END IF;
+  SELECT company_id INTO company
+  FROM public.profiles WHERE id=auth.uid() AND is_active;
+  IF company IS NULL THEN RAISE EXCEPTION 'Active company is required'; END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(_entry_key::text, 74));
+  SELECT other_category_detail INTO prior_detail
+  FROM public.site_small_expenses
+  WHERE company_id=company AND entry_key=_entry_key FOR UPDATE;
+  already_saved := FOUND;
+  IF already_saved AND prior_detail IS DISTINCT FROM clean_detail THEN
+    RAISE EXCEPTION 'Other category description differs from saved correction';
+  END IF;
+
+  replacement_id := public.correct_site_small_expense(
+    _expense_id,_entry_key,_project_id,_building_id,_spent_on,
+    _category,_amount,_payment_method,_paid_to,_description,
+    _receipt_reference,_reason
+  );
+  IF NOT already_saved AND clean_detail IS NOT NULL THEN
+    UPDATE public.site_small_expenses
+    SET other_category_detail=clean_detail WHERE id=replacement_id;
+  END IF;
+  RETURN replacement_id;
+END $$;
+
+REVOKE ALL ON FUNCTION public.correct_site_small_expense_detailed(
+  uuid,uuid,uuid,uuid,date,text,numeric,text,text,text,text,text,text
+) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.correct_site_small_expense_detailed(
+  uuid,uuid,uuid,uuid,date,text,numeric,text,text,text,text,text,text
+) TO authenticated;
