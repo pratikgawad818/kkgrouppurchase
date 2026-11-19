@@ -1,12 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseSmallExpenseAmount, summarizeSmallExpenses } from "../../src/lib/small-expenses.ts";
-test("positive rupees and at most 2 decimal places, capped at 50000",()=>{
-  assert.equal(parseSmallExpenseAmount("50"),50);
-  assert.equal(parseSmallExpenseAmount("120.75"),120.75);
-  assert.equal(parseSmallExpenseAmount("50000.00"),50000);
-  for(const invalid of ["0","-1","0.00","0.001","9e9","1,000","50000.01","99999999","abc"])assert.equal(parseSmallExpenseAmount(invalid),null,invalid);
+test("positive rupees and up to 2 decimal places, including bills above 50000", () => {
+  for (const [input, amount] of [
+    ["50", 50], ["120.75", 120.75], ["50000.00", 50000],
+    ["50000.01", 50000.01], ["75000", 75000], ["125000.50", 125000.50],
+    ["99999999", 99999999], ["999999999999.99", 999999999999.99],
+    ["0.01", 0.01], [" 51000.10 ", 51000.10],
+  ]) assert.equal(parseSmallExpenseAmount(input), amount, input);
+  for (const invalid of [
+    "0", "-1", "0.00", "0.001", "9e9", "1,000", "abc",
+    "00010", "9999999999999", "999999999999.999",
+  ]) assert.equal(parseSmallExpenseAmount(invalid), null, invalid);
 });
+
 test("voided expenses excluded from live actual expense totals; project/building grouping",()=>{
   const rows=[
     {status:"recorded",amount:100,category:"fuel",project_id:"p1",building_id:"b1"},
