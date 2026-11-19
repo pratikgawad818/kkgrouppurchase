@@ -75,10 +75,12 @@ def setup():
           CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb $$;
           CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);
           CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text,owner uuid);
+          CREATE TABLE storage.buckets(id text PRIMARY KEY,name text NOT NULL,public boolean NOT NULL DEFAULT false,file_size_limit bigint,allowed_mime_types text[]);
           ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
           GRANT USAGE ON SCHEMA public,auth,storage TO authenticated,anon,service_role;
           GRANT ALL ON storage.objects TO authenticated,service_role;
-          CREATE FUNCTION storage.foldername(text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$ SELECT string_to_array($1,'/') $$;
+          CREATE FUNCTION storage.foldername(text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $ SELECT string_to_array($1,'/') $;
+          CREATE FUNCTION storage.filename(text) RETURNS text LANGUAGE sql IMMUTABLE AS $ SELECT split_part($1,'/',array_length(string_to_array($1,'/'),1)) $;
           CREATE PUBLICATION supabase_realtime;
           CREATE TABLE public.qa_http_requests(url text,body jsonb,headers jsonb,timeout_ms integer);
           CREATE FUNCTION net.http_post(url text,body jsonb,headers jsonb,timeout_milliseconds integer DEFAULT 5000) RETURNS bigint LANGUAGE plpgsql AS $$
@@ -125,6 +127,58 @@ def save_pr(c, token=None, doc=None, version=None, lines=None, submit=False, pur
         lines = [{"material_id":MATERIAL,"unit_id":UNIT,"quantity":2}]
     return str(c.execute("SELECT save_purchase_request(%s,%s,%s::jsonb,%s::jsonb,%s,%s)",
         (token or str(uuid4()),doc,json.dumps(header),json.dumps(lines),submit,version)).fetchone()[0])
+
+
+
+
+def test_private_procurement_attachment_access():
+    """PDF/JPG evidence is private until linked; reviewers see only their company/project."""
+    with db() as c:
+        project_file = f"{A}/{SITE}/{uuid4()}.pdf"
+        quote_file = f"{A}/{PURCHASER}/{uuid4()}.jpg"
+        wrong_file = f"{B}/{OTHER_DIRECTOR}/{uuid4()}.pdf"
+
+        actor(c, SITE)
+        pr = save_pr(c, submit=False)
+        assert c.execute(
+            "SELECT has_permission(auth.uid(),'purchase_request.create')"
+        ).fetchone()[0] is True
+        c.execute("INSERT INTO storage.objects(bucket_id,name) VALUES('procurement-attachments',%s)",(project_file,))
+        denied(c, lambda: c.execute("INSERT INTO storage.objects(bucket_id,name) VALUES('procurement-attachments',%s)",(wrong_file,)))
+        denied(c, lambda: c.execute(
+            "SELECT set_purchase_request_attachment(%s,%s)",(pr,wrong_file)), "Upload"
+        )
+        c.execute("SELECT set_purchase_request_attachment(%s,%s)",(pr,project_file))
+        assert c.execute("SELECT can_read_procurement_attachment(%s)",(project_file,)).fetchone()[0]
+        assert c.execute(
+            "SELECT count(*) FROM storage.objects WHERE name=%s",(project_file,)
+        ).fetchone()[0] == 1
+
+        actor(c, DIRECTOR)
+        assert c.execute("SELECT can_read_procurement_attachment(%s)",(project_file,)).fetchone()[0]
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(project_file,)).fetchone()[0] == 1
+        denied(c, lambda: c.execute(
+            "SELECT set_purchase_request_attachment(%s,%s)",(pr,project_file))
+        )
+
+        actor(c, OTHER_DIRECTOR)
+        assert c.execute("SELECT can_read_procurement_attachment(%s)",(project_file,)).fetchone()[0] is False
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(project_file,)).fetchone()[0] == 0
+
+        actor(c, PURCHASER)
+        c.execute("INSERT INTO storage.objects(bucket_id,name) VALUES('procurement-attachments',%s)",(quote_file,))
+        assert c.execute("SELECT procurement_attachment_owned(%s,%s,%s)",(quote_file,A,PURCHASER)).fetchone()[0]
+        assert c.execute("SELECT procurement_attachment_owned(%s,%s,%s)",(quote_file,A,SITE)).fetchone()[0] is False
+
+        actor(c, SITE)
+        denied(c, lambda: c.execute(
+            "SELECT set_purchase_request_attachment(%s,%s)",(pr,quote_file)
+        ), "Upload")
+
+        actor(c, DIRECTOR)
+        assert c.execute("SELECT can_read_procurement_attachment(%s)",(quote_file,)).fetchone()[0] is False, "Unlinked quote must be private"
+        c.rollback()
+    print("PASS private procurement file upload, project viewer, foreign tenant and document ownership")
 
 
 
@@ -1104,6 +1158,7 @@ if __name__ == "__main__":
     test_count_units_seed_is_idempotent()
     test_services_and_hours_master_seed()
     test_square_metre_unit_seed_is_idempotent()
+    test_private_procurement_attachment_access()
     test_site_engineer_requires_project_assignment_for_pr()
     test_quote_freight_gst_matches_supplier_and_po()
     test_atomic_requests_and_rfqs()
