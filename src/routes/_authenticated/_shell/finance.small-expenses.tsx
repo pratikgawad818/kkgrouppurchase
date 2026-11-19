@@ -88,7 +88,7 @@ function SmallExpenses() {
       if(editingId && (correctionReason.trim().length<10||correctionReason.trim().length>400))
         throw new Error("Explain the correction in 10 to 400 characters.");
       const amount=parseSmallExpenseAmount(form.amount);
-      if(amount===null)throw new Error("Enter a positive amount up to ₹50,000 with at most two decimal places.");
+      if(amount===null)throw new Error("Enter a positive amount with up to two decimal places.");
       if(form.paidTo.trim().length<2||form.description.trim().length<3)throw new Error("Enter the person paid and a meaningful description.");
       if(!form.spentOn||form.spentOn>todayIst())throw new Error("Select a valid date that is not in the future.");
       const otherCategoryDetail = form.category === "other"
@@ -262,7 +262,7 @@ function SmallExpenses() {
         {context.error&&<p role="alert" className="text-sm text-destructive">{errMsg(context.error)}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label className="text-sm font-medium">Date *</label><Input type="date" max={todayIst()} value={form.spentOn} onChange={e=>setField("spentOn",e.target.value)}/></div>
-          <div><label className="text-sm font-medium">Amount (₹) *</label><Input inputMode="decimal" placeholder="e.g. 350.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
+          <div><label className="text-sm font-medium">Amount (₹) *</label><Input inputMode="decimal" placeholder="e.g. 75000.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
           <div>
             <label className="text-sm font-medium" htmlFor="small-expense-category">Category *</label>
             <select id="small-expense-category" className={selectCls} value={form.category}

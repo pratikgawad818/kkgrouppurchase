@@ -1154,6 +1154,75 @@ def test_optional_other_expense_category_detail():
 
 
 
+
+def test_small_expenses_above_fifty_thousand():
+    """Larger receipts keep permission, idempotency and correction accounting intact."""
+    with db() as c:
+        actor(c, ACCOUNTS)
+        day = c.execute(
+            "SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date"
+        ).fetchone()[0]
+        record_sql = """SELECT public.record_site_small_expense_detailed(
+            %s::uuid,%s::uuid,%s::uuid,%s::date,%s,%s::numeric,%s,%s,%s,%s,%s
+        )"""
+        key = str(uuid4())
+        base_args = (
+            key, PROJECT, None, day, "security_guard", "75000.01",
+            "bank", "Site security agency", "Monthly security bill", "SG-75K", None
+        )
+        expense = c.execute(record_sql, base_args).fetchone()[0]
+        assert c.execute(record_sql, base_args).fetchone()[0] == expense
+        large_amount,large_status = c.execute(
+            "SELECT amount,status FROM site_small_expenses WHERE id=%s",
+            (expense,)
+        ).fetchone()
+        assert (float(large_amount),large_status) == (75000.01, "recorded")
+        denied(c, lambda: c.execute(record_sql,
+            (*base_args[:5], "75000.02", *base_args[6:])), "cannot be overwritten")
+
+        # Correction uses the same uncapped audited record function.
+        correction_sql = """SELECT public.correct_site_small_expense_detailed(
+            %s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::date,
+            %s,%s::numeric,%s,%s,%s,%s,%s,%s
+        )"""
+        reason = "Corrected high value bill according to vendor receipt"
+        correction_key = str(uuid4())
+        corrected = (
+            expense, correction_key, PROJECT, None, day,
+            "security_guard", "125000.50", "bank", "Site security agency",
+            "Monthly security bill corrected", "SG-125K", reason, None
+        )
+        updated = c.execute(correction_sql, corrected).fetchone()[0]
+        assert c.execute(correction_sql, corrected).fetchone()[0] == updated
+        assert c.execute(
+            "SELECT amount,replaces_expense_id,status FROM site_small_expenses WHERE id=%s",
+            (updated,)
+        ).fetchone() == (125000.50, expense, "recorded")
+        assert c.execute(
+            "SELECT status FROM site_small_expenses WHERE id=%s", (expense,)
+        ).fetchone()[0] == "voided"
+
+        # Old RPC also accepts bills above the historic cap for older clients.
+        legacy = c.execute(
+            """SELECT public.record_site_small_expense(
+                %s::uuid,%s::uuid,%s::uuid,%s::date,%s,%s::numeric,%s,%s,%s,%s
+            )""",
+            (str(uuid4()), PROJECT, None, day, "other", "51000.25",
+             "upi", "Supply contractor", "Equipment hire charge", "LARGE-51K")
+        ).fetchone()[0]
+        assert c.execute(
+            "SELECT amount FROM site_small_expenses WHERE id=%s", (legacy,)
+        ).fetchone()[0] == 51000.25
+
+        actor(c, SITE)
+        denied(c, lambda: c.execute(record_sql,
+            (str(uuid4()), PROJECT, None, day, "other", "200000.00",
+             "cash", "Supply contractor", "Not authorized entry", None, None)))
+        c.rollback()
+    print("PASS expense amounts over Rs 50k through audited create/correct, retries, and RLS")
+
+
+
 def test_accounts_manager_small_expense_corrections():
     """Accounts Manager can record and correct, not void freely or bypass project scope."""
     with db() as c:
@@ -1251,5 +1320,6 @@ if __name__ == "__main__":
     test_optional_invoice_roundoff_accounting()
     test_accounts_manager_finance_settings_permission()
     test_accounts_manager_small_expense_corrections()
+    test_small_expenses_above_fifty_thousand()
     test_optional_other_expense_category_detail()
     test_google_sheets_retired_archives_preserved()

@@ -526,6 +526,13 @@
       "when": 1795134600000,
       "tag": "0074_security_guard_small_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795135200000,
+      "tag": "0075_remove_small_expense_amount_cap",
+      "breakpoints": true
     }
   ]
 }

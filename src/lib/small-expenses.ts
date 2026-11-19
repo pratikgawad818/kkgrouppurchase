@@ -16,12 +16,17 @@ export const SMALL_EXPENSE_PAYMENTS = {
 } as const;
 export type SmallExpensePayment = keyof typeof SMALL_EXPENSE_PAYMENTS;
 
+/** Valid rupees/paise without an arbitrary per-entry business cap.
+ * The underlying numeric(14,2) DB column permits up to 12 integer digits;
+ * parse into integer paise first to avoid floating-point acceptance errors.
+ */
 export function parseSmallExpenseAmount(value: string): number | null {
   const raw = value.trim();
-  if (!/^(?:[1-9]\d{0,4}|0)(?:\.\d{1,2})?$/.test(raw)) return null;
-  const paise = Math.round(Number(raw) * 100);
-  if (!Number.isSafeInteger(paise) || paise < 1 || paise > 5000000) return null;
-  return paise / 100;
+  if (!/^(?:[1-9]\d{0,11}|0)(?:\.\d{1,2})?$/.test(raw)) return null;
+  const [rupees = "", fractional = ""] = raw.split(".");
+  const paise = BigInt(rupees) * 100n + BigInt(fractional.padEnd(2, "0") || "0");
+  if (paise < 1n || paise > 99_999_999_999_999n) return null;
+  return Number(paise) / 100;
 }
 
 export type SmallExpenseAmount = {
