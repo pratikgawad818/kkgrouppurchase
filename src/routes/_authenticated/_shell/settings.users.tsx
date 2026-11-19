@@ -34,9 +34,9 @@ function StaffAvatar({ path, name }: { path: string | null; name: string }) {
 }
 const blankInvite = { username: "", password: "", email: "", fullName: "", phone: "", department: "", designation: "", role: "site_engineer" as Assignable };
 
-function RoleSelect({ value, onChange, disabled, allowNone }: { value: string; onChange: (v: string) => void; disabled?: boolean; allowNone?: boolean }) {
+function RoleSelect({ value, onChange, disabled, allowNone, id }: { value: string; onChange: (v: string) => void; disabled?: boolean; allowNone?: boolean; id?: string }) {
   return (
-    <select className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+    <select id={id} className="mt-1.5 h-11 sm:h-9 w-full rounded-md border bg-background px-3 text-sm" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
       {allowNone && <option value="">No role</option>}
       {ASSIGNABLE.map((r) => <option value={r} key={r}>{ROLE_LABEL[r]}</option>)}
     </select>
@@ -126,18 +126,94 @@ function UsersPage() {
         </table>
       </div>
 
-      <Dialog open={!!staff} onOpenChange={(o) => !o && setStaff(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Staff access</DialogTitle><DialogDescription>{staff?.full_name || staff?.email}</DialogDescription></DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label>Phone</Label><Input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></div>
-            <div><Label>Department</Label><Input value={edit.department} onChange={(e) => setEdit({ ...edit, department: e.target.value })} /></div>
-            <div className="sm:col-span-2"><Label>Designation</Label><Input value={edit.designation} onChange={(e) => setEdit({ ...edit, designation: e.target.value })} /></div>
-            <div className="sm:col-span-2"><Label>Operational role</Label><RoleSelect allowNone value={edit.role} onChange={(v) => setEdit({ ...edit, role: v })} disabled={isSuper} />{isSuper && <p className="mt-1 text-xs text-muted-foreground">Super Admin role is kept; contact details can still be edited.</p>}</div>
-            <div className="flex items-center justify-between rounded-md border p-3 sm:col-span-2"><div><div className="text-sm font-medium">Active access</div><div className="text-xs text-muted-foreground">Inactive staff cannot use the workspace.</div></div><Switch checked={edit.active} onCheckedChange={(v) => setEdit({ ...edit, active: v })} disabled={isSuper} /></div>
+      <Dialog open={!!staff} onOpenChange={(open) => {
+        if (!open && !save.isPending) setStaff(null);
+      }}>
+        <DialogContent className="flex max-h-[min(90dvh,860px)] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
+          <DialogHeader className="shrink-0 border-b bg-muted/30 px-5 py-4 pr-14 sm:px-6 sm:py-5">
+            <DialogTitle className="text-xl font-semibold tracking-tight">Edit staff access</DialogTitle>
+            <DialogDescription>
+              Manage account details, operational role and assigned projects.
+            </DialogDescription>
+            {staff && (
+              <div className="flex min-w-0 items-center gap-3 pt-3">
+                <StaffAvatar path={staff.avatar_url} name={staff.full_name || staff.email || "Staff member"} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {staff.full_name || "Unnamed staff"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{staff.email || "No email recorded"}</p>
+                </div>
+              </div>
+            )}
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
+            <section aria-label="Staff information">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold">Staff information</h3>
+                <p className="text-xs text-muted-foreground">Contact details and workspace role</p>
+              </div>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <Label htmlFor="staff-edit-phone">Phone</Label>
+                  <Input id="staff-edit-phone" className="mt-1.5" inputMode="tel"
+                    value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} />
+                </div>
+                <div className="min-w-0">
+                  <Label htmlFor="staff-edit-department">Department</Label>
+                  <Input id="staff-edit-department" className="mt-1.5"
+                    value={edit.department} onChange={(e) => setEdit({ ...edit, department: e.target.value })} />
+                </div>
+                <div className="min-w-0">
+                  <Label htmlFor="staff-edit-designation">Designation</Label>
+                  <Input id="staff-edit-designation" className="mt-1.5"
+                    value={edit.designation} onChange={(e) => setEdit({ ...edit, designation: e.target.value })} />
+                </div>
+                <div className="min-w-0">
+                  <Label htmlFor="staff-edit-role">Operational role</Label>
+                  <RoleSelect id="staff-edit-role" allowNone value={edit.role}
+                    onChange={(v) => setEdit({ ...edit, role: v })} disabled={isSuper} />
+                  {isSuper && <p className="mt-1 text-xs text-muted-foreground">
+                    Super Admin role cannot be changed here.
+                  </p>}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl border bg-muted/20 p-4" aria-label="Account status">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold">Active access</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Inactive staff cannot sign in to the workspace.
+                  </p>
+                </div>
+                <Switch aria-label="Active staff access" checked={edit.active}
+                  onCheckedChange={(value) => setEdit({ ...edit, active: value })}
+                  disabled={isSuper} />
+              </div>
+            </section>
+
+            {staff && !isSuper && (
+              <StaffProjectAssignments key={staff.id} staffId={staff.id} />
+            )}
           </div>
-          {staff && !isSuper && <StaffProjectAssignments key={staff.id} staffId={staff.id} />}
-          <DialogFooter><Button variant="outline" onClick={() => setStaff(null)}>Cancel</Button><Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button></DialogFooter>
+
+          <div className="shrink-0 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Project changes save immediately. Contact details, role and status save below.
+              </p>
+              <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+                <Button type="button" variant="outline" disabled={save.isPending}
+                  onClick={() => setStaff(null)}>Close</Button>
+                <Button type="button" onClick={() => save.mutate()} disabled={save.isPending}>
+                  {save.isPending ? "Saving…" : "Save staff details"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
