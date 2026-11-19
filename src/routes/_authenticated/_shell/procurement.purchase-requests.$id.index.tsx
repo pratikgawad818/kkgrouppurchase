@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
-import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
+import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
+import { errMsg, fmtDate, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { RFQ_STATUS } from "@/lib/rfq";
-import { PR_ACTION, PR_PRIORITY, PR_STATUS, PR_TYPE, type PrAction } from "@/lib/pr";
+import { PR_PRIORITY, PR_STATUS, PR_TYPE, type PrAction } from "@/lib/pr";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/purchase-requests/$id/")({
   head: () => ({
@@ -287,28 +288,19 @@ function PrDetail() {
         </section>
       )}
 
-      <section className="mt-4 rounded-md border bg-card p-4">
-        <h2 className="mb-3 text-sm font-semibold">Approval history</h2>
-        <ol className="space-y-3 border-l pl-4">
-          {history.map((x) => (
-            <li key={x.id} className="relative text-sm">
-              <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-primary" />
-              <div className="text-xs text-muted-foreground">{fmtDateTime(x.acted_at)}</div>
-              <div>
-                <span className="font-medium">
-                  {x.action === "submitted" && x.new_status === "approved"
-                    ? "Finalized"
-                    : PR_ACTION[x.action]}
-                </span>{" "}
-                by {name(x.acted_by)}
-              </div>
-              {x.comment && (
-                <div className="mt-0.5 text-xs italic text-muted-foreground">“{x.comment}”</div>
-              )}
-            </li>
-          ))}
-        </ol>
-      </section>
+      <WorkflowTimeline
+        kind="purchase_request"
+        status={pr.status}
+        rfqStatuses={rfqs.isSuccess ? rfqs.data.map((r) => r.status) : undefined}
+        events={history.map((event) => ({
+          id: event.id,
+          action: event.action,
+          occurredAt: event.acted_at,
+          actorName: name(event.acted_by),
+          comment: event.comment,
+          newStatus: event.new_status,
+        }))}
+      />
 
       <Dialog open={!!act} onOpenChange={(o) => !o && setAct(null)}>
         <DialogContent>

@@ -18,12 +18,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
-import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
+import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PrintPo } from "@/components/erp/print-po";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
+import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { cn } from "@/lib/utils";
 
 const META = "Purchase order details, approval and goods receipts.";
@@ -720,58 +721,35 @@ function PoDetail() {
               </ul>
             )}
           </section>
-          <section className="rounded-md border bg-card p-4">
-            <div className="mb-2 text-sm font-semibold">Approval history</div>
-            <ol className="space-y-2 text-sm">
-              {[
-                ...history.map((h) => ({ ...h, grn: null as null | (typeof grns)[number] })),
-                ...grns
-                  .filter((g) => g.status !== "draft")
-                  .map((g) => ({
-                    id: g.id,
-                    action: "created" as PoAction,
-                    acted_at: g.created_at,
-                    comment: null,
-                    profiles: null,
-                    grn: g,
-                  })),
-              ]
-                .sort((a, b) => a.acted_at.localeCompare(b.acted_at))
-                .map((h) =>
-                  h.grn ? (
-                    <li key={h.id} className="border-l-2 border-success/50 pl-3">
-                      <div className="font-medium">
-                        Goods received —{" "}
-                        <Link
-                          className="font-mono text-primary hover:underline"
-                          to="/inventory/goods-received/$id"
-                          params={{ id: h.grn.id }}
-                        >
-                          {h.grn.grn_number}
-                        </Link>
-                        {h.grn.status === "cancelled" ? " (cancelled)" : ""}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{fmtDateTime(h.acted_at)}</div>
-                    </li>
-                  ) : (
-                    <li key={h.id} className="border-l-2 border-primary/40 pl-3">
-                      <div className="font-medium">
-                        {h.action === "submitted" &&
-                        "new_status" in h &&
-                        h.new_status === "approved"
-                          ? "Finalized"
-                          : PO_ACTION_LABEL[h.action]}{" "}
-                        <span className="font-normal text-muted-foreground">
-                          by {h.profiles?.full_name ?? "—"}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">{fmtDateTime(h.acted_at)}</div>
-                      {h.comment && <div className="mt-0.5 text-xs">“{h.comment}”</div>}
-                    </li>
-                  ),
-                )}
-            </ol>
-          </section>
+          <WorkflowTimeline
+            kind="purchase_order"
+            status={po.status}
+            events={[
+              ...history.map((event) => ({
+                id: event.id,
+                action: event.action,
+                occurredAt: event.acted_at,
+                actorName: event.profiles?.full_name,
+                comment: event.comment,
+                newStatus: event.new_status,
+              })),
+              ...grns
+                .filter((grn) => grn.status !== "draft")
+                .map((grn) => ({
+                  id: `grn-${grn.id}`,
+                  action: "goods_received",
+                  occurredAt: grn.created_at,
+                  actorName: null,
+                  // A cancelled receipt does not expose its cancellation time
+                  // here: only the document creation timestamp is available.
+                  comment: grn.status === "cancelled"
+                    ? "This receipt was subsequently cancelled."
+                    : "See the linked receipt for posted quantities and inspection.",
+                  reference: grn.grn_number,
+                  referencePath: `/inventory/goods-received/${grn.id}`,
+                })),
+            ]}
+          />
         </div>
 
         <ApprovalDecisionDialog
