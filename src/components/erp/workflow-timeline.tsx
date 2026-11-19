@@ -60,7 +60,7 @@ export function WorkflowTimeline({
   kind: WorkflowKind;
   status: string;
   events: readonly WorkflowEvent[];
-  rfqStatuses?: readonly string[];
+  rfqStatuses?: readonly string[] | undefined;
 }) {
   const sorted = chronologicalWorkflowEvents(events);
   const lastAction = sorted.at(-1)?.action;
