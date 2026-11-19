@@ -3,6 +3,16 @@
 -- so current PO edit/resubmission paths and accounting guards stay operational.
 ALTER TYPE public.po_action ADD VALUE IF NOT EXISTS 'returned';
 
+-- A completed, quotation-linked PR cannot have its original lines deleted:
+-- RFQ items retain foreign keys to those lines. A correction is instead a new
+-- draft PR, linked to the original so the full procurement chain is traceable.
+ALTER TABLE public.purchase_requests
+  ADD COLUMN IF NOT EXISTS revision_of_pr_id uuid
+    REFERENCES public.purchase_requests(id);
+CREATE UNIQUE INDEX IF NOT EXISTS purchase_requests_one_correction_per_origin
+  ON public.purchase_requests(revision_of_pr_id)
+  WHERE revision_of_pr_id IS NOT NULL;
+
 CREATE OR REPLACE FUNCTION public.return_po_for_correction(
   _po_id uuid, _reason text
 ) RETURNS void
@@ -59,6 +69,8 @@ DECLARE
   actor uuid := auth.uid();
   why text := nullif(btrim(coalesce(_reason,'')),'');
   last_action public.po_action;
+  successor uuid;
+  successor_number text;
 BEGIN
   IF actor IS NULL OR NOT public.is_active_user(actor) OR
      NOT public.has_role(actor,'purchase_manager') OR
@@ -122,20 +134,57 @@ BEGIN
   WHERE purchase_request_id=req.id AND status<>'cancelled';
   PERFORM set_config('app.rfq_source','',true);
 
+  -- The original approved PR and its item FK rows are NEVER rewritten.
+  -- Mark it archived, then clone only its requested materials into a linked,
+  -- editable draft owned by the same Site Engineer.
   PERFORM set_config('app.pr_source','rpc',true);
-  UPDATE public.purchase_requests
-  SET status='draft',approved_at=NULL,approved_by=NULL,updated_at=now()
+  UPDATE public.purchase_requests SET status='cancelled',updated_at=now()
   WHERE id=req.id;
   PERFORM set_config('app.pr_source','',true);
+
+  INSERT INTO public.purchase_requests(
+    pr_number,company_id,project_id,building_id,floor_id,requested_by,
+    required_by,priority,request_type,purpose,remarks,attachment_path,
+    revision_of_pr_id
+  ) VALUES (
+    'auto',req.company_id,req.project_id,req.building_id,req.floor_id,
+    req.requested_by,req.required_by,req.priority,req.request_type,
+    req.purpose,concat_ws(E'\n',nullif(req.remarks,''),
+      'Correction required after '||doc.po_number||': '||why),
+    req.attachment_path,req.id
+  ) RETURNING id,pr_number INTO successor,successor_number;
+
+  INSERT INTO public.purchase_request_items(
+    purchase_request_id,line_no,material_id,description,quantity,unit_id,
+    estimated_rate,required_by,purpose,notes
+  )
+  SELECT successor,line_no,material_id,description,quantity,unit_id,
+         estimated_rate,required_by,purpose,notes
+  FROM public.purchase_request_items
+  WHERE purchase_request_id=req.id ORDER BY line_no;
+
   INSERT INTO public.purchase_request_approvals
     (purchase_request_id,action,acted_by,comment,previous_status,new_status,acted_at)
-  VALUES(req.id,'returned',actor,
-    'Returned from '||doc.po_number||' to original Site Engineer: '||why,
-    req.status,'draft',clock_timestamp());
-  PERFORM public.log_event('pr_returned_from_po','PR',req.pr_number,req.id,why,
-    jsonb_build_object('status',req.status,'po',doc.po_number),
-    jsonb_build_object('status','draft','correction_target','site_engineer'));
-  RETURN req.id;
+  VALUES(req.id,'cancelled',actor,
+    'Superseded by '||successor_number||' after return from '||doc.po_number||': '||why,
+    req.status,'cancelled',clock_timestamp());
+
+  INSERT INTO public.purchase_request_approvals
+    (purchase_request_id,action,acted_by,comment,previous_status,new_status,acted_at)
+  VALUES(successor,'returned',actor,
+    'Correction draft created from '||req.pr_number||' / '||doc.po_number||': '||why,
+    'draft','draft',clock_timestamp());
+
+  INSERT INTO public.notifications(user_id,title,body,link)
+  VALUES(req.requested_by,'Purchase Request needs correction',
+    'Purchase Manager returned '||doc.po_number||'. '||why||
+    '. Open '||successor_number||' to correct the materials and resubmit.',
+    '/procurement/purchase-requests/'||successor::text);
+
+  PERFORM public.log_event('pr_correction_revision_created','PR',successor_number,
+    successor,why,jsonb_build_object('previous_pr',req.pr_number,'po',doc.po_number),
+    jsonb_build_object('status','draft','requester',req.requested_by));
+  RETURN successor;
 END $$;
 REVOKE ALL ON FUNCTION public.return_pr_to_site_engineer_from_po(uuid,text)
   FROM PUBLIC,anon;
