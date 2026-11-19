@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, inr, num } from "@/lib/format";
-import { lineCalc, TAX_RATES, TAX_TYPES } from "@/lib/rfq";
+import { chargeGst, lineCalc, TAX_RATES, TAX_TYPES } from "@/lib/rfq";
 import { loadRfq } from "@/lib/rfq-data";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/$id/quotation")({
@@ -24,14 +24,32 @@ function QuoteEntry() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["rfq", id], queryFn: () => loadRfq(id) });
-  const [h, setH] = useState({ quotation_number: "", quotation_date: new Date().toISOString().slice(0, 10), valid_until: "", delivery_days: "", payment_terms: "", freight: "0", other_charges: "0", remarks: "" });
+  const [h, setH] = useState({ quotation_number: "", quotation_date: new Date().toISOString().slice(0, 10), valid_until: "", delivery_days: "", payment_terms: "", freight: "0", other_charges: "0", freight_tax_type: "none", freight_tax_rate_percent: "0", other_charges_tax_type: "none", other_charges_tax_rate_percent: "0", remarks: "" });
   const [lines, setLines] = useState<Line[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!q.data || ready) return;
     const ex = q.data.quotes.find((x) => x.rfq_vendor_id === vendor);
-    if (ex) setH({ quotation_number: ex.quotation_number, quotation_date: ex.quotation_date, valid_until: ex.valid_until ?? "", delivery_days: ex.delivery_days?.toString() ?? "", payment_terms: ex.payment_terms ?? "", freight: String(ex.freight), other_charges: String(ex.other_charges), remarks: ex.remarks ?? "" });
+    if (ex) {
+      // New charge tax fields are present from migration 0072. Historic quotes
+      // default to untaxed charges and keep their existing totals.
+      const tax = ex as typeof ex & {
+        freight_tax_type?: string; freight_tax_rate_percent?: number;
+        other_charges_tax_type?: string; other_charges_tax_rate_percent?: number;
+      };
+      setH({
+        quotation_number: ex.quotation_number, quotation_date: ex.quotation_date,
+        valid_until: ex.valid_until ?? "", delivery_days: ex.delivery_days?.toString() ?? "",
+        payment_terms: ex.payment_terms ?? "", freight: String(ex.freight),
+        other_charges: String(ex.other_charges),
+        freight_tax_type: tax.freight_tax_type ?? "none",
+        freight_tax_rate_percent: String(tax.freight_tax_rate_percent ?? 0),
+        other_charges_tax_type: tax.other_charges_tax_type ?? "none",
+        other_charges_tax_rate_percent: String(tax.other_charges_tax_rate_percent ?? 0),
+        remarks: ex.remarks ?? "",
+      });
+    }
     setLines(q.data.items.map((it) => {
       const e = ex?.vendor_quotation_items.find((y) => y.rfq_item_id === it.id);
       return e ? { rfq_item_id: it.id, is_quoted: e.is_quoted, qty: String(e.quoted_quantity), rate: String(e.rate), disc: String(e.discount_amount), taxType: e.tax_type, taxPct: Number(e.tax_rate_percent), days: e.delivery_days?.toString() ?? "", remarks: e.remarks ?? "" }
@@ -47,7 +65,23 @@ function QuoteEntry() {
       if (!lines.some((l) => l.is_quoted)) throw new Error("At least one item must be quoted");
       if (lines.some((l) => l.is_quoted && (!(Number(l.rate) > 0) || !(Number(l.qty) > 0)))) throw new Error("Enter quantity and rate for each quoted item");
       const ex = d.quotes.find((x) => x.rfq_vendor_id === vendor);
-      const head = { quotation_number: h.quotation_number.trim(), quotation_date: h.quotation_date, valid_until: h.valid_until || null, delivery_days: h.delivery_days ? Number(h.delivery_days) : null, payment_terms: h.payment_terms || null, freight: Number(h.freight) || 0, other_charges: Number(h.other_charges) || 0, remarks: h.remarks || null };
+      const freight = Number(h.freight) || 0;
+      const otherCharges = Number(h.other_charges) || 0;
+      // Validate tax selections before any database write.
+      chargeGst(freight, h.freight_tax_type, Number(h.freight_tax_rate_percent));
+      chargeGst(otherCharges, h.other_charges_tax_type, Number(h.other_charges_tax_rate_percent));
+      const head = {
+        quotation_number: h.quotation_number.trim(), quotation_date: h.quotation_date,
+        valid_until: h.valid_until || null,
+        delivery_days: h.delivery_days ? Number(h.delivery_days) : null,
+        payment_terms: h.payment_terms || null, freight,
+        other_charges: otherCharges,
+        freight_tax_type: h.freight_tax_type,
+        freight_tax_rate_percent: Number(h.freight_tax_rate_percent),
+        other_charges_tax_type: h.other_charges_tax_type,
+        other_charges_tax_rate_percent: Number(h.other_charges_tax_rate_percent),
+        remarks: h.remarks || null,
+      };
       let qid = ex?.id;
       if (qid) { const { error } = await supabase.from("vendor_quotations").update(head).eq("id", qid); if (error) throw error; }
       else {
@@ -71,8 +105,37 @@ function QuoteEntry() {
   const set = (i: number, p: Partial<Line>) => setLines(lines.map((l, j) => (j === i ? { ...l, ...p } : l)));
   const calcs = lines.map((l) => l.is_quoted ? lineCalc(Number(l.qty) || 0, Number(l.rate) || 0, Number(l.disc) || 0, l.taxPct, l.taxType) : { taxable: 0, tax: 0, total: 0 });
   const taxable = calcs.reduce((a, c) => a + c.taxable, 0), tax = calcs.reduce((a, c) => a + c.tax, 0);
-  const grand = taxable + tax + (Number(h.freight) || 0) + (Number(h.other_charges) || 0);
-  const hf = (k: keyof typeof h, label: string, type = "text") => <label className="text-sm">{label}<Input className="mt-1" type={type} value={h[k]} onChange={(e) => setH({ ...h, [k]: e.target.value })} /></label>;
+  const freight = Number(h.freight) || 0, otherCharges = Number(h.other_charges) || 0;
+  const freightGst = chargeGst(Math.max(0, freight), h.freight_tax_type, Number(h.freight_tax_rate_percent) || 0);
+  const otherChargesGst = chargeGst(Math.max(0, otherCharges), h.other_charges_tax_type, Number(h.other_charges_tax_rate_percent) || 0);
+  const totalGst = tax + freightGst + otherChargesGst;
+  const grand = taxable + totalGst + freight + otherCharges;
+  const hf = (k: keyof typeof h, label: string, type = "text") => <label className="text-sm">{label}<Input className="mt-1" type={type} min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined} value={h[k]} onChange={(e) => setH({ ...h, [k]: e.target.value })} /></label>;
+  const chargeTaxFields = (key: "freight" | "other_charges") => {
+    const taxType = key === "freight" ? "freight_tax_type" : "other_charges_tax_type";
+    const rate = key === "freight" ? "freight_tax_rate_percent" : "other_charges_tax_rate_percent";
+    return <div className="grid gap-2 sm:col-span-2">
+      <span className="text-xs font-medium text-muted-foreground">{key === "freight" ? "GST on freight" : "GST on other charges"} — as stated on supplier quotation</span>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs">Tax type
+          <select aria-label={key === "freight" ? "Freight GST type" : "Other charges GST type"} className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
+            value={h[taxType]} onChange={(e) => setH({ ...h,
+              [taxType]: e.target.value,
+              [rate]: e.target.value === "none" ? "0" : h[rate] === "0" ? "18" : h[rate],
+            })}>
+            {TAX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </label>
+        <label className="text-xs">GST rate
+          <select aria-label={key === "freight" ? "Freight GST rate" : "Other charges GST rate"} className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
+            value={h[rate]} disabled={h[taxType] === "none"}
+            onChange={(e) => setH({ ...h, [rate]: e.target.value })}>
+            {TAX_RATES.map(pct => <option key={pct} value={String(pct)}>{pct}%</option>)}
+          </select>
+        </label>
+      </div>
+    </div>;
+  };
 
   return (
     <>
@@ -80,6 +143,7 @@ function QuoteEntry() {
       <section className="grid gap-3 rounded-md border bg-card p-4 sm:grid-cols-4">
         {hf("quotation_number", "Vendor quote ref *")}{hf("quotation_date", "Quote date", "date")}{hf("valid_until", "Valid until", "date")}{hf("delivery_days", "Delivery (days)", "number")}
         {hf("payment_terms", "Payment terms")}{hf("freight", "Freight (₹)", "number")}{hf("other_charges", "Other charges (₹)", "number")}{hf("remarks", "Remarks")}
+        {chargeTaxFields("freight")}{chargeTaxFields("other_charges")}
       </section>
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
@@ -101,7 +165,10 @@ function QuoteEntry() {
           ); })}</tbody>
           <tfoot className="text-sm">
             <tr className="border-t"><td colSpan={7} className="p-2 text-right text-muted-foreground">Taxable value</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(taxable)}</td></tr>
-            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">Tax</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(tax)}</td></tr>
+            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">GST on quoted items</td><td className="px-4 py-3 text-right tabular-nums">{inr(tax)}</td></tr>
+            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">GST on freight</td><td className="px-4 py-3 text-right tabular-nums">{inr(freightGst)}</td></tr>
+            <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">GST on other charges</td><td className="px-4 py-3 text-right tabular-nums">{inr(otherChargesGst)}</td></tr>
+            <tr><td colSpan={7} className="p-2 text-right font-medium">Total GST</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(totalGst)}</td></tr>
             <tr><td colSpan={7} className="p-2 text-right text-muted-foreground">Freight + other charges</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr((Number(h.freight) || 0) + (Number(h.other_charges) || 0))}</td></tr>
             <tr className="border-t"><td colSpan={7} className="p-2 text-right font-semibold">Grand total</td><td className="px-4 py-3 text-right font-medium tabular-nums font-semibold">{inr(grand)}</td></tr>
           </tfoot>
