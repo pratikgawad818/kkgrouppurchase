@@ -808,6 +808,58 @@ function PoDetail() {
           />
         </div>
 
+        <Dialog open={!!quoteError} onOpenChange={(open) => !open && setQuoteError(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <span className="mb-2 grid h-11 w-11 place-items-center rounded-full bg-destructive/10 text-destructive">
+                <AlertCircle className="h-5 w-5" aria-hidden="true"/>
+              </span>
+              <DialogTitle>Quotation unavailable</DialogTitle>
+              <DialogDescription>{quoteError}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setQuoteError(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={!!correctionMode}
+          onOpenChange={(open) => {
+            if (!open && !correction.isPending) setCorrectionMode(null);
+          }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{correctionMode === "site"
+                ? "Return request to Site Engineer" : "Revert PO for correction"}</DialogTitle>
+              <DialogDescription>
+                {correctionMode === "site"
+                  ? "The original Site Engineer can edit and resubmit their PR. The old PO and RFQs will be cancelled but retained for audit. Purchasing must start a fresh quotation cycle after the PR is reapproved."
+                  : "Return this pending PO to purchasing for changes. It will not count as a Director rejection vote."}
+              </DialogDescription>
+            </DialogHeader>
+            <label htmlFor="po-correction-reason" className="text-sm font-medium">
+              What must be corrected? *
+            </label>
+            <Textarea id="po-correction-reason" rows={4}
+              maxLength={2000} required value={correctionReason}
+              placeholder={correctionMode === "site"
+                ? "Describe the correction required in the original Site Engineer's request…"
+                : "Explain the material, tax, price or delivery-term error…"}
+              onChange={(event) => setCorrectionReason(event.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              Your name, reason and date are recorded. Minimum 10 characters.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" disabled={correction.isPending}
+                onClick={() => setCorrectionMode(null)}>Back</Button>
+              <Button disabled={correction.isPending ||
+                correctionReason.trim().length < 10}
+                onClick={() => correctionMode && correction.mutate(correctionMode)}>
+                {correction.isPending ? "Returning…" : "Confirm return"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <ApprovalDecisionDialog
           open={approvalOpen}
           target={{
