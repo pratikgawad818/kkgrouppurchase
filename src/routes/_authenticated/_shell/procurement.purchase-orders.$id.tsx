@@ -45,7 +45,7 @@ async function loadPo(id: string) {
     supabase
       .from("purchase_orders")
       .select(
-        "*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)",
+        "*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email,bank_account_name,bank_name,bank_account_number,ifsc), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)",
       )
       .eq("id", id)
       .single(),
