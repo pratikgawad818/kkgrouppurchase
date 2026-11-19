@@ -178,6 +178,10 @@ def main() -> None:
             uuid.uuid4(),pr,Jsonb({"purpose":"stale"}),Jsonb([]),False,now,"Old version should fail"
         ), "stale purchase request edit")
 
+        # In the real workflow an RFQ cannot exist until the PR is approved.
+        # Refresh this synthetic RFQ source FK after the earlier draft PR edit.
+        pr_item = conn.execute("SELECT id FROM purchase_request_items WHERE purchase_request_id=%s", (pr,)).fetchone()[0]
+        conn.execute("UPDATE rfq_items SET pr_item_id=%s WHERE rfq_id=%s", (pr_item,rfq))
         rfq_params = (rfq, now, Jsonb({"response_due_date":"2026-12-05","remarks":"Corrected deadline"}),
                       Jsonb([{"pr_item_id":str(pr_item),"requested_quantity":12}]),
                       [vendor1,vendor2],"Vendor list and quantity corrected")
