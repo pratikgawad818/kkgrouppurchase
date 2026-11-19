@@ -168,13 +168,6 @@ function paper(order: PoPdfOrder, pageNumber: number): Paper {
   write(p, "Page " + pageNumber, M + CW / 2, H - 28, CW / 2, 7.5, { align: "right", tone: GRAY });
   return p;
 }
-function boxTitle(p: Paper, title: string, x: number, top: number, width: number) {
-  p.ctx.fillStyle = PALE;
-  p.ctx.fillRect(x, top, width, 20);
-  rule(p, top, x, x + width);
-  rule(p, top + 20, x, x + width);
-  write(p, title.toUpperCase(), x + 8, top + 4, width - 16, 8.5, { bold: true });
-}
 const columnWidths = [20, 131, 40, 33, 61, 50, 63, 56, 73];
 function edges() {
   const out = [M];
