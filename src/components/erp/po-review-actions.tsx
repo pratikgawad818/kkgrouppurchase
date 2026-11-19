@@ -32,7 +32,7 @@ export function PoReviewActions({
 }: {
   poId: string;
   poNumber: string;
-  quotePath?: string | null;
+  quotePath?: string | null | undefined;
   size?: "sm" | "default";
 }) {
   const [busy, setBusy] = useState<"po" | "quotation" | null>(null);
