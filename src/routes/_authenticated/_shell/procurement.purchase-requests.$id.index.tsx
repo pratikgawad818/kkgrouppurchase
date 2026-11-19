@@ -19,7 +19,7 @@ import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
-import { errMsg, fmtDate, num } from "@/lib/format";
+import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { RFQ_STATUS } from "@/lib/rfq";
@@ -58,6 +58,7 @@ function PrDetail() {
   const qc = useQueryClient();
   const [act, setAct] = useState<PrAction | null>(null);
   const [comment, setComment] = useState("");
+  const [correctionResponses, setCorrectionResponses] = useState<Record<string,string>>({});
 
   const q = useQuery({
     queryKey: ["pr", id],
@@ -101,6 +102,41 @@ function PrDetail() {
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  const siteCorrections = useQuery({
+    queryKey: ["pr-site-corrections", id],
+    queryFn: async () => {
+      // Table introduced in migration 0079; permissions remain project scoped.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("po_site_correction_requests")
+        .select("id,po_id,assigned_to,created_at,reason,response,status,responded_at")
+        .eq("purchase_request_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as {
+        id:string;po_id:string;assigned_to:string;created_at:string;reason:string;
+        response:string|null;status:"requested"|"responded"|"resolved";responded_at:string|null;
+      }[];
+    },
+  });
+  const respondToSiteCorrection = useMutation({
+    mutationFn: async (ticketId:string) => {
+      const response = correctionResponses[ticketId]?.trim() ?? "";
+      if (response.length < 10) throw new Error("Explain the correction in at least 10 characters.");
+      const { error } = await supabase.rpc("respond_po_site_correction" as never, {
+        _correction_id: ticketId, _response: response,
+      } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Your correction response has been sent to the Purchase Manager");
+      setCorrectionResponses({});
+      void qc.invalidateQueries({ queryKey: ["pr-site-corrections", id] });
+      void qc.invalidateQueries({ queryKey: ["po"] });
+    },
+    onError: (error) => toast.error(errMsg(error)),
   });
 
   const run = useMutation({
@@ -194,6 +230,53 @@ function PrDetail() {
         <div className="mb-4 rounded-md border bg-card p-3 text-xs text-muted-foreground">
           Awaiting approval. You cannot approve your own request.
         </div>
+      )}
+      {(siteCorrections.data?.length ?? 0) > 0 && (
+        <section className="mb-4 space-y-3 rounded-xl border bg-card p-4" aria-label="Site Engineer correction requests">
+          <h2 className="text-sm font-semibold">Linked PO correction requests</h2>
+          <p className="text-xs text-muted-foreground">
+            The Purchase Manager has returned a question about this original request.
+            Your reply goes directly to the Purchase Manager for PO reconciliation.
+            The approved source request and awarded supplier quotation remain unchanged
+            until an authorised procurement amendment is made.
+          </p>
+          {siteCorrections.data!.map((ticket) => (
+            <div key={ticket.id} className="rounded-lg border p-3">
+              <div className="flex flex-wrap justify-between gap-2 text-xs font-medium">
+                <span>{ticket.status === "requested" ? "Response required" :
+                  ticket.status === "responded" ? "Response submitted" : "Resolved by Purchase Manager"}</span>
+                <time dateTime={ticket.created_at} className="text-muted-foreground">
+                  {fmtDateTime(ticket.created_at)}
+                </time>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm">{ticket.reason}</p>
+              {ticket.response && <p className="mt-2 rounded-md bg-muted/40 p-3 text-sm">
+                Your response: {ticket.response}
+              </p>}
+              {ticket.status === "requested" && ticket.assigned_to === me.data?.profile.id && (
+                <div className="mt-3 space-y-2">
+                  <label htmlFor={`site-correction-${ticket.id}`} className="text-xs font-semibold">
+                    Site Engineer's correction / explanation *
+                  </label>
+                  <Textarea id={`site-correction-${ticket.id}`} rows={3} maxLength={4000}
+                    placeholder="Confirm the correct material quantity, specifications, site requirement and any supporting explanation…"
+                    value={correctionResponses[ticket.id] ?? ""}
+                    onChange={(e) => setCorrectionResponses((old) => ({ ...old, [ticket.id]: e.target.value }))} />
+                  <Button size="sm" disabled={respondToSiteCorrection.isPending ||
+                    (correctionResponses[ticket.id]?.trim().length ?? 0) < 10}
+                    onClick={() => respondToSiteCorrection.mutate(ticket.id)}>
+                    {respondToSiteCorrection.isPending ? "Sending…" : "Send correction to Purchase Manager"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+      {siteCorrections.error && (
+        <p role="alert" className="mb-4 rounded-lg border border-destructive/30 p-3 text-xs text-destructive">
+          Correction requests could not be loaded: {errMsg(siteCorrections.error)}
+        </p>
       )}
 
       <section className="rounded-md border bg-card p-4">

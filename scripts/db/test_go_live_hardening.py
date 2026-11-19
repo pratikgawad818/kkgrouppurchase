@@ -368,8 +368,8 @@ def test_atomic_requests_and_rfqs():
     print("PASS atomic draft saves, stale edits, retry tokens, failed-submit rollback and RFQ vendor scope")
 
 
-def seed_po(c, creator=PURCHASER):
-    actor(c,PURCHASER)
+def seed_po(c, creator=PURCHASER, requester=PURCHASER):
+    actor(c,requester)
     request_id=save_pr(c,submit=True)
     actor(c,DIRECTOR)
     c.execute("SELECT pr_transition(%s,'approved','QA')",(request_id,))
@@ -1393,6 +1393,89 @@ def test_small_expense_in_place_and_bills():
     print("PASS 0078 Accounts Manager creates new expenses, same-ID edits, Director view-only, bill privacy, admin deletion")
 
 
+def test_po_review_correction_handoff():
+    """0079: Director/Admin return, manager escalation, assigned site response and guard."""
+    with db() as c:
+        # Real fixture: Site Engineer creates and submits source PR, Director
+        # approves it, then Purchase Manager creates the downstream PO.
+        po=seed_po(c,PURCHASER,SITE)
+        actor(c,PURCHASER)
+        assert c.execute("SELECT po_transition(%s,'submitted','Send to Director')",(po,)).fetchone()[0]=="pending_approval"
+        actor(c,OTHER_DIRECTOR)
+        denied(c,lambda:c.execute("SELECT return_po_for_correction(%s,%s)",(
+            po,"Wrong company must not return this order")))
+        actor(c,SITE)
+        denied(c,lambda:c.execute("SELECT return_po_for_correction(%s,%s)",(
+            po,"Site staff must not return a PO")))
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute("SELECT return_po_for_correction(%s,'Too short')",(po,)))
+        assert str(c.execute("SELECT return_po_for_correction(%s,%s)",(
+            po,"Please verify material specification with site")).fetchone()[0])==po
+        assert c.execute("SELECT status FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]=="rejected"
+        # A Director cannot SELECT another user's private notifications through
+        # notification RLS. Inspect test-only rows as fixture owner instead.
+        c.execute("RESET ROLE")
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND title LIKE 'PO %%returned for correction'",
+            (PURCHASER,)).fetchone()[0]>=1
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute("SELECT escalate_rejected_po_to_site(%s,%s)",(
+            po,"Only procurement may escalate to the engineer")))
+        actor(c,PURCHASER)
+        ticket=c.execute("SELECT escalate_rejected_po_to_site(%s,%s)",(
+            po,"Site quantity and requested specification need verification")).fetchone()[0]
+        assert c.execute("SELECT status,assigned_to::text FROM po_site_correction_requests WHERE id=%s",
+            (ticket,)).fetchone()==("requested",SITE)
+        denied(c,lambda:c.execute("SELECT escalate_rejected_po_to_site(%s,%s)",(
+            po,"Duplicate outstanding site issue must be blocked")))
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','before engineer replied')",(po,)),
+               "Resolve the Site Engineer")
+        actor(c,OTHER_DIRECTOR)
+        denied(c,lambda:c.execute("SELECT respond_po_site_correction(%s,%s)",(
+            ticket,"Outsider cannot respond to this site request")))
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute("SELECT respond_po_site_correction(%s,%s)",(
+            ticket,"Director cannot reply for site engineer")))
+        actor(c,SITE)
+        assert c.execute("SELECT count(*) FROM po_site_correction_requests WHERE id=%s",
+                         (ticket,)).fetchone()[0]==1
+        assert c.execute("SELECT respond_po_site_correction(%s,%s)",(
+            ticket,"Correct site requirement is 4 pieces; Purchase Manager please adjust PO")).fetchone()[0]==ticket
+        denied(c,lambda:c.execute("SELECT respond_po_site_correction(%s,%s)",(
+            ticket,"Repeated response must not create a duplicate")))
+        actor(c,PURCHASER)
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','before manager resolution')",(po,)),
+               "Resolve the Site Engineer")
+        denied(c,lambda:c.execute("SELECT resolve_po_site_correction(%s,'no')",(ticket,)))
+        assert c.execute("SELECT resolve_po_site_correction(%s,%s)",(
+            ticket,"Verified site clarification; purchase order is reconciled")).fetchone()[0]==ticket
+        assert c.execute("SELECT po_transition(%s,'submitted','ready after engineer response')",(po,)).fetchone()[0]=="pending_approval"
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT po_transition(%s,'approved','reviewed correction')",(po,)).fetchone()[0]=="approved"
+        assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='rejected'",
+                         (po,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM po_site_correction_requests WHERE po_id=%s AND status='resolved'",
+                         (po,)).fetchone()[0]==1
+        c.rollback()
+
+    with db() as c:
+        po=seed_po(c,PURCHASER)
+        actor(c,PURCHASER)
+        c.execute("SELECT po_transition(%s,'submitted','send to reviewers')",(po,))
+        actor(c,ADMIN)
+        assert str(c.execute("SELECT return_po_for_correction(%s,%s)",(
+            po,"Accounts checked the quotation; return to the Purchase Manager")).fetchone()[0])==po
+        assert c.execute("SELECT status FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]=="rejected"
+        assert c.execute("SELECT count(*) FROM director_approval_votes WHERE entity_id=%s",(po,)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='rejected'",
+                         (po,)).fetchone()[0]==1
+        actor(c,PURCHASER)
+        denied(c,lambda:c.execute("SELECT escalate_rejected_po_to_site(%s,%s)",(
+            po,"Cannot escalate a Purchase Manager-created PR to Site Engineer")),
+            "active Site Engineer")
+        c.rollback()
+    print("PASS 0079 PO return and escalation: Director/Admin, manager, engineer, guard, audit and permissions")
+
+
 if __name__ == "__main__":
     setup()
     test_count_units_seed_is_idempotent()
@@ -1414,4 +1497,5 @@ if __name__ == "__main__":
     test_optional_invoice_roundoff_accounting()
     test_accounts_manager_finance_settings_permission()
     test_small_expense_in_place_and_bills()
+    test_po_review_correction_handoff()
     test_google_sheets_retired_archives_preserved()

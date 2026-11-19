@@ -22,8 +22,9 @@ import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
-import { PrintPo } from "@/components/erp/print-po";
-import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
+import { PoReviewActions } from "@/components/erp/po-review-actions";
+import { PoSiteCorrectionPanel, type PoSiteCorrection } from "@/components/erp/po-site-correction-panel";
+
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
 import { PoDraftEditor } from "@/components/erp/po-draft-editor";
@@ -97,6 +98,14 @@ async function loadPo(id: string) {
   if (p.error) throw p.error;
   for (const result of [i, a, g, w, dc, gi])
     if ("error" in result && result.error) throw result.error;
+  // New table is introduced in migration 0079 and RLS-scoped to the PO/project.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const correctionResult = await (supabase as any)
+    .from("po_site_correction_requests")
+    .select("id,po_id,purchase_request_id,assigned_to,requested_by,created_at,reason,status,response,responded_at,resolution_note,resolved_at")
+    .eq("po_id", id)
+    .order("created_at", { ascending: false });
+  if (correctionResult.error) throw correctionResult.error;
   const names = await documentActorNames("purchase_order", [id]);
   return {
     po: p.data,
@@ -113,6 +122,7 @@ async function loadPo(id: string) {
     grns: g.data ?? [],
     warehouses: w.data ?? [],
     challans: dc.data ?? [],
+    corrections: (correctionResult.data ?? []) as PoSiteCorrection[],
     grnItems: gi.data ?? [],
   };
 }
@@ -144,12 +154,20 @@ function PoDetail() {
 
   const act = useMutation({
     mutationFn: async (a: PoAction) => {
-      const { error } = await supabase.rpc("po_transition", {
-        _po_id: id,
-        _action: a,
-        _comment: comment.trim(),
-      });
-      if (error) throw error;
+      if (a === "rejected") {
+        if (comment.trim().length < 10) throw new Error("Enter a correction reason of at least 10 characters.");
+        const { error } = await supabase.rpc("return_po_for_correction" as never, {
+          _po_id: id, _reason: comment.trim(),
+        } as never);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.rpc("po_transition", {
+          _po_id: id,
+          _action: a,
+          _comment: comment.trim(),
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Updated");
@@ -186,8 +204,15 @@ function PoDetail() {
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
-  const { po, items, history, grns, warehouses, challans, grnItems } = q.data!;
+  const { po, items, history, grns, warehouses, challans, grnItems, corrections } = q.data!;
   const mine = po.created_by === me.data?.profile.id;
+  const isAdmin = me.data?.roles.includes("super_admin") ?? false;
+  const isDirector = me.data?.roles.includes("director") ?? false;
+  const canApprove = po.status === "pending_approval" &&
+    isDirector && can("purchase_order.approve") && !mine;
+  const canReturn = po.status === "pending_approval" &&
+    (isAdmin || canApprove);
+  const unresolvedSiteCorrection = corrections.some((item) => item.status !== "resolved");
   const finalizeOwn = mine && directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
@@ -201,7 +226,6 @@ function PoDetail() {
 
   return (
     <>
-      <PrintPo po={po} items={items} history={history} />
       <div className="purchase-order-detail print:hidden">
         <div ref={orderHeading} tabIndex={-1} className="outline-none">
           <PageHeader deleteAction={<PermanentDelete force kind="purchase_order" id={po.id} name={po.po_number} onDeleted={()=>window.location.assign("/procurement/purchase-orders")}/>}
@@ -242,7 +266,7 @@ function PoDetail() {
                   can("purchase_order.create") && (
                     <Button
                       size="sm"
-                      disabled={act.isPending || poEditorOpen}
+                      disabled={act.isPending || poEditorOpen || unresolvedSiteCorrection}
                       onClick={() => {
                         if (!po.delivery_warehouse_id) {
                           toast.error("Use Edit PO to save a delivery store before submitting");
@@ -254,38 +278,30 @@ function PoDetail() {
                       {finalizeOwn ? "Finalize order" : "Submit to Director"}
                     </Button>
                   )}
-                {po.status === "pending_approval" && can("purchase_order.approve") && !mine && (
+                {(canReturn || canApprove) && (
                   <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-                    <Button
-                      className="approval-action min-h-12"
-                      variant="outline"
-                      disabled={act.isPending}
-                      onClick={(event) => {
-                        approvalTrigger.current = event.currentTarget;
-                        act.reset();
-                        setComment("");
-                        setApprovalDecision("rejected");
-                        setApprovalOpen(true);
-                      }}
-                    >
-                      Revert for correction
-                    </Button>
-                    <Button
-                      className="approval-action min-h-12"
-                      disabled={act.isPending}
-                      onClick={(event) => {
-                        approvalTrigger.current = event.currentTarget;
-                        act.reset();
-                        setComment("");
-                        setApprovalDecision("approved");
-                        setApprovalOpen(true);
-                      }}
-                    >
-                      Approve
-                    </Button>
+                    {canReturn && (
+                      <Button className="approval-action min-h-12" variant="outline"
+                        disabled={act.isPending}
+                        onClick={(event) => {
+                          approvalTrigger.current = event.currentTarget;
+                          act.reset();setComment("");setApprovalDecision("rejected");setApprovalOpen(true);
+                        }}>
+                        Revert for correction
+                      </Button>
+                    )}
+                    {canApprove && (
+                      <Button className="approval-action min-h-12" disabled={act.isPending}
+                        onClick={(event) => {
+                          approvalTrigger.current = event.currentTarget;
+                          act.reset();setComment("");setApprovalDecision("approved");setApprovalOpen(true);
+                        }}>
+                        Approve
+                      </Button>
+                    )}
                   </div>
                 )}
-                {po.status === "pending_approval" && (
+                {po.status === "pending_approval" && !isDirector && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -332,26 +348,15 @@ function PoDetail() {
                   po.status,
                 ) &&
                   grns.length === 0 &&
+                  (po.status !== "pending_approval" || !canReturn) &&
                   can("purchase_order.cancel") && (
                     <Button size="sm" variant="ghost" onClick={() => setDlg("cancelled")}>
                       Cancel
                     </Button>
                   )}
-                <Button size="sm" variant="ghost" onClick={() => window.print()}>
-                  Print
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    const t = document.title;
-                    document.title = po.po_number;
-                    window.print();
-                    document.title = t;
-                  }}
-                >
-                  Download PDF
-                </Button>
+                <PoReviewActions poId={po.id} poNumber={po.po_number}
+                  quotePath={po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path} />
+
               </div>
             }
           />
@@ -400,21 +405,6 @@ function PoDetail() {
           )}
         </section>
 
-        {(po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path) && (
-          <section className="mt-4 rounded-xl border bg-card p-4 print:hidden">
-            <h2 className="mb-2 text-sm font-semibold">Supporting documents for approval</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              {po.vendor_quotations?.attachment_path && (
-                <ProcurementAttachmentLink path={po.vendor_quotations.attachment_path}
-                  label="View supplier quotation PDF / photo" />
-              )}
-              {po.purchase_requests?.attachment_path && (
-                <ProcurementAttachmentLink path={po.purchase_requests.attachment_path}
-                  label="View Site Engineer request document" />
-              )}
-            </div>
-          </section>
-        )}
         {draft && can("purchase_order.create") && (
           <div className="mt-4">
             {poEditorOpen ? (
@@ -635,6 +625,8 @@ function PoDetail() {
               </ul>
             )}
           </section>
+          <PoSiteCorrectionPanel poId={po.id} poNumber={po.po_number}
+            status={po.status} corrections={corrections} onChanged={refresh} />
           <WorkflowTimeline
             kind="purchase_order"
             status={po.status}

@@ -10,7 +10,7 @@ import { useMe } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { ApprovalDecisionDialog } from "@/components/erp/approval-decision-dialog";
 import { Loading, PageHeader } from "@/components/erp/common";
-import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
+import { PoReviewActions } from "@/components/erp/po-review-actions";
 import { ClearHistory } from "@/components/erp/clear-history";
 import { Pager } from "@/components/erp/pager";
 import { ApprovalKindTabs } from "@/components/erp/approval-kind-tabs";
@@ -212,18 +212,22 @@ function DirectorApprovals() {
       decision: "approved" | "rejected";
     }) => {
       const comment = (reason[request.id] ?? "").trim();
-      if (decision === "rejected" && !comment) throw new Error("Enter a reason for rejection.");
+      if (decision === "rejected" && comment.length < 10) throw new Error("Enter a correction reason of at least 10 characters.");
       if (request.kind === "vendor_payment" && decision === "rejected")
         throw new Error(
           "Payment rejection requires an explicit cancellation workflow. Contact the administrator.",
         );
       const result =
         request.kind === "purchase_order"
-          ? await supabase.rpc("po_transition", {
-              _po_id: request.id,
-              _action: decision,
-              _comment: comment,
-            })
+          ? decision === "rejected"
+            ? await supabase.rpc("return_po_for_correction" as never, {
+                _po_id: request.id, _reason: comment,
+              } as never)
+            : await supabase.rpc("po_transition", {
+                _po_id: request.id,
+                _action: decision,
+                _comment: comment,
+              })
           : await supabase.rpc("payment_transition", {
               _id: request.id,
               _action: "approve",
@@ -378,6 +382,9 @@ function DirectorApprovals() {
                 !history.isFetching &&
                 !mine &&
                 r.createdBy !== me.data?.profile.id;
+              const canReturn = r.kind === "purchase_order" && waiting &&
+                history.isSuccess && !history.isFetching &&
+                (isAdmin || canVote);
               const status =
                 r.kind === "purchase_order"
                   ? PO_STATUS[r.status as PoStatus]
@@ -422,12 +429,12 @@ function DirectorApprovals() {
                     href={approvalDetailsPath(r.kind, r.id)}
                     className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    View details &amp; PO PDF <ExternalLink className="h-3.5 w-3.5" />
+                    Open full order details <ExternalLink className="h-3.5 w-3.5" />
                   </a>
-                  {r.kind === "purchase_order" && (r.quoteAttachmentPath || r.requestAttachmentPath) && (
-                    <div className="mt-3 flex flex-wrap gap-2" aria-label="Documents for approval">
-                      {r.quoteAttachmentPath && <ProcurementAttachmentLink path={r.quoteAttachmentPath} label="View supplier quotation" />}
-                      {r.requestAttachmentPath && <ProcurementAttachmentLink path={r.requestAttachmentPath} label="View site request attachment" />}
+                  {r.kind === "purchase_order" && (
+                    <div className="mt-3">
+                      <PoReviewActions poId={r.id} poNumber={r.number}
+                        quotePath={r.quoteAttachmentPath || r.requestAttachmentPath} />
                     </div>
                   )}
                   {isAdmin && waiting && history.isSuccess && directors.length > 0 && (
@@ -457,48 +464,49 @@ function DirectorApprovals() {
                       <ApprovalDecisionHistory rows={decisions} />
                     ) : null}
                   </div>
-                  {waiting &&
-                    isDirector &&
-                    (mine ? (
-                      <p className="mt-4 rounded-lg bg-muted p-3 text-sm">
-                        Your decision: {mine.decision} ·{" "}
-                        {fmtDateTime(mine.occurredAt)}
-                      </p>
-                    ) : r.createdBy === me.data?.profile.id ? (
-                      <p className="mt-4 text-sm text-muted-foreground">
-                        You cannot approve a request you created.
-                      </p>
-                    ) : !canVote ? null : (
-                      <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-4">
-                        {r.kind === "purchase_order" && (
-                          <Button
-                            className="approval-action min-h-12"
-                            variant="outline"
-                            disabled={action.isPending}
-                            onClick={(event) => {
-                              decisionTrigger.current = event.currentTarget;
-                              action.reset();
-                              setDecision({ request: r, decision: "rejected", open: true });
-                            }}
-                          >
-                            <XCircle className="h-4 w-4" aria-hidden="true" />
-                            Reject
-                          </Button>
-                        )}
-                        <Button
-                          className={`approval-action min-h-12 ${r.kind === "vendor_payment" ? "col-span-2" : ""}`}
-                          disabled={action.isPending}
-                          onClick={(event) => {
-                            decisionTrigger.current = event.currentTarget;
-                            action.reset();
-                            setDecision({ request: r, decision: "approved", open: true });
-                          }}
-                        >
-                          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                          Approve
-                        </Button>
-                      </div>
-                    ))}
+                  {waiting && (isDirector || isAdmin) && (
+                    <div className="mt-3 border-t pt-4">
+                      {mine && isDirector && !isAdmin && (
+                        <p className="mb-3 rounded-lg bg-muted p-3 text-sm">
+                          Your decision: {mine.decision} · {fmtDateTime(mine.occurredAt)}
+                        </p>
+                      )}
+                      {r.createdBy === me.data?.profile.id && !isAdmin && (
+                        <p className="mb-3 text-sm text-muted-foreground">
+                          You cannot approve an order you created.
+                        </p>
+                      )}
+                      {(canReturn || canVote) && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {canReturn && (
+                            <Button className="approval-action min-h-12" variant="outline"
+                              disabled={action.isPending}
+                              onClick={(event) => {
+                                decisionTrigger.current = event.currentTarget;
+                                action.reset();
+                                setDecision({ request: r, decision: "rejected", open: true });
+                              }}>
+                              <XCircle className="h-4 w-4" aria-hidden="true" />
+                              Revert for correction
+                            </Button>
+                          )}
+                          {canVote && (
+                            <Button className={`approval-action min-h-12 ${!canReturn ? "col-span-2" : ""}`}
+                              disabled={action.isPending}
+                              onClick={(event) => {
+                                decisionTrigger.current = event.currentTarget;
+                                action.reset();
+                                setDecision({ request: r, decision: "approved", open: true });
+                              }}>
+                              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                              Approve
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </section>
               );
             })}
