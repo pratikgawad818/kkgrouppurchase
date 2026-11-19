@@ -1077,6 +1077,83 @@ def test_square_metre_unit_seed_is_idempotent():
 
 
 
+
+def test_optional_other_expense_category_detail():
+    """Optional text for Other is persisted, correction-safe and replay-immutable."""
+    with db() as c:
+        actor(c, ACCOUNTS)
+        expense_day = c.execute(
+            "SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date"
+        ).fetchone()[0]
+        save_sql = """SELECT public.record_site_small_expense_detailed(
+            %s::uuid,%s::uuid,%s::uuid,%s::date,
+            %s,%s::numeric,%s,%s,%s,%s,%s
+        )"""
+        key = str(uuid4())
+        payload = (key, PROJECT, None, expense_day, "other", "500.25",
+                   "upi", "Maintenance supplier", "Warehouse roof repairs", "REF-OTHER",
+                   "  Roof sheet repair  ")
+        expense = c.execute(save_sql, payload).fetchone()[0]
+        assert c.execute(
+            "SELECT category,other_category_detail FROM site_small_expenses WHERE id=%s",
+            (expense,)
+        ).fetchone() == ("other", "Roof sheet repair")
+        assert c.execute(save_sql, payload).fetchone()[0] == expense
+        denied(c, lambda: c.execute(save_sql, (*payload[:-1], "Other work")),
+               "description differs")
+        denied(c, lambda: c.execute(save_sql, (*payload[:-1], "x")),
+               "2 to 120")
+        denied(c, lambda: c.execute(save_sql, (*payload[:-1], "y"*121)),
+               "2 to 120")
+        denied(c, lambda: c.execute(save_sql, (
+            str(uuid4()), PROJECT, None, expense_day, "office", "75.00",
+            "cash", "Maintenance supplier", "Office supplies", None, "Wrong category"
+        )), "category must be Other")
+
+        # Other may be selected without specifying a subtype at all.
+        empty = (str(uuid4()), PROJECT, None, expense_day, "other", "80.00",
+                 "cash", "Maintenance supplier", "Emergency purchase", None, "")
+        empty_id = c.execute(save_sql, empty).fetchone()[0]
+        assert c.execute(
+            "SELECT other_category_detail FROM site_small_expenses WHERE id=%s",
+            (empty_id,)
+        ).fetchone()[0] is None
+
+        correct_sql = """SELECT public.correct_site_small_expense_detailed(
+            %s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::date,
+            %s,%s::numeric,%s,%s,%s,%s,%s,%s
+        )"""
+        reason = "Corrected category after matching receipt"
+        revised = (expense, str(uuid4()), PROJECT, None, expense_day, "other",
+                   "501.25", "upi", "Maintenance supplier", "Warehouse roof repairs",
+                   "REF-OTHER", reason, "Waterproofing accessories")
+        actor(c, SITE)
+        denied(c, lambda: c.execute(save_sql, (
+            str(uuid4()), PROJECT, None, expense_day, "other", "75.00",
+            "cash", "Maintenance supplier", "Unauthorized purchase", None, "Other site work"
+        )))
+        denied(c, lambda: c.execute(correct_sql, revised))
+
+        actor(c, ACCOUNTS)
+        replacement = c.execute(correct_sql, revised).fetchone()[0]
+        assert replacement != expense
+        assert c.execute(correct_sql, revised).fetchone()[0] == replacement
+        assert c.execute("""
+            SELECT other_category_detail,status FROM site_small_expenses WHERE id=%s
+        """,(expense,)).fetchone() == ("Roof sheet repair", "voided")
+        assert c.execute("""
+            SELECT other_category_detail,replaces_expense_id,status
+            FROM site_small_expenses WHERE id=%s
+        """,(replacement,)).fetchone() == (
+            "Waterproofing accessories", expense, "recorded"
+        )
+        denied(c, lambda: c.execute(correct_sql,
+            (*revised[:-1], "Different category description")), "differs")
+        c.rollback()
+    print("PASS optional Other text, corrections, immutable retries and access controls")
+
+
+
 def test_accounts_manager_small_expense_corrections():
     """Accounts Manager can record and correct, not void freely or bypass project scope."""
     with db() as c:
@@ -1174,4 +1251,5 @@ if __name__ == "__main__":
     test_optional_invoice_roundoff_accounting()
     test_accounts_manager_finance_settings_permission()
     test_accounts_manager_small_expense_corrections()
+    test_optional_other_expense_category_detail()
     test_google_sheets_retired_archives_preserved()
