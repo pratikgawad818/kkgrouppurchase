@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
+import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
@@ -213,6 +214,16 @@ function PrDetail() {
         </div>
       </section>
 
+      {pr.attachment_path && (
+        <section className="mt-4 rounded-md border bg-card p-4">
+          <h2 className="mb-2 text-sm font-semibold">Quotation / supporting document</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Site Engineer attachment. Review its contents before approving the purchase request.
+          </p>
+          <ProcurementAttachmentLink path={pr.attachment_path}
+            label="View attached PDF / photo" />
+        </section>
+      )}
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
