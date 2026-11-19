@@ -429,6 +429,81 @@ def test_director_notifications_and_names():
 
 
 
+
+def test_po_return_and_site_engineer_escalation():
+    """Reviewers return without voting rejection; purchasing can safely reopen PR."""
+    with db() as c:
+        actor(c, SITE)
+        pr = save_pr(c, submit=True, purpose="QA correction origin")
+        actor(c, DIRECTOR)
+        c.execute("SELECT pr_transition(%s,'approved','QA PR approved')",(pr,))
+        actor(c, PURCHASER)
+        rfq = c.execute(
+            "SELECT create_rfq_draft(%s,%s,%s::jsonb,%s::uuid[])",
+            (str(uuid4()),pr,json.dumps({"response_due_date":"2026-12-01"}),[VENDOR])
+        ).fetchone()[0]
+        c.execute("SELECT rfq_transition(%s,'send','sent')",(rfq,))
+        v = c.execute("SELECT id FROM rfq_vendors WHERE rfq_id=%s",(rfq,)).fetchone()[0]
+        ri = c.execute("SELECT id FROM rfq_items WHERE rfq_id=%s",(rfq,)).fetchone()[0]
+        qt = c.execute(
+            "INSERT INTO vendor_quotations(rfq_id,rfq_vendor_id,vendor_id,quotation_number) VALUES (%s,%s,%s,'QA-RET-QUOTE') RETURNING id",
+            (rfq,v,VENDOR)
+        ).fetchone()[0]
+        li = c.execute(
+            "INSERT INTO vendor_quotation_items(quotation_id,rfq_item_id,quoted_quantity,rate) VALUES (%s,%s,2,500) RETURNING id",
+            (qt,ri)
+        ).fetchone()[0]
+        c.execute("SELECT record_vendor_selection(%s,%s::jsonb,%s)",
+            (rfq,json.dumps([{"rfq_item_id":str(ri),"quotation_item_id":str(li)}]),"QA selected quote"))
+        po = c.execute("SELECT create_po_from_selection(%s,%s)",(rfq,qt)).fetchone()[0]
+        c.execute("UPDATE purchase_orders SET delivery_warehouse_id=%s WHERE id=%s",(WAREHOUSE,po))
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(po,)).fetchone()[0] == "pending_approval"
+
+        reason = "The original requested material and unit need verification."
+        actor(c,SITE)
+        denied(c,lambda:c.execute(
+            "SELECT return_po_for_correction(%s,%s)",(po,reason)),"Only an active Director")
+        actor(c,PURCHASER)
+        denied(c,lambda:c.execute(
+            "SELECT return_po_for_correction(%s,%s)",(po,reason)),"Only an active Director")
+        actor(c,OTHER_DIRECTOR)
+        denied(c,lambda:c.execute(
+            "SELECT return_po_for_correction(%s,%s)",(po,reason)),"not accessible")
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute(
+            "SELECT return_po_for_correction(%s,%s)",(po,"Short")),"10 and 2000")
+        c.execute("SELECT return_po_for_correction(%s,%s)",(po,reason))
+        assert c.execute("SELECT status FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0] == "rejected"
+        assert c.execute("SELECT action,comment FROM purchase_order_approvals WHERE po_id=%s ORDER BY acted_at DESC,id DESC LIMIT 1",(po,)).fetchone() == ("returned",reason)
+        assert c.execute("SELECT count(*) FROM director_approval_votes WHERE entity_type='purchase_order' AND entity_id=%s",(po,)).fetchone()[0] == 0
+        denied(c,lambda:c.execute(
+            "SELECT return_po_for_correction(%s,%s)",(po,reason)),"Only a PO pending")
+
+        actor(c,SITE)
+        denied(c,lambda:c.execute(
+            "SELECT return_pr_to_site_engineer_from_po(%s,%s)",(po,reason)),"Only an authorized Purchase Manager")
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute(
+            "SELECT return_pr_to_site_engineer_from_po(%s,%s)",(po,reason)),"Only an authorized Purchase Manager")
+        actor(c,PURCHASER)
+        got = c.execute("SELECT return_pr_to_site_engineer_from_po(%s,%s)",(po,reason)).fetchone()[0]
+        assert str(got)==str(pr)
+        assert c.execute("SELECT status FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]=="cancelled"
+        assert c.execute("SELECT status FROM purchase_requests WHERE id=%s",(pr,)).fetchone()[0]=="draft"
+        assert c.execute("SELECT approved_at IS NULL,approved_by IS NULL FROM purchase_requests WHERE id=%s",(pr,)).fetchone()==(True,True)
+        assert c.execute("SELECT status FROM rfqs WHERE id=%s",(rfq,)).fetchone()[0]=="cancelled"
+        assert c.execute("SELECT count(*) FROM vendor_quotations WHERE id=%s",(qt,)).fetchone()[0]==1
+        assert c.execute("SELECT action FROM purchase_request_approvals WHERE purchase_request_id=%s ORDER BY acted_at DESC,id DESC LIMIT 1",(pr,)).fetchone()[0]=="returned"
+        denied(c,lambda:c.execute("SELECT create_po_from_selection(%s,%s)",(rfq,qt)),"not ready")
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','should not reuse')",(po,)),"Only draft or rejected")
+        actor(c,SITE)
+        version=c.execute("SELECT updated_at FROM purchase_requests WHERE id=%s",(pr,)).fetchone()[0]
+        assert save_pr(c,doc=str(pr),version=version,purpose="Corrected request") == str(pr)
+        c.rollback()
+    print("PASS separate Director return, zero rejected votes, guarded Purchase Manager escalation, preserved audit and Site Engineer PR edit")
+
+
+
 def test_director_origin_and_super_admin_purchasing():
     with db() as c:
         actor(c,DIRECTOR)
@@ -1310,6 +1385,7 @@ if __name__ == "__main__":
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
     test_director_origin_and_super_admin_purchasing()
+    test_po_return_and_site_engineer_escalation()
     test_push_and_email_boundaries()
     test_real_payment_posting()
     test_super_admin_record_cleanup()
