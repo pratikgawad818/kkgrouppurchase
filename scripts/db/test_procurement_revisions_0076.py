@@ -64,7 +64,7 @@ CREATE TABLE vendor_quotations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),rfq
 CREATE TABLE vendor_selections(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),rfq_id uuid);
 CREATE TABLE warehouses(id uuid PRIMARY KEY,company_id uuid,status text);
 CREATE TABLE purchase_orders(
-  id uuid PRIMARY KEY,company_id uuid,project_id uuid,status text,
+  id uuid PRIMARY KEY,company_id uuid,project_id uuid,rfq_id uuid,status text,
   updated_at timestamptz,delivery_warehouse_id uuid,expected_delivery_date date,
   payment_terms text,delivery_terms text,remarks text,
   freight_tax_amount numeric DEFAULT 0,other_charges_tax_amount numeric DEFAULT 0,
