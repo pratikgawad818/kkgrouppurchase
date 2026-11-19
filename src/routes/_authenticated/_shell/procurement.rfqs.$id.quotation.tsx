@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loading, PageHeader } from "@/components/erp/common";
@@ -15,6 +16,12 @@ export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/$i
   head: () => ({ meta: [{ title: "Vendor Quotation — KK GROUP ERP" }, { name: "description", content: "Record a vendor's quotation against an RFQ." }, { property: "og:title", content: "Vendor Quotation — KK GROUP ERP" }, { property: "og:description", content: "Record a vendor's quotation against an RFQ." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: QuoteEntry,
 });
+
+// Charge-tax columns arrive through migration 0072. Refresh generated Supabase
+// types when regenerating the database client; these assertions keep the
+// additive migration compatible with the previous generated schema.
+type QuotationInsert = Database["public"]["Tables"]["vendor_quotations"]["Insert"];
+type QuotationUpdate = Database["public"]["Tables"]["vendor_quotations"]["Update"];
 
 type Line = { rfq_item_id: string; is_quoted: boolean; qty: string; rate: string; disc: string; taxType: string; taxPct: number; days: string; remarks: string };
 
@@ -83,10 +90,10 @@ function QuoteEntry() {
         remarks: h.remarks || null,
       };
       let qid = ex?.id;
-      if (qid) { const { error } = await supabase.from("vendor_quotations").update(head).eq("id", qid); if (error) throw error; }
+      if (qid) { const { error } = await supabase.from("vendor_quotations").update(head as QuotationUpdate).eq("id", qid); if (error) throw error; }
       else {
         const rv = d.vendors.find((v) => v.id === vendor)!;
-        const { data, error } = await supabase.from("vendor_quotations").insert({ ...head, rfq_id: id, rfq_vendor_id: vendor, vendor_id: rv.vendor_id, status: "submitted" }).select("id").single();
+        const { data, error } = await supabase.from("vendor_quotations").insert({ ...head, rfq_id: id, rfq_vendor_id: vendor, vendor_id: rv.vendor_id, status: "submitted" } as QuotationInsert).select("id").single();
         if (error) throw error; qid = data.id;
       }
       const rows = lines.map((l) => ({ quotation_id: qid!, rfq_item_id: l.rfq_item_id, is_quoted: l.is_quoted, quoted_quantity: Number(l.qty) || 0, rate: Number(l.rate) || 0, discount_amount: Number(l.disc) || 0, tax_type: l.taxType, tax_rate_percent: l.taxPct, delivery_days: l.days ? Number(l.days) : null, remarks: l.remarks || null }));
