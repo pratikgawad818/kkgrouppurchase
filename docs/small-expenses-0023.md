@@ -89,3 +89,11 @@ Migration `0077_small_expense_edit_bills_access.sql` supersedes their correction
 - **No accounting side effects:** editing does not post bank entries, vendor invoices, payments, stock movements, or journals. Do not double-count project costs elsewhere.
 
 **Staging acceptance:** disposable PostgreSQL full migration replay (CI's `test_go_live_hardening.py`) verifies same-ID edit, optimistic locking, permission boundaries, uncapped value, private bill access, and Super Admin deletion. Apply migration 0077 only after confirming the deployed database is through migration 0076; revalidate with real Director/Accounts Manager user sessions, a PDF, a photograph, and the expense totals before republishing.
+
+## New role permission — 0078 (Accounts Manager can create expenses)
+
+Migration `0078_accounts_manager_create_small_expenses.sql` supersedes the creation restriction introduced by 0077. **Accounts Manager and Super Admin can both record new Small Expense entries, including receipt/bill images and PDFs** (up to 8 private files, maximum 10 MB each), in addition to viewing and editing the existing expense entries. Accounts Managers still **cannot permanently delete** an expense. Directors remain **view-only** and cannot create, edit, or delete expenses or bills. A dual-role Accounts Manager+Director remains view-only unless separately granted Super Admin.
+
+The database recorder retains the same idempotency key, active-company requirements, date and amount validations, company/project/building checks, and append-only `recorded` audit event. A successful submission keeps the same expense entry even when a later bill upload fails, allowing the missing bill to be attached on edit without duplicate expenses.
+
+Release sequence: apply 0078 only to a backed-up, verified database already through 0077; merge and publish the matching app build. Validate the role gate and a real bill upload with an authorized Accounts Manager session after deployment.
