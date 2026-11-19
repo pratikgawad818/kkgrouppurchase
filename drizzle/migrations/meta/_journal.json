@@ -512,6 +512,13 @@
       "when": 1795090000000,
       "tag": "0072_rfq_taxable_freight_charges",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795134000000,
+      "tag": "0073_procurement_document_attachments",
+      "breakpoints": true
     }
   ]
 }
