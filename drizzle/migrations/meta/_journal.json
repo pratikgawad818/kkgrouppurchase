@@ -589,6 +589,20 @@
       "when": 1795161318187,
       "tag": "0083_separate_consultancy_marketing_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795161918187,
+      "tag": "0084_senior_sales_executive_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795162518187,
+      "tag": "0085_property_sales_bookings_receipts",
+      "breakpoints": true
     }
   ]
 }
