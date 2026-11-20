@@ -25,6 +25,9 @@ export type PoPdfOrder = {
   po_number: string;
   po_date: string;
   status: string;
+  prepared_by_name?: string | null;
+  approved_by_name?: string | null;
+  approved_at?: string | null;
   grand_total: number;
   subtotal: number;
   discount_total: number;
@@ -39,6 +42,8 @@ export type PoPdfOrder = {
   other_charges_tax_amount?: number | null;
   freight_tax_type?: string | null;
   other_charges_tax_type?: string | null;
+  freight_tax_rate_percent?: number | null;
+  other_charges_tax_rate_percent?: number | null;
   companies?: {
     name: string; legal_name: string | null; registered_address: string | null;
     office_address: string | null; gstin: string | null; pan: string | null;
@@ -63,6 +68,7 @@ export type PoPdfOrder = {
 };
 
 
+
 type Paper = {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
@@ -70,290 +76,419 @@ type Paper = {
 };
 export type PoReviewDocument = { pdf: Blob; previewPages: Blob[] };
 
-const W = 595.28; // A4 width in PDF points
-const H = 841.89; // A4 height
+const W = 595.28; // True A4 dimensions in PDF points
+const H = 841.89;
 const M = 34;
-const CW = W - M * 2;
+const CW = W - 2 * M;
 const SCALE = 2.25;
-const INK = "#000000";
-const GRAY = "#5e5e5e";
-const PALE = "#f2f2f2";
-const RULE = "#7d7d7d";
+const INK = "#111111";
+const MUTED = "#444444";
+const RULE = "#666666";
+const SHADE = "#f1f1f1";
+const END = H - 49;
 
-function number(value: number | string | null | undefined, decimals = 2) {
-  return Number(value ?? 0).toLocaleString("en-IN", {
-    minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+type Alignment = "left" | "center" | "right";
+type FontOptions = { bold?: boolean; color?: string; align?: Alignment; leading?: number };
+
+function formatMoney(value: number | string | null | undefined) {
+  const x = Number(value ?? 0);
+  return (x < 0 ? "-₹" : "₹") + Math.abs(x).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
-function when(value: string | null | undefined) {
-  if (!value) return "Not specified";
+function formatQty(value: number | string | null | undefined) {
+  return Number(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 3 });
+}
+function formatDate(value: string | null | undefined) {
+  if (!value) return "—";
   const d = new Date(value + (value.includes("T") ? "" : "T12:00:00"));
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("en-IN");
 }
-function textStyle(ctx: CanvasRenderingContext2D, size: number, bold: boolean, tone: string) {
+function font(ctx: CanvasRenderingContext2D, size: number, bold = false, color = INK) {
   ctx.font = (bold ? "bold " : "") + size + "px Arial, Helvetica, sans-serif";
-  ctx.fillStyle = tone;
+  ctx.fillStyle = color;
 }
-function wrap(ctx: CanvasRenderingContext2D, value: unknown, maxWidth: number) {
+function breakLines(ctx: CanvasRenderingContext2D, raw: unknown, width: number) {
   const lines: string[] = [];
-  for (const paragraph of String(value ?? "—").split(/\r?\n/)) {
-    let part = "";
-    for (const word of (paragraph.trim().split(/\s+/).filter(Boolean).length
-      ? paragraph.trim().split(/\s+/).filter(Boolean) : ["—"])) {
-      const candidate = part ? part + " " + word : word;
-      if (part && ctx.measureText(candidate).width > maxWidth) {
-        lines.push(part);
-        part = word;
+  for (const line of String(raw ?? "—").split(/\r?\n/)) {
+    let active = "";
+    const words = line.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      lines.push("");
+      continue;
+    }
+    for (const word of words) {
+      const trial = active ? active + " " + word : word;
+      if (active && ctx.measureText(trial).width > width) {
+        lines.push(active);
+        active = word;
       } else {
-        part = candidate;
+        active = trial;
       }
-      // Long GSTINs/identifiers must never spill into another table column.
-      while (part.length > 1 && ctx.measureText(part).width > maxWidth) {
-        let at = part.length - 1;
-        while (at > 1 && ctx.measureText(part.slice(0, at)).width > maxWidth) at--;
-        lines.push(part.slice(0, at));
-        part = part.slice(at);
+      while (active.length > 1 && ctx.measureText(active).width > width) {
+        let stop = active.length - 1;
+        while (stop > 1 && ctx.measureText(active.slice(0, stop)).width > width) stop--;
+        lines.push(active.slice(0, stop));
+        active = active.slice(stop);
       }
     }
-    lines.push(part || "—");
+    if (active) lines.push(active);
   }
-  return lines;
+  return lines.length ? lines : ["—"];
+}
+function lineCount(p: Paper, value: unknown, width: number, size = 8.4) {
+  font(p.ctx, size);
+  return breakLines(p.ctx, value, width - 2).length;
 }
 function write(
-  p: Paper, value: unknown, x: number, top: number, width: number,
-  size = 9, opts: { bold?: boolean; tone?: string; step?: number; align?: "left" | "right" | "center" } = {},
+  p: Paper, value: unknown, x: number, y: number, width: number,
+  size = 8.6, opt: FontOptions = {},
 ) {
+  const leading = opt.leading ?? size * 1.42;
   const ctx = p.ctx;
-  textStyle(ctx, size, !!opts.bold, opts.tone || INK);
-  ctx.textAlign = opts.align || "left";
-  const step = opts.step || size + 3.8;
-  const lines = wrap(ctx, value, width - 1);
-  const px = opts.align === "right" ? x + width : opts.align === "center" ? x + width / 2 : x;
-  lines.forEach((line, i) => ctx.fillText(line, px, top + size + i * step, width));
+  font(ctx, size, !!opt.bold, opt.color ?? INK);
+  ctx.textAlign = opt.align ?? "left";
+  const drawX = opt.align === "right" ? x + width
+    : opt.align === "center" ? x + width / 2 : x;
+  const lines = breakLines(ctx, value, width - 2);
+  lines.forEach((txt, index) => ctx.fillText(txt, drawX, y + size + index * leading, width - 1));
   ctx.textAlign = "left";
-  return top + lines.length * step;
+  return y + lines.length * leading;
 }
-function textHeight(p: Paper, text: unknown, width: number, size = 9, step = size + 3.8) {
-  textStyle(p.ctx, size, false, INK);
-  return wrap(p.ctx, text, width).length * step;
-}
-function rule(p: Paper, y: number, x1 = M, x2 = W - M, thick = 0.65) {
-  const ctx = p.ctx;
-  ctx.beginPath(); ctx.strokeStyle = RULE; ctx.lineWidth = thick;
-  ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
-}
-function vertical(p: Paper, x: number, y1: number, y2: number) {
+function drawLine(p: Paper, x1: number, y1: number, x2: number, y2: number, weight = 0.6) {
+  p.ctx.beginPath();
+  p.ctx.lineWidth = weight;
   p.ctx.strokeStyle = RULE;
-  p.ctx.lineWidth = 0.5;
-  p.ctx.beginPath(); p.ctx.moveTo(x, y1); p.ctx.lineTo(x, y2); p.ctx.stroke();
+  p.ctx.moveTo(x1, y1);
+  p.ctx.lineTo(x2, y2);
+  p.ctx.stroke();
 }
-function paper(order: PoPdfOrder, pageNumber: number): Paper {
+function rect(p: Paper, x: number, y: number, w: number, h: number, fill?: string, stroke = true) {
+  if (fill) {
+    p.ctx.fillStyle = fill;
+    p.ctx.fillRect(x, y, w, h);
+  }
+  if (stroke) {
+    p.ctx.strokeStyle = RULE;
+    p.ctx.lineWidth = 0.65;
+    p.ctx.strokeRect(x, y, w, h);
+  }
+}
+function drawPage(order: PoPdfOrder, n: number): Paper {
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(W * SCALE);
-  canvas.height = Math.round(H * SCALE);
+  canvas.width = Math.ceil(W * SCALE);
+  canvas.height = Math.ceil(H * SCALE);
   const ctx = canvas.getContext("2d", { alpha: false });
-  if (!ctx) throw new Error("Cannot render the PO on this device.");
+  if (!ctx) throw new Error("Unable to render the purchase order on this device.");
   ctx.scale(SCALE, SCALE);
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "white";
   ctx.fillRect(0, 0, W, H);
-  const p: Paper = { canvas, ctx, y: 43 };
-  // Slim monochrome running head/footer across every page.
-  rule(p, 27, M, W - M, 1);
+  const p: Paper = { canvas, ctx, y: 36 };
+  // Unlike a browser Print dialog, there is no timestamp or source URL in
+  // the document margins. Actual PO date and reference stay in the header.
+  drawLine(p, M, H - 32, W - M, H - 32, 0.45);
   write(p, order.companies?.legal_name || order.companies?.name || "KK GROUP",
-    M, 8, 330, 9, { bold: true });
-  write(p, order.po_number + "  |  Page " + pageNumber,
-    W - 215, 8, 215 - M, 8, { align: "right" });
-  rule(p, H - 33, M, W - M, 0.55);
-  write(p, "KK GROUP ERP  |  Purchase Order", M, H - 28, CW / 2, 7.5, { tone: GRAY });
-  write(p, "Page " + pageNumber, M + CW / 2, H - 28, CW / 2, 7.5, { align: "right", tone: GRAY });
+    M, H - 28, CW * 0.73, 7.5, { color: MUTED });
+  write(p, "Page " + n, M + CW * 0.78, H - 28, CW * 0.22, 7.5,
+    { color: MUTED, align: "right" });
   return p;
 }
-const columnWidths = [20, 131, 40, 33, 61, 50, 63, 56, 73];
-function edges() {
-  const out = [M];
-  columnWidths.forEach(w => out.push(out[out.length - 1]! + w));
-  return out;
+function needNewPage(p: Paper, required: number, order: PoPdfOrder, pages: Paper[]) {
+  if (p.y + required <= END) return p;
+  const newPage = drawPage(order, pages.length + 1);
+  pages.push(newPage);
+  return newPage;
 }
-const cxs = edges(); // Sum = 527 PDF points, end at right A4 margin.
-const columns = ["No.", "Material / description", "Qty", "Unit", "Rate", "Disc.", "Taxable", "GST", "Amount"];
-const totalTableWidth = columnWidths.reduce((a, b) => a + b, 0);
-function drawTableHead(p: Paper) {
-  const y = p.y;
-  p.ctx.fillStyle = PALE;
-  p.ctx.fillRect(M, y, totalTableWidth, 31);
-  for (let j = 0; j < cxs.length; j++) vertical(p, cxs[j]!, y, y + 31);
-  rule(p, y, M, M + totalTableWidth, 1);
-  rule(p, y + 31, M, M + totalTableWidth, 0.85);
-  columns.forEach((value, i) => {
-    write(p, value, cxs[i]! + 3, y + 9, columnWidths[i]! - 6, 7.6, {
-      bold: true, align: i >= 2 && i !== 3 ? "right" : "left",
-    });
+
+/** Reference layout: framed company/PO header, side-by-side supplier and site,
+ * and a compact document-source strip, exactly in that visual reading order. */
+function drawHeader(p: Paper, po: PoPdfOrder) {
+  const company = po.companies;
+  const supplier = po.vendors;
+  const site = po.warehouses;
+  const x = M, y = p.y, w = CW;
+  const headerPad = 12;
+  const leftW = w * 0.61;
+  const cName = company?.legal_name || company?.name || "KK GROUP";
+  const cAddress = company?.registered_address || company?.office_address || "Registered address not recorded";
+  const contact = [company?.phone, company?.email].filter(Boolean).join(" | ") || "Contact not recorded";
+  const gst = "GSTIN: " + (company?.gstin || "Not recorded") +
+    (company?.pan ? "  |  PAN: " + company.pan : "");
+
+  font(p.ctx, 8.5);
+  const addressLines = lineCount(p, cAddress, leftW - 20, 8.3);
+  const legalLineCount = lineCount(p, gst, w - headerPad * 2, 8.2);
+  const contactLineCount = lineCount(p, contact, w - headerPad * 2, 8.2);
+  const headerH = Math.max(85,
+    39 + addressLines * 11 + 3 + legalLineCount * 11 + 3 + contactLineCount * 11 + 9);
+  rect(p, x, y, w, headerH);
+  drawLine(p, x, y + 1, x + w, y + 1, 2.25);
+  write(p, cName, x + headerPad, y + 13, leftW - headerPad * 2, 17.5, { bold: true });
+  write(p, "PURCHASE ORDER", x + leftW, y + 14, w - leftW - 12, 13.5,
+    { bold: true, align: "right" });
+  write(p, "PO No.: " + po.po_number, x + leftW, y + 37, w - leftW - 12,
+    9.5, { bold: true, align: "right" });
+  write(p, "PO Date: " + formatDate(po.po_date), x + leftW, y + 53,
+    w - leftW - 12, 8.8, { align: "right" });
+  const addrY = write(p, cAddress, x + headerPad, y + 39, leftW - headerPad * 2, 8.3,
+    { leading: 11 });
+  const taxY = Math.max(addrY + 3, y + 51);
+  write(p, gst, x + headerPad, taxY, w - headerPad * 2, 8.2);
+  write(p, contact, x + headerPad, taxY + legalLineCount * 11 + 3,
+    w - headerPad * 2, 8.2);
+
+  let rowY = y + headerH;
+  const half = w / 2;
+  const supplierName = supplier?.company_name || "Supplier details not available";
+  const supplierAddress = [
+    supplier?.address, supplier?.city, supplier?.state, supplier?.pincode,
+  ].filter(Boolean).join(", ");
+  const supplierContact = [supplier?.contact_person, supplier?.mobile, supplier?.email]
+    .filter(Boolean).join(" | ");
+  const addressLeft = supplierAddress || "Supplier address not recorded";
+  const rightFields = [
+    po.projects?.name || "Project not recorded",
+    "Building: " + (po.buildings?.name || "General"),
+    "Ship to: " + (site?.name || "Delivery store not recorded"),
+    ...(site?.address ? [site.address] : []),
+    "Expected delivery: " + formatDate(po.expected_delivery_date),
+  ];
+  const supplierNameLines = lineCount(p, supplierName, half - 22, 10);
+  const supplierAddrLines = lineCount(p, addressLeft, half - 22, 8.4);
+  const supplierGstLines = lineCount(p, "GSTIN: " + (supplier?.gstin || "Not recorded"),
+    half - 22, 8.3);
+  const supplierContactLines = supplierContact
+    ? lineCount(p, supplierContact, half - 22, 8) : 0;
+  const vendorHeight = 28 + supplierNameLines * 13 + 3 +
+    supplierAddrLines * 11 + 3 + supplierGstLines * 12 +
+    (supplierContactLines ? 4 + supplierContactLines * 10 : 0);
+  const siteHeight = 26 + rightFields.reduce((total, value, index) =>
+    total + lineCount(p, value, half - 22, index === 0 ? 10 : 8.5) *
+      (index === 0 ? 12 : 10.2) + (index === 0 ? 2 : 0), 0);
+  const middleH = Math.max(88, vendorHeight + 8, siteHeight + 8);
+  rect(p, x, rowY, w, middleH, "#fafafa");
+  drawLine(p, x + half, rowY, x + half, rowY + middleH);
+  write(p, "VENDOR / SUPPLIER", x + headerPad, rowY + 10, half - 22, 8.2, { bold: true });
+  let vY = write(p, supplierName, x + headerPad, rowY + 28, half - 22, 10,
+    { bold: true, leading: 13 }) + 3;
+  vY = write(p, addressLeft, x + headerPad, vY, half - 22, 8.4, { leading: 11 }) + 3;
+  vY = write(p, "GSTIN: " + (supplier?.gstin || "Not recorded"),
+    x + headerPad, vY, half - 22, 8.3);
+  if (supplierContact) {
+    write(p, supplierContact, x + headerPad, vY + 4, half - 22, 8, { leading: 10 });
+  }
+  write(p, "DELIVERY / PROJECT", x + half + headerPad,
+    rowY + 10, half - 22, 8.2, { bold: true });
+  let rightY = rowY + 26;
+  rightFields.forEach((value, index) => {
+    rightY = write(p, value, x + half + headerPad, rightY, half - 22,
+      index === 0 ? 10 : 8.5,
+      { bold: index === 0, leading: index === 0 ? 12 : 10.2 }) + (index === 0 ? 2 : 0);
   });
-  p.y = y + 31;
+
+  rowY += middleH;
+  const quote = po.vendor_quotations?.quotation_number || "Not linked";
+  const quoteDate = po.vendor_quotations?.quotation_date
+    ? "  |  Date: " + formatDate(po.vendor_quotations.quotation_date) : "";
+  const leftRef = "Supplier quotation: " + quote + quoteDate;
+  const rightRef = "Purchase request: " + (po.purchase_requests?.pr_number || "—") +
+    "\nRFQ: " + (po.rfqs?.rfq_number || "—");
+  const refH = Math.max(35,
+    12 + Math.max(lineCount(p, leftRef, half - 23, 8.4) * 11,
+      lineCount(p, rightRef, half - 23, 8.4) * 11));
+  rect(p, x, rowY, w, refH);
+  drawLine(p, x + half, rowY, x + half, rowY + refH);
+  write(p, leftRef, x + headerPad, rowY + 10, half - 22, 8.4, { leading: 11 });
+  write(p, rightRef, x + half + headerPad, rowY + 10, half - 22, 8.4, { leading: 11 });
+  p.y = rowY + refH + 18;
+
+  if (!["approved","sent","partially_received","fully_received","closed","short_closed"]
+    .includes(po.status)) {
+    const warning = "PENDING APPROVAL / REVIEW COPY - NOT YET A FINALISED ORDER";
+    write(p, warning, M, p.y - 12, CW, 7.6, { bold: true, color: MUTED });
+  }
+}
+
+const COLS = [20, 170, 39, 33, 61, 48, 67, 39, 50];
+const WIDTH = COLS.reduce((a, b) => a + b, 0);
+const POS = [M];
+for (const col of COLS) POS.push(POS[POS.length - 1]! + col);
+const HEADERS = ["#", "MATERIAL / DESCRIPTION", "QTY", "UOM",
+  "RATE (₹)", "DISC.", "TAXABLE (₹)", "GST %", "GST (₹)"];
+function titleBand(p: Paper, continuation = false) {
+  const y = p.y;
+  write(p, continuation ? "01 / ITEMS & PRICING (CONTINUED)" : "01 / ITEMS & PRICING",
+    M, y, 270, 10, { bold: true });
+  write(p, "All amounts in Indian Rupees (₹)", M + 290, y + 1, CW - 290,
+    8, { color: MUTED, align: "right" });
+  drawLine(p, M, y + 20, W - M, y + 20, 1.1);
+  p.y = y + 27;
+}
+function tableHead(p: Paper) {
+  const y = p.y, h = 25;
+  rect(p, M, y, WIDTH, h, SHADE);
+  for (const x of POS.slice(1, -1)) drawLine(p, x, y, x, y + h, 0.55);
+  HEADERS.forEach((head, i) => {
+    write(p, head, POS[i]! + 3, y + 6, COLS[i]! - 6, 7.2,
+      { bold: true, align: i > 3 ? "right" : i === 0 || i === 2 || i === 3 ? "center" : "left" });
+  });
+  p.y = y + h;
+}
+function itemLabel(item: PoPdfLine) {
+  const name = item.items?.name || item.description || "Material not specified";
+  const note = item.description && item.items?.name && item.description.trim() !== item.items.name.trim()
+    ? "\n" + item.description : "";
+  const code = item.items?.code ? "\nCode: " + item.items.code : "";
+  return name + note + code;
 }
 function itemHeight(p: Paper, item: PoPdfLine) {
-  const name = item.items?.name || item.description || "Material";
-  const code = item.items?.code ? "\nCode: " + item.items.code : "";
-  const description = item.description && item.description !== name
-    ? "\n" + item.description : "";
-  return Math.max(41, 10 + textHeight(p, name + code + description, columnWidths[1]! - 10, 8.1, 10.6));
+  return Math.max(37, 10 + lineCount(p, itemLabel(item), COLS[1]! - 9, 8.1) * 10.2);
 }
 function itemRow(p: Paper, item: PoPdfLine) {
   const y = p.y, h = itemHeight(p, item);
-  const name = item.items?.name || item.description || "Material";
-  const code = item.items?.code ? "\nCode: " + item.items.code : "";
-  const extra = item.description && item.description !== name
-    ? "\n" + item.description : "";
-  for (let j = 0; j < cxs.length; j++) vertical(p, cxs[j]!, y, y + h);
-  write(p, String(item.line_no), cxs[0]! + 2, y + 6, columnWidths[0]! - 4, 8.2, { align: "center" });
-  write(p, name + code + extra, cxs[1]! + 5, y + 5, columnWidths[1]! - 10, 8.1, { step: 10.6 });
-  const numeric = [
-    number(item.ordered_quantity, 3).replace(/\.?0+$/, ""),
-    item.units_of_measure?.code || "—",
-    number(item.rate),
-    number(item.discount_amount),
-    number(item.taxable_amount),
-    number(item.line_total),
-  ];
-  write(p, numeric[0], cxs[2]! + 2, y + 6, columnWidths[2]! - 5, 8.2, { align: "right" });
-  write(p, numeric[1], cxs[3]! + 2, y + 6, columnWidths[3]! - 4, 8, { align: "center" });
-  write(p, numeric[2], cxs[4]! + 2, y + 6, columnWidths[4]! - 5, 8.2, { align: "right" });
-  write(p, numeric[3], cxs[5]! + 2, y + 6, columnWidths[5]! - 5, 8.2, { align: "right" });
-  write(p, numeric[4], cxs[6]! + 2, y + 6, columnWidths[6]! - 5, 8.2, { align: "right" });
-  const gstLabel = item.tax_type === "none" ? "Exempt" :
-    (item.tax_type === "igst" ? "IGST " : "CG+SG ") + number(item.tax_rate_percent, 0) + "%";
-  write(p, gstLabel, cxs[7]! + 3, y + 5, columnWidths[7]! - 6, 7.5, { align: "center" });
-  write(p, number(item.tax_amount), cxs[7]! + 2, y + 19, columnWidths[7]! - 5, 8, { align: "right" });
-  write(p, numeric[5], cxs[8]! + 2, y + 6, columnWidths[8]! - 5, 8.5, { align: "right", bold: true });
-  rule(p, y + h, M, M + totalTableWidth, 0.6);
+  rect(p, M, y, WIDTH, h);
+  for (const x of POS.slice(1, -1)) drawLine(p, x, y, x, y + h, 0.45);
+  write(p, item.line_no, POS[0]! + 2, y + 6, COLS[0]! - 4, 8.2, { align: "center" });
+  write(p, itemLabel(item), POS[1]! + 5, y + 5, COLS[1]! - 9, 8.1,
+    { leading: 10.2 });
+  write(p, formatQty(item.ordered_quantity), POS[2]! + 2, y + 6, COLS[2]! - 4,
+    8.2, { align: "right" });
+  write(p, item.units_of_measure?.code || "—", POS[3]! + 1, y + 6, COLS[3]! - 2,
+    8.2, { align: "center" });
+  write(p, formatMoney(item.rate), POS[4]! + 2, y + 6, COLS[4]! - 5,
+    8.2, { align: "right" });
+  write(p, formatMoney(item.discount_amount), POS[5]! + 2, y + 6, COLS[5]! - 5,
+    8.2, { align: "right" });
+  write(p, formatMoney(item.taxable_amount), POS[6]! + 2, y + 6, COLS[6]! - 5,
+    8.2, { bold: true, align: "right" });
+  const gst = item.tax_type === "none" ? "Exempt" : formatQty(item.tax_rate_percent) + "%";
+  write(p, gst, POS[7]! + 1, y + 6, COLS[7]! - 2, 8.2,
+    { bold: true, align: "center" });
+  write(p, formatMoney(item.tax_amount), POS[8]! + 2, y + 6, COLS[8]! - 5,
+    8.2, { align: "right" });
   p.y = y + h;
 }
-function boxText(p: Paper, title: string, body: unknown, x: number, top: number, width: number) {
-  let y = top;
-  y = write(p, title.toUpperCase(), x, y, width, 8, { bold: true, tone: GRAY }) + 5;
-  y = write(p, body, x, y, width, 9.1, { step: 13 }) + 4;
-  return y;
-}
-function pdfHeader(p: Paper, order: PoPdfOrder) {
-  const issuer = order.companies;
-  const supplier = order.vendors;
-  const delivery = order.warehouses;
-  const quote = order.vendor_quotations;
-  let y = p.y;
-  write(p, issuer?.legal_name || issuer?.name || "KK GROUP", M, y, CW * 0.59, 15.5, { bold: true, step: 19.5 });
-  write(p, "PURCHASE ORDER", M + CW * 0.60, y, CW * 0.40, 15, { bold: true, align: "right", step: 18 });
-  y += 25;
-  const addrEnd = write(p, issuer?.registered_address || issuer?.office_address || "Company address not recorded",
-    M, y, 293, 8.4, { step: 11 });
-  write(p, "PO No.: " + order.po_number, M + CW * 0.60, y, CW * 0.40, 9, { align: "right", bold: true });
-  write(p, "PO Date: " + when(order.po_date), M + CW * 0.60, y + 15, CW * 0.40, 9, { align: "right" });
-  y = Math.max(addrEnd + 5, y + 32);
-  const legal = ["GSTIN: " + (issuer?.gstin || "—"), issuer?.pan ? "PAN: " + issuer.pan : null,
-    issuer?.phone, issuer?.email].filter(Boolean).join("  |  ");
-  y = write(p, legal, M, y, CW, 8.3, { step: 11 }) + 9;
-  rule(p, y, M, W - M, 1.1);
-  y += 11;
-  if (!["approved", "sent", "partially_received", "fully_received", "short_closed", "closed"].includes(order.status)) {
-    y = write(p, "STATUS: " + order.status.replace(/_/g, " ").toUpperCase() + "  —  NOT AN ISSUED PURCHASE ORDER",
-      M, y, CW, 8.5, { bold: true }) + 5;
-  }
 
-  const gap = 20, half = (CW - gap) / 2;
-  const ly = y, rx = M + half + gap;
-  const supplierName = supplier?.company_name || "Supplier not recorded";
-  const supplierAddr = [supplier?.address, supplier?.city, supplier?.state, supplier?.pincode].filter(Boolean).join(", ");
-  let left = boxText(p, "Vendor / supplier", supplierName, M, ly, half);
-  left = write(p, supplierAddr || "Address not recorded", M, left, half, 8.4, { step: 11 }) + 5;
-  left = write(p, "GSTIN: " + (supplier?.gstin || "—"), M, left, half, 8.4, { step: 11 });
-  const contact = [supplier?.contact_person, supplier?.mobile, supplier?.email].filter(Boolean).join(" | ");
-  if (contact) left = write(p, contact, M, left + 2, half, 8.4, { step: 11 });
-  let right = boxText(p, "Project / delivery", order.projects?.name || "Project not recorded", rx, ly, half);
-  right = write(p, "Building: " + (order.buildings?.name || "Not assigned"), rx, right, half, 8.4, { step: 11 }) + 5;
-  right = write(p, "Ship to: " + (delivery?.name || "Delivery store not specified"),
-    rx, right, half, 8.4, { step: 11 });
-  if (delivery?.address) right = write(p, delivery.address, rx, right + 2, half, 8.4, { step: 11 });
-  right = write(p, "Expected: " + when(order.expected_delivery_date), rx, right + 5, half, 8.4);
-  y = Math.max(left, right) + 9;
-  rule(p, y);
-  y += 10;
-  const refs = [
-    "PR: " + (order.purchase_requests?.pr_number || "—"),
-    "RFQ: " + (order.rfqs?.rfq_number || "—"),
-    "Quotation: " + (quote?.quotation_number || "—"),
-    "Quote date: " + when(quote?.quotation_date),
-  ];
-  const refWidth = CW / 2;
-  const r1 = write(p, refs[0]!, M, y, refWidth - 8, 8.6);
-  const r2 = write(p, refs[2]!, M + refWidth, y, refWidth - 8, 8.6);
-  const r3 = write(p, refs[1]!, M, Math.max(r1, r2) + 2, refWidth - 8, 8.6);
-  const r4 = write(p, refs[3]!, M + refWidth, Math.max(r1, r2) + 2, refWidth - 8, 8.6);
-  y = Math.max(r3, r4) + 12;
-  rule(p, y, M, W - M, 1.1);
-  p.y = y + 14;
+function tableNote(p: Paper) {
+  p.y += 6;
+  p.y = write(p,
+    "GST rate shown per item (CGST+SGST combined, or IGST). Taxable amounts exclude GST; quantities and units reflect the approved PO.",
+    M, p.y, CW, 7.9, { leading: 10.2, color: MUTED }) + 16;
 }
-function totals(p: Paper, order: PoPdfOrder, items: PoPdfLine[]) {
-  const amount = poCommercialSummary(order, items);
-  let y = p.y + 17;
-  const tx = M + 235, rw = CW - 235;
-  rule(p, y, tx, W - M, 1);
-  y += 7;
-  const rows: Array<[string, number]> = [
-    ["Goods subtotal", Number(order.subtotal)],
-    ["Less: discount", -Number(order.discount_total)],
-    ["Freight", Number(order.freight)],
-    ["Other charges", Number(order.other_charges)],
-    ["CGST", amount.cgst],
-    ["SGST", amount.sgst],
-    ["IGST", amount.igst],
-  ];
-  for (const [name, value] of rows) {
-    if (Math.abs(value) < 0.001 && ["Freight", "Other charges", "CGST", "SGST", "IGST"].includes(name)) continue;
-    write(p, name, tx + 5, y, 155, 9);
-    write(p, number(value), tx + 160, y, rw - 165, 9, { align: "right" });
-    y += 17.5;
-  }
-  rule(p, y + 1, tx, W - M, 1.2);
-  y += 8;
-  write(p, "GRAND TOTAL (INR)", tx + 5, y, 165, 10.2, { bold: true });
-  write(p, number(order.grand_total), tx + 160, y, rw - 165, 12, { bold: true, align: "right" });
-  y += 26;
-  rule(p, y, tx, W - M, 1);
-  p.y = y + 8;
-  if (Math.abs(amount.difference) >= 0.01 || Math.abs(amount.gstDifference) >= 0.01) {
-    p.y = write(p, "ATTENTION: Stored PO totals / GST need reconciliation before issue.",
-      M, p.y + 4, CW, 8.5, { bold: true }) + 4;
-  }
+
+function taxDescription(type: string | null | undefined, rate: unknown) {
+  const r = Number(rate ?? 0);
+  if (type === "cgst_sgst") return "CGST " + formatQty(r / 2) + "% + SGST " + formatQty(r / 2) + "%";
+  if (type === "igst") return "IGST " + formatQty(r) + "%";
+  return "No GST";
 }
-function terms(p: Paper, order: PoPdfOrder) {
-  const quote = order.vendor_quotations;
-  const termsList = [
-    ["Payment terms", order.payment_terms || quote?.payment_terms || "Not recorded"],
-    ["Delivery / installation", order.delivery_terms || "Not recorded"],
+function totalRows(po: PoPdfOrder, items: PoPdfLine[]) {
+  const data = poCommercialSummary(po, items);
+  const rows: Array<{ label: string; amount: number; strong?: boolean }> = [
+    { label: "Goods subtotal (ex-GST)", amount: Number(po.subtotal) },
+    { label: "Less: discount", amount: -Number(po.discount_total) },
+    { label: "Freight", amount: Number(po.freight) },
+    { label: "Other charges", amount: Number(po.other_charges) },
+    { label: "Total before GST", amount: data.beforeGst, strong: true },
+    { label: "CGST", amount: data.cgst },
+    { label: "SGST", amount: data.sgst },
+    { label: "IGST", amount: data.igst },
+    { label: "GRAND TOTAL", amount: Number(po.grand_total), strong: true },
   ];
-  if (order.remarks) termsList.push(["Remarks", order.remarks]);
-  // Limit repeated quotation prose on the PO; its original uploaded document
-  // remains accessible through the separate View Quotation action.
-  let y = p.y;
-  rule(p, y, M, W - M, 0.8); y += 9;
-  y = write(p, "TERMS AND CONDITIONS", M, y, CW, 9, { bold: true }) + 6;
-  for (const [label, body] of termsList) {
-    y = write(p, label + ": " + body, M, y, CW, 8.5, { step: 12 }) + 7;
-  }
-  p.y = y;
+  return { data, rows };
 }
-function signatures(p: Paper, order: PoPdfOrder) {
-  const y = p.y + 40;
-  const w = CW / 3;
+function commercial(p: Paper, po: PoPdfOrder, items: PoPdfLine[]) {
+  const { data, rows } = totalRows(po, items);
+  const x = M, y = p.y, w = CW, stripeH = 24, left = 315, right = w - left;
+  const leftItems: Array<[string, string]> = [
+    ["Payment terms", po.payment_terms || po.vendor_quotations?.payment_terms || "Not recorded"],
+    ["Delivery and installation terms", po.delivery_terms || "Not recorded - confirm before issuing PO"],
+  ];
+  if (po.remarks) leftItems.push(["Remarks", po.remarks]);
+  const leftNeeded = leftItems.reduce((acc, [label, value]) =>
+    acc + 12 + lineCount(p, label, left - 20, 8.5) * 10 +
+    lineCount(p, value, left - 20, 8.4) * 11 + 6, 16);
+  const rowHeight = 17.3, bodyH = Math.max(leftNeeded + 16, rows.length * rowHeight);
+  rect(p, x, y, w, stripeH, SHADE);
+  write(p, "02 / COMMERCIAL TERMS & TOTALS", x + 10, y + 6, w - 20,
+    10, { bold: true });
+  const bodyY = y + stripeH;
+  rect(p, x, bodyY, w, bodyH);
+  drawLine(p, x + left, bodyY, x + left, bodyY + bodyH);
+  let cy = bodyY + 12;
+  for (const [label, value] of leftItems) {
+    cy = write(p, label, x + 10, cy, left - 20, 8.4, { bold: true, leading: 10 }) + 3;
+    cy = write(p, value, x + 10, cy, left - 20, 8.4, { leading: 11 }) + 9;
+  }
+  const rX = x + left;
+  let ry = bodyY;
+  for (let i = 0; i < rows.length; i++) {
+    const entry = rows[i]!;
+    const isTotal = i === rows.length - 1;
+    if (entry.strong) {
+      rect(p, rX, ry, right, rowHeight, SHADE, false);
+      drawLine(p, rX, ry, rX + right, ry, isTotal ? 1.2 : 0.9);
+    }
+    write(p, entry.label, rX + 7, ry + 4, right - 92, isTotal ? 9 : 8.1,
+      { bold: !!entry.strong });
+    write(p, formatMoney(entry.amount), rX + right - 88, ry + 4, 81,
+      isTotal ? 10.3 : 8.4, { align: "right", bold: !!entry.strong });
+    ry += rowHeight;
+  }
+  if (ry < bodyY + bodyH) drawLine(p, rX, ry, rX + right, ry);
+
+  let cursor = bodyY + bodyH;
+  const extraTaxNotes = [
+    Number(po.freight) > 0 ? "Freight: " + taxDescription(po.freight_tax_type, po.freight_tax_rate_percent) : null,
+    Number(po.other_charges) > 0 ? "Other charges: " + taxDescription(po.other_charges_tax_type, po.other_charges_tax_rate_percent) : null,
+  ].filter(Boolean).join(" | ");
+  const notes = [
+    extraTaxNotes ? "Charge GST rates: " + extraTaxNotes + "." : "",
+    "Tax rates shown per material line. CGST and SGST are the central/state components; IGST is shown separately.",
+    (data.freightGst || data.otherGst)
+      ? "Tax clarification: GST on freight " + formatMoney(data.freightGst) +
+        " | GST on other charges " + formatMoney(data.otherGst) +
+        ". Both amounts are already included in GST totals above."
+      : "",
+  ].filter(Boolean);
+  for (const note of notes) {
+    const h = Math.max(19, 8 + lineCount(p, note, w - 17, 7.6) * 9.6);
+    rect(p, x, cursor, w, h);
+    write(p, note, x + 8, cursor + 4, w - 16, 7.6, { leading: 9.6 });
+    cursor += h;
+  }
+  if (Math.abs(data.difference) >= 0.01 || Math.abs(data.gstDifference) >= 0.01) {
+    const warning = "REVIEW REQUIRED: The stored PO total / GST does not reconcile to individual lines and charges.";
+    const h = 25;
+    rect(p, x, cursor, w, h, SHADE);
+    write(p, warning, x + 7, cursor + 7, w - 14, 8, { bold: true });
+    cursor += h;
+  }
+  p.y = cursor + 18;
+}
+
+function signatureRow(p: Paper, po: PoPdfOrder) {
+  const w = CW / 3, y = p.y + 12;
+  const labels = ["Prepared by", "Approved by", "Authorised signatory"];
+  const values = [
+    po.prepared_by_name || "—",
+    po.approved_by_name || (po.status === "approved" || po.status === "sent"
+      ? "Approval recorded" : "Pending approval"),
+    "For " + (po.companies?.legal_name || po.companies?.name || "KK GROUP"),
+  ];
   for (let i = 0; i < 3; i++) {
-    rule(p, y, M + i * w + 5, M + (i + 1) * w - 12);
+    drawLine(p, M + i * w + 3, y, M + (i + 1) * w - 9, y, 0.95);
+    write(p, labels[i]!, M + i * w + 3, y + 7, w - 12, 8,
+      { align: "center" });
+    write(p, values[i]!, M + i * w + 3, y + 22, w - 12, 8.4,
+      { align: "center", bold: true });
   }
-  ["Prepared by", "Reviewed / approved by", "Authorised signatory"].forEach((label, i) => {
-    write(p, label, M + i * w + 5, y + 7, w - 17, 8.3, { align: "center" });
-  });
-  p.y = y + 30;
-  if (order.status === "pending_approval") {
-    p.y = write(p, "Review copy only. No approval or signature is implied by this preview.",
-      M, p.y + 8, CW, 7.5, { tone: GRAY });
+  p.y = y + 53;
+  if (po.status === "pending_approval") {
+    write(p, "Review copy only. A pending approval is not an authorised sign-off.",
+      M, p.y, CW, 7.5, { color: MUTED });
+    p.y += 14;
   }
 }
 function bytes(data: string) { return new TextEncoder().encode(data); }
@@ -403,42 +538,63 @@ async function assemblePdf(pages: HTMLCanvasElement[]): Promise<PoReviewDocument
   const pdf = new Blob(chunks.map(chunk => new Uint8Array(chunk)), { type: "application/pdf" });
   return { pdf, previewPages };
 }
-export async function buildPoReviewDocument(order: PoPdfOrder, lines: PoPdfLine[]): Promise<PoReviewDocument> {
-  if (typeof document === "undefined") throw new Error("Purchase Order preview requires a browser.");
-  if (!lines.length) throw new Error("This purchase order has no item lines.");
+
+export async function buildPoReviewDocument(order: PoPdfOrder, items: PoPdfLine[]): Promise<PoReviewDocument> {
+  if (typeof document === "undefined") throw new Error("PO preview requires a browser.");
+  if (!items.length) throw new Error("The purchase order has no material lines.");
 
   const pages: Paper[] = [];
-  let p = paper(order, 1); pages.push(p);
-  const nextPage = () => { p = paper(order, pages.length + 1); pages.push(p); };
-  const ensure = (height: number) => {
-    if (p.y + height > H - 54) nextPage();
-  };
-  pdfHeader(p, order);
-  // First page is the commercially familiar header; later pages repeat the
-  // column headings for easy reading, filing and photocopying.
-  ensure(70);
-  p.y = write(p, "ORDER ITEMS  |  Amounts in INR (Rs.)", M, p.y, CW, 9, { bold: true }) + 6;
-  drawTableHead(p);
-  for (const line of [...lines].sort((a, b) => a.line_no - b.line_no)) {
-    const h = itemHeight(p, line);
-    if (p.y + h > H - 63) {
-      nextPage();
-      p.y = write(p, "ORDER ITEMS (CONTINUED)", M, p.y, CW, 9, { bold: true }) + 8;
-      drawTableHead(p);
+  let p = drawPage(order, 1);
+  pages.push(p);
+  drawHeader(p, order);
+  p = needNewPage(p, 70, order, pages);
+  titleBand(p);
+  tableHead(p);
+
+  for (const item of [...items].sort((a, b) => a.line_no - b.line_no)) {
+    if (p.y + itemHeight(p, item) > END - 13) {
+      p = drawPage(order, pages.length + 1);
+      pages.push(p);
+      titleBand(p, true);
+      tableHead(p);
     }
-    itemRow(p, line);
+    itemRow(p, item);
   }
-  ensure(212);
-  totals(p, order, lines);
-  const termText = [
-    order.payment_terms || order.vendor_quotations?.payment_terms || "Not recorded",
-    order.delivery_terms || "Not recorded", order.remarks || "",
+  // Use measured content rather than a fixed large reservation. Short POs
+  // (including the uploaded KK Construction reference) should fit one A4
+  // page; long orders break before the complete commercial summary.
+  if (p.y + 33 > END) {
+    p = drawPage(order, pages.length + 1);
+    pages.push(p);
+    write(p, "MATERIAL GST NOTES", M, p.y, CW, 9, { bold: true });
+    p.y += 20;
+  }
+  tableNote(p);
+  const { rows, data } = totalRows(order, items);
+  const leftFields: Array<[string, string]> = [
+    ["Payment terms", order.payment_terms || order.vendor_quotations?.payment_terms || "Not recorded"],
+    ["Delivery and installation terms", order.delivery_terms || "Not recorded - confirm before issuing PO"],
   ];
-  const termHeight = termText.reduce((sum, value) => sum + textHeight(p, value, CW, 8.5, 12) + 19, 39);
-  ensure(Math.min(210, termHeight + 90));
-  terms(p, order);
-  ensure(98);
-  signatures(p, order);
+  if (order.remarks) leftFields.push(["Remarks", order.remarks]);
+  const leftNeeded = leftFields.reduce((acc, [label, value]) =>
+    acc + 12 + lineCount(p, label, 295, 8.5) * 10 +
+    lineCount(p, value, 295, 8.4) * 11 + 6, 16);
+  const bodyHeight = Math.max(leftNeeded + 16, rows.length * 17.3);
+  const extraChargeNote = Number(order.freight) > 0 || Number(order.other_charges) > 0;
+  const extraTaxNote = data.freightGst !== 0 || data.otherGst !== 0;
+  const unreconciled = Math.abs(data.difference) >= 0.01 || Math.abs(data.gstDifference) >= 0.01;
+  const summaryHeight = 24 + bodyHeight + (extraChargeNote ? 19 : 0) +
+    19 + (extraTaxNote ? 19 : 0) + (unreconciled ? 25 : 0) + 18;
+  const signaturesHeight = 80;
+  if (p.y + summaryHeight + signaturesHeight > END) {
+    p = drawPage(order, pages.length + 1);
+    pages.push(p);
+    write(p, "PURCHASE ORDER - COMMERCIAL SUMMARY", M, p.y, CW, 10, { bold: true });
+    p.y += 23;
+  }
+  commercial(p, order, items);
+  p = needNewPage(p, 85, order, pages);
+  signatureRow(p, order);
   return assemblePdf(pages.map(page => page.canvas));
 }
 

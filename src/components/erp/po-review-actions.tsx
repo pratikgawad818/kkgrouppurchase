@@ -10,21 +10,38 @@ import { beginDocumentPreview, showDocument } from "@/components/erp/document-vi
 import { buildPoReviewDocument } from "@/lib/po-pdf";
 import { procurementAttachmentContentType, PROCUREMENT_ATTACHMENT_BUCKET } from "@/lib/procurement-attachments";
 import { errMsg } from "@/lib/format";
+import { documentActorNames } from "@/lib/document-actors";
 
 /** Fetch the actual PO and its items when requested, not the full approval queue. */
 export async function fetchPoReviewPdf(poId: string) {
-  const [order, lines] = await Promise.all([
+  const [order, lines, approvalHistory] = await Promise.all([
     supabase.from("purchase_orders")
       .select("*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email,bank_account_name,bank_name,bank_account_number,ifsc), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)")
       .eq("id", poId).single(),
     supabase.from("purchase_order_items")
       .select("line_no,description,ordered_quantity,rate,discount_amount,taxable_amount,tax_type,tax_rate_percent,tax_amount,line_total,items(code,name),units_of_measure(code)")
       .eq("po_id", poId).order("line_no"),
+    supabase.from("purchase_order_approvals")
+      .select("action,acted_by,acted_at")
+      .eq("po_id", poId).order("acted_at"),
   ]);
   if (order.error) throw order.error;
   if (lines.error) throw lines.error;
+  if (approvalHistory.error) throw approvalHistory.error;
+  if (!order.data) throw new Error("Purchase order not found or not accessible.");
   if (!lines.data?.length) throw new Error("This purchase order has no material lines to preview.");
-  return buildPoReviewDocument(order.data, lines.data);
+
+  const history = approvalHistory.data ?? [];
+  const creator = history.find(event => event.action === "created");
+  const approver = [...history].reverse().find(event => event.action === "approved");
+  // The official document-actor RPC resolves staff names within the user's
+  // authorised PO. Never invent the signatories or treat submitted as approved.
+  const names = await documentActorNames("purchase_order", [poId]);
+  return buildPoReviewDocument({
+    ...order.data,
+    prepared_by_name: creator?.acted_by ? names.get(creator.acted_by) ?? null : null,
+    approved_by_name: approver?.acted_by ? names.get(approver.acted_by) ?? null : null,
+  }, lines.data);
 }
 
 export function PoReviewActions({
