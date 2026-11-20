@@ -44,7 +44,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tw-animate-css": "^1.3.4",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "pdfjs-dist": "6.5.438"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
