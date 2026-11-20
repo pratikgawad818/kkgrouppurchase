@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  HandCoins,
   UserRound,
   Wallet,
 } from "lucide-react";
@@ -48,6 +49,7 @@ const icons = {
   finance: Wallet,
   approvals: ShieldCheck,
   projects: Building2,
+  sales: HandCoins,
   settings: Settings,
 };
 
