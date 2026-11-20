@@ -109,7 +109,7 @@ export function workspaceLocation(path: string, groups: WorkspaceNavGroup[]) {
 export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirector = false) {
   const keys = isDirector
     ? ["home", "approvals", "purchasing", "finance"]
-    : ["home", "purchasing", "stock", "finance"];
+    : ["home", "sales", "purchasing", "stock"];
   return keys.flatMap((key) => {
     const group = groups.find((entry) => entry.key === key);
     if (!group) return [];
@@ -129,7 +129,9 @@ export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirecto
               : "Purchasing"
             : key === "stock"
               ? "Stock"
-              : "Payments";
+              : key === "sales"
+                ? "Sales"
+                : "Payments";
     return [{ key, to: target.to, label }];
   });
 }
