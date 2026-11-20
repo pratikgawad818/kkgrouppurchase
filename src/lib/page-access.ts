@@ -8,7 +8,7 @@ import { VIEWER_NAV } from "./management-overview.ts";
  * This is defense-in-depth; table RLS and privileged RPCs MUST independently
  * enforce each permission, document scope and actor identity.
  */
-type Rule = { pattern: RegExp; any?: readonly string[]; all?: readonly string[] };
+type Rule = { pattern: RegExp; any?: readonly string[]; all?: readonly string[]; roles?: readonly string[] };
 export type PageAccess = {
   roles: readonly string[];
   permissions: ReadonlySet<string>;
@@ -37,7 +37,8 @@ const rules: readonly Rule[] = [
       "units.view",
     ],
   },
-  { pattern: /^\/units\/?$/, any: ["units.view"] },
+  { pattern: /^\/sales\/?$/, roles: ["director", "super_admin", "senior_sales_executive"] },
+  { pattern: /^\/units\/?$/, roles: ["director", "super_admin", "senior_sales_executive"], any: ["units.view"] },
   {
     pattern: /^\/approvals\/?$/,
     any: ["purchase_order.approve", "payment.approve", "users.manage"],
