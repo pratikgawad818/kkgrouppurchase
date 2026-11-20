@@ -5509,6 +5509,10 @@ export type Database = {
         Args: { _advance_id: string; _amount: number; _invoice_id: string }
         Returns: undefined
       }
+      attach_missing_po_quotation: {
+        Args: { _path: string; _po_id: string }
+        Returns: undefined
+      }
       begin_profile_email_otp: {
         Args: {
           _email: string

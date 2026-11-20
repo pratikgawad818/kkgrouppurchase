@@ -23,6 +23,7 @@ import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PoReviewActions } from "@/components/erp/po-review-actions";
+import { AttachPoQuotation } from "@/components/erp/attach-po-quotation";
 import { PoSiteCorrectionPanel, type PoSiteCorrection } from "@/components/erp/po-site-correction-panel";
 
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
@@ -356,6 +357,13 @@ function PoDetail() {
                   )}
                 <PoReviewActions poId={po.id} poNumber={po.po_number}
                   quotePath={po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path} />
+                {!po.vendor_quotations?.attachment_path && !po.purchase_requests?.attachment_path &&
+                  !["cancelled", "closed"].includes(po.status) && me.data?.profile.id &&
+                  (can("purchase_order.create") || can("purchase_order.edit") ||
+                    me.data.roles.includes("super_admin")) && (
+                    <AttachPoQuotation poId={po.id} companyId={po.company_id}
+                      userId={me.data.profile.id} onDone={refresh} />
+                  )}
 
               </div>
             }
