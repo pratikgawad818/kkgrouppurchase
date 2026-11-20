@@ -8,6 +8,7 @@ export const SMALL_EXPENSE_CATEGORIES = {
   repairs: "Small repairs", cleaning: "Cleaning",
   labour_incidental: "Incidental labour", office: "Office expenses",
   security_guard: "Security Guard",
+  consultancy_marketing: "Consultancy and Marketing",
   other: "Other",
 } as const;
 export type SmallExpenseCategory = keyof typeof SMALL_EXPENSE_CATEGORIES;
