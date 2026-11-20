@@ -19,7 +19,6 @@ async function renderPrivatePdfPages(blob: Blob): Promise<Blob[]> {
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(await blob.arrayBuffer()),
-    isEvalSupported: false,
   });
   const pages: Blob[] = [];
   try {
@@ -84,7 +83,7 @@ export function openPrivateProcurementAttachment(path: string, label: string): P
       }
       preview.show({
         url: fileUrl,
-        pages: pageUrls.length ? pageUrls : undefined,
+        ...(pageUrls.length ? { pages: pageUrls } : {}),
         type: mime,
         name: label,
       });
