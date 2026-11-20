@@ -3,7 +3,6 @@ import { FileText, Paperclip, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { openPrivateProcurementAttachment } from "@/lib/attached-document-preview";
-import { supabase } from "@/integrations/supabase/client";
 import {
   PROCUREMENT_ATTACHMENT_ACCEPT,
   validateProcurementAttachment,
