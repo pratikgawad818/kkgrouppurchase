@@ -23,6 +23,7 @@ import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PoReviewActions } from "@/components/erp/po-review-actions";
+import { DirectorApprovalReminder } from "@/components/erp/director-approval-reminder";
 import { fetchSelectedPoQuotation } from "@/lib/po-selected-quotation";
 import { AttachPoQuotation } from "@/components/erp/attach-po-quotation";
 import { PoSiteCorrectionPanel, type PoSiteCorrection } from "@/components/erp/po-site-correction-panel";
@@ -307,19 +308,10 @@ function PoDetail() {
                     )}
                   </div>
                 )}
-                {po.status === "pending_approval" && !isDirector && !isAdmin && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const { error } = await supabase.rpc("remind_po_approvers", { _po_id: id });
-                      if (error) toast.error(errMsg(error));
-                      else toast.success("Reminder sent to directors");
-                    }}
-                  >
-                    Remind directors
-                  </Button>
-                )}
+                {po.status === "pending_approval" &&
+                  (isAdmin || can("purchase_order.create")) && (
+                    <DirectorApprovalReminder id={id} kind="purchase_order" />
+                  )}
                 {po.status === "approved" && can("purchase_order.create") && (
                   <Button
                     size="sm"
