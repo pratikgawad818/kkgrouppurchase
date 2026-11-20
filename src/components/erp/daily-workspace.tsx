@@ -38,7 +38,7 @@ const taskIcons = {
 function shortDocumentNumber(value: string) {
   // The full document number is kept as a title and in the destination.
   // Only the repeated year is omitted in the compact mobile progress strip.
-  return value.replace(/^([A-Z]+)-20\\d{2}-/i, "$1-");
+  return value.replace(/^([A-Z]+)-20\d{2}-/i, "$1-");
 }
 
 function PurchaseProgressRow({ task, today }: { task: PurchaseChain; today: string }) {
