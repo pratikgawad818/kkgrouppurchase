@@ -90,7 +90,11 @@ try {
     '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<title>Expense mobile viewport fixture</title><link rel="stylesheet" href="/app.css"></head>' +
     '<body><div id="root"></div><pre id="qa" hidden>pending</pre>' +
-    '<script src="/app.js"></script><script>' + qaScript + '</script>' +
+    '<script>window.addEventListener("error",e=>{document.getElementById("qa").textContent=' +
+      'JSON.stringify({error:e.message,source:e.filename});});' +
+      'window.addEventListener("unhandledrejection",e=>{document.getElementById("qa").textContent=' +
+      'JSON.stringify({error:String(e.reason)});});</script>' +
+    '<script type="module" src="/app.js"></script><script>' + qaScript + '</script>' +
     '</body></html>');
 
   const browserCheck = ["google-chrome", "chromium", "chromium-browser"]
