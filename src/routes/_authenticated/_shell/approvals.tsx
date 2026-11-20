@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ApprovalDecisionDialog } from "@/components/erp/approval-decision-dialog";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { PoReviewActions } from "@/components/erp/po-review-actions";
+import { DirectorApprovalReminder } from "@/components/erp/director-approval-reminder";
 import { ClearHistory } from "@/components/erp/clear-history";
 import { Pager } from "@/components/erp/pager";
 import { ApprovalKindTabs } from "@/components/erp/approval-kind-tabs";
@@ -90,6 +91,7 @@ function DirectorApprovals() {
   };
   const isDirector = me.data?.roles.includes("director") ?? false;
   const isAdmin = me.data?.permissions.has("users.manage") ?? false;
+  const isSuperAdmin = me.data?.roles.includes("super_admin") ?? false;
   const q = useQuery({
     queryKey: [
       "director-approvals",
@@ -435,6 +437,17 @@ function DirectorApprovals() {
                     <div className="mt-3">
                       <PoReviewActions poId={r.id} poNumber={r.number}
                         quotePath={r.quoteAttachmentPath || r.requestAttachmentPath} />
+                    </div>
+                  )}
+                  {isSuperAdmin && waiting && directors.length > 0 && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+                      <div>
+                        <p className="text-sm font-semibold">Awaiting director approval</p>
+                        <p className="text-xs text-muted-foreground">
+                          Send a new in-app notification to eligible directors.
+                        </p>
+                      </div>
+                      <DirectorApprovalReminder id={r.id} kind={r.kind} />
                     </div>
                   )}
                   {isAdmin && waiting && history.isSuccess && directors.length > 0 && (

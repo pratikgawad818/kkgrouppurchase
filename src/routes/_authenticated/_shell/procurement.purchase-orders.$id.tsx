@@ -23,7 +23,9 @@ import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PoReviewActions } from "@/components/erp/po-review-actions";
+import { DirectorApprovalReminder } from "@/components/erp/director-approval-reminder";
 import { fetchSelectedPoQuotation } from "@/lib/po-selected-quotation";
+import { resolvePoSupplierForDocument } from "@/lib/po-supplier-document";
 import { AttachPoQuotation } from "@/components/erp/attach-po-quotation";
 import { PoSiteCorrectionPanel, type PoSiteCorrection } from "@/components/erp/po-site-correction-panel";
 
@@ -52,7 +54,7 @@ async function loadPo(id: string) {
     supabase
       .from("purchase_orders")
       .select(
-        "*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email,bank_account_name,bank_name,bank_account_number,ifsc), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number,attachment_path), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks,attachment_path), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)",
+        "*, vendors(company_name,gstin,address,city,state,pincode,contact_person,mobile,email), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number,attachment_path), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks,attachment_path), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)",
       )
       .eq("id", id)
       .single(),
@@ -108,12 +110,13 @@ async function loadPo(id: string) {
     .eq("po_id", id)
     .order("created_at", { ascending: false });
   if (correctionResult.error) throw correctionResult.error;
-  const [names, selectedQuotation] = await Promise.all([
+  const [names, selectedQuotation, supplier] = await Promise.all([
     documentActorNames("purchase_order", [id]),
     fetchSelectedPoQuotation(id),
+    resolvePoSupplierForDocument(id, p.data.vendors),
   ]);
   return {
-    po: p.data,
+    po: { ...p.data, vendors: supplier },
     selectedQuotation,
     items: i.data ?? [],
     history: (a.data ?? []).map((row) => ({
@@ -307,19 +310,10 @@ function PoDetail() {
                     )}
                   </div>
                 )}
-                {po.status === "pending_approval" && !isDirector && !isAdmin && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const { error } = await supabase.rpc("remind_po_approvers", { _po_id: id });
-                      if (error) toast.error(errMsg(error));
-                      else toast.success("Reminder sent to directors");
-                    }}
-                  >
-                    Remind directors
-                  </Button>
-                )}
+                {po.status === "pending_approval" &&
+                  (isAdmin || can("purchase_order.create")) && (
+                    <DirectorApprovalReminder id={id} kind="purchase_order" />
+                  )}
                 {po.status === "approved" && can("purchase_order.create") && (
                   <Button
                     size="sm"
