@@ -42,6 +42,14 @@ export const Route = createFileRoute("/_authenticated/_shell/procurement/purchas
   component: PrDetail,
 });
 
+type SelectedSupplierQuotation = {
+  po_id: string;
+  po_number: string;
+  vendor_name: string | null;
+  quotation_number: string | null;
+  attachment_path: string | null;
+};
+
 const ACTION_COPY: Partial<
   Record<PrAction, { title: string; needs: boolean; variant?: "destructive" }>
 > = {
@@ -101,6 +109,23 @@ function PrDetail() {
         .order("created_at");
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const selectedQuotations = useQuery({
+    queryKey: ["pr-selected-supplier-quotations", id],
+    enabled: can("purchase_request.view") && can("purchase_order.view"),
+    staleTime: 30_000,
+    queryFn: async (): Promise<SelectedSupplierQuotation[]> => {
+      // The PR's own attachment and the supplier's selected PO quotation are
+      // stored separately. The read-only RPC performs both project/company
+      // and document-permission checks; it exposes no competing vendor bids.
+      const { data, error } = await supabase.rpc(
+        "get_pr_selected_supplier_quotes" as never,
+        { _pr_id: id } as never,
+      );
+      if (error) throw error;
+      return (data ?? []) as SelectedSupplierQuotation[];
     },
   });
 
@@ -301,14 +326,78 @@ function PrDetail() {
 
       {pr.attachment_path && (
         <section className="mt-4 rounded-md border bg-card p-4">
-          <h2 className="mb-2 text-sm font-semibold">Quotation / supporting document</h2>
+          <h2 className="mb-2 text-sm font-semibold">Document attached to this purchase request</h2>
           <p className="mb-3 text-xs text-muted-foreground">
-            Site Engineer attachment. Review its contents before approving the purchase request.
+            Original PDF or image uploaded with this request. Supplier quotations selected for purchase orders appear separately below.
           </p>
           <ProcurementAttachmentLink path={pr.attachment_path}
             label="View attached PDF / photo" />
         </section>
       )}
+      {can("purchase_order.view") && (
+        <section className="mt-4 rounded-xl border bg-card p-4" aria-label="Supplier quotations linked to this purchase request">
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold">Supplier quotation for linked purchase orders</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Selected supplier quotations are stored with the RFQ / purchase order,
+              separately from documents attached to the original purchase request.
+            </p>
+          </div>
+          {selectedQuotations.isPending && (
+            <p role="status" className="text-xs text-muted-foreground">Loading linked quotations…</p>
+          )}
+          {selectedQuotations.isError && (
+            <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3">
+              <p className="break-words text-xs text-destructive">
+                Linked quotations could not be loaded: {errMsg(selectedQuotations.error)}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => void selectedQuotations.refetch()}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {selectedQuotations.isSuccess && selectedQuotations.data.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No supplier quotation has been selected for a linked purchase order yet.
+              Quotations being collected in an RFQ are not automatically attached to this PR.
+            </p>
+          )}
+          {selectedQuotations.data?.length ? (
+            <ul className="space-y-2">
+              {selectedQuotations.data.map((quote) => (
+                <li key={quote.po_id} className="min-w-0 rounded-lg border p-3">
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <Link
+                        to="/procurement/purchase-orders/$id"
+                        params={{ id: quote.po_id }}
+                        className="break-all text-sm font-semibold text-primary hover:underline"
+                      >
+                        {quote.po_number}
+                      </Link>
+                      <p className="mt-1 break-words text-xs text-muted-foreground">
+                        {quote.vendor_name ?? "Supplier not recorded"}
+                        {quote.quotation_number ? " · " + quote.quotation_number : ""}
+                      </p>
+                    </div>
+                    {quote.attachment_path ? (
+                      <ProcurementAttachmentLink
+                        path={quote.attachment_path}
+                        label="View quotation"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        No quotation PDF / image attached
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      )}
+
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
