@@ -217,7 +217,10 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
 
   font(p.ctx, 8.5);
   const addressLines = lineCount(p, cAddress, leftW - 20, 8.3);
-  const headerH = Math.max(83, 53 + addressLines * 11);
+  const legalLineCount = lineCount(p, gst, w - headerPad * 2, 8.2);
+  const contactLineCount = lineCount(p, contact, w - headerPad * 2, 8.2);
+  const headerH = Math.max(85,
+    39 + addressLines * 11 + 3 + legalLineCount * 11 + 3 + contactLineCount * 11 + 9);
   rect(p, x, y, w, headerH);
   drawLine(p, x, y + 1, x + w, y + 1, 2.25);
   write(p, cName, x + headerPad, y + 13, leftW - headerPad * 2, 17.5, { bold: true });
@@ -231,7 +234,8 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
     { leading: 11 });
   const taxY = Math.max(addrY + 3, y + 51);
   write(p, gst, x + headerPad, taxY, w - headerPad * 2, 8.2);
-  write(p, contact, x + headerPad, taxY + 14, w - headerPad * 2, 8.2);
+  write(p, contact, x + headerPad, taxY + legalLineCount * 11 + 3,
+    w - headerPad * 2, 8.2);
 
   let rowY = y + headerH;
   const half = w / 2;
@@ -249,13 +253,19 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
     ...(site?.address ? [site.address] : []),
     "Expected delivery: " + formatDate(po.expected_delivery_date),
   ];
-  const vendorHeight = Math.max(48,
-    15 + lineCount(p, supplierName, half - 22, 10) * 13 +
-    lineCount(p, addressLeft, half - 22, 8.4) * 11 +
-    13 + (supplierContact ? lineCount(p, supplierContact, half - 22, 8) * 10 : 0));
-  const siteHeight = 14 + rightFields.reduce((total, value) =>
-    total + lineCount(p, value, half - 22, 8.5) * 12, 0);
-  const middleH = Math.max(100, vendorHeight + 12, siteHeight + 12);
+  const supplierNameLines = lineCount(p, supplierName, half - 22, 10);
+  const supplierAddrLines = lineCount(p, addressLeft, half - 22, 8.4);
+  const supplierGstLines = lineCount(p, "GSTIN: " + (supplier?.gstin || "Not recorded"),
+    half - 22, 8.3);
+  const supplierContactLines = supplierContact
+    ? lineCount(p, supplierContact, half - 22, 8) : 0;
+  const vendorHeight = 28 + supplierNameLines * 13 + 3 +
+    supplierAddrLines * 11 + 3 + supplierGstLines * 12 +
+    (supplierContactLines ? 4 + supplierContactLines * 10 : 0);
+  const siteHeight = 28 + rightFields.reduce((total, value, index) =>
+    total + lineCount(p, value, half - 22, index === 0 ? 10 : 8.5) *
+      (index === 0 ? 13 : 12) + (index === 0 ? 2 : 0), 0);
+  const middleH = Math.max(101, vendorHeight + 13, siteHeight + 13);
   rect(p, x, rowY, w, middleH, "#fafafa");
   drawLine(p, x + half, rowY, x + half, rowY + middleH);
   write(p, "VENDOR / SUPPLIER", x + headerPad, rowY + 10, half - 22, 8.2, { bold: true });
@@ -419,10 +429,10 @@ function commercial(p: Paper, po: PoPdfOrder, items: PoPdfLine[]) {
       rect(p, rX, ry, right, rowHeight, SHADE, false);
       drawLine(p, rX, ry, rX + right, ry, isTotal ? 1.2 : 0.9);
     }
-    write(p, entry.label, rX + 7, ry + 4, right - 105, isTotal ? 9 : 8.5,
+    write(p, entry.label, rX + 7, ry + 4, right - 92, isTotal ? 9 : 8.1,
       { bold: !!entry.strong });
-    write(p, formatMoney(entry.amount), rX + right - 101, ry + 4, 94,
-      isTotal ? 11 : 8.6, { align: "right", bold: !!entry.strong });
+    write(p, formatMoney(entry.amount), rX + right - 88, ry + 4, 81,
+      isTotal ? 10.3 : 8.4, { align: "right", bold: !!entry.strong });
     ry += rowHeight;
   }
   if (ry < bodyY + bodyH) drawLine(p, rX, ry, rX + right, ry);
