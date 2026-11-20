@@ -6152,6 +6152,7 @@ export type Database = {
         | "director"
         | "sales_manager"
         | "sales_executive"
+        | "senior_sales_executive"
         | "accounts_manager"
         | "purchase_manager"
         | "site_engineer"
@@ -6388,6 +6389,7 @@ export const Constants = {
         "director",
         "sales_manager",
         "sales_executive",
+        "senior_sales_executive",
         "accounts_manager",
         "purchase_manager",
         "site_engineer",

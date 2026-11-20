@@ -8,7 +8,7 @@ import { VIEWER_NAV } from "./management-overview.ts";
  * This is defense-in-depth; table RLS and privileged RPCs MUST independently
  * enforce each permission, document scope and actor identity.
  */
-type Rule = { pattern: RegExp; any?: readonly string[]; all?: readonly string[] };
+type Rule = { pattern: RegExp; any?: readonly string[]; all?: readonly string[]; roles?: readonly string[] };
 export type PageAccess = {
   roles: readonly string[];
   permissions: ReadonlySet<string>;
@@ -37,7 +37,8 @@ const rules: readonly Rule[] = [
       "units.view",
     ],
   },
-  { pattern: /^\/units\/?$/, any: ["units.view"] },
+  { pattern: /^\/sales\/?$/, roles: ["director", "super_admin", "senior_sales_executive"] },
+  { pattern: /^\/units\/?$/, roles: ["director", "super_admin", "senior_sales_executive"], any: ["units.view"] },
   {
     pattern: /^\/approvals\/?$/,
     any: ["purchase_order.approve", "payment.approve", "users.manage"],
@@ -107,6 +108,7 @@ export function canAccessPage(path: string, user: PageAccess): boolean {
     return false;
   const rule = rules.find((entry) => entry.pattern.test(path));
   if (!rule) return false; // New routes fail closed until deliberately classified.
+  if (rule.roles && !rule.roles.some((role) => user.roles.includes(role))) return false;
   if (rule.all && !rule.all.every((p) => user.permissions.has(p))) return false;
   if (rule.any && !rule.any.some((p) => user.permissions.has(p))) return false;
   return true;

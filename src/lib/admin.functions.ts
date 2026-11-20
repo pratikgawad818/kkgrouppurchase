@@ -6,6 +6,7 @@ import { validateStaffUpdate } from "@/lib/staff-access";
 const roleSchema = z.enum([
   "super_admin",
   "director",
+  "senior_sales_executive",
   "purchase_manager",
   "store_manager",
   "accounts_manager",

@@ -9,6 +9,7 @@ import { UNIT_STATUS, UNIT_TYPE_LABEL, inr, num, type UnitStatus } from "@/lib/f
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useMe } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/_shell/units")({
   head: () => ({ meta: [{ title: "Flats Inventory — KK Group ERP" }, { name: "description", content: "Flats, shops and offices across every KK Group project and building." }, { property: "og:title", content: "Flats Inventory — KK Group ERP" }, { property: "og:description", content: "Flats, shops and offices across every KK Group project and building." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -20,6 +21,8 @@ const inp = "h-9 w-full rounded-md border bg-card px-3 text-sm";
 
 function Units() {
   const qc = useQueryClient();
+  const me = useMe();
+  const canEditUnits = !!me.data?.roles.includes("super_admin");
   const [tab, setTab] = useState<"units" | "building">("units");
   const [project, setProject] = useState("");
   const [status, setStatus] = useState("");
@@ -36,7 +39,7 @@ function Units() {
 
   return (
     <>
-      <PageHeader title="Inventory" subtitle={`${rows.length} units`} />
+      <PageHeader title="Flat Inventory" subtitle={`${rows.length} units — Sales`} />
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-lg bg-muted p-1">
@@ -54,7 +57,7 @@ function Units() {
           </select>
           <input aria-label="Search unit number" className="h-11 w-full rounded-lg border bg-card px-3 text-sm sm:h-9 sm:w-40" placeholder="Search unit no." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Button onClick={() => setEdit("new")}><Plus className="h-4 w-4" /> Add Unit</Button>
+        {canEditUnits && <Button onClick={() => setEdit("new")}><Plus className="h-4 w-4" /> Add Flat</Button>}
       </div>
 
       {tab === "units" ? (
@@ -63,7 +66,7 @@ function Units() {
             <table className="w-full text-sm">
               <thead><tr className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">{["Unit", "Project", "Tower / Floor", "Type", "Carpet Area", "Final Price", "Status"].map((h) => <th key={h} className="px-5 py-3">{h}</th>)}</tr></thead>
               <tbody className="divide-y">{rows.map((u) => (
-                <tr key={u.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setEdit(u)}>
+                <tr key={u.id} className={canEditUnits ? "cursor-pointer hover:bg-muted/50" : ""} onClick={() => { if (canEditUnits) setEdit(u); }}>
                   <td className="px-5 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-5 py-3 text-muted-foreground">{u.projects?.name}</td>
                   <td className="px-5 py-3 text-muted-foreground">{u.buildings?.name} · {u.floors?.name}</td>
@@ -74,9 +77,9 @@ function Units() {
                 </tr>))}</tbody>
             </table>)}
         </div>
-      ) : <BuildingView rows={rows} onPick={setEdit} />}
+      ) : <BuildingView rows={rows} onPick={(unit) => { if (canEditUnits) setEdit(unit); }} />}
 
-      {edit && <UnitModal unit={edit === "new" ? null : edit} projects={projects.data ?? []} onClose={() => setEdit(null)} onSaved={() => { refresh(); setEdit(null); }} />}
+      {canEditUnits && edit && <UnitModal unit={edit === "new" ? null : edit} projects={projects.data ?? []} onClose={() => setEdit(null)} onSaved={() => { refresh(); setEdit(null); }} />}
     </>
   );
 }

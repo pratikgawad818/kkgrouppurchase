@@ -51,12 +51,19 @@ export const WORKSPACE_NAV: WorkspaceNavGroup[] = [
     items: [{ to: "/approvals", label: "Director approvals" }],
   },
   {
+    key: "sales",
+    label: "Sales",
+    items: [
+      { to: "/sales", label: "Sales & bookings" },
+      { to: "/units", label: "Flat inventory" },
+    ],
+  },
+  {
     key: "projects",
     label: "Projects",
     items: [
       { to: "/projects", label: "Projects" },
       { to: "/buildings", label: "Buildings" },
-      { to: "/units", label: "Property inventory" },
       { to: "/management", label: "Management overview" },
     ],
   },
@@ -100,9 +107,11 @@ export function workspaceLocation(path: string, groups: WorkspaceNavGroup[]) {
 
 /** Choose shortcuts only from already-authorized routes. Directors review work first. */
 export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirector = false) {
+  const hasSales = groups.some((group) => group.key === "sales");
   const keys = isDirector
     ? ["home", "approvals", "purchasing", "finance"]
-    : ["home", "purchasing", "stock", "finance"];
+    : hasSales ? ["home", "sales", "purchasing", "stock"]
+      : ["home", "purchasing", "stock", "finance"];
   return keys.flatMap((key) => {
     const group = groups.find((entry) => entry.key === key);
     if (!group) return [];
@@ -122,7 +131,9 @@ export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirecto
               : "Purchasing"
             : key === "stock"
               ? "Stock"
-              : "Payments";
+              : key === "sales"
+                ? "Sales"
+                : "Payments";
     return [{ key, to: target.to, label }];
   });
 }

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/_shell/settings/users")({
 });
 
 type Assignable = Exclude<AppRole, "super_admin" | "sales_manager" | "sales_executive">;
-const ASSIGNABLE: Assignable[] = ["director", "purchase_manager", "store_manager", "accounts_manager", "accountant", "project_manager", "site_engineer", "auditor"];
+const ASSIGNABLE: Assignable[] = ["director", "senior_sales_executive", "purchase_manager", "store_manager", "accounts_manager", "accountant", "project_manager", "site_engineer", "auditor"];
 type Staff = { id: string; full_name: string | null; email: string | null; phone: string | null; department: string | null; designation: string | null; is_active: boolean; avatar_url: string | null; roles: AppRole[] };
 
 function StaffAvatar({ path, name }: { path: string | null; name: string }) {
