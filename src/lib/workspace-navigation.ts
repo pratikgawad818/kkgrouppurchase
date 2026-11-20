@@ -107,9 +107,11 @@ export function workspaceLocation(path: string, groups: WorkspaceNavGroup[]) {
 
 /** Choose shortcuts only from already-authorized routes. Directors review work first. */
 export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirector = false) {
+  const hasSales = groups.some((group) => group.key === "sales");
   const keys = isDirector
     ? ["home", "approvals", "purchasing", "finance"]
-    : ["home", "sales", "purchasing", "stock"];
+    : hasSales ? ["home", "sales", "purchasing", "stock"]
+      : ["home", "purchasing", "stock", "finance"];
   return keys.flatMap((key) => {
     const group = groups.find((entry) => entry.key === key);
     if (!group) return [];
