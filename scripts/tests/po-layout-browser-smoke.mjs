@@ -83,7 +83,7 @@ try {
       'JSON.stringify({ok:false,error:"JS: "+e.message+" at "+e.filename+":"+e.lineno});});' +
     'window.addEventListener("unhandledrejection",e=>{document.getElementById("result").textContent=' +
       'JSON.stringify({ok:false,error:String(e.reason)});});</script>' +
-    '<script src="./app.js"></script>');
+    '<script>' + readFileSync(join(work, "app.js"), "utf8") + '</script>');
 
   const browser = [process.env.CHROME_BIN, "google-chrome", "chromium", "chromium-browser"]
     .filter(Boolean).map(name => spawnSync("which", [name], { encoding: "utf8" }))
