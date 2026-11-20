@@ -262,10 +262,10 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
   const vendorHeight = 28 + supplierNameLines * 13 + 3 +
     supplierAddrLines * 11 + 3 + supplierGstLines * 12 +
     (supplierContactLines ? 4 + supplierContactLines * 10 : 0);
-  const siteHeight = 28 + rightFields.reduce((total, value, index) =>
+  const siteHeight = 26 + rightFields.reduce((total, value, index) =>
     total + lineCount(p, value, half - 22, index === 0 ? 10 : 8.5) *
-      (index === 0 ? 13 : 12) + (index === 0 ? 2 : 0), 0);
-  const middleH = Math.max(101, vendorHeight + 13, siteHeight + 13);
+      (index === 0 ? 12 : 10.2) + (index === 0 ? 2 : 0), 0);
+  const middleH = Math.max(88, vendorHeight + 8, siteHeight + 8);
   rect(p, x, rowY, w, middleH, "#fafafa");
   drawLine(p, x + half, rowY, x + half, rowY + middleH);
   write(p, "VENDOR / SUPPLIER", x + headerPad, rowY + 10, half - 22, 8.2, { bold: true });
@@ -279,11 +279,11 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
   }
   write(p, "DELIVERY / PROJECT", x + half + headerPad,
     rowY + 10, half - 22, 8.2, { bold: true });
-  let rightY = rowY + 28;
+  let rightY = rowY + 26;
   rightFields.forEach((value, index) => {
     rightY = write(p, value, x + half + headerPad, rightY, half - 22,
       index === 0 ? 10 : 8.5,
-      { bold: index === 0, leading: index === 0 ? 13 : 12 }) + (index === 0 ? 2 : 0);
+      { bold: index === 0, leading: index === 0 ? 12 : 10.2 }) + (index === 0 ? 2 : 0);
   });
 
   rowY += middleH;
@@ -293,14 +293,14 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
   const leftRef = "Supplier quotation: " + quote + quoteDate;
   const rightRef = "Purchase request: " + (po.purchase_requests?.pr_number || "—") +
     "\nRFQ: " + (po.rfqs?.rfq_number || "—");
-  const refH = Math.max(39,
+  const refH = Math.max(35,
     12 + Math.max(lineCount(p, leftRef, half - 23, 8.4) * 11,
       lineCount(p, rightRef, half - 23, 8.4) * 11));
   rect(p, x, rowY, w, refH);
   drawLine(p, x + half, rowY, x + half, rowY + refH);
   write(p, leftRef, x + headerPad, rowY + 10, half - 22, 8.4, { leading: 11 });
   write(p, rightRef, x + half + headerPad, rowY + 10, half - 22, 8.4, { leading: 11 });
-  p.y = rowY + refH + 23;
+  p.y = rowY + refH + 18;
 
   if (!["approved","sent","partially_received","fully_received","closed","short_closed"]
     .includes(po.status)) {
@@ -321,15 +321,15 @@ function titleBand(p: Paper, continuation = false) {
     M, y, 270, 10, { bold: true });
   write(p, "All amounts in Indian Rupees (₹)", M + 290, y + 1, CW - 290,
     8, { color: MUTED, align: "right" });
-  drawLine(p, M, y + 23, W - M, y + 23, 1.1);
-  p.y = y + 31;
+  drawLine(p, M, y + 20, W - M, y + 20, 1.1);
+  p.y = y + 27;
 }
 function tableHead(p: Paper) {
-  const y = p.y, h = 28;
+  const y = p.y, h = 25;
   rect(p, M, y, WIDTH, h, SHADE);
   for (const x of POS.slice(1, -1)) drawLine(p, x, y, x, y + h, 0.55);
   HEADERS.forEach((head, i) => {
-    write(p, head, POS[i]! + 3, y + 8, COLS[i]! - 6, 7.2,
+    write(p, head, POS[i]! + 3, y + 6, COLS[i]! - 6, 7.2,
       { bold: true, align: i > 3 ? "right" : i === 0 || i === 2 || i === 3 ? "center" : "left" });
   });
   p.y = y + h;
@@ -342,15 +342,15 @@ function itemLabel(item: PoPdfLine) {
   return name + note + code;
 }
 function itemHeight(p: Paper, item: PoPdfLine) {
-  return Math.max(41, 12 + lineCount(p, itemLabel(item), COLS[1]! - 9, 8.2) * 11);
+  return Math.max(37, 10 + lineCount(p, itemLabel(item), COLS[1]! - 9, 8.1) * 10.2);
 }
 function itemRow(p: Paper, item: PoPdfLine) {
   const y = p.y, h = itemHeight(p, item);
   rect(p, M, y, WIDTH, h);
   for (const x of POS.slice(1, -1)) drawLine(p, x, y, x, y + h, 0.45);
   write(p, item.line_no, POS[0]! + 2, y + 6, COLS[0]! - 4, 8.2, { align: "center" });
-  write(p, itemLabel(item), POS[1]! + 5, y + 5, COLS[1]! - 9, 8.2,
-    { leading: 11 });
+  write(p, itemLabel(item), POS[1]! + 5, y + 5, COLS[1]! - 9, 8.1,
+    { leading: 10.2 });
   write(p, formatQty(item.ordered_quantity), POS[2]! + 2, y + 6, COLS[2]! - 4,
     8.2, { align: "right" });
   write(p, item.units_of_measure?.code || "—", POS[3]! + 1, y + 6, COLS[3]! - 2,
@@ -408,7 +408,7 @@ function commercial(p: Paper, po: PoPdfOrder, items: PoPdfLine[]) {
   const leftNeeded = leftItems.reduce((acc, [label, value]) =>
     acc + 12 + lineCount(p, label, left - 20, 8.5) * 10 +
     lineCount(p, value, left - 20, 8.4) * 11 + 6, 16);
-  const rowHeight = 19.4, bodyH = Math.max(leftNeeded + 16, rows.length * rowHeight);
+  const rowHeight = 17.3, bodyH = Math.max(leftNeeded + 16, rows.length * rowHeight);
   rect(p, x, y, w, stripeH, SHADE);
   write(p, "02 / COMMERCIAL TERMS & TOTALS", x + 10, y + 6, w - 20,
     10, { bold: true });
@@ -464,7 +464,7 @@ function commercial(p: Paper, po: PoPdfOrder, items: PoPdfLine[]) {
     write(p, warning, x + 7, cursor + 7, w - 14, 8, { bold: true });
     cursor += h;
   }
-  p.y = cursor + 25;
+  p.y = cursor + 18;
 }
 
 function signatureRow(p: Paper, po: PoPdfOrder) {
@@ -559,37 +559,37 @@ export async function buildPoReviewDocument(order: PoPdfOrder, items: PoPdfLine[
     }
     itemRow(p, item);
   }
-  // Keep the compact tax note, commercial panel and signature block together
-  // when possible. Larger orders flow naturally onto a continuation page.
-  const { rows } = totalRows(order, items);
-  const leftWidth = 315;
-  const leftItems = [
-    order.payment_terms || order.vendor_quotations?.payment_terms || "Not recorded",
-    order.delivery_terms || "Not recorded",
-    order.remarks || "",
+  // Use measured content rather than a fixed large reservation. Short POs
+  // (including the uploaded KK Construction reference) should fit one A4
+  // page; long orders break before the complete commercial summary.
+  if (p.y + 33 > END) {
+    p = drawPage(order, pages.length + 1);
+    pages.push(p);
+    write(p, "MATERIAL GST NOTES", M, p.y, CW, 9, { bold: true });
+    p.y += 20;
+  }
+  tableNote(p);
+  const { rows, data } = totalRows(order, items);
+  const leftFields: Array<[string, string]> = [
+    ["Payment terms", order.payment_terms || order.vendor_quotations?.payment_terms || "Not recorded"],
+    ["Delivery and installation terms", order.delivery_terms || "Not recorded - confirm before issuing PO"],
   ];
-  const leftNeed = leftItems.reduce((n, value) =>
-    n + lineCount(p, value, leftWidth - 20, 8.4) * 11 + 32, 18);
-  const panelHeight = 24 + Math.max(leftNeed + 16, rows.length * 19.4) + 76;
-  const keep = panelHeight + 93;
-  if (p.y + 26 + keep > END) {
+  if (order.remarks) leftFields.push(["Remarks", order.remarks]);
+  const leftNeeded = leftFields.reduce((acc, [label, value]) =>
+    acc + 12 + lineCount(p, label, 295, 8.5) * 10 +
+    lineCount(p, value, 295, 8.4) * 11 + 6, 16);
+  const bodyHeight = Math.max(leftNeeded + 16, rows.length * 17.3);
+  const extraChargeNote = Number(order.freight) > 0 || Number(order.other_charges) > 0;
+  const extraTaxNote = data.freightGst !== 0 || data.otherGst !== 0;
+  const unreconciled = Math.abs(data.difference) >= 0.01 || Math.abs(data.gstDifference) >= 0.01;
+  const summaryHeight = 24 + bodyHeight + (extraChargeNote ? 19 : 0) +
+    19 + (extraTaxNote ? 19 : 0) + (unreconciled ? 25 : 0) + 18;
+  const signaturesHeight = 80;
+  if (p.y + summaryHeight + signaturesHeight > END) {
     p = drawPage(order, pages.length + 1);
     pages.push(p);
     write(p, "PURCHASE ORDER - COMMERCIAL SUMMARY", M, p.y, CW, 10, { bold: true });
     p.y += 23;
-  } else {
-    tableNote(p);
-  }
-
-  // Long free-text terms cannot be safely overprinted into a fixed-height
-  // box. Overflow is sent to a new page rather than hiding totals/signatures.
-  if (panelHeight > END - p.y - 80) {
-    // Commercial terms are retained as supplied, not truncated.
-    // Normal business orders occupy one or two A4 pages.
-    p = drawPage(order, pages.length + 1);
-    pages.push(p);
-    write(p, "COMMERCIAL TERMS / TOTALS (CONTINUED)", M, p.y, CW, 10, { bold: true });
-    p.y += 22;
   }
   commercial(p, order, items);
   p = needNewPage(p, 85, order, pages);
