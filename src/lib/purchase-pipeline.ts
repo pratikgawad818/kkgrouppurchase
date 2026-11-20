@@ -48,6 +48,7 @@ export type PipelineStep = {
 export type PurchaseChain = WorkspaceTask & {
   stage: string;
   steps: PipelineStep[];
+  vendor?: string | null;
 };
 
 const STEP_KEYS: StepKey[] = ["request", "rfq", "order", "delivery", "invoice", "payment"];
@@ -320,7 +321,7 @@ export function buildPurchaseChains(input: PipelineInput): PurchaseChain[] {
         action: "View order", href: route.po(po.id), due: po.due,
       };
     }
-    result.push(makeChain("po:" + po.id, docs, stage, description, project));
+    result.push({ ...makeChain("po:" + po.id, docs, stage, description, project), vendor: po.vendor });
   }
 
   // A GRN / challan should not silently disappear if the user's role may
