@@ -35,7 +35,7 @@ test("sales database migration has separate verified receipt ledger and restrict
   const sql = readFileSync("drizzle/migrations/0085_property_sales_bookings_receipts.sql","utf8");
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.property_sales/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.property_sale_receipts/);
-  assert.match(sql, /WHERE status='verified'/);
+  assert.match(sql, /AND status='verified'/);
   assert.match(sql, /WHERE status<>'cancelled'/);
   assert.match(sql, /IF NOT public\.sales_manager\(\)/);
   assert.match(sql, /FOR UPDATE/);
