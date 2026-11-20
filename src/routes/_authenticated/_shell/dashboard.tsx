@@ -144,18 +144,18 @@ function Dashboard() {
             .order("id").range(start, end))
         : Promise.resolve([]);
 
+      const openQuery = supabase.from("purchase_orders")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
+      const dueQuery = supabase.from("purchase_orders")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
+        .lte("expected_delivery_date", day);
       const openOrders = canPo
-        ? supabase.from("purchase_orders")
-          .select("id", { count: "exact", head: true })
-          .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
-          .then(result => result)
+        ? (effectiveProject ? openQuery.eq("project_id", effectiveProject) : openQuery)
         : Promise.resolve({ count: null, error: null });
       const deliveriesDue = canPo
-        ? supabase.from("purchase_orders")
-          .select("id", { count: "exact", head: true })
-          .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
-          .lte("expected_delivery_date", day)
-          .then(result => result)
+        ? (effectiveProject ? dueQuery.eq("project_id", effectiveProject) : dueQuery)
         : Promise.resolve({ count: null, error: null });
       // Financial KPI is intentionally unchanged and is distinct from the
       // purchase-chain tab counts.
