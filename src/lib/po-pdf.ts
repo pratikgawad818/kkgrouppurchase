@@ -53,8 +53,6 @@ export type PoPdfOrder = {
     company_name: string; gstin: string | null; address: string | null;
     city: string | null; state: string | null; pincode: string | null;
     contact_person: string | null; mobile: string | null; email: string | null;
-    bank_name?: string | null; bank_account_name?: string | null;
-    bank_account_number?: string | null; ifsc?: string | null;
   } | null;
   projects?: { name: string } | null;
   buildings?: { name: string } | null;
