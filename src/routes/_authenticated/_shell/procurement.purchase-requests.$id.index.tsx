@@ -116,6 +116,7 @@ function PrDetail() {
     queryKey: ["pr-selected-supplier-quotations", id],
     enabled: can("purchase_request.view") && can("purchase_order.view"),
     staleTime: 30_000,
+    refetchOnMount: "always",
     queryFn: async (): Promise<SelectedSupplierQuotation[]> => {
       // The PR's own attachment and the supplier's selected PO quotation are
       // stored separately. The read-only RPC performs both project/company
@@ -251,6 +252,74 @@ function PrDetail() {
           </>
         }
       />
+      {can("purchase_order.view") && (
+        <section className="mb-4 rounded-xl border border-primary/20 bg-card p-4 shadow-sm" aria-label="Supplier quotations linked to this purchase request">
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold">Supplier quotation — linked to your purchase request</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              The selected supplier quotation is attached to the linked PO. View the original PDF here.
+            </p>
+          </div>
+          {selectedQuotations.isPending && (
+            <p role="status" className="text-xs text-muted-foreground">Loading linked quotations…</p>
+          )}
+          {selectedQuotations.isSuccess && selectedQuotations.data.length > 0 && (
+            <p role="status" className="mb-3 text-xs font-medium text-primary">
+              {selectedQuotations.data.length} purchase order{selectedQuotations.data.length === 1 ? "" : "s"} linked
+            </p>
+          )}
+          {selectedQuotations.isError && (
+            <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3">
+              <p className="break-words text-xs text-destructive">
+                Linked quotations could not be loaded: {errMsg(selectedQuotations.error)}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => void selectedQuotations.refetch()}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {selectedQuotations.isSuccess && selectedQuotations.data.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No supplier quotation has been selected for a linked purchase order yet.
+              Quotations being collected in an RFQ are not automatically attached to this PR.
+            </p>
+          )}
+          {selectedQuotations.data?.length ? (
+            <ul className="space-y-2">
+              {selectedQuotations.data.map((quote) => (
+                <li key={quote.po_id} className="min-w-0 rounded-lg border p-3">
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <Link
+                        to="/procurement/purchase-orders/$id"
+                        params={{ id: quote.po_id }}
+                        className="break-all text-sm font-semibold text-primary hover:underline"
+                      >
+                        {quote.po_number}
+                      </Link>
+                      <p className="mt-1 break-words text-xs text-muted-foreground">
+                        {quote.vendor_name ?? "Supplier not recorded"}
+                        {quote.quotation_number ? " · " + quote.quotation_number : ""}
+                      </p>
+                    </div>
+                    {quote.attachment_path ? (
+                      <ProcurementAttachmentLink
+                        path={quote.attachment_path}
+                        label="View quotation"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        No quotation PDF / image attached
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      )}
+
       {pending && mine && (
         <div className="mb-4 rounded-md border bg-card p-3 text-xs text-muted-foreground">
           Awaiting approval. You cannot approve your own request.
@@ -334,70 +403,6 @@ function PrDetail() {
             label="View attached PDF / photo" />
         </section>
       )}
-      {can("purchase_order.view") && (
-        <section className="mt-4 rounded-xl border bg-card p-4" aria-label="Supplier quotations linked to this purchase request">
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold">Supplier quotation for linked purchase orders</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Selected supplier quotations are stored with the RFQ / purchase order,
-              separately from documents attached to the original purchase request.
-            </p>
-          </div>
-          {selectedQuotations.isPending && (
-            <p role="status" className="text-xs text-muted-foreground">Loading linked quotations…</p>
-          )}
-          {selectedQuotations.isError && (
-            <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3">
-              <p className="break-words text-xs text-destructive">
-                Linked quotations could not be loaded: {errMsg(selectedQuotations.error)}
-              </p>
-              <Button variant="outline" size="sm" onClick={() => void selectedQuotations.refetch()}>
-                Retry
-              </Button>
-            </div>
-          )}
-          {selectedQuotations.isSuccess && selectedQuotations.data.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              No supplier quotation has been selected for a linked purchase order yet.
-              Quotations being collected in an RFQ are not automatically attached to this PR.
-            </p>
-          )}
-          {selectedQuotations.data?.length ? (
-            <ul className="space-y-2">
-              {selectedQuotations.data.map((quote) => (
-                <li key={quote.po_id} className="min-w-0 rounded-lg border p-3">
-                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <Link
-                        to="/procurement/purchase-orders/$id"
-                        params={{ id: quote.po_id }}
-                        className="break-all text-sm font-semibold text-primary hover:underline"
-                      >
-                        {quote.po_number}
-                      </Link>
-                      <p className="mt-1 break-words text-xs text-muted-foreground">
-                        {quote.vendor_name ?? "Supplier not recorded"}
-                        {quote.quotation_number ? " · " + quote.quotation_number : ""}
-                      </p>
-                    </div>
-                    {quote.attachment_path ? (
-                      <ProcurementAttachmentLink
-                        path={quote.attachment_path}
-                        label="View quotation"
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        No quotation PDF / image attached
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-      )}
-
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
