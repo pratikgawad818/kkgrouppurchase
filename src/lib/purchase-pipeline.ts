@@ -344,6 +344,11 @@ export function buildPurchaseChains(input: PipelineInput): PurchaseChain[] {
   }
 
   for (const rfq of input.rfqs) {
+    // A cancelled/closed RFQ with no issued PO must not resurrect the same
+    // completed purchase as an orphan approved PR on the dashboard.
+    if (rfq.prId && (rfq.status === "closed" || rfq.status === "cancelled")) {
+      coveredPr.add(rfq.prId);
+    }
     if (coveredRfq.has(rfq.id) || !ACTIVE_RFQ.has(rfq.status)) continue;
     const pr = rfq.prId ? prById.get(rfq.prId) : undefined;
     if (pr) coveredPr.add(pr.id);
