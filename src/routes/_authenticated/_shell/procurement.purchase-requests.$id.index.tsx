@@ -326,9 +326,9 @@ function PrDetail() {
 
       {pr.attachment_path && (
         <section className="mt-4 rounded-md border bg-card p-4">
-          <h2 className="mb-2 text-sm font-semibold">Quotation / supporting document</h2>
+          <h2 className="mb-2 text-sm font-semibold">Document attached to this purchase request</h2>
           <p className="mb-3 text-xs text-muted-foreground">
-            Site Engineer attachment. Review its contents before approving the purchase request.
+            Original PDF or image uploaded with this request. Supplier quotations selected for purchase orders appear separately below.
           </p>
           <ProcurementAttachmentLink path={pr.attachment_path}
             label="View attached PDF / photo" />
