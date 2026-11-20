@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { beginDocumentPreview, showDocument } from "@/components/erp/document-viewer";
+import { beginDocumentPreview } from "@/components/erp/document-viewer";
+import { openPrivateProcurementAttachment } from "@/lib/attached-document-preview";
 import { buildPoReviewDocument } from "@/lib/po-pdf";
-import { procurementAttachmentContentType, PROCUREMENT_ATTACHMENT_BUCKET } from "@/lib/procurement-attachments";
 import { errMsg } from "@/lib/format";
 import { documentActorNames } from "@/lib/document-actors";
 
@@ -85,23 +85,18 @@ export function PoReviewActions({
       setMissingQuote(true);
       return;
     }
+    // Unlike the old download-then-iframe workflow, this opens the same
+    // full-screen viewer immediately on the actual button tap.
+    const extension = quotePath.toLowerCase().split(".").pop() || "pdf";
+    const name = "Quotation - " + poNumber + "." + extension;
     setBusy("quotation");
     try {
-      const { data, error } = await supabase.storage
-        .from(PROCUREMENT_ATTACHMENT_BUCKET).download(quotePath);
-      if (error) throw error;
-      if (!data) throw new Error("Quotation file is not available.");
-      const type = procurementAttachmentContentType(quotePath);
-      if (!type) throw new Error("Unsupported attachment type. Upload a PDF or image.");
-      const name = quotePath.split("/").at(-1) ?? "Supplier quotation";
-      showDocument({
-        url: URL.createObjectURL(new Blob([data], { type })),
-        name: "Quotation - " + name,
-        type,
-      });
+      await openPrivateProcurementAttachment(quotePath, name);
     } catch (error) {
       toast.error("Unable to open the attached quotation", { description: errMsg(error) });
-    } finally { setBusy(null); }
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (

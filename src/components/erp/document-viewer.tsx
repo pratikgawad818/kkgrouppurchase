@@ -158,23 +158,23 @@ export function DocumentViewer() {
         {loading ? (
           <div role="status" className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-foreground" aria-hidden="true" />
-            <p className="text-sm font-medium">Preparing purchase order…</p>
-            <p className="text-xs text-muted-foreground">The PDF opens here automatically when ready.</p>
+            <p className="text-sm font-medium">Preparing document…</p>
+            <p className="text-xs text-muted-foreground">Your PDF or image opens here automatically when ready.</p>
           </div>
         ) : failed ? (
           <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
             <AlertCircle className="h-8 w-8 text-destructive" />
-            <h2 className="font-semibold">Could not open this purchase order</h2>
+            <h2 className="font-semibold">Could not open this document</h2>
             <p className="max-w-md text-sm text-muted-foreground">{doc.message || "The document could not be prepared."}</p>
             <Button type="button" variant="outline" onClick={close}>Go back</Button>
           </div>
         ) : isPdf && doc.pages?.length ? (
           <div className="h-full overflow-auto overscroll-contain p-2 sm:p-5"
-            aria-label="Zoomable purchase order pages">
+            aria-label="Zoomable document pages">
             <div className="mx-auto flex flex-col items-center gap-4"
               style={{ width: pdfZoom + "%", maxWidth: (820 * pdfZoom / 100) + "px" }}>
               {doc.pages.map((url, index) => (
-                <img key={url} src={url} alt={"Purchase Order " + doc.name + ", page " + (index + 1)}
+                <img key={url} src={url} alt={doc.name + ", page " + (index + 1)}
                   draggable={false}
                   className="h-auto w-full bg-white shadow-md ring-1 ring-black/10"
                   style={{ aspectRatio: "595.28 / 841.89" }} />

@@ -2,12 +2,9 @@ import { useState } from "react";
 import { FileText, Paperclip, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { showDocument } from "@/components/erp/document-viewer";
-import { supabase } from "@/integrations/supabase/client";
+import { openPrivateProcurementAttachment } from "@/lib/attached-document-preview";
 import {
   PROCUREMENT_ATTACHMENT_ACCEPT,
-  PROCUREMENT_ATTACHMENT_BUCKET,
-  procurementAttachmentContentType,
   validateProcurementAttachment,
 } from "@/lib/procurement-attachments";
 
@@ -24,19 +21,7 @@ export function ProcurementAttachmentLink({
   async function view() {
     setLoading(true);
     try {
-      const { data, error } = await supabase.storage
-        .from(PROCUREMENT_ATTACHMENT_BUCKET)
-        .download(path!);
-      if (error) throw error;
-      if (!data) throw new Error("Attachment is unavailable.");
-      const mime = procurementAttachmentContentType(path!);
-      if (!mime) throw new Error("Unsupported document type.");
-      const content = new Blob([data], { type: mime });
-      showDocument({
-        url: URL.createObjectURL(content),
-        name: label,
-        type: mime,
-      });
+      await openPrivateProcurementAttachment(path!, label);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not open attachment");
     } finally {
