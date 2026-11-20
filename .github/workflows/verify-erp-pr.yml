@@ -392,6 +392,16 @@ jobs:
         run: bun run build
       - name: TypeScript check
         run: bun run typecheck
+      - name: Render reference PO as real A4 PDF in headless Chromium
+        run: node scripts/tests/po-layout-browser-smoke.mjs
+      - name: Save actual rendered PDF and preview for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: po-layout-visual-preview
+          path: artifacts/po-layout-smoke/
+          if-no-files-found: ignore
+          retention-days: 7
 
   email-otp-security:
     name: Profile email OTP security (PostgreSQL 17)
