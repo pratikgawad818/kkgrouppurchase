@@ -12,7 +12,7 @@ test("pending PO detail offers a director reminder to Super Admin", () => {
 
 test("Super Admin has reminder actions for pending POs and payments in the approvals queue", () => {
   const page = source("src/routes/_authenticated/_shell/approvals.tsx");
-  assert.match(page, /isAdmin && waiting && directors\.length > 0/);
+  assert.match(page, /isSuperAdmin && waiting && directors\.length > 0/);
   assert.match(page, /<DirectorApprovalReminder id=\{r\.id\} kind=\{r\.kind\}/);
   assert.match(page, /history\.isSuccess/);
 });
