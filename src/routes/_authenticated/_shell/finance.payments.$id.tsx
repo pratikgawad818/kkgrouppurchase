@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { loadApprovalDecisions } from "@/lib/approval-history-query";
 import { ApprovalDecisionHistory } from "@/components/erp/approval-decision-history";
+import { DirectorApprovalReminder } from "@/components/erp/director-approval-reminder";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { Button } from "@/components/ui/button";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
@@ -137,12 +138,19 @@ function PaymentDetail() {
     <div className="mx-auto max-w-4xl space-y-5 pb-16">
       <PageHeader deleteAction={<PermanentDelete force kind="vendor_payment" id={p.id} name={p.payment_number} onDeleted={()=>window.location.assign("/finance/payments")}/>}
         actions={
-          p.status === "scheduled" && me.data?.roles.includes("director") ? (
-            <Button className="approval-action" asChild>
-              <Link to="/approvals" search={{ kind: "vendor_payment", view: "pending", id }}>
-                Review approval
-              </Link>
-            </Button>
+          p.status === "scheduled" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {me.data?.roles.includes("super_admin") && (
+                <DirectorApprovalReminder id={id} kind="vendor_payment" />
+              )}
+              {me.data?.roles.includes("director") && (
+                <Button className="approval-action" asChild>
+                  <Link to="/approvals" search={{ kind: "vendor_payment", view: "pending", id }}>
+                    Review approval
+                  </Link>
+                </Button>
+              )}
+            </div>
           ) : undefined
         }
         title={p.payment_number}
