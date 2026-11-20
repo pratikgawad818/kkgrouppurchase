@@ -575,6 +575,13 @@
       "when": 1795160118187,
       "tag": "0081_site_pr_selected_quotation_preview",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795160718187,
+      "tag": "0082_small_expense_consultancy_marketing",
+      "breakpoints": true
     }
   ]
 }
