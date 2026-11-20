@@ -7,13 +7,13 @@
 -- Old combined category must never be silently reclassified as either expense.
 -- On 20 Nov 2026 it had zero records. Fail explicitly if one was added
 -- between that check and migration instead of changing historical amounts.
-DO $
+DO $guard$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.site_small_expenses
              WHERE category='consultancy_marketing') THEN
     RAISE EXCEPTION 'Legacy Consultancy and Marketing expenses exist; manually reclassify them before migration 0083';
   END IF;
-END $;
+END $guard$;
 
 -- Database constraint, recorder and editor must accept the same two categories.
 ALTER TABLE public.site_small_expenses
