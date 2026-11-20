@@ -25,6 +25,7 @@ import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from
 import { PoReviewActions } from "@/components/erp/po-review-actions";
 import { DirectorApprovalReminder } from "@/components/erp/director-approval-reminder";
 import { fetchSelectedPoQuotation } from "@/lib/po-selected-quotation";
+import { resolvePoSupplierForDocument } from "@/lib/po-supplier-document";
 import { AttachPoQuotation } from "@/components/erp/attach-po-quotation";
 import { PoSiteCorrectionPanel, type PoSiteCorrection } from "@/components/erp/po-site-correction-panel";
 
@@ -109,12 +110,13 @@ async function loadPo(id: string) {
     .eq("po_id", id)
     .order("created_at", { ascending: false });
   if (correctionResult.error) throw correctionResult.error;
-  const [names, selectedQuotation] = await Promise.all([
+  const [names, selectedQuotation, supplier] = await Promise.all([
     documentActorNames("purchase_order", [id]),
     fetchSelectedPoQuotation(id),
+    resolvePoSupplierForDocument(id, p.data.vendors),
   ]);
   return {
-    po: p.data,
+    po: { ...p.data, vendors: supplier },
     selectedQuotation,
     items: i.data ?? [],
     history: (a.data ?? []).map((row) => ({
