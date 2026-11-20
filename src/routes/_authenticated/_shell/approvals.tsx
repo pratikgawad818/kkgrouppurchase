@@ -91,6 +91,7 @@ function DirectorApprovals() {
   };
   const isDirector = me.data?.roles.includes("director") ?? false;
   const isAdmin = me.data?.permissions.has("users.manage") ?? false;
+  const isSuperAdmin = me.data?.roles.includes("super_admin") ?? false;
   const q = useQuery({
     queryKey: [
       "director-approvals",
@@ -438,7 +439,7 @@ function DirectorApprovals() {
                         quotePath={r.quoteAttachmentPath || r.requestAttachmentPath} />
                     </div>
                   )}
-                  {isAdmin && waiting && directors.length > 0 && (
+                  {isSuperAdmin && waiting && directors.length > 0 && (
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
                       <div>
                         <p className="text-sm font-semibold">Awaiting director approval</p>
