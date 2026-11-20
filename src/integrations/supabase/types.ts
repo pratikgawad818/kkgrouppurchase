@@ -1990,6 +1990,100 @@ export type Database = {
         }
         Relationships: []
       }
+      po_site_correction_requests: {
+        Row: {
+          assigned_to: string
+          company_id: string
+          created_at: string
+          id: string
+          po_id: string
+          purchase_request_id: string
+          reason: string
+          requested_by: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          responded_at: string | null
+          response: string | null
+          status: string
+        }
+        Insert: {
+          assigned_to: string
+          company_id: string
+          created_at?: string
+          id?: string
+          po_id: string
+          purchase_request_id: string
+          reason: string
+          requested_by: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responded_at?: string | null
+          response?: string | null
+          status?: string
+        }
+        Update: {
+          assigned_to?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          po_id?: string
+          purchase_request_id?: string
+          reason?: string
+          requested_by?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responded_at?: string | null
+          response?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_site_correction_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_site_correction_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_site_correction_requests_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_site_correction_requests_purchase_request_id_fkey"
+            columns: ["purchase_request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_site_correction_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_site_correction_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pr_number_counters: {
         Row: {
           last_value: number
@@ -2007,45 +2101,60 @@ export type Database = {
       }
       procurement_document_revisions: {
         Row: {
-          id: string
-          company_id: string
-          document_type: string
-          document_id: string
-          revision_no: number
           actor_id: string
-          request_id: string | null
-          reason: string
-          before_snapshot: Json
           after_snapshot: Json
+          before_snapshot: Json
+          company_id: string
           created_at: string
+          document_id: string
+          document_type: string
+          id: string
+          reason: string
+          request_id: string | null
+          revision_no: number
         }
         Insert: {
-          id?: string
-          company_id: string
-          document_type: string
-          document_id: string
-          revision_no: number
           actor_id: string
-          request_id?: string | null
-          reason: string
-          before_snapshot: Json
           after_snapshot: Json
+          before_snapshot: Json
+          company_id: string
           created_at?: string
+          document_id: string
+          document_type: string
+          id?: string
+          reason: string
+          request_id?: string | null
+          revision_no: number
         }
         Update: {
-          id?: string
-          company_id?: string
-          document_type?: string
-          document_id?: string
-          revision_no?: number
           actor_id?: string
-          request_id?: string | null
-          reason?: string
-          before_snapshot?: Json
           after_snapshot?: Json
+          before_snapshot?: Json
+          company_id?: string
           created_at?: string
+          document_id?: string
+          document_type?: string
+          id?: string
+          reason?: string
+          request_id?: string | null
+          revision_no?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "procurement_document_revisions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_document_revisions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       procurement_save_receipts: {
         Row: {
@@ -2565,9 +2674,15 @@ export type Database = {
           discount_total: number
           expected_delivery_date: string | null
           freight: number
+          freight_tax_amount: number
+          freight_tax_rate_percent: number
+          freight_tax_type: string
           grand_total: number
           id: string
           other_charges: number
+          other_charges_tax_amount: number
+          other_charges_tax_rate_percent: number
+          other_charges_tax_type: string
           payment_terms: string | null
           po_date: string
           po_number: string
@@ -2595,9 +2710,15 @@ export type Database = {
           discount_total?: number
           expected_delivery_date?: string | null
           freight?: number
+          freight_tax_amount?: number
+          freight_tax_rate_percent?: number
+          freight_tax_type?: string
           grand_total?: number
           id?: string
           other_charges?: number
+          other_charges_tax_amount?: number
+          other_charges_tax_rate_percent?: number
+          other_charges_tax_type?: string
           payment_terms?: string | null
           po_date?: string
           po_number: string
@@ -2625,9 +2746,15 @@ export type Database = {
           discount_total?: number
           expected_delivery_date?: string | null
           freight?: number
+          freight_tax_amount?: number
+          freight_tax_rate_percent?: number
+          freight_tax_type?: string
           grand_total?: number
           id?: string
           other_charges?: number
+          other_charges_tax_amount?: number
+          other_charges_tax_rate_percent?: number
+          other_charges_tax_type?: string
           payment_terms?: string | null
           po_date?: string
           po_number?: string
@@ -2847,8 +2974,8 @@ export type Database = {
       purchase_requests: {
         Row: {
           approved_at: string | null
-          attachment_path: string | null
           approved_by: string | null
+          attachment_path: string | null
           building_id: string | null
           company_id: string
           created_at: string
@@ -2871,8 +2998,8 @@ export type Database = {
         }
         Insert: {
           approved_at?: string | null
-          attachment_path?: string | null
           approved_by?: string | null
+          attachment_path?: string | null
           building_id?: string | null
           company_id: string
           created_at?: string
@@ -2895,8 +3022,8 @@ export type Database = {
         }
         Update: {
           approved_at?: string | null
-          attachment_path?: string | null
           approved_by?: string | null
+          attachment_path?: string | null
           building_id?: string | null
           company_id?: string
           created_at?: string
@@ -3281,10 +3408,86 @@ export type Database = {
           },
         ]
       }
+      site_small_expense_bills: {
+        Row: {
+          byte_size: number
+          company_id: string
+          created_at: string
+          created_by: string
+          expense_id: string
+          file_name: string
+          id: string
+          is_active: boolean
+          mime_type: string
+          removed_at: string | null
+          removed_by: string | null
+          storage_path: string
+        }
+        Insert: {
+          byte_size: number
+          company_id: string
+          created_at?: string
+          created_by: string
+          expense_id: string
+          file_name: string
+          id?: string
+          is_active?: boolean
+          mime_type: string
+          removed_at?: string | null
+          removed_by?: string | null
+          storage_path: string
+        }
+        Update: {
+          byte_size?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          expense_id?: string
+          file_name?: string
+          id?: string
+          is_active?: boolean
+          mime_type?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_small_expense_bills_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expense_bills_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expense_bills_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "site_small_expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expense_bills_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_small_expense_events: {
         Row: {
           action: string
           actor_id: string
+          after_values: Json | null
+          before_values: Json | null
           company_id: string
           created_at: string
           expense_id: string
@@ -3294,6 +3497,8 @@ export type Database = {
         Insert: {
           action: string
           actor_id: string
+          after_values?: Json | null
+          before_values?: Json | null
           company_id: string
           created_at?: string
           expense_id: string
@@ -3303,6 +3508,8 @@ export type Database = {
         Update: {
           action?: string
           actor_id?: string
+          after_values?: Json | null
+          before_values?: Json | null
           company_id?: string
           created_at?: string
           expense_id?: string
@@ -3344,12 +3551,15 @@ export type Database = {
           description: string
           entry_key: string
           id: string
+          other_category_detail: string | null
           paid_to: string
           payment_method: string
           project_id: string | null
           receipt_reference: string | null
+          replaces_expense_id: string | null
           spent_on: string
           status: string
+          updated_at: string
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
@@ -3364,12 +3574,15 @@ export type Database = {
           description: string
           entry_key: string
           id?: string
+          other_category_detail?: string | null
           paid_to: string
           payment_method: string
           project_id?: string | null
           receipt_reference?: string | null
+          replaces_expense_id?: string | null
           spent_on: string
           status?: string
+          updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
@@ -3384,12 +3597,15 @@ export type Database = {
           description?: string
           entry_key?: string
           id?: string
+          other_category_detail?: string | null
           paid_to?: string
           payment_method?: string
           project_id?: string | null
           receipt_reference?: string | null
+          replaces_expense_id?: string | null
           spent_on?: string
           status?: string
+          updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
@@ -3428,6 +3644,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_small_expenses_replaces_expense_id_fkey"
+            columns: ["replaces_expense_id"]
+            isOneToOne: false
+            referencedRelation: "site_small_expenses"
             referencedColumns: ["id"]
           },
           {
@@ -4825,9 +5048,15 @@ export type Database = {
           delivery_days: number | null
           discount_total: number
           freight: number
+          freight_tax_amount: number
+          freight_tax_rate_percent: number
+          freight_tax_type: string
           grand_total: number
           id: string
           other_charges: number
+          other_charges_tax_amount: number
+          other_charges_tax_rate_percent: number
+          other_charges_tax_type: string
           payment_terms: string | null
           quotation_date: string
           quotation_number: string
@@ -4848,9 +5077,15 @@ export type Database = {
           delivery_days?: number | null
           discount_total?: number
           freight?: number
+          freight_tax_amount?: number
+          freight_tax_rate_percent?: number
+          freight_tax_type?: string
           grand_total?: number
           id?: string
           other_charges?: number
+          other_charges_tax_amount?: number
+          other_charges_tax_rate_percent?: number
+          other_charges_tax_type?: string
           payment_terms?: string | null
           quotation_date?: string
           quotation_number: string
@@ -4871,9 +5106,15 @@ export type Database = {
           delivery_days?: number | null
           discount_total?: number
           freight?: number
+          freight_tax_amount?: number
+          freight_tax_rate_percent?: number
+          freight_tax_type?: string
           grand_total?: number
           id?: string
           other_charges?: number
+          other_charges_tax_amount?: number
+          other_charges_tax_rate_percent?: number
+          other_charges_tax_type?: string
           payment_terms?: string | null
           quotation_date?: string
           quotation_number?: string
@@ -5282,7 +5523,15 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      can_read_procurement_attachment: {
+        Args: { _path: string }
+        Returns: boolean
+      }
       can_view_company_audit: { Args: { _origin: string }; Returns: boolean }
+      can_view_site_small_expense_bill: {
+        Args: { _path: string }
+        Returns: boolean
+      }
       cancel_goods_receipt: {
         Args: { _grn_id: string; _reason: string }
         Returns: undefined
@@ -5303,6 +5552,41 @@ export type Database = {
           _lines: Json
           _reason: string
           _remarks: string
+        }
+        Returns: string
+      }
+      correct_site_small_expense: {
+        Args: {
+          _amount: number
+          _building_id: string
+          _category: string
+          _description: string
+          _entry_key: string
+          _expense_id: string
+          _paid_to: string
+          _payment_method: string
+          _project_id: string
+          _reason: string
+          _receipt_reference: string
+          _spent_on: string
+        }
+        Returns: string
+      }
+      correct_site_small_expense_detailed: {
+        Args: {
+          _amount: number
+          _building_id: string
+          _category: string
+          _description: string
+          _entry_key: string
+          _expense_id: string
+          _other_category_detail: string
+          _paid_to: string
+          _payment_method: string
+          _project_id: string
+          _reason: string
+          _receipt_reference: string
+          _spent_on: string
         }
         Returns: string
       }
@@ -5345,6 +5629,15 @@ export type Database = {
           full_name: string
         }[]
       }
+      edit_site_small_expense: {
+        Args: {
+          _expected_updated_at: string
+          _expense_id: string
+          _payload: Json
+          _reason?: string
+        }
+        Returns: string
+      }
       ensure_profile: {
         Args: never
         Returns: {
@@ -5369,6 +5662,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      escalate_rejected_po_to_site: {
+        Args: { _po_id: string; _reason: string }
+        Returns: string
       }
       execute_stock_transfer: {
         Args: { _from: string; _items: Json; _reason: string; _to: string }
@@ -5432,6 +5729,17 @@ export type Database = {
           _source_type?: string
         }
         Returns: undefined
+      }
+      manage_site_small_expense_bill: {
+        Args: {
+          _bytes?: number
+          _expense_id: string
+          _file_name?: string
+          _mime_type?: string
+          _path: string
+          _remove?: boolean
+        }
+        Returns: string
       }
       my_permissions: { Args: never; Returns: string[] }
       next_doc_number: {
@@ -5558,6 +5866,10 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["pr_status"]
       }
+      procurement_attachment_owned: {
+        Args: { _actor: string; _company: string; _path: string }
+        Returns: boolean
+      }
       project_material_consumption: {
         Args: { _project_id?: string }
         Returns: {
@@ -5612,6 +5924,22 @@ export type Database = {
         }
         Returns: string
       }
+      record_site_small_expense_detailed: {
+        Args: {
+          _amount: number
+          _building_id: string
+          _category: string
+          _description: string
+          _entry_key: string
+          _other_category_detail: string
+          _paid_to: string
+          _payment_method: string
+          _project_id: string
+          _receipt_reference: string
+          _spent_on: string
+        }
+        Returns: string
+      }
       record_vendor_selection: {
         Args: { _reason: string; _rfq_id: string; _selections: Json }
         Returns: number
@@ -5634,6 +5962,39 @@ export type Database = {
         Returns: string
       }
       remind_po_approvers: { Args: { _po_id: string }; Returns: undefined }
+      resolve_po_site_correction: {
+        Args: { _correction_id: string; _resolution: string }
+        Returns: string
+      }
+      respond_po_site_correction: {
+        Args: { _correction_id: string; _response: string }
+        Returns: string
+      }
+      return_po_for_correction: {
+        Args: { _po_id: string; _reason: string }
+        Returns: string
+      }
+      revise_po_draft: {
+        Args: {
+          _expected_updated_at: string
+          _header: Json
+          _items: Json
+          _po_id: string
+          _reason: string
+        }
+        Returns: string
+      }
+      revise_rfq_draft: {
+        Args: {
+          _expected_updated_at: string
+          _header: Json
+          _items: Json
+          _reason: string
+          _rfq_id: string
+          _vendor_ids: string[]
+        }
+        Returns: string
+      }
       rfq_can_edit_draft: { Args: { _rfq_id: string }; Returns: boolean }
       rfq_can_quote: { Args: { _rfq_id: string }; Returns: boolean }
       rfq_can_view: { Args: { _rfq_id: string }; Returns: boolean }
@@ -5654,51 +6015,6 @@ export type Database = {
         Args: { _header: Json; _id?: string; _lines: Json; _payments: Json }
         Returns: string
       }
-      set_purchase_request_attachment: {
-        Args: { _id: string; _path: string | null }
-        Returns: undefined
-      }
-      can_read_procurement_attachment: {
-        Args: { _path: string }
-        Returns: boolean
-      }
-      procurement_attachment_owned: {
-        Args: { _path: string; _company: string; _actor: string }
-        Returns: boolean
-      }
-      save_purchase_request_revision: {
-        Args: {
-          _request_id: string
-          _id: string
-          _header: Json
-          _items: Json
-          _submit: boolean
-          _expected_updated_at: string
-          _reason: string
-        }
-        Returns: string
-      }
-      revise_rfq_draft: {
-        Args: {
-          _rfq_id: string
-          _expected_updated_at: string
-          _header: Json
-          _items: Json
-          _vendor_ids: string[]
-          _reason: string
-        }
-        Returns: string
-      }
-      revise_po_draft: {
-        Args: {
-          _po_id: string
-          _expected_updated_at: string
-          _header: Json
-          _items: Json
-          _reason: string
-        }
-        Returns: string
-      }
       save_purchase_request: {
         Args: {
           _expected_updated_at?: string
@@ -5707,6 +6023,18 @@ export type Database = {
           _items: Json
           _request_id: string
           _submit?: boolean
+        }
+        Returns: string
+      }
+      save_purchase_request_revision: {
+        Args: {
+          _expected_updated_at: string
+          _header: Json
+          _id: string
+          _items: Json
+          _reason: string
+          _request_id: string
+          _submit: boolean
         }
         Returns: string
       }
@@ -5724,6 +6052,10 @@ export type Database = {
           _grn_item: string
           _reason: string
         }
+        Returns: undefined
+      }
+      set_purchase_request_attachment: {
+        Args: { _id: string; _path: string }
         Returns: undefined
       }
       set_unit_status: {
