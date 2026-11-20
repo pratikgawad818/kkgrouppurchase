@@ -392,6 +392,16 @@ jobs:
         run: bun run build
       - name: TypeScript check
         run: bun run typecheck
+      - name: Validate Director expense View on 360px, 390px and 430px phones
+        run: node scripts/tests/mobile-expense-viewport-smoke.mjs
+      - name: Keep Director expense mobile viewport screenshots for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: director-small-expense-mobile-view
+          path: artifacts/expense-mobile-viewport/director-expense-*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Render reference PO as real A4 PDF in headless Chromium
         run: node scripts/tests/po-layout-browser-smoke.mjs
       - name: Save actual rendered PDF and preview for review
