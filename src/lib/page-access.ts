@@ -108,6 +108,7 @@ export function canAccessPage(path: string, user: PageAccess): boolean {
     return false;
   const rule = rules.find((entry) => entry.pattern.test(path));
   if (!rule) return false; // New routes fail closed until deliberately classified.
+  if (rule.roles && !rule.roles.some((role) => user.roles.includes(role))) return false;
   if (rule.all && !rule.all.every((p) => user.permissions.has(p))) return false;
   if (rule.any && !rule.any.some((p) => user.permissions.has(p))) return false;
   return true;
