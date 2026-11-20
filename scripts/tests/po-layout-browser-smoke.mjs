@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import ts from "typescript";
 
 const output = resolve("artifacts", "po-layout-smoke");
@@ -98,11 +98,27 @@ try {
     .filter(Boolean).map(name => spawnSync("which", [name], { encoding: "utf8" }))
     .find(result => result.status === 0)?.stdout.trim();
   if (!browser) throw new Error("Chrome/Chromium is required to verify A4 PDF rendering.");
-  const run = spawnSync(browser, [
-    "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
-    "--allow-file-access-from-files", "--virtual-time-budget=12000", "--dump-dom",
-    "file://" + join(work, "index.html"),
-  ], { encoding: "utf8", timeout: 70000, maxBuffer: 20 * 1024 * 1024 });
+  // Serving from localhost avoids file:// script/canvas security and
+  // scheduling differences between Ubuntu Chrome versions.
+  const port = 24000 + (process.pid % 18000);
+  const serverCode = "require('node:http').createServer((req,res)=>{" +
+    "res.setHeader('Content-Type','text/html; charset=utf-8');" +
+    "res.end(require('node:fs').readFileSync(process.argv[1]));" +
+    "}).listen(" + port + ",'127.0.0.1');";
+  const server = spawn(process.execPath, ["-e", serverCode, join(work, "index.html")], {
+    stdio: "ignore",
+  });
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 900);
+  let run;
+  try {
+    run = spawnSync(browser, [
+      "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+      "--no-first-run", "--disable-extensions", "--virtual-time-budget=12000",
+      "--dump-dom", "http://127.0.0.1:" + port + "/",
+    ], { encoding: "utf8", timeout: 70000, maxBuffer: 20 * 1024 * 1024 });
+  } finally {
+    server.kill();
+  }
   const match = (run.stdout || "").match(/<pre id="result">([\s\S]*?)<\/pre>/);
   if (!match || match[1] === "pending") {
     throw new Error("PDF renderer did not finish. Chrome: " +
