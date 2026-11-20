@@ -14,13 +14,14 @@ import {
   Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { orderedTasks, taskDue, type TaskGroup, type WorkspaceTask } from "@/lib/workspace-tasks";
+import { orderedTasks, taskDue, type TaskGroup } from "@/lib/workspace-tasks";
+import type { PurchaseChain } from "@/lib/purchase-pipeline";
 import { PROJECT_STATUS_LABEL, inr, inrCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type WorkspaceProject = { id: string; name: string; city: string | null; status: string };
 export type WorkspaceSnapshot = {
-  tasks: WorkspaceTask[];
+  tasks: PurchaseChain[];
   counts: Record<TaskGroup, number>;
   openOrders: number | null;
   deliveries: number | null;
@@ -33,6 +34,98 @@ const taskIcons = {
   invoice: FileText,
   payment: Wallet,
 };
+
+function shortDocumentNumber(value: string) {
+  // The full document number is kept as a title and in the destination.
+  // Only the repeated year is omitted in the compact mobile progress strip.
+  return value.replace(/^([A-Z]+)-20\d{2}-/i, "$1-");
+}
+
+function PurchaseProgressRow({ task, today }: { task: PurchaseChain; today: string }) {
+  const Icon = taskIcons[task.kind];
+  const due = taskDue(task.due, today);
+  return (
+    <article className="min-w-0 border-b border-border/70 px-3 py-4 last:border-0 sm:px-5" aria-label={"Purchase " + task.number}>
+      <div className="flex min-w-0 flex-wrap items-start gap-3">
+        <span className={cn(
+          "grid h-9 w-9 shrink-0 place-items-center rounded-lg",
+          task.group === "payments" ? "bg-amber-50 text-amber-700" : "bg-primary/10 text-primary",
+        )} aria-hidden="true">
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1 basis-[180px]">
+          <Link to={task.href} className="block min-w-0 break-words text-sm font-semibold leading-5 text-foreground hover:text-primary hover:underline">
+            {task.description}
+            <span className="font-normal text-muted-foreground">{" · "}{task.project}</span>
+          </Link>
+        </div>
+        {task.due && (
+          <span className={cn(
+            "shrink-0 rounded-lg border px-2 py-1 text-xs font-medium",
+            due.tone === "overdue" ? "border-destructive/35 text-destructive"
+              : due.tone === "today" ? "border-amber-300 text-amber-800"
+                : "border-border text-muted-foreground",
+          )}>
+            Due {due.tone === "overdue" ? "overdue" : due.label}
+          </span>
+        )}
+      </div>
+      <div className="mt-3 flex w-full min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain pb-1.5 sm:flex-wrap" aria-label="Purchase document progress">
+        {task.steps.map((step, index) => (
+          <div className="flex shrink-0 items-center gap-1" key={step.key}>
+            {index > 0 && <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground/55" aria-hidden="true" />}
+            <span className={cn(
+              "inline-flex min-h-8 max-w-[260px] items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-medium leading-4",
+              step.state === "current" ? "border-primary/50 bg-primary/10 text-foreground ring-1 ring-primary/15"
+                : step.state === "done" ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : "border-border bg-muted/35 text-muted-foreground",
+            )} aria-label={step.label + " " + step.state}>
+              {step.state === "done"
+                ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                : step.state === "current"
+                  ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+                  : null}
+              {step.documents.length ? (
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {step.documents.map((item, docIndex) => (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      title={item.number}
+                      className="max-w-[130px] truncate underline-offset-2 hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      {shortDocumentNumber(item.number)}
+                      {docIndex < step.documents.length - 1 ? "," : ""}
+                    </Link>
+                  ))}
+                  {step.key === "order" && task.vendor && (
+                    <span className="max-w-[70px] truncate opacity-80" title={task.vendor}>
+                      {task.vendor}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span>{step.label}</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2.5 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <p className="min-w-0 flex-1 basis-[180px] break-words text-xs leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-foreground">Now:</span>{" "}{task.stage}
+        </p>
+        <Link
+          to={task.href}
+          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-primary/25 bg-background px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          {task.action}
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
+      </div>
+    </article>
+  );
+}
 
 export function DailyWorkspace({
   projects,
@@ -76,6 +169,7 @@ export function DailyWorkspace({
   children?: ReactNode;
 }) {
   const [filter, setFilter] = useState<TaskGroup | "all">("all");
+  const [visibleCount, setVisibleCount] = useState(6);
   const tasks = orderedTasks(data?.tasks ?? [], filter);
   const count =
     filter === "all"
@@ -250,7 +344,7 @@ export function DailyWorkspace({
                   key={tab.key}
                   type="button"
                   aria-pressed={filter === tab.key}
-                  onClick={() => setFilter(tab.key)}
+                  onClick={() => { setFilter(tab.key); setVisibleCount(6); }}
                   className={cn(filter === tab.key && "is-active")}
                 >
                   {tab.label}
@@ -260,15 +354,9 @@ export function DailyWorkspace({
                 </button>
               ))}
           </div>
-          <div className="daily-task-head" aria-hidden>
-            <span>Item</span>
-            <span>Project</span>
-            <span>Due</span>
-            <span>Next step</span>
-          </div>
           {loading && (
             <div role="status" className="daily-task-loading">
-              <span className="sr-only">Loading your work…</span>
+              <span className="sr-only">Loading purchases…</span>
               {[1, 2, 3].map((i) => (
                 <div key={i} className="animate-pulse">
                   <span />
@@ -277,43 +365,24 @@ export function DailyWorkspace({
               ))}
             </div>
           )}
-          {!loading &&
-            !error &&
-            tasks.slice(0, 6).map((task) => {
-              const Icon = taskIcons[task.kind];
-              const due = taskDue(task.due, today);
-              return (
-                <div className="daily-task" key={`${task.kind}-${task.id}`}>
-                  <span
-                    className={cn(
-                      "daily-task-icon",
-                      task.group === "payments" ? "amber" : task.kind === "rfq" ? "blue" : "teal",
-                    )}
-                  >
-                    <Icon aria-hidden />
-                  </span>
-                  <div className="daily-task-title">
-                    <Link to={task.href}>{task.number}</Link>
-                    <p>
-                      {task.description}
-                      <span className="daily-inline-project"> · {task.project}</span>
-                    </p>
-                  </div>
-                  <span className="daily-task-project">{task.project}</span>
-                  <span className={cn("daily-due", `due-${due.tone}`)}>{due.label}</span>
-                  <Link className="daily-task-action" to={task.href}>
-                    {task.action}
-                    <ArrowRight aria-hidden />
-                  </Link>
-                </div>
-              );
-            })}
+          {!loading && !error && tasks.slice(0, visibleCount).map((task) => (
+            <PurchaseProgressRow key={task.id} task={task} today={today} />
+          ))}
+          {!loading && !error && tasks.length > visibleCount && (
+            <div className="border-t border-border/70 p-3 text-center">
+              <Button type="button" size="sm" variant="outline"
+                onClick={() => setVisibleCount(count => count + 6)}
+                aria-label="Show more purchase chains">
+                Show more purchases ({tasks.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
           {!loading && !error && tasks.length === 0 && (
             <div className="daily-empty">
               <CheckCircle2 aria-hidden />
               <h3>You’re all caught up</h3>
               <p>
-                No open {filter === "all" ? "records" : `${filter} records`} in this project. New
+                No open {filter === "all" ? "purchases" : `${filter} purchases`} in this project. New
                 work will appear here.
               </p>
             </div>
@@ -325,7 +394,7 @@ export function DailyWorkspace({
           )}
           {data && !error && tasks.length > 0 && (
             <p className="daily-task-caption">
-              Showing {Math.min(6, tasks.length)} recent items from {count} open records. Open a
+              Showing {Math.min(visibleCount, tasks.length)} of {count} active purchases. Open a
               module for the full register.
             </p>
           )}
