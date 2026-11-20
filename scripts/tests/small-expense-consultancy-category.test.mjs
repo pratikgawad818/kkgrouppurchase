@@ -45,6 +45,6 @@ describe("Consultancy and Marketing Small Expense category", () => {
     assert.match(sql, /CREATE OR REPLACE FUNCTION public\.edit_site_small_expense\(/);
     assert.match(sql, /role\(auth\.uid\(\),'director'\)/);
     assert.match(sql, /'small_expense\.manage'/);
-    assert.match(sql, /'site_small_expense_events'/);
+    assert.match(sql, /INSERT INTO public\.site_small_expense_events/);
   });
 });
