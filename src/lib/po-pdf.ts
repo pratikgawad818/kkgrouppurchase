@@ -42,6 +42,8 @@ export type PoPdfOrder = {
   other_charges_tax_amount?: number | null;
   freight_tax_type?: string | null;
   other_charges_tax_type?: string | null;
+  freight_tax_rate_percent?: number | null;
+  other_charges_tax_rate_percent?: number | null;
   companies?: {
     name: string; legal_name: string | null; registered_address: string | null;
     office_address: string | null; gstin: string | null; pan: string | null;
@@ -82,7 +84,6 @@ const SCALE = 2.25;
 const INK = "#111111";
 const MUTED = "#444444";
 const RULE = "#666666";
-const LIGHT_RULE = "#acacac";
 const SHADE = "#f1f1f1";
 const END = H - 49;
 
