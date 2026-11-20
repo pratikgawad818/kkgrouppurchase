@@ -64,7 +64,7 @@ function Dashboard() {
     projects.data && !projects.data.some((project) => project.id === projectId) ? "" : projectId;
   const q = useQuery({
     queryKey: [
-      "daily-workspace-purchase-chains", me.data?.profile.id, effectiveProject, day,
+      "daily-workspace", "purchase-chains", me.data?.profile.id, effectiveProject, day,
       canPr, canRfqs, canPo, canChallans, canGrns,
       canInvoices, canPayments, canPayables,
     ],
