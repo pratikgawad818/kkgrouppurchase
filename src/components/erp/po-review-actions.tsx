@@ -11,6 +11,7 @@ import { openPrivateProcurementAttachment } from "@/lib/attached-document-previe
 import { buildPoReviewDocument } from "@/lib/po-pdf";
 import { errMsg } from "@/lib/format";
 import { documentActorNames } from "@/lib/document-actors";
+import { fetchSelectedPoQuotation } from "@/lib/po-selected-quotation";
 
 /** Fetch the actual PO and its items when requested, not the full approval queue. */
 export async function fetchPoReviewPdf(poId: string) {
@@ -36,9 +37,20 @@ export async function fetchPoReviewPdf(poId: string) {
   const approver = [...history].reverse().find(event => event.action === "approved");
   // The official document-actor RPC resolves staff names within the user's
   // authorised PO. Never invent the signatories or treat submitted as approved.
-  const names = await documentActorNames("purchase_order", [poId]);
+  const [names, selectedQuotation] = await Promise.all([
+    documentActorNames("purchase_order", [poId]),
+    fetchSelectedPoQuotation(poId),
+  ]);
   return buildPoReviewDocument({
     ...order.data,
+    ...(selectedQuotation && {
+      vendor_quotations: {
+        quotation_number: selectedQuotation.quotation_number ?? "",
+        quotation_date: selectedQuotation.quotation_date ?? "",
+        payment_terms: selectedQuotation.payment_terms,
+        remarks: selectedQuotation.remarks,
+      },
+    }),
     prepared_by_name: creator?.acted_by ? names.get(creator.acted_by) ?? null : null,
     approved_by_name: approver?.acted_by ? names.get(approver.acted_by) ?? null : null,
   }, lines.data);
