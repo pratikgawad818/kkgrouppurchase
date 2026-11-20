@@ -12,12 +12,13 @@ import { buildPoReviewDocument } from "@/lib/po-pdf";
 import { errMsg } from "@/lib/format";
 import { documentActorNames } from "@/lib/document-actors";
 import { fetchSelectedPoQuotation } from "@/lib/po-selected-quotation";
+import { resolvePoSupplierForDocument } from "@/lib/po-supplier-document";
 
 /** Fetch the actual PO and its items when requested, not the full approval queue. */
 export async function fetchPoReviewPdf(poId: string) {
   const [order, lines, approvalHistory] = await Promise.all([
     supabase.from("purchase_orders")
-      .select("*, vendors(company_name,gstin,pan,address,city,state,pincode,contact_person,mobile,email,bank_account_name,bank_name,bank_account_number,ifsc), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)")
+      .select("*, vendors(company_name,gstin,address,city,state,pincode,contact_person,mobile,email), projects(name), buildings(name), rfqs(rfq_number), purchase_requests(pr_number), warehouses(name,address), vendor_quotations(quotation_number,quotation_date,payment_terms,remarks), companies(name,legal_name,registered_address,office_address,gstin,pan,phone,email)")
       .eq("id", poId).single(),
     supabase.from("purchase_order_items")
       .select("line_no,description,ordered_quantity,rate,discount_amount,taxable_amount,tax_type,tax_rate_percent,tax_amount,line_total,items(code,name),units_of_measure(code)")
@@ -37,12 +38,14 @@ export async function fetchPoReviewPdf(poId: string) {
   const approver = [...history].reverse().find(event => event.action === "approved");
   // The official document-actor RPC resolves staff names within the user's
   // authorised PO. Never invent the signatories or treat submitted as approved.
-  const [names, selectedQuotation] = await Promise.all([
+  const [names, selectedQuotation, supplier] = await Promise.all([
     documentActorNames("purchase_order", [poId]),
     fetchSelectedPoQuotation(poId),
+    resolvePoSupplierForDocument(poId, order.data.vendors),
   ]);
   return buildPoReviewDocument({
     ...order.data,
+    vendors: supplier,
     ...(selectedQuotation && {
       vendor_quotations: {
         quotation_number: selectedQuotation.quotation_number ?? "",
