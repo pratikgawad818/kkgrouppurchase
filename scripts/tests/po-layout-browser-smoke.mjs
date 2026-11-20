@@ -58,6 +58,15 @@ try {
       discount_amount: 0, taxable_amount: 3800, tax_type: "cgst_sgst",
       tax_rate_percent: 18, tax_amount: 684, line_total: 4484 },
   ];
+  const canvasShim = [
+    "HTMLCanvasElement.prototype.toBlob = function(callback,type,quality) {",
+    "  const encoded = this.toDataURL(type || 'image/jpeg', quality || 0.94);",
+    "  const raw = atob(encoded.split(',')[1]);",
+    "  const data = new Uint8Array(raw.length);",
+    "  for(let i=0;i<raw.length;i++) data[i] = raw.charCodeAt(i);",
+    "  callback(new Blob([data], {type:type || 'image/jpeg'}));",
+    "};",
+  ].join("\n");
   const runner = [
     "(async () => {",
     " const one = await buildPoReviewDocument(window.samplePO, window.sampleItems);",
@@ -68,13 +77,13 @@ try {
     " const longer = Array.from({length:30}, (_,i) => ({...window.sampleItems[i%2],line_no:i+1}));",
     " const many = await buildPoReviewDocument(window.samplePO,longer);",
     " if (many.previewPages.length < 2) throw new Error('Long PO was not paginated');",
-    " const encode = b => new Promise((ok, fail) => {const r = new FileReader();r.onload = () => ok(r.result);r.onerror = fail;r.readAsDataURL(b);});",
+    " const encode = async b => { const raw = new Uint8Array(await b.arrayBuffer());let out='';for(let i=0;i<raw.length;i+=8000) out+=String.fromCharCode(...raw.subarray(i,i+8000));return 'data:'+b.type+';base64,'+btoa(out);};",
     " document.getElementById('result').textContent = JSON.stringify({ok:true,pages:one.previewPages.length,",
     "   extended:many.previewPages.length,bytes:data.byteLength,",
     "   image:await encode(one.previewPages[0]),pdf:await encode(one.pdf)});",
     "})().catch(error => {document.getElementById('result').textContent = JSON.stringify({ok:false,error:String(error.stack||error)});});",
   ].join("\n");
-  writeFileSync(join(work, "app.js"), compile(taxSource) + "\n" + compile(pdfSource) +
+  writeFileSync(join(work, "app.js"), canvasShim + "\n" + compile(taxSource) + "\n" + compile(pdfSource) +
     "\nwindow.samplePO=" + JSON.stringify(po) + ";\nwindow.sampleItems=" +
     JSON.stringify(items) + ";\n" + runner);
   writeFileSync(join(work, "index.html"), '<!doctype html><meta charset="utf-8">' +
