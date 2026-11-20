@@ -168,7 +168,10 @@ export function PrForm({
           required_by: l.required_by || null,
           notes: l.notes || null,
         })),
-        _submit: submit,
+        // With a new attachment, save the PR as draft first. Link evidence
+        // before submitting, so an upload/link failure cannot send an
+        // incomplete PR to the approver.
+        _submit: submit && !attachment,
         _expected_updated_at: (expectedUpdatedAt ?? null) as string,
       };
       // Upload once per selected file; retry the same immutable object path
@@ -203,10 +206,32 @@ export function PrForm({
         const linked = await supabase.rpc("set_purchase_request_attachment", {
           _id: prId, _path: attachmentPath,
         });
-        if (linked.error) throw new Error(
-          "Purchase Request saved, but attaching the quotation failed: " +
-          linked.error.message + ". Retry to finish linking it.",
-        );
+        if (linked.error) {
+          throw new Error(
+            submit
+              ? "Quotation attachment failed. The purchase request is saved as a draft and has NOT been sent for approval. Retry on this form; do not create a duplicate. " + linked.error.message
+              : "Draft saved, but the quotation attachment failed. Retry on this form; do not create a duplicate. " + linked.error.message,
+          );
+        }
+      }
+      if (submit && attachmentPath) {
+        // This is a separate workflow transition AFTER the file is linked.
+        // A duplicate response should be checked against the actual PR state,
+        // rather than submitting or creating another document.
+        const transition = await supabase.rpc("pr_transition", {
+          _pr_id: prId, _action: "submitted",
+        });
+        if (transition.error) {
+          const current = await supabase.from("purchase_requests")
+            .select("status").eq("id", prId).single();
+          if (current.error || !["pending_approval", "approved"].includes(current.data.status)) {
+            throw new Error(
+              "Quotation attached, but the purchase request could not be submitted. " +
+              "Open the saved draft and submit it from the request details page. " +
+              transition.error.message,
+            );
+          }
+        }
       }
       return prId;
     },
