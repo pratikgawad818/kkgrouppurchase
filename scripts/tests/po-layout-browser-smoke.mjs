@@ -78,7 +78,12 @@ try {
     "\nwindow.samplePO=" + JSON.stringify(po) + ";\nwindow.sampleItems=" +
     JSON.stringify(items) + ";\n" + runner);
   writeFileSync(join(work, "index.html"), '<!doctype html><meta charset="utf-8">' +
-    '<pre id="result">pending</pre><script src="./app.js"></script>');
+    '<pre id="result">pending</pre>' +
+    '<script>window.addEventListener("error",e=>{document.getElementById("result").textContent=' +
+      'JSON.stringify({ok:false,error:"JS: "+e.message+" at "+e.filename+":"+e.lineno});});' +
+    'window.addEventListener("unhandledrejection",e=>{document.getElementById("result").textContent=' +
+      'JSON.stringify({ok:false,error:String(e.reason)});});</script>' +
+    '<script src="./app.js"></script>');
 
   const browser = [process.env.CHROME_BIN, "google-chrome", "chromium", "chromium-browser"]
     .filter(Boolean).map(name => spawnSync("which", [name], { encoding: "utf8" }))
@@ -90,7 +95,10 @@ try {
     "file://" + join(work, "index.html"),
   ], { encoding: "utf8", timeout: 70000, maxBuffer: 20 * 1024 * 1024 });
   const match = (run.stdout || "").match(/<pre id="result">([\s\S]*?)<\/pre>/);
-  if (!match) throw new Error("PDF renderer did not finish: " + run.stderr?.slice(-2500));
+  if (!match || match[1] === "pending") {
+    throw new Error("PDF renderer did not finish. Chrome: " +
+      run.stderr?.slice(-2500) + " DOM: " + run.stdout?.slice(-700));
+  }
   const result = JSON.parse(match[1]);
   if (!result.ok) throw new Error(result.error);
   writeFileSync(join(output, "po-reference.jpg"), Buffer.from(result.image.split(",")[1], "base64"));
