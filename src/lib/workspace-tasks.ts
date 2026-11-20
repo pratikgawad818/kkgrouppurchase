@@ -30,7 +30,7 @@ export function taskDue(due: string | null, today: string) {
   };
 }
 
-export function orderedTasks(tasks: WorkspaceTask[], group: TaskGroup | "all") {
+export function orderedTasks<T extends WorkspaceTask>(tasks: T[], group: TaskGroup | "all"): T[] {
   return tasks
     .filter((task) => group === "all" || task.group === group)
     .sort(
