@@ -582,6 +582,13 @@
       "when": 1795160718187,
       "tag": "0082_small_expense_consultancy_marketing",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795161318187,
+      "tag": "0083_separate_consultancy_marketing_expenses",
+      "breakpoints": true
     }
   ]
 }
