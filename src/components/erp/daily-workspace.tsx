@@ -169,6 +169,7 @@ export function DailyWorkspace({
   children?: ReactNode;
 }) {
   const [filter, setFilter] = useState<TaskGroup | "all">("all");
+  const [visibleCount, setVisibleCount] = useState(6);
   const tasks = orderedTasks(data?.tasks ?? [], filter);
   const count =
     filter === "all"
@@ -343,7 +344,7 @@ export function DailyWorkspace({
                   key={tab.key}
                   type="button"
                   aria-pressed={filter === tab.key}
-                  onClick={() => setFilter(tab.key)}
+                  onClick={() => { setFilter(tab.key); setVisibleCount(6); }}
                   className={cn(filter === tab.key && "is-active")}
                 >
                   {tab.label}
@@ -364,9 +365,18 @@ export function DailyWorkspace({
               ))}
             </div>
           )}
-          {!loading && !error && tasks.slice(0, 6).map((task) => (
+          {!loading && !error && tasks.slice(0, visibleCount).map((task) => (
             <PurchaseProgressRow key={task.id} task={task} today={today} />
           ))}
+          {!loading && !error && tasks.length > visibleCount && (
+            <div className="border-t border-border/70 p-3 text-center">
+              <Button type="button" size="sm" variant="outline"
+                onClick={() => setVisibleCount(count => count + 6)}
+                aria-label="Show more purchase chains">
+                Show more purchases ({tasks.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
           {!loading && !error && tasks.length === 0 && (
             <div className="daily-empty">
               <CheckCircle2 aria-hidden />
@@ -384,7 +394,7 @@ export function DailyWorkspace({
           )}
           {data && !error && tasks.length > 0 && (
             <p className="daily-task-caption">
-              Showing {Math.min(6, tasks.length)} of {count} active purchases. Open a
+              Showing {Math.min(visibleCount, tasks.length)} of {count} active purchases. Open a
               module for the full register.
             </p>
           )}
