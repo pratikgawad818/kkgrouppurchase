@@ -11,7 +11,7 @@ const source = readFileSync("src/lib/purchase-pipeline.ts", "utf8")
 const transpiled = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
 }).outputText;
-const buildPurchaseChains = vm.runInNewContext(transpiled + "\nbuildPurchaseChains", {});
+const buildPurchaseChains = vm.runInNewContext(transpiled + "\nbuildPurchaseChains", { exports: {}, module: { exports: {} } });
 
 const pr = {
   id: "pr-1", number: "PR-2026-0004",
