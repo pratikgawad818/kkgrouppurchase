@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
+import { PrMissingAttachment } from "@/components/erp/pr-missing-attachment";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
 import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
@@ -402,6 +403,16 @@ function PrDetail() {
           <ProcurementAttachmentLink path={pr.attachment_path}
             label="View attached PDF / photo" />
         </section>
+      )}
+      {!pr.attachment_path && pending && mine && can("purchase_request.edit") && (
+        <PrMissingAttachment
+          prId={pr.id}
+          companyId={me.data?.profile.company_id ?? ""}
+          actorId={me.data?.profile.id ?? ""}
+          onLinked={() => {
+            void qc.invalidateQueries({ queryKey: ["pr", id] });
+          }}
+        />
       )}
       <section className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
