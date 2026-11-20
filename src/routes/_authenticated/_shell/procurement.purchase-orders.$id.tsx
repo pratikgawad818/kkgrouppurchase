@@ -23,6 +23,7 @@ import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PoReviewActions } from "@/components/erp/po-review-actions";
+import { fetchSelectedPoQuotation } from "@/lib/po-selected-quotation";
 import { AttachPoQuotation } from "@/components/erp/attach-po-quotation";
 import { PoSiteCorrectionPanel, type PoSiteCorrection } from "@/components/erp/po-site-correction-panel";
 
@@ -107,9 +108,13 @@ async function loadPo(id: string) {
     .eq("po_id", id)
     .order("created_at", { ascending: false });
   if (correctionResult.error) throw correctionResult.error;
-  const names = await documentActorNames("purchase_order", [id]);
+  const [names, selectedQuotation] = await Promise.all([
+    documentActorNames("purchase_order", [id]),
+    fetchSelectedPoQuotation(id),
+  ]);
   return {
     po: p.data,
+    selectedQuotation,
     items: i.data ?? [],
     history: (a.data ?? []).map((row) => ({
       ...row,
@@ -205,7 +210,7 @@ function PoDetail() {
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
-  const { po, items, history, grns, warehouses, challans, grnItems, corrections } = q.data!;
+  const { po, selectedQuotation, items, history, grns, warehouses, challans, grnItems, corrections } = q.data!;
   const mine = po.created_by === me.data?.profile.id;
   const isAdmin = me.data?.roles.includes("super_admin") ?? false;
   const isDirector = me.data?.roles.includes("director") ?? false;
@@ -356,8 +361,8 @@ function PoDetail() {
                     </Button>
                   )}
                 <PoReviewActions poId={po.id} poNumber={po.po_number}
-                  quotePath={po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path} />
-                {!po.vendor_quotations?.attachment_path && !po.purchase_requests?.attachment_path &&
+                  quotePath={selectedQuotation?.attachment_path || po.vendor_quotations?.attachment_path || po.purchase_requests?.attachment_path} />
+                {!selectedQuotation?.attachment_path && !po.vendor_quotations?.attachment_path && !po.purchase_requests?.attachment_path &&
                   !["cancelled", "closed"].includes(po.status) && me.data?.profile.id &&
                   (can("purchase_order.create") || can("purchase_order.edit") ||
                     me.data.roles.includes("super_admin")) && (
@@ -400,7 +405,7 @@ function PoDetail() {
               </Link>
             }
           />
-          <Info label="Quotation" value={po.vendor_quotations?.quotation_number ?? "—"} />
+          <Info label="Quotation" value={selectedQuotation?.quotation_number ?? po.vendor_quotations?.quotation_number ?? "—"} />
           <Info label="PO date" value={fmtDate(po.po_date)} />
           <Info label="Vendor GSTIN" value={po.vendors?.gstin ?? "—"} />
           {!draft && (
