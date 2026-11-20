@@ -99,19 +99,19 @@ try {
   const browser = browserCheck?.stdout.trim();
   if (!browser) throw new Error("Headless Chromium required for mobile layout regression");
   const port = 25000 + (process.pid % 14000);
-  const serverCode = `
-    const fs=require('fs'),p=require('path'),http=require('http');
-    const root=process.argv[1];
-    http.createServer((req,res)=>{
-      const pathname=new URL(req.url,'http://localhost').pathname;
-      const file=p.resolve(root,'.'+pathname.replace(/^\//,'/'));
-      if(!file.startsWith(root)||!fs.existsSync(file)){res.writeHead(404);res.end();return;}
-      res.setHeader('Content-Type',file.endsWith('.css')?'text/css':file.endsWith('.js')?'application/javascript':'text/html');
-      res.end(fs.readFileSync(fs.statSync(file).isDirectory()?p.join(file,'index.html'):file));
-    }).listen(${port},'127.0.0.1');
-  `;
-  const server = spawn(process.execPath, ["-e", serverCode, output], { stdio: "ignore" });
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+  const server = spawn("python3", [
+    "-m", "http.server", String(port), "--bind", "127.0.0.1",
+    "--directory", output,
+  ], { stdio: "ignore" });
+  const ready = spawnSync("curl", [
+    "--fail", "--silent", "--show-error", "--retry", "12",
+    "--retry-connrefused", "--retry-delay", "1",
+    "http://127.0.0.1:" + port + "/index.html",
+  ], { encoding: "utf8", timeout: 19000 });
+  if (ready.status !== 0) {
+    server.kill();
+    throw new Error("Mobile smoke fixture HTTP server never became ready: " + ready.stderr);
+  }
   try {
     for (const width of [360, 390, 430]) {
       const target = join(output, "director-expense-" + width + ".png");
