@@ -51,12 +51,19 @@ export const WORKSPACE_NAV: WorkspaceNavGroup[] = [
     items: [{ to: "/approvals", label: "Director approvals" }],
   },
   {
+    key: "sales",
+    label: "Sales",
+    items: [
+      { to: "/sales", label: "Sales & bookings" },
+      { to: "/units", label: "Flat inventory" },
+    ],
+  },
+  {
     key: "projects",
     label: "Projects",
     items: [
       { to: "/projects", label: "Projects" },
       { to: "/buildings", label: "Buildings" },
-      { to: "/units", label: "Property inventory" },
       { to: "/management", label: "Management overview" },
     ],
   },
