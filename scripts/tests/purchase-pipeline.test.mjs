@@ -204,6 +204,13 @@ describe("purchase-chain dashboard projection", () => {
     assert.equal(rows[0].steps[2].state, "current");
   });
 
+  it("does not resurrect an approved PR after its only RFQ was closed", () => {
+    const rows = buildPurchaseChains({
+      ...empty(), prs:[pr], rfqs:[{ ...rfq, status:"closed" }],
+    });
+    assert.equal(rows.length, 0);
+  });
+
   it("keeps returned PO visible for corrections", () => {
     const rows = buildPurchaseChains({ ...linked(), pos:[{...po,status:"rejected"}] });
     assert.equal(rows.length, 1);
