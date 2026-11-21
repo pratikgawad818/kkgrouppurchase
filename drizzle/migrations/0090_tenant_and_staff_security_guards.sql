@@ -48,7 +48,7 @@ FOR SELECT TO authenticated USING (
   AND public.actor_in_company(company_id)
   AND EXISTS (
     SELECT 1 FROM public.warehouses w
-    WHERE w.id=warehouse_id AND w.company_id=stock_adjustments.company_id
+    WHERE w.id=stock_adjustments.warehouse_id AND w.company_id=stock_adjustments.company_id
       AND (w.project_id IS NULL OR public.can_access_project(auth.uid(),w.project_id))
   )
 );
