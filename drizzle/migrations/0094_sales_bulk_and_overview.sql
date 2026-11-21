@@ -61,7 +61,7 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sales_bulk_add_flats(uuid,uuid[],integer,integer,integer,text,public.unit_type,numeric,numeric,numeric,numeric,numeric,numeric,numeric)
  FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.sales_bulk_add_flats(uuid,uuid[],integer,integer,integer,text,public.unit_type,numeric,numeric,numeric,numeric,numeric,numeric,numeric,numeric)
+GRANT EXECUTE ON FUNCTION public.sales_bulk_add_flats(uuid,uuid[],integer,integer,integer,text,public.unit_type,numeric,numeric,numeric,numeric,numeric,numeric,numeric)
  TO authenticated;
 
 -- Values derive from real receipts and verified refunds, never from unverified
