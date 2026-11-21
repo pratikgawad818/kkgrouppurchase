@@ -107,3 +107,38 @@ SET search_path=public,pg_temp AS $$
 $$;
 REVOKE ALL ON FUNCTION public.sales_overview(uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sales_overview(uuid,uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.sales_booking_finances(_sale_ids uuid[])
+RETURNS TABLE(
+ sale_id uuid,verified_paid numeric,reported_pending numeric,
+ refund_due numeric,refund_paid numeric,cancellation_reason text,
+ pending_cancel_request_id uuid,pending_cancel_reason text
+) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $$
+ SELECT s.id,
+   coalesce(received.verified_paid,0),
+   coalesce(received.reported_pending,0),
+   coalesce(c.refund_due,0),
+   coalesce(refunded.refund_paid,0),
+   c.reason,
+   request.id,request.reason
+ FROM public.property_sales s
+ LEFT JOIN LATERAL (
+   SELECT sum(r.amount) FILTER(WHERE r.status='verified') AS verified_paid,
+          sum(r.amount) FILTER(WHERE r.status='reported') AS reported_pending
+   FROM public.property_sale_receipts r WHERE r.sale_id=s.id
+ ) received ON true
+ LEFT JOIN public.property_sale_cancellations c ON c.sale_id=s.id
+ LEFT JOIN LATERAL(
+   SELECT sum(r.amount) AS refund_paid
+   FROM public.property_sale_refunds r WHERE r.cancellation_id=c.id
+ ) refunded ON true
+ LEFT JOIN LATERAL(
+   SELECT id,reason FROM public.property_sale_cancel_requests
+   WHERE sale_id=s.id AND status='pending' ORDER BY requested_at DESC LIMIT 1
+ ) request ON true
+ WHERE s.id=ANY(_sale_ids)
+ AND public.sales_project_allowed(s.project_id)
+ AND _sale_ids IS NOT NULL AND cardinality(_sale_ids) BETWEEN 1 AND 50;
+$$;
+REVOKE ALL ON FUNCTION public.sales_booking_finances(uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sales_booking_finances(uuid[]) TO authenticated;
