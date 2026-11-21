@@ -450,6 +450,7 @@ export function SalesPage() {
             modal==="bulk"?"Generate flats across selected floors within one building. Duplicate numbers reject the entire batch.":
             modal==="refund"?"Record a refund only after money has actually been returned. This does not initiate a bank transfer.":
             modal==="history"?"Activity is append-only and retains the previous buyer's cancellation history.":
+            modal==="correct"?"Super Admin-only clerical correction; not a legal agreement, registration or possession reversal.":
             "Actions are checked against company, project and role permissions."
           }</DialogDescription>
         </DialogHeader>
