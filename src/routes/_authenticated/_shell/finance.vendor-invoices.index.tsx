@@ -14,6 +14,7 @@ import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { useCan } from "@/lib/session";
 import { badge, INVOICE_STATUS, MATCH_STATUS, type InvoiceStatus } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { summarizeInvoiceStatuses } from "@/lib/invoice-status-summary";
 
 const META = "Vendor invoices matched against purchase orders and goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/")({
@@ -81,6 +82,7 @@ function InvoiceList() {
           ].some((v) => v?.toLowerCase().includes(s))),
     );
   }, [q.data, f, deferredSearch]);
+  const totals = useMemo(() => summarizeInvoiceStatuses(rows), [rows]);
   const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
   const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   return (
@@ -183,7 +185,34 @@ function InvoiceList() {
         </div>
       ) : (
         <>
-          <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+          <section aria-label="Invoice status totals" className="mb-4 space-y-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {([
+                ["Unapproved", totals.unapproved, "Draft, pending review and exceptions"],
+                ["Approved / Paid", totals.approved, "Approved, partially paid and paid"],
+                ["Combined Total", totals.combined, "Unapproved + Approved/Paid"],
+              ] as const).map(([title, value, description]) => (
+                <div key={title} className="rounded-xl border bg-card p-4 shadow-card">
+                  <p className="text-xs font-medium text-muted-foreground">{title}</p>
+                  <p className="mt-1 break-words text-xl font-bold tabular-nums sm:text-2xl">{inr(value.total)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {value.count.toLocaleString("en-IN")} {value.count === 1 ? "invoice" : "invoices"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gross invoice values, not outstanding payments. Totals follow the current search and
+              status, vendor, project and financial-year filters.
+              {totals.excluded.count > 0 && (
+                <> {totals.excluded.count.toLocaleString("en-IN")} rejected, cancelled or other-status
+                  {totals.excluded.count === 1 ? " invoice is" : " invoices are"} excluded
+                  ({inr(totals.excluded.total)}).</>
+              )}
+            </p>
+          </section>
+                    <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
             <table className="w-full text-sm">
               <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <tr>
