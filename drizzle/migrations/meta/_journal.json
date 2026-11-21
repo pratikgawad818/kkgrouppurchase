@@ -652,6 +652,20 @@
       "when": 1795248720000,
       "tag": "0092_pr_transition_project_revocation",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795248800000,
+      "tag": "0093_sales_cancellation_refunds",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1795248860000,
+      "tag": "0094_sales_bulk_and_overview",
+      "breakpoints": true
     }
   ]
 }
