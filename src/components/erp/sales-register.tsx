@@ -387,6 +387,9 @@ export function SalesPage() {
                     num(b.final_sale_price)>paid&&<Button size="sm" onClick={()=>openSale(b,"receipt")}>Payment</Button>}
                   {manager&&b.status!=="cancelled"&&b.status!=="possession_completed"&&
                     <Button size="sm" variant="outline" onClick={()=>openSale(b,"stage")}>Next stage</Button>}
+                  {superAdmin&&["agreement_pending","agreement_done","registered","possession_pending"].includes(b.status)
+                    &&paid===0&&num(f?.reported_pending)===0&&
+                    <Button size="sm" variant="outline" onClick={()=>openSale(b,"correct")}>Correct wrong stage</Button>}
                   {["booked","agreement_pending"].includes(b.status)&&
                     (manager?<Button size="sm" variant="destructive" onClick={()=>openSale(b,"cancel")}>Cancel booking</Button>:
                       !f?.pending_cancel_request_id&&<Button size="sm" variant="outline" onClick={()=>openSale(b,"request")}>Request cancellation</Button>)}
