@@ -57,5 +57,12 @@ BEGIN
   RETURN nxt;
 END $function$;
 
+-- Defense in depth: even if a future RPC or an administrator script
+-- accidentally assigns the creator as approver, the PO header rejects it.
+-- Preflight confirmed no existing PO with approved_by = created_by.
+ALTER TABLE public.purchase_orders
+  ADD CONSTRAINT po_independent_approver_ck
+  CHECK (approved_by IS NULL OR approved_by IS DISTINCT FROM created_by);
+
 REVOKE ALL ON FUNCTION public.po_transition(uuid,public.po_action,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.po_transition(uuid,public.po_action,text) TO authenticated;
