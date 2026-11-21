@@ -645,6 +645,13 @@
       "when": 1795248660000,
       "tag": "0091_private_company_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795248720000,
+      "tag": "0092_pr_transition_project_revocation",
+      "breakpoints": true
     }
   ]
 }
