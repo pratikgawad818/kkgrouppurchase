@@ -392,19 +392,35 @@ def seed_po(c, creator=PURCHASER, requester=PURCHASER):
 
 def test_director_notifications_and_names():
     with db() as c:
-        doc=seed_po(c)
+        # The original Site Engineer created the PR; a Purchase Manager
+        # prepared the PO. Director notifications MUST identify the Engineer,
+        # never silently substitute the preparer's name.
+        doc=seed_po(c,requester=SITE)
         actor(c,PURCHASER)
         c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,))
+        denied(c,lambda:c.execute("SELECT * FROM po_notification_context(%s)",(doc,)),"permission denied")
         c.execute("RESET ROLE")
-        recipients=c.execute("SELECT user_id,link FROM notifications WHERE link LIKE %s",('%'+doc,)).fetchall()
+        recipients=c.execute(
+            "SELECT user_id,title,body,link FROM notifications WHERE link LIKE %s",('%'+doc,)
+        ).fetchall()
         assert {str(r[0]) for r in recipients}=={DIRECTOR},recipients
-        assert all('kind=purchase_order&id=' in r[1] for r in recipients)
+        assert all('kind=purchase_order&id=' in r[3] for r in recipients)
+        assert all('QA site_engineer' in r[1] and 'QA A' in r[1] for r in recipients),recipients
+        assert all('Requested by QA site_engineer for QA A' in r[2] for r in recipients),recipients
+        assert all('QA purchase_manager' not in r[1]+r[2] for r in recipients),recipients
+        po_number=c.execute('SELECT po_number FROM purchase_orders WHERE id=%s',(doc,)).fetchone()[0]
+        assert all('₹' in r[2] and po_number in r[2] for r in recipients),recipients
         actor(c,PURCHASER)
         c.execute("SELECT remind_po_approvers(%s)",(doc,))
         c.execute("SELECT remind_po_approvers(%s)",(doc,))
         c.execute("RESET ROLE")
         assert c.execute("SELECT count(*) FROM approval_reminder_events WHERE po_id=%s",(doc,)).fetchone()[0]==2
-        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND title LIKE 'Reminder:%%' AND link LIKE %s",(DIRECTOR,'%'+doc)).fetchone()[0]==2
+        reminders=c.execute(
+          "SELECT title,body FROM notifications WHERE user_id=%s AND title LIKE 'PO reminder %%' AND link LIKE %s",
+          (DIRECTOR,'%'+doc)).fetchall()
+        assert len(reminders)==2,reminders
+        assert all('QA site_engineer' in r[0] and 'QA A' in r[0] for r in reminders),reminders
+        assert all('Requested by QA site_engineer for QA A' in r[1] for r in reminders),reminders
         actor(c,DIRECTOR)
         assert c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)).fetchone()[0]=='approved'
         actor(c,PURCHASER)
@@ -427,7 +443,7 @@ def test_director_notifications_and_names():
         denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','self')",(doc,)),"cannot approve")
         denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','self finalize')",(doc,)),"Only draft")
         c.rollback()
-    print("PASS one independent director, scoped notification recipients, reminder throttle and safe actor-name lookup")
+    print("PASS director notifications show original PR requester and project; reminders and actor-name lookup scoped")
 
 
 
