@@ -694,6 +694,13 @@
       "when": 1795260490000,
       "tag": "0098_sales_reporting_and_legal_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1795277000000,
+      "tag": "0099_pr_project_revocation_write_policies",
+      "breakpoints": true
     }
   ]
 }
