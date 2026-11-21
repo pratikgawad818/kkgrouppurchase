@@ -408,7 +408,8 @@ def test_director_notifications_and_names():
         assert all('QA site_engineer' in r[1] and 'QA A' in r[1] for r in recipients),recipients
         assert all('Requested by QA site_engineer for QA A' in r[2] for r in recipients),recipients
         assert all('QA purchase_manager' not in r[1]+r[2] for r in recipients),recipients
-        assert all('₹' in r[2] and 'PO' in r[2] for r in recipients),recipients
+        po_number=c.execute('SELECT po_number FROM purchase_orders WHERE id=%s',(doc,)).fetchone()[0]
+        assert all('₹' in r[2] and po_number in r[2] for r in recipients),recipients
         actor(c,PURCHASER)
         c.execute("SELECT remind_po_approvers(%s)",(doc,))
         c.execute("SELECT remind_po_approvers(%s)",(doc,))
