@@ -420,10 +420,12 @@ def test_director_notifications_and_names():
     with db() as c:
         doc=seed_po(c,DIRECTOR)
         actor(c,DIRECTOR)
-        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='approved'
-        assert str(c.execute("SELECT approved_by FROM purchase_orders WHERE id=%s",(doc,)).fetchone()[0])==DIRECTOR
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
+        assert c.execute("SELECT approved_by FROM purchase_orders WHERE id=%s",(doc,)).fetchone()[0] is None
         assert c.execute("SELECT count(*) FROM director_approval_votes WHERE entity_id=%s",(doc,)).fetchone()[0]==0
-        assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='approved'",(doc,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='approved'",(doc,)).fetchone()[0]==0
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','self')",(doc,)),"cannot approve")
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','self finalize')",(doc,)),"Only draft")
         c.rollback()
     print("PASS one independent director, scoped notification recipients, reminder throttle and safe actor-name lookup")
 
@@ -446,14 +448,24 @@ def test_director_origin_and_super_admin_purchasing():
         c.execute("SELECT record_vendor_selection(%s,%s::jsonb,'QA selected supplier')",(rid,json.dumps([{"rfq_item_id":str(item),"quotation_item_id":str(line)}])))
         order=c.execute("SELECT create_po_from_selection(%s,%s)",(rid,quote)).fetchone()[0]
         c.execute("UPDATE purchase_orders SET delivery_warehouse_id=%s WHERE id=%s",(WAREHOUSE,order))
-        assert c.execute("SELECT po_transition(%s,'submitted','Director finalized')",(order,)).fetchone()[0]=='approved'
+        assert c.execute("SELECT po_transition(%s,'submitted','Director submitted for independent review')",(order,)).fetchone()[0]=='pending_approval'
         source=c.execute("SELECT purchase_request_id,rfq_id,quotation_id,created_by,approved_by FROM purchase_orders WHERE id=%s",(order,)).fetchone()
-        assert str(source[0])==doc and source[1]==rid and source[2]==quote and str(source[3])==DIRECTOR and source[3]==source[4],source
+        assert str(source[0])==doc and source[1]==rid and source[2]==quote and str(source[3])==DIRECTOR and source[4] is None,source
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','self')",(order,)),"cannot approve")
+        assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='approved'",(order,)).fetchone()[0]==0
         assert c.execute("SELECT count(*) FROM purchase_order_items WHERE po_id=%s",(order,)).fetchone()[0]==1
         actor(c,PURCHASER)
         own=save_pr(c,submit=True)
         assert c.execute("SELECT status FROM purchase_requests WHERE id=%s",(own,)).fetchone()[0]=='pending_approval'
         denied(c,lambda:c.execute("SELECT pr_transition(%s,'approved','self')",(own,)),"own request")
+        # Grant a second QA actor a distinct Director role to prove a creator
+        # can only receive approval from a different authenticated director.
+        c.execute("RESET ROLE")
+        c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,'director')",(PURCHASER,))
+        actor(c,PURCHASER)
+        assert c.execute("SELECT po_transition(%s,'approved','Independent director reviewed')",(order,)).fetchone()[0]=='approved'
+        assert str(c.execute("SELECT approved_by FROM purchase_orders WHERE id=%s",(order,)).fetchone()[0])==PURCHASER
+        assert c.execute("SELECT count(*) FROM purchase_order_approvals WHERE po_id=%s AND action='approved'",(order,)).fetchone()[0]==1
         c.rollback()
     with db() as c:
         doc=seed_po(c,ADMIN)
@@ -483,9 +495,10 @@ def test_director_origin_and_super_admin_purchasing():
         actor(c,ADMIN)
         assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
         actor(c,DIRECTOR)
-        assert c.execute("SELECT po_transition(%s,'submitted','Finalize my existing order')",(doc,)).fetchone()[0]=='approved'
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'submitted','Finalize my existing order')",(doc,)),"Only draft")
+        denied(c,lambda:c.execute("SELECT po_transition(%s,'approved','self')",(doc,)),"cannot approve")
         c.rollback()
-    print("PASS Director-owned PR/PO finalize with audit history; Super Admin and dual-role POs require one independent company Director")
+    print("PASS director-created POs need independent approval; no self-finalize shortcut; audit history retained")
 
 def test_push_and_email_boundaries():
     with db() as c:

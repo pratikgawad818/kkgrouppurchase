@@ -701,6 +701,13 @@
       "when": 1795277000000,
       "tag": "0099_pr_project_revocation_write_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1795278500000,
+      "tag": "0100_po_director_independent_approval",
+      "breakpoints": true
     }
   ]
 }
