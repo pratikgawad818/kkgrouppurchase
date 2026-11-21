@@ -1501,3 +1501,5 @@ if __name__ == "__main__":
     test_google_sheets_retired_archives_preserved()
     from sales_0093_acceptance import exercise_sales
     exercise_sales(db,actor,denied,PROJECT,ADMIN,SITE,OTHER_DIRECTOR)
+    from sales_0096_acceptance import exercise_commercial
+    exercise_commercial(db,actor,denied,PROJECT,ADMIN,SITE,OTHER_DIRECTOR,A)

@@ -9,13 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader, Loading } from "@/components/erp/common";
 import { UNIT_TYPE_LABEL } from "@/lib/format";
+import { SalesCommercialDialog } from "@/components/erp/sales-commercial";
+import { SalesProjectReports } from "@/components/erp/sales-performance";
 
 // Sales has role/project scoped RLS and callable workflows. UI guards never
 // substitute for the authorization checks in the database functions.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 const PAGE_SIZE = 25;
-type Tab = "inventory" | "bookings" | "receipts";
+type Tab = "inventory" | "bookings" | "receipts" | "reports";
 type Modal = "flat" | "bulk" | "book" | "receipt" | "stage" | "request" | "cancel" | "decline" | "refund" | "history" | "correct";
 type Project = { id: string; name: string };
 type Building = { id: string; name: string; project_id: string };
@@ -23,7 +25,8 @@ type Floor = { id: string; name: string; floor_number: number; building_id: stri
 type Unit = {
   id: string; project_id: string; building_id: string; floor_id: string;
   unit_number: string; unit_type: string; carpet_area: number; saleable_area: number;
-  status: string; base_rate: number; total_agreement_value: number;
+  status: string; base_rate: number; floor_rise_rate: number; parking_charges: number;
+  other_charges: number; gst_rate: number; total_agreement_value: number;
 };
 type Booking = {
   id: string; sale_number: string; unit_id: string; project_id: string; buyer_name: string;
@@ -83,7 +86,7 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
   let query;
   if (tab === "inventory") {
     query = db.from("units")
-      .select("id,project_id,building_id,floor_id,unit_number,unit_type,carpet_area,saleable_area,status,base_rate,total_agreement_value",
+      .select("id,project_id,building_id,floor_id,unit_number,unit_type,carpet_area,saleable_area,status,base_rate,floor_rise_rate,parking_charges,other_charges,gst_rate,total_agreement_value",
         { count:"exact" }).eq("record_status","active");
     if (filter.project) query=query.eq("project_id",filter.project);
     if (filter.building) query=query.eq("building_id",filter.building);
@@ -163,6 +166,7 @@ export function SalesPage() {
   const [search,setSearch]=useState("");
   const [page,setPage]=useState(0);
   const [modal,setModal]=useState<Modal|null>(null);
+  const [commercial,setCommercial]=useState<{mode:"import"|"price"|"buyer";flat?:Unit;booking?:Booking}|null>(null);
   const [flat,setFlat]=useState<Unit|null>(null);
   const [sale,setSale]=useState<Booking|null>(null);
   const [selectedFloors,setSelectedFloors]=useState<string[]>([]);
@@ -179,7 +183,7 @@ export function SalesPage() {
   });
   const listing=useQuery({
     queryKey:["sales-register",tab,filter,me.data?.profile.id],
-    enabled:!!me.data?.profile.id,
+    enabled:!!me.data?.profile.id&&tab!=="reports",
     queryFn:()=>listPage<Unit|Booking|Receipt>(tab,filter),
   });
   const bookings=tab==="bookings" ? (listing.data?.rows ?? []) as Booking[] : [];
@@ -252,9 +256,9 @@ export function SalesPage() {
     setModal(type);
   }
   const filteredStatus=tab==="inventory"?["available","hold","booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"]:
-    tab==="bookings"?[...stages,"cancelled"]:["reported","verified","rejected"];
+    tab==="bookings"?[...stages,"cancelled"]:tab==="receipts"?["reported","verified","rejected"]:[];
   const financeReady=tab!=="bookings"||salesIds.length===0||financeQuery.isSuccess;
-  const ready=meta.isSuccess&&listing.isSuccess&&financeReady;
+  const ready=tab!=="reports"&&meta.isSuccess&&listing.isSuccess&&financeReady;
   const candidateCount=selectedFloors.length*Math.max(0,Number(value("per_floor"))||0);
   const firstSelected=creationFloors.find(x=>selectedFloors.includes(x.id));
   const firstExample=firstSelected?`${firstSelected.floor_number}${value("separator")}${String(Number(value("start_at"))||0).padStart(Number(value("digits"))||2,"0")}`:"—";
@@ -281,6 +285,7 @@ export function SalesPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-semibold"><ListFilter className="h-4 w-4"/> Project and property filters</p>
         {manager&&<div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={()=>setCommercial({mode:"import"})}>Import Excel / CSV</Button>
           <Button size="sm" variant="outline" onClick={openBulk}><Layers3 className="mr-1 h-4 w-4"/>Bulk add flats</Button>
           <Button size="sm" onClick={openUnit}><Plus className="mr-1 h-4 w-4"/>Add one flat</Button>
         </div>}
@@ -312,7 +317,7 @@ export function SalesPage() {
       </div>
     </div>
     <div role="tablist" aria-label="Sales sections" className="flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
-      {([["inventory","Flat inventory"],["bookings","Bookings"],["receipts","Collections"]] as const)
+      {([["inventory","Flat inventory"],["bookings","Bookings"],["receipts","Collections"],["reports","Project reports"]] as const)
         .map(([key,title])=><button type="button" key={key} role="tab" aria-selected={tab===key}
           onClick={()=>changeTab(key)}
           className={"min-h-10 shrink-0 rounded-lg px-4 text-sm font-medium "+(tab===key?"bg-card shadow-sm":"text-muted-foreground")}>
@@ -324,6 +329,7 @@ export function SalesPage() {
         Unable to load sales: {String(meta.error?.message??listing.error?.message??summary.error?.message??financeQuery.error?.message)}
         <Button size="sm" variant="outline" className="ml-2" onClick={()=>{void meta.refetch();void listing.refetch();void summary.refetch();if(financeQuery.isError)void financeQuery.refetch();}}>Retry</Button>
       </section>}
+    {tab==="reports"&&<SalesProjectReports project={project} building={building}/>}
     {ready&&<section className="overflow-hidden rounded-xl border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
         <p className="text-sm font-semibold">{tab==="inventory"?"Flat register":tab==="bookings"?"Buyer booking register":"Receipt register"}</p>
@@ -346,8 +352,11 @@ export function SalesPage() {
               <td className="px-3 py-3 tabular-nums">{money(num(u.total_agreement_value))}
                 <p className="text-xs text-muted-foreground">{money(num(u.base_rate))}/sqft</p></td>
               <td className="px-3 py-3"><Status value={u.status}/></td>
-              <td className="px-3 py-3">{u.status==="available"&&
-                <Button size="sm" onClick={()=>openBook(u)}>Book flat</Button>}</td>
+              <td className="px-3 py-3"><div className="flex gap-2">{u.status==="available"&&<>
+                <Button size="sm" onClick={()=>openBook(u)}>Book flat</Button>
+                {manager&&<Button size="sm" variant="outline"
+                 onClick={()=>setCommercial({mode:"price",flat:u})}>Revise price</Button>}
+              </>}</div></td>
             </tr>)}
           </tbody>
         </table>}
@@ -382,6 +391,7 @@ export function SalesPage() {
                     <p className="text-xs text-muted-foreground">Remaining {money(refundOutstanding)}</p>
                   </>:<span className="text-muted-foreground">—</span>}</td>
                 <td className="px-3 py-3"><div className="flex max-w-64 flex-wrap gap-1.5">
+                  <Button size="sm" variant="outline" onClick={()=>setCommercial({mode:"buyer",booking:b})}>Buyer file</Button>
                   <Button size="sm" variant="outline" onClick={()=>openSale(b,"history")}>History</Button>
                   {b.status!=="cancelled"&&b.status!=="possession_completed"&&
                     num(b.final_sale_price)>paid&&<Button size="sm" onClick={()=>openSale(b,"receipt")}>Payment</Button>}
@@ -435,6 +445,14 @@ export function SalesPage() {
       </div>
       <Pager count={total} page={page} onChange={setPage}/>
     </section>}
+    {commercial&&<SalesCommercialDialog key={commercial.mode+(commercial.booking?.id??commercial.flat?.id??"")}
+      mode={commercial.mode} project={project} buildings={meta.data?.buildings??[]}
+      flat={commercial.flat} booking={commercial.booking} manager={manager}
+      companyId={me.data?.profile.company_id??""} actorId={me.data?.profile.id??""}
+      onClose={()=>setCommercial(null)} onSaved={()=>{
+        for(const key of ["sales-register","sales-overview","sales-project-commercial-report",
+          "sales-booking-finances","units"])void qc.invalidateQueries({queryKey:[key]});
+      }}/>}
     <Dialog open={modal!==null} onOpenChange={open=>{if(!open&&!busy)setModal(null);}}>
       <DialogContent className="max-h-[92dvh] max-w-xl overflow-y-auto">
         <DialogHeader>
