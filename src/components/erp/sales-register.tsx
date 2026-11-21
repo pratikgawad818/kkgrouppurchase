@@ -16,7 +16,7 @@ import { UNIT_TYPE_LABEL } from "@/lib/format";
 const db = supabase as any;
 const PAGE_SIZE = 25;
 type Tab = "inventory" | "bookings" | "receipts";
-type Modal = "flat" | "bulk" | "book" | "receipt" | "stage" | "request" | "cancel" | "decline" | "refund" | "history";
+type Modal = "flat" | "bulk" | "book" | "receipt" | "stage" | "request" | "cancel" | "decline" | "refund" | "history" | "correct";
 type Project = { id: string; name: string };
 type Building = { id: string; name: string; project_id: string };
 type Floor = { id: string; name: string; floor_number: number; building_id: string };
@@ -154,6 +154,7 @@ const emptySummary:Summary={
 export function SalesPage() {
   const me=useMe(),qc=useQueryClient();
   const manager=!!me.data?.roles.some(r=>r==="super_admin"||r==="director");
+  const superAdmin=!!me.data?.roles.includes("super_admin");
   const [tab,setTab]=useState<Tab>("inventory");
   const [project,setProject]=useState("");
   const [building,setBuilding]=useState("");
@@ -439,6 +440,7 @@ export function SalesPage() {
             receipt:"Record buyer payment",stage:"Advance booking stage",
             request:"Request cancellation",cancel:"Cancel booking",decline:"Decline cancellation request",
             refund:"Record customer refund",history:"Booking activity & history",
+            correct:"Correct an erroneously advanced booking",
           } as Record<Modal,string>)[modal??"flat"]}</DialogTitle>
           <DialogDescription>{
             modal==="cancel"?"This action releases the flat. Existing verified payments stay in the ledger and any refund due remains payable.":
