@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
-import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PoReviewActions } from "@/components/erp/po-review-actions";
@@ -222,7 +221,6 @@ function PoDetail() {
   const canReturn = po.status === "pending_approval" &&
     (isAdmin || canApprove);
   const unresolvedSiteCorrection = corrections.some((item) => item.status !== "resolved");
-  const finalizeOwn = mine && directorCanFinalizeOwnPurchasing(me.data?.roles ?? []);
   const st = PO_STATUS[po.status];
   const draft = po.status === "draft" || po.status === "rejected";
   const canReceive =
@@ -271,8 +269,7 @@ function PoDetail() {
                     {poEditorOpen ? "Close PO editor" : "Edit PO"}
                   </Button>
                 )}
-                {(draft || (po.status === "pending_approval" && finalizeOwn)) &&
-                  can("purchase_order.create") && (
+                {draft && can("purchase_order.create") && (
                     <Button
                       size="sm"
                       disabled={act.isPending || poEditorOpen || unresolvedSiteCorrection}
@@ -284,7 +281,7 @@ function PoDetail() {
                         act.mutate("submitted");
                       }}
                     >
-                      {finalizeOwn ? "Finalize order" : "Submit to Director"}
+                      Submit for approval
                     </Button>
                   )}
                 {(canReturn || canApprove) && (
