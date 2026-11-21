@@ -29,8 +29,8 @@ test("bad/missing columns or oversize batches fail without silent truncation",as
  await assert.rejects(readFlatSpreadsheet(new File(["foo,bar\n1,2\n"],"wrong.csv")),/Missing spreadsheet columns/);
  const invalid=new File([template+"2,201,2bhk,0,600,700,2200,0,0,5"],"invalid.csv");
  await assert.rejects(readFlatSpreadsheet(invalid),/invalid carpet_area/);
- const many=new File([[...SALES_HEADERS].join(","),...Array.from({length:301},
-  (_,i)=>`1,${i+1},2bhk,500,600,700,2200,0,0,5`)].join("\n"),"many.csv");
+ const many=new File([[[...SALES_HEADERS].join(","),...Array.from({length:301},
+  (_,i)=>`1,${i+1},2bhk,500,600,700,2200,0,0,5`)].join("\n")],"many.csv");
  await assert.rejects(readFlatSpreadsheet(many),/300/);
 });
 test("commercial migration keeps write operations in authorized RPCs",()=>{
