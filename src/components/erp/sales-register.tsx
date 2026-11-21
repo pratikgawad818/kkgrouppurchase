@@ -16,7 +16,7 @@ import { UNIT_TYPE_LABEL } from "@/lib/format";
 const db = supabase as any;
 const PAGE_SIZE = 25;
 type Tab = "inventory" | "bookings" | "receipts";
-type Modal = "flat" | "bulk" | "book" | "receipt" | "stage" | "request" | "cancel" | "decline" | "refund" | "history";
+type Modal = "flat" | "bulk" | "book" | "receipt" | "stage" | "request" | "cancel" | "decline" | "refund" | "history" | "correct";
 type Project = { id: string; name: string };
 type Building = { id: string; name: string; project_id: string };
 type Floor = { id: string; name: string; floor_number: number; building_id: string };
@@ -154,6 +154,7 @@ const emptySummary:Summary={
 export function SalesPage() {
   const me=useMe(),qc=useQueryClient();
   const manager=!!me.data?.roles.some(r=>r==="super_admin"||r==="director");
+  const superAdmin=!!me.data?.roles.includes("super_admin");
   const [tab,setTab]=useState<Tab>("inventory");
   const [project,setProject]=useState("");
   const [building,setBuilding]=useState("");
@@ -386,6 +387,9 @@ export function SalesPage() {
                     num(b.final_sale_price)>paid&&<Button size="sm" onClick={()=>openSale(b,"receipt")}>Payment</Button>}
                   {manager&&b.status!=="cancelled"&&b.status!=="possession_completed"&&
                     <Button size="sm" variant="outline" onClick={()=>openSale(b,"stage")}>Next stage</Button>}
+                  {superAdmin&&["agreement_pending","agreement_done","registered","possession_pending"].includes(b.status)
+                    &&paid===0&&num(f?.reported_pending)===0&&
+                    <Button size="sm" variant="outline" onClick={()=>openSale(b,"correct")}>Correct wrong stage</Button>}
                   {["booked","agreement_pending"].includes(b.status)&&
                     (manager?<Button size="sm" variant="destructive" onClick={()=>openSale(b,"cancel")}>Cancel booking</Button>:
                       !f?.pending_cancel_request_id&&<Button size="sm" variant="outline" onClick={()=>openSale(b,"request")}>Request cancellation</Button>)}
@@ -439,12 +443,14 @@ export function SalesPage() {
             receipt:"Record buyer payment",stage:"Advance booking stage",
             request:"Request cancellation",cancel:"Cancel booking",decline:"Decline cancellation request",
             refund:"Record customer refund",history:"Booking activity & history",
+            correct:"Correct an erroneously advanced booking",
           } as Record<Modal,string>)[modal??"flat"]}</DialogTitle>
           <DialogDescription>{
             modal==="cancel"?"This action releases the flat. Existing verified payments stay in the ledger and any refund due remains payable.":
             modal==="bulk"?"Generate flats across selected floors within one building. Duplicate numbers reject the entire batch.":
             modal==="refund"?"Record a refund only after money has actually been returned. This does not initiate a bank transfer.":
             modal==="history"?"Activity is append-only and retains the previous buyer's cancellation history.":
+            modal==="correct"?"Super Admin-only clerical correction; not a legal agreement, registration or possession reversal.":
             "Actions are checked against company, project and role permissions."
           }</DialogDescription>
         </DialogHeader>
@@ -631,6 +637,32 @@ export function SalesPage() {
           <Field label="Notes"><textarea className={input+" min-h-20 py-2"} value={value("notes")}
             onChange={e=>put("notes",e.target.value)}/></Field>
           <Button type="submit" className="w-full" disabled={busy}>Record actual refund</Button>
+        </form>}
+        {modal==="correct"&&sale&&<form className="space-y-3" onSubmit={e=>submit(e,
+          "sales_correct_erroneous_stage",{
+            _sale_id:sale.id,_reason:value("reason"),
+            _confirmation:"I_CONFIRM_STAGE_ENTERED_IN_ERROR",
+          },"Booking returned to Booked; correction audited")}>
+          <p className="rounded-lg border border-amber-500/40 p-3 text-sm">
+            Current stage: <strong>{labels[sale.status]}</strong>. This action returns the
+            record to <strong>Booked</strong> because its stage was entered incorrectly.
+            If an agreement, registration or handover actually occurred, use a
+            formal legal cancellation process instead.
+          </p>
+          <Field label="Reason for wrong stage (at least 20 characters) *">
+            <textarea className={input+" min-h-28 py-2"} required minLength={20}
+              value={value("reason")} onChange={e=>put("reason",e.target.value)}/>
+          </Field>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1" checked={value("confirmed")==="yes"}
+              onChange={e=>put("confirmed",e.target.checked?"yes":"")}/>
+            I verified that this is only a clerical/test-stage mistake and no
+            executed agreement, registration or possession needs to be reversed.
+          </label>
+          <Button type="submit" className="w-full" disabled={busy||
+            value("reason").trim().length<20||value("confirmed")!=="yes"}>
+            Return to Booked (audited correction)
+          </Button>
         </form>}
         {modal==="history"&&sale&&<div className="space-y-3">
           <p className="rounded-lg bg-muted p-3 text-sm">{sale.sale_number} · {sale.buyer_name}</p>

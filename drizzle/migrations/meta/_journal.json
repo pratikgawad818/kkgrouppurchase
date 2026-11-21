@@ -666,6 +666,13 @@
       "when": 1795248860000,
       "tag": "0094_sales_bulk_and_overview",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1795249000000,
+      "tag": "0095_sales_stage_correction",
+      "breakpoints": true
     }
   ]
 }
