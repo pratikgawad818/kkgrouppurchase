@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Building2, CreditCard, Home, Plus, Wallet, ListFilter, Layers3, Ban, RotateCcw } from "lucide-react";
@@ -152,12 +151,7 @@ const emptySummary:Summary={
   total_flats:0,available_flats:0,booked_flats:0,active_sales:0,cancelled_sales:0,
   verified_collections:0,outstanding:0,refund_pending:0,
 };
-export const Route=createFileRoute("/_authenticated/_shell/sales")({
-  head:()=>({meta:[{title:"Sales & Bookings — KK GROUP ERP"}]}),
-  component:SalesPage,
-});
-
-function SalesPage() {
+export function SalesPage() {
   const me=useMe(),qc=useQueryClient();
   const manager=!!me.data?.roles.some(r=>r==="super_admin"||r==="director");
   const [tab,setTab]=useState<Tab>("inventory");
