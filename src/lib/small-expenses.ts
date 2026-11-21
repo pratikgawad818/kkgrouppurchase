@@ -31,6 +31,29 @@ export function parseSmallExpenseAmount(value: string): number | null {
   return Number(paise) / 100;
 }
 
+/** Small expenses store the payee in paid_to (free text), not vendor_id.
+ * A case-insensitive substring match works for vendors, workers and shops
+ * without falsely implying a formal vendor-master relationship.
+ */
+export function matchesSmallExpenseVendor(paidTo: string | null | undefined, search: string): boolean {
+  const term = search.trim().toLocaleLowerCase();
+  return !term || (paidTo ?? "").trim().toLocaleLowerCase().includes(term);
+}
+
+/** Distinct case-insensitive suggestions from the accessible complete register. */
+export function smallExpenseVendorSuggestions(
+  rows: readonly { paid_to: string | null | undefined }[],
+): string[] {
+  const suggestions = new Map<string, string>();
+  for (const row of rows) {
+    const name = row.paid_to?.trim();
+    if (name && !suggestions.has(name.toLocaleLowerCase())) {
+      suggestions.set(name.toLocaleLowerCase(), name);
+    }
+  }
+  return [...suggestions.values()].sort((a, b) => a.localeCompare(b, "en-IN"));
+}
+
 export type SmallExpenseAmount = {
   amount: number;
   status: "recorded" | "voided";
