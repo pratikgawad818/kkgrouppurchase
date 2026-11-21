@@ -48,9 +48,10 @@ export function parseCsv(text:string): string[][] {
   return output;
 }
 function fromGrid(grid:string[][]):SalesRow[]{
-  if(!grid.length)throw new Error("The spreadsheet is empty");
+  const header=grid[0];
+  if(!header)throw new Error("The spreadsheet is empty");
   const normalized=(s:string)=>s.toLowerCase().trim().replaceAll(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
-  const h=grid[0].map(normalized),mapping=SALES_HEADERS.map(key=>h.indexOf(key));
+  const h=header.map(normalized),mapping=SALES_HEADERS.map(key=>h.indexOf(key));
   if(mapping.some(index=>index<0)){
     const missing=SALES_HEADERS.filter((_,i)=>mapping[i]<0);
     throw new Error("Missing spreadsheet columns: "+missing.join(", "));
