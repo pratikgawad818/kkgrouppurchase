@@ -39,5 +39,5 @@ test("commercial migration keeps write operations in authorized RPCs",()=>{
  assert.match(sql,/sales_project_allowed\(s\.project_id\)/);
  assert.match(sql,/REVOKE ALL ON public\.property_sale_buyer_details/);
  assert.match(sql,/CREATE POLICY "Assigned sales documents"/);
- assert.match(sql,/CHECK \(abs/); // legacy cancellation liability lives in 0093
+ assert.match(sql,/CREATE OR REPLACE FUNCTION public\.sales_set_payment_plan/);
 });
