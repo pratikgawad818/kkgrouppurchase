@@ -180,7 +180,6 @@ export function SalesPage() {
     queryKey:["sales-register",tab,filter,me.data?.profile.id],
     enabled:!!me.data?.profile.id,
     queryFn:()=>listPage<Unit|Booking|Receipt>(tab,filter),
-    placeholderData:previous=>previous,
   });
   const bookings=tab==="bookings" ? (listing.data?.rows ?? []) as Booking[] : [];
   const salesIds=bookings.map(x=>x.id);
@@ -253,7 +252,8 @@ export function SalesPage() {
   }
   const filteredStatus=tab==="inventory"?["available","hold","booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"]:
     tab==="bookings"?[...stages,"cancelled"]:["reported","verified","rejected"];
-  const ready=meta.isSuccess&&listing.isSuccess;
+  const financeReady=tab!=="bookings"||salesIds.length===0||financeQuery.isSuccess;
+  const ready=meta.isSuccess&&listing.isSuccess&&financeReady;
   const candidateCount=selectedFloors.length*Math.max(0,Number(value("per_floor"))||0);
   const firstSelected=creationFloors.find(x=>selectedFloors.includes(x.id));
   const firstExample=firstSelected?`${firstSelected.floor_number}${value("separator")}${String(Number(value("start_at"))||0).padStart(Number(value("digits"))||2,"0")}`:"—";
@@ -317,11 +317,11 @@ export function SalesPage() {
           className={"min-h-10 shrink-0 rounded-lg px-4 text-sm font-medium "+(tab===key?"bg-card shadow-sm":"text-muted-foreground")}>
           {title}</button>)}
     </div>
-    {(meta.isLoading||listing.isLoading)&&<Loading/>}
-    {(meta.isError||listing.isError||summary.isError)&&
+    {(meta.isLoading||listing.isLoading||(!financeReady&&!financeQuery.isError))&&<Loading/>}
+    {(meta.isError||listing.isError||summary.isError||financeQuery.isError)&&
       <section role="alert" className="rounded-xl border border-destructive/40 p-4 text-sm text-destructive">
-        Unable to load sales: {String(meta.error?.message??listing.error?.message??summary.error?.message)}
-        <Button size="sm" variant="outline" className="ml-2" onClick={()=>{void meta.refetch();void listing.refetch();void summary.refetch();}}>Retry</Button>
+        Unable to load sales: {String(meta.error?.message??listing.error?.message??summary.error?.message??financeQuery.error?.message)}
+        <Button size="sm" variant="outline" className="ml-2" onClick={()=>{void meta.refetch();void listing.refetch();void summary.refetch();if(financeQuery.isError)void financeQuery.refetch();}}>Retry</Button>
       </section>}
     {ready&&<section className="overflow-hidden rounded-xl border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
