@@ -78,9 +78,13 @@ def exercise_sales(db, actor, denied, company_project, admin, sales_staff, forei
         actor(c,sales_staff)
         mistaken=c.execute("SELECT sales_book_flat(%s,'Wrong Stage Buyer','9876543212',1600000)",
                            (unbooked,)).fetchone()[0]
-        actor(c,admin)
-        for next_stage in ("agreement_pending","agreement_done","registered","possession_pending"):
-            c.execute("SELECT sales_set_stage(%s,%s)",(mistaken,next_stage))
+        # QA owner seeds a legacy record incorrectly advanced before the
+        # new agreement/registration stage guards. The application itself
+        # now refuses such advancements without real legal references.
+        c.execute("RESET ROLE")
+        c.execute("UPDATE property_sales SET status='possession_pending' WHERE id=%s",(mistaken,))
+        c.execute("SELECT set_config('app.unit_status_source','sales',true)")
+        c.execute("UPDATE units SET status='possession_pending' WHERE id=%s",(unbooked,))
         actor(c,sales_staff)
         denied(c,lambda:c.execute("SELECT sales_correct_erroneous_stage(%s,%s,%s)",
                (mistaken,"Stage was entered incorrectly during training","I_CONFIRM_STAGE_ENTERED_IN_ERROR")))
