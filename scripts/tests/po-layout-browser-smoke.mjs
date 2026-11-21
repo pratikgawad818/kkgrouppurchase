@@ -122,7 +122,7 @@ try {
         "--no-first-run", "--disable-extensions", "--virtual-time-budget=" + budget,
         "--dump-dom", "http://127.0.0.1:" + port + "/",
       ], { encoding: "utf8", timeout: 90000, maxBuffer: 20 * 1024 * 1024 });
-      match = (run.stdout || "").match(/<pre id="result">([\\s\\S]*?)<\\/pre>/);
+      match = (run.stdout || "").match(/<pre id="result">([\s\S]*?)<\/pre>/);
       if (match && match[1] !== "pending") break;
       console.warn("Chrome rendered a pending PO PDF snapshot; retrying with longer virtual time budget", budget);
     }
