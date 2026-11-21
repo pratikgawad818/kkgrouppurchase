@@ -9,7 +9,7 @@ from decimal import Decimal
 def exercise_sales(db, actor, denied, company_project, admin, sales_staff, foreign_director):
     with db() as c:
         building = c.execute(
-            "INSERT INTO buildings(project_id,code,name) VALUES(%s,'QA-SALES','Sales Tower') RETURNING id",
+            "INSERT INTO buildings(project_id,code,name) VALUES(%s,'SLS','Sales Tower') RETURNING id",
             (company_project,)).fetchone()[0]
         first_floor = c.execute(
             "INSERT INTO floors(building_id,name,floor_number) VALUES(%s,'Floor 1',1) RETURNING id",
