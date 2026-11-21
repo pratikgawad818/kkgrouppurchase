@@ -14,6 +14,8 @@ test("director-origin PO submission cannot promote directly to approved",()=>{
  assert.match(sql,/IF p.created_by = auth\.uid\(\) THEN RAISE EXCEPTION 'You cannot approve or reject a PO you created'/);
  assert.match(sql,/register_director_vote\('purchase_order'/);
  assert.match(sql,/INSERT INTO purchase_order_approvals\(po_id, action, acted_by, comment, previous_status, new_status\)/);
+ assert.match(sql,/po_independent_approver_ck/);
+ assert.match(sql,/approved_by IS NULL OR approved_by IS DISTINCT FROM created_by/);
  assert.match(sql,/GRANT EXECUTE ON FUNCTION public\.po_transition/);
 });
 
