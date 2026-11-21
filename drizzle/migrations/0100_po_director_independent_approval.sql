@@ -55,7 +55,7 @@ BEGIN
   INSERT INTO purchase_order_approvals(po_id, action, acted_by, comment, previous_status, new_status) VALUES (_po_id, _action, auth.uid(), nullif(trim(_comment),''), p.status, nxt);
   PERFORM log_event('po_' || _action::text, 'PO', p.po_number, p.id, _comment, jsonb_build_object('status', p.status), jsonb_build_object('status', nxt));
   RETURN nxt;
-END $function$
+END $function$;
 
 REVOKE ALL ON FUNCTION public.po_transition(uuid,public.po_action,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.po_transition(uuid,public.po_action,text) TO authenticated;
