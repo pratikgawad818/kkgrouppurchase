@@ -162,7 +162,7 @@ BEGIN
   RAISE EXCEPTION 'Invalid refund method'; END IF;
  IF _method<>'cash' AND length(btrim(coalesce(_reference,'')))<3 THEN
   RAISE EXCEPTION 'Transaction reference is required for non-cash refunds'; END IF;
- SELECT coalesce(sum(amount),0) INTO issued FROM public.property_sale_refunds WHERE cancellation_id=c.id;
+ SELECT coalesce(sum(ref.amount),0) INTO issued FROM public.property_sale_refunds ref WHERE ref.cancellation_id=c.id;
  IF issued+amount>c.refund_due THEN RAISE EXCEPTION 'Refund would exceed the outstanding refund liability'; END IF;
  INSERT INTO public.property_sale_refunds(cancellation_id,amount,refunded_on,method,reference,notes,recorded_by)
  VALUES(c.id,amount,_refunded_on,_method,nullif(btrim(coalesce(_reference,'')),''),
