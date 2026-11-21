@@ -638,6 +638,32 @@ export function SalesPage() {
             onChange={e=>put("notes",e.target.value)}/></Field>
           <Button type="submit" className="w-full" disabled={busy}>Record actual refund</Button>
         </form>}
+        {modal==="correct"&&sale&&<form className="space-y-3" onSubmit={e=>submit(e,
+          "sales_correct_erroneous_stage",{
+            _sale_id:sale.id,_reason:value("reason"),
+            _confirmation:"I_CONFIRM_STAGE_ENTERED_IN_ERROR",
+          },"Booking returned to Booked; correction audited")}>
+          <p className="rounded-lg border border-amber-500/40 p-3 text-sm">
+            Current stage: <strong>{labels[sale.status]}</strong>. This action returns the
+            record to <strong>Booked</strong> because its stage was entered incorrectly.
+            If an agreement, registration or handover actually occurred, use a
+            formal legal cancellation process instead.
+          </p>
+          <Field label="Reason for wrong stage (at least 20 characters) *">
+            <textarea className={input+" min-h-28 py-2"} required minLength={20}
+              value={value("reason")} onChange={e=>put("reason",e.target.value)}/>
+          </Field>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1" checked={value("confirmed")==="yes"}
+              onChange={e=>put("confirmed",e.target.checked?"yes":"")}/>
+            I verified that this is only a clerical/test-stage mistake and no
+            executed agreement, registration or possession needs to be reversed.
+          </label>
+          <Button type="submit" className="w-full" disabled={busy||
+            value("reason").trim().length<20||value("confirmed")!=="yes"}>
+            Return to Booked (audited correction)
+          </Button>
+        </form>}
         {modal==="history"&&sale&&<div className="space-y-3">
           <p className="rounded-lg bg-muted p-3 text-sm">{sale.sale_number} · {sale.buyer_name}</p>
           {events.isLoading&&<Loading/>}
