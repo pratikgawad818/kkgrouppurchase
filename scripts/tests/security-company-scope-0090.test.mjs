@@ -56,3 +56,12 @@ test("avatar access requires active same-company colleague or own folder",()=>{
   assert.match(avatar,/owner\.avatar_url=_path/);
   assert.match(avatar,/AND public\.can_read_company_avatar\(name\)/);
 });
+
+test("purchase request workflow itself rejects former project members",()=>{
+  const transition=readFileSync("drizzle/migrations/0092_pr_transition_project_revocation.sql","utf8");
+  assert.match(transition,/CREATE OR REPLACE FUNCTION public\\.pr_transition/);
+  assert.match(transition,/public\\.actor_in_company\\(p\\.company_id\\)/);
+  assert.match(transition,/public\\.can_access_project\\(v_uid,p\\.project_id\\)/);
+  assert.doesNotMatch(transition,/p\\.requested_by = v_uid OR can_access_project/);
+  assert.match(transition,/p\\.requested_by=v_uid AND public\\.has_role\\(v_uid,'director'\\)/);
+});
