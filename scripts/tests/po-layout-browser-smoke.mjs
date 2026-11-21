@@ -109,20 +109,29 @@ try {
     stdio: "ignore",
   });
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 900);
+  // Chrome --dump-dom sometimes snapshots the page while the async PDF
+  // canvas worker is still pending. Retrying *only* that incomplete snapshot
+  // avoids unrelated CI flakes without suppressing a real renderer failure.
   let run;
+  let match;
   try {
-    run = spawnSync(browser, [
-      "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
-      "--no-first-run", "--disable-extensions", "--virtual-time-budget=12000",
-      "--dump-dom", "http://127.0.0.1:" + port + "/",
-    ], { encoding: "utf8", timeout: 70000, maxBuffer: 20 * 1024 * 1024 });
+    for (const budget of [12000, 45000, 120000]) {
+      run = spawnSync(browser, [
+        "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+        "--disable-background-timer-throttling", "--disable-renderer-backgrounding",
+        "--no-first-run", "--disable-extensions", "--virtual-time-budget=" + budget,
+        "--dump-dom", "http://127.0.0.1:" + port + "/",
+      ], { encoding: "utf8", timeout: 90000, maxBuffer: 20 * 1024 * 1024 });
+      match = (run.stdout || "").match(/<pre id="result">([\s\S]*?)<\/pre>/);
+      if (match && match[1] !== "pending") break;
+      console.warn("Chrome rendered a pending PO PDF snapshot; retrying with longer virtual time budget", budget);
+    }
   } finally {
     server.kill();
   }
-  const match = (run.stdout || "").match(/<pre id="result">([\s\S]*?)<\/pre>/);
   if (!match || match[1] === "pending") {
-    throw new Error("PDF renderer did not finish. Chrome: " +
-      run.stderr?.slice(-2500) + " DOM: " + run.stdout?.slice(-700));
+    throw new Error("PDF renderer did not finish after browser retries. Chrome: " +
+      run?.stderr?.slice(-2500) + " DOM: " + run?.stdout?.slice(-700));
   }
   const result = JSON.parse(match[1]);
   if (!result.ok) throw new Error(result.error);
