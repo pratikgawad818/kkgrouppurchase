@@ -26,7 +26,7 @@ export type CommercialBooking={
 type Building={id:string;name:string;project_id:string};
 type Props={
  mode:"import"|"price"|"buyer";project:string;buildings:Building[];
- flat?:CommercialFlat|null;booking?:CommercialBooking|null;
+ flat?:CommercialFlat|null|undefined;booking?:CommercialBooking|null|undefined;
  manager:boolean;companyId:string;actorId:string;
  onClose:()=>void;onSaved:()=>void;
 };
