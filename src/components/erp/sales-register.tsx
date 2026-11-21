@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Building2, CreditCard, Home, Plus, Wallet, ListFilter, Layers3, Ban, RotateCcw } from "lucide-react";
+import { Building2, CreditCard, Home, Plus, Wallet, ListFilter, Layers3, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -567,7 +567,7 @@ export function SalesPage() {
           {stages.indexOf(sale.status)>=0&&stages.indexOf(sale.status)<stages.length-1&&
             <Button className="w-full" disabled={busy} onClick={()=>void update("sales_set_stage",{
               _sale_id:sale.id,_status:stages[stages.indexOf(sale.status)+1],
-            },"Sale advanced")}>Advance to {labels[stages[stages.indexOf(sale.status)+1]]}</Button>}
+            },"Sale advanced")}>Advance to {labels[stages[stages.indexOf(sale.status)+1] ?? ""]}</Button>}
           <p className="text-xs text-muted-foreground">Cancellation is a separate audited action under the booking row.</p>
         </div>}
         {(modal==="request"||modal==="cancel")&&sale&&<form className="space-y-3" onSubmit={e=>submit(e,
