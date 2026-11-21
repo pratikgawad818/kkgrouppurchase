@@ -53,7 +53,7 @@ function fromGrid(grid:string[][]):SalesRow[]{
   const normalized=(s:string)=>s.toLowerCase().trim().replaceAll(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
   const h=header.map(normalized),mapping=SALES_HEADERS.map(key=>h.indexOf(key));
   if(mapping.some(index=>index<0)){
-    const missing=SALES_HEADERS.filter((_,i)=>mapping[i]<0);
+    const missing=SALES_HEADERS.filter((_,i)=>(mapping[i]??-1)<0);
     throw new Error("Missing spreadsheet columns: "+missing.join(", "));
   }
   const rows=grid.slice(1).filter(row=>row.some(x=>x.trim()!==""));
