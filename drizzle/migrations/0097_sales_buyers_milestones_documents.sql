@@ -176,7 +176,7 @@ BEGIN
   total:=total+amount;
  END LOOP;
  IF abs(total-s.final_sale_price)>0.005 THEN
-   RAISE EXCEPTION 'Instalments must total exactly the agreed sale price (%.2f)',s.final_sale_price;
+   RAISE EXCEPTION 'Instalments must total exactly the agreed sale price: %',s.final_sale_price;
  END IF;
  INSERT INTO public.property_sale_events(sale_id,action,details,actor_id)
  VALUES(_sale_id,'payment_plan_saved',jsonb_build_object('version',v,'total',total,'instalments',seq),auth.uid());
