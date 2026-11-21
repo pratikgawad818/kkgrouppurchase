@@ -1499,3 +1499,5 @@ if __name__ == "__main__":
     test_small_expense_in_place_and_bills()
     test_po_review_correction_handoff()
     test_google_sheets_retired_archives_preserved()
+    from sales_0093_acceptance import exercise_sales
+    exercise_sales(db,actor,denied,PROJECT,ADMIN,SITE,OTHER_DIRECTOR)
