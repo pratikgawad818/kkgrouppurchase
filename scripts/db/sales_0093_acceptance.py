@@ -71,9 +71,33 @@ def exercise_sales(db, actor, denied, company_project, admin, sales_staff, forei
         c.execute("SELECT sales_cancel_booking(%s,'Buyer Two requested cancellation',0)",(second,))
         assert c.execute("SELECT status FROM property_sale_cancel_requests WHERE id=%s",
                          (request,)).fetchone()[0]=="approved"
+        # A test booking accidentally advanced to Possession Pending can be
+        # corrected only by Super Admin, only with no buyer funds.
+        unbooked=c.execute("SELECT id FROM units WHERE building_id=%s AND unit_number='102'",
+                           (building,)).fetchone()[0]
+        actor(c,sales_staff)
+        mistaken=c.execute("SELECT sales_book_flat(%s,'Wrong Stage Buyer','9876543212',1600000)",
+                           (unbooked,)).fetchone()[0]
+        actor(c,admin)
+        for next_stage in ("agreement_pending","agreement_done","registered","possession_pending"):
+            c.execute("SELECT sales_set_stage(%s,%s)",(mistaken,next_stage))
+        actor(c,sales_staff)
+        denied(c,lambda:c.execute("SELECT sales_correct_erroneous_stage(%s,%s,%s)",
+               (mistaken,"Stage was entered incorrectly during training","I_CONFIRM_STAGE_ENTERED_IN_ERROR")))
+        actor(c,admin)
+        denied(c,lambda:c.execute("SELECT sales_correct_erroneous_stage(%s,%s,%s)",
+               (mistaken,"Stage was entered incorrectly during training","WRONG_CONFIRMATION")))
+        c.execute("SELECT sales_correct_erroneous_stage(%s,%s,%s)",
+                  (mistaken,"Stage was entered incorrectly during training","I_CONFIRM_STAGE_ENTERED_IN_ERROR"))
+        assert c.execute("SELECT status FROM property_sales WHERE id=%s",(mistaken,)).fetchone()[0]=="booked"
+        assert c.execute("SELECT status FROM units WHERE id=%s",(unbooked,)).fetchone()[0]=="booked"
+        assert c.execute("SELECT count(*) FROM property_sale_events WHERE sale_id=%s AND action='stage_corrected'",
+                         (mistaken,)).fetchone()[0]==1
+        c.execute("SELECT sales_cancel_booking(%s,'Corrected training booking is cancelled',0)",(mistaken,))
+        assert c.execute("SELECT status FROM units WHERE id=%s",(unbooked,)).fetchone()[0]=="available"
         summary=c.execute("SELECT sales_overview(%s,%s)",(company_project,building)).fetchone()[0]
         assert int(summary["total_flats"])==6 and int(summary["available_flats"])==6,summary
-        assert int(summary["cancelled_sales"])==2 and int(summary["active_sales"])==0,summary
+        assert int(summary["cancelled_sales"])==3 and int(summary["active_sales"])==0,summary
         assert Decimal(str(summary["refund_pending"]))==Decimal(0),summary
         c.rollback()
-    print("PASS Sales 0093/0094: 6-flat bulk, duplicate rollback, staff permissions, real collections, cancellation, refund ledger, rebooking")
+    print("PASS Sales 0093/0094: 6-flat bulk, cancellation, refunds, rebooking and erroneous-stage correction")
