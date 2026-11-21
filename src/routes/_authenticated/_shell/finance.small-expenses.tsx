@@ -11,7 +11,7 @@ const untypedDb = supabase as any;
 import { useMe } from "@/lib/session";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { today as todayIst } from "@/lib/finance";
-import { SMALL_EXPENSE_CATEGORIES, SMALL_EXPENSE_PAYMENTS, parseSmallExpenseAmount, summarizeSmallExpenses,
+import { SMALL_EXPENSE_CATEGORIES, SMALL_EXPENSE_PAYMENTS, matchesSmallExpenseVendor, smallExpenseVendorSuggestions, parseSmallExpenseAmount, summarizeSmallExpenses,
   type SmallExpenseCategory, type SmallExpensePayment } from "@/lib/small-expenses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,7 @@ function SmallExpenses() {
   const [projectFilter,setProjectFilter]=useState("");
   const [buildingFilter,setBuildingFilter]=useState("");
   const [categoryFilter,setCategoryFilter]=useState("");
+  const [vendorFilter,setVendorFilter]=useState("");
   const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
   const [page,setPage]=useState(0);
@@ -188,10 +189,12 @@ function SmallExpenses() {
   if(me.isLoading)return <Loading />;
   if(!permitted)return <div role="alert" className="rounded-lg border p-6 text-sm">Financial access is required to view site small expenses.</div>;
   const all=register.data??[];
+  const vendorSuggestions=smallExpenseVendorSuggestions(all);
   const rows=all.filter(x=>
     (!projectFilter||(projectFilter==="office"?!x.project_id:x.project_id===projectFilter))&&
     (!buildingFilter||(buildingFilter==="general"?!x.building_id:x.building_id===buildingFilter))&&
     (!categoryFilter||x.category===categoryFilter)&&
+    matchesSmallExpenseVendor(x.paid_to,vendorFilter)&&
     (!dateFrom||x.spent_on>=dateFrom)&&(!dateTo||x.spent_on<=dateTo));
   const total=summarizeSmallExpenses(rows);
   const filteredPage=Math.min(page,Math.max(0,Math.ceil(rows.length/PAGE)-1));
@@ -250,6 +253,18 @@ function SmallExpenses() {
         <select aria-label="Category filter" className={selectCls} value={categoryFilter} onChange={e=>{setCategoryFilter(e.target.value);setPage(0);}}>
           <option value="">All categories</option>{Object.entries(SMALL_EXPENSE_CATEGORIES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
         </select>
+        <div className="min-w-[190px] flex-1 sm:max-w-[280px]">
+          <Input
+            aria-label="Vendor name filter"
+            placeholder="Search vendor / paid to"
+            list="small-expense-vendor-suggestions"
+            value={vendorFilter}
+            onChange={e=>{setVendorFilter(e.target.value);setPage(0);}}
+          />
+          <datalist id="small-expense-vendor-suggestions">
+            {vendorSuggestions.map(name=><option key={name} value={name}/>)}
+          </datalist>
+        </div>
         <Input aria-label="From date" type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setPage(0);}}/>
         <Input aria-label="To date" type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setPage(0);}}/>
       </div>
