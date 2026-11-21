@@ -1483,6 +1483,8 @@ if __name__ == "__main__":
     test_square_metre_unit_seed_is_idempotent()
     test_private_procurement_attachment_access()
     test_site_engineer_requires_project_assignment_for_pr()
+    from pr_0099_access_acceptance import exercise_pr_revocation
+    exercise_pr_revocation(db,actor,denied,save_pr,ADMIN,SITE,PROJECT)
     test_quote_freight_gst_matches_supplier_and_po()
     test_atomic_requests_and_rfqs()
     test_director_notifications_and_names()
