@@ -10,7 +10,7 @@ import {
 
 test("Site Engineer sees the next eligible PR approver without inventing a named person", () => {
   const pending = workflowPresentation("purchase_request", "pending_approval");
-  assert.equal(pending.stateLabel, "Awaiting PR approval");
+  assert.equal(pending.stateLabel, "Awaiting purchasing review");
   assert.equal(pending.nextTitle, "Review and decide on the request");
   assert.match(pending.nextOwner, /Project Manager \/ Purchase Manager \/ Director/);
   assert.match(pending.nextDescription, /other than the requester/);
@@ -45,6 +45,36 @@ test("Approved PR follows actual RFQ visibility; does not claim no RFQ for unaut
   const closed = workflowPresentation("purchase_request", "approved", ["closed"]);
   assert.equal(closed.nextTitle, "Check linked PO and RFQ closeout");
   assert.equal(ready.stages[2].state, "complete");
+});
+
+test("Site Engineer sees Purchase Manager receipt, not a misleading second PO approval", () => {
+  const received = workflowPresentation("purchase_request", "approved", []);
+  assert.equal(received.stateLabel, "Purchase Manager received your request");
+  assert.equal(received.stages[1].label, "Purchase Manager review");
+  assert.equal(received.nextTitle, "Create the RFQ");
+  assert.match(received.nextDescription, /received for procurement/);
+  assert.equal(workflowEventTitle("purchase_request", {
+    id: "manager-1", action: "approved", occurredAt: "2026-11-22T09:00:00Z",
+    actorName: "Purchase Manager",
+  }), "Purchase Manager received your request");
+  assert.equal(workflowEventTitle("purchase_request", {
+    id: "director-1", action: "approved", occurredAt: "2026-11-22T09:00:00Z",
+    comment: "Finalized by the requesting Director; no additional approval required.",
+  }), "Request finalized by requesting Director");
+  const po = workflowPresentation("purchase_order", "pending_approval");
+  assert.equal(po.stateLabel, "Awaiting Director approval");
+  assert.equal(workflowEventTitle("purchase_order", {
+    id: "po-approved", action: "approved", occurredAt: "2026-11-22T10:00:00Z",
+  }), "Purchase Order approved");
+  const prFile = readFileSync("src/lib/pr.ts","utf8");
+  const detailFile = readFileSync(
+    "src/routes/_authenticated/_shell/procurement.purchase-requests.$id.index.tsx","utf8");
+  const dashboardFile = readFileSync("src/lib/purchase-pipeline.ts","utf8");
+  assert.match(prFile, /Request received · RFQ ready/);
+  assert.match(prFile, /approved: "Purchase Manager received your request"/);
+  assert.match(detailFile, /"Receive request" : "Accept for procurement"/);
+  assert.match(detailFile, /It does not approve the final Purchase Order/);
+  assert.match(dashboardFile, /Purchase Manager received your request — prepare RFQ/);
 });
 
 test("Independent Director is responsible for pending PO and payment approvals", () => {
