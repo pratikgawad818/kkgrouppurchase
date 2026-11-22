@@ -20,6 +20,7 @@ import {
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { useCan, useMe } from "@/lib/session";
+import { useSiteEngineerProjectScope } from "@/lib/site-engineer-receiving-scope";
 import { GRN_STATUS, PO_ACTION_LABEL, PO_STATUS, selectCls, type PoAction } from "@/lib/po";
 import { PoReviewActions } from "@/components/erp/po-review-actions";
 import { DirectorApprovalReminder } from "@/components/erp/director-approval-reminder";
@@ -139,8 +140,13 @@ function PoDetail() {
   const { id } = Route.useParams();
   const can = useCan();
   const me = useMe();
+  const scope = useSiteEngineerProjectScope();
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["po", id], queryFn: () => loadPo(id) });
+  const q = useQuery({
+    queryKey: ["po", id, scope.userId, scope.assignedProjectIds],
+    enabled: !scope.isLoading && !scope.error,
+    queryFn: () => loadPo(id),
+  });
   const [dlg, setDlg] = useState<null | PoAction>(null);
   const [approvalDecision, setApprovalDecision] = useState<"approved" | "rejected">("approved");
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -210,9 +216,11 @@ function PoDetail() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
-  if (q.isLoading) return <Loading />;
-  if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
+  if (scope.isLoading || q.isLoading) return <Loading />;
+  if (scope.error || q.error) return <div role="alert" className="text-sm text-destructive">{errMsg(scope.error || q.error)}</div>;
   const { po, selectedQuotation, items, history, grns, warehouses, challans, grnItems, corrections } = q.data!;
+  if (scope.isScopedEngineer && !scope.canAccess(po.project_id))
+    return <div role="alert" className="rounded-lg border p-5 text-sm">This purchase order is not in your assigned projects.</div>;
   const mine = po.created_by === me.data?.profile.id;
   const isAdmin = me.data?.roles.includes("super_admin") ?? false;
   const isDirector = me.data?.roles.includes("director") ?? false;
