@@ -2,6 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 
+/** Match immutable project IDs, never project names or original request owners. */
+export function canReceiveAssignedProject(
+  projectId: string,
+  assignedProjectIds: readonly string[],
+  isScopedEngineer: boolean,
+): boolean {
+  return !isScopedEngineer || assignedProjectIds.includes(projectId);
+}
+
 /**
  * Site Engineers operate by explicit project assignment, not by PR/PO creator.
  * This hook scopes the two field-receiving selectors in the UI. Database
@@ -39,6 +48,6 @@ export function useSiteEngineerReceivingScope() {
     isLoading: isScopedEngineer && assigned.isLoading,
     error: isScopedEngineer ? assigned.error : null,
     canAccess: (projectId: string) =>
-      !isScopedEngineer || assignedProjectIds.includes(projectId),
+      canReceiveAssignedProject(projectId, assignedProjectIds, isScopedEngineer),
   };
 }
