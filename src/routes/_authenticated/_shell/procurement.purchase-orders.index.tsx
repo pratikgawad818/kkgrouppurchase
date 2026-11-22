@@ -14,6 +14,7 @@ import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
+import { useSiteEngineerProjectScope } from "@/lib/site-engineer-receiving-scope";
 
 const META = "Purchase orders raised from awarded vendor quotations.";
 export const Route = createFileRoute("/_authenticated/_shell/procurement/purchase-orders/")({
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/_shell/procurement/purchas
 });
 
 function PoList() {
+  const scope = useSiteEngineerProjectScope();
   const [search, setSearch] = useState("");
   const [f, setF] = useState({
     status: "" as "" | PoStatus,
@@ -44,10 +46,12 @@ function PoList() {
   const [page, setPage] = useState(0);
   const deferredSearch = useDeferredValue(search);
   const q = useQuery({
-    queryKey: ["pos"],
+    queryKey: ["pos", scope.userId, scope.assignedProjectIds],
+    enabled: !scope.isLoading && !scope.error,
     queryFn: async () => {
-      return loadCompleteRows(async (start, end) =>
-        await supabase
+      if (scope.isScopedEngineer && !scope.assignedProjectIds.length) return [];
+      return loadCompleteRows(async (start, end) => {
+        let query = supabase
           .from("purchase_orders")
           .select(
             "id,po_number,po_date,grand_total,status,vendor_id,project_id,building_id,vendors(company_name),projects(name),buildings(name),rfqs(rfq_number),purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total,items(name))",
@@ -55,8 +59,10 @@ function PoList() {
           )
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
-          .range(start, end),
-      );
+          .range(start, end);
+        if (scope.isScopedEngineer) query = query.in("project_id", scope.assignedProjectIds);
+        return await query;
+      });
     },
   });
   const all = useMemo(() => q.data ?? [], [q.data]);
@@ -102,8 +108,8 @@ function PoList() {
   return (
     <>
       <PageHeader
-        title="Purchase Orders"
-        subtitle="Create POs from an RFQ that is Ready for Purchase Order."
+        title={scope.isScopedEngineer ? "My Project Purchase Orders" : "Purchase Orders"}
+        subtitle={scope.isScopedEngineer ? "Purchase orders belonging to your assigned projects." : "Create POs from an RFQ that is Ready for Purchase Order."}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild size="sm" variant="outline">
@@ -206,10 +212,10 @@ function PoList() {
           aria-label="To date"
         />
       </RegisterFilters>
-      {q.isLoading ? (
+      {scope.isLoading || q.isLoading ? (
         <Loading />
-      ) : q.error ? (
-        <div className="text-sm text-destructive">{errMsg(q.error)}</div>
+      ) : scope.error || q.error ? (
+        <div role="alert" className="text-sm text-destructive">{errMsg(scope.error || q.error)}</div>
       ) : (
         <>
           <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
