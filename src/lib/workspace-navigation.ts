@@ -98,6 +98,18 @@ export function workspaceNavigation(access: PageAccess): WorkspaceNavGroup[] {
     .filter((group) => group.items.length > 0);
 }
 
+/** Only offer a direct mobile More shortcut when the role and page permissions allow it. */
+export function siteEngineerMoreQuickLinks(
+  groups: WorkspaceNavGroup[],
+  isSiteEngineer: boolean,
+): WorkspaceNavItem[] {
+  if (!isSiteEngineer) return [];
+  const smallExpenses = groups
+    .flatMap((group) => group.items)
+    .find((item) => item.to === "/finance/small-expenses");
+  return smallExpenses ? [{ to: smallExpenses.to, label: "Small Expense" }] : [];
+}
+
 export function workspaceLocation(path: string, groups: WorkspaceNavGroup[]) {
   return groups
     .flatMap((group) => group.items.map((item) => ({ group, item })))
