@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { canCancelDraftGrn } from "../../src/components/erp/cancel-draft-grn.tsx";
+import { canCancelDraftGrn } from "../../src/lib/grn-draft-cancellation.ts";
 
 const source = path => readFileSync(new URL("../../"+path,import.meta.url),"utf8");
 const sql = source("drizzle/migrations/0106_cancel_draft_grn_site_engineer_admin.sql");
