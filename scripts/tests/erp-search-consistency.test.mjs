@@ -71,3 +71,29 @@ test("ERP page finder includes acronyms but keeps authorized navigation filterin
   assert.match(frame,/groups\.map\(\(group\)/);
   assert.match(frame,/groups\.find/);
 });
+
+
+test("Sales search supports flat numbers, buyers, booking numbers and payment references",()=>{
+  const source=readFileSync("src/components/erp/sales-register.tsx","utf8");
+  assert.match(source,/unit_id\.in\./);
+  assert.match(source,/sale_id\.in\./);
+  assert.match(source,/Too many matching flats/);
+  assert.match(source,/Reference, buyer or booking/);
+});
+
+test("audit search uses counted server pagination rather than only 300 newest events",()=>{
+  const source=readFileSync("src/routes/_authenticated/_shell/audit.tsx","utf8");
+  assert.match(source,/count:"exact"/);
+  assert.match(source,/\.range\(page\*PAGE,\(page\+1\)\*PAGE-1\)/);
+  assert.doesNotMatch(source,/\.limit\(300\)/);
+  assert.match(source,/<Pager page=\{page\}/);
+});
+
+test("flat inventory and historical usage are never silently restricted to 1,000 or 2,000 rows",()=>{
+  const flat=readFileSync("src/routes/_authenticated/_shell/units.tsx","utf8");
+  const history=readFileSync("src/routes/_authenticated/_shell/inventory.material-consumption.tsx","utf8");
+  assert.match(flat,/loadCompleteRows/);
+  assert.match(flat,/matchesRecordSearch/);
+  assert.match(history,/loadCompleteRows/);
+  assert.doesNotMatch(history,/\.limit\(2000\)/);
+});
