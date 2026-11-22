@@ -17,6 +17,42 @@ corrections; Management Viewer remains read-only. Accounts Manager cannot
 standalone-void an expense or bypass permanent-deletion safeguards. Amount limited to ₹50,000 per entry and two
 decimal places. Greater expenses belong in a reviewed vendor payment flow.
 
+## Site Engineer own-expense access — migration 0104
+
+Site Engineers can **record an actual small expense for a project explicitly assigned
+to them**. They must choose the project; general office expenses and unrelated
+projects are rejected by the database. Each expense records the engineer who
+created it and retains the same idempotency, date, amount, company, receipt
+and immutable audit protections.
+
+- **Site Engineer:** may record a new project small expense and add up to eight
+  private bill images/PDFs to **their own** expense. The register, filters,
+  vendor suggestions, category/project/building totals, detailed bills and
+  audit history reveal **only expenses created by that engineer**. They cannot
+  edit an expense's financial fields, delete it, view another engineer's
+  expense (even in the same project), or access general finance screens.
+- **Super Admin / Accounts Manager:** continue to see everyone's expenses,
+  and retain existing record/edit privileges. **Director:** sees all company
+  expenses but remains read-only. Existing independent Auditor read
+  permissions remain unchanged.
+- Permissions use the new narrowly scoped `small_expense.create` code for
+  the Site Engineer role **without granting `financial.view`**. Company
+  boundaries, project assignments, PostgreSQL RLS, SECURITY DEFINER RPC guards,
+  and private storage rules enforce privacy independently of the interface.
+- Site Engineers can upload bill files from their own authenticated company
+  folder and link them only to an expense they created in an assigned project.
+  Manager-uploaded bills on those expenses remain readable to their owners
+  but cannot be removed by the engineer.
+- Aggregate totals are built only from already-authorized register rows.
+  The query cache separates user identity and role to prevent cross-account
+  row reuse.
+
+**Deployment gate:** Back up and verify the current schema, rehearse migration
+`0104_site_engineer_own_small_expenses.sql` in a rollback transaction, run
+CI, apply the migration, and validate authorization under two different Site
+Engineer sessions and the three finance review roles before publishing the
+matching frontend. No historical expense amounts or records are migrated.
+
 ## Corrections and audit
 
 - New records created only via `record_site_small_expense` SQL RPC;
