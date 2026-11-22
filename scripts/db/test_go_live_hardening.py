@@ -1246,7 +1246,7 @@ def test_vendor_invoice_po_pump_charge_gst():
           SELECT subtotal,other_charges,other_charges_tax_amount,tax_total,grand_total
           FROM purchase_orders WHERE id=%s
         """,(po,)).fetchone()
-        assert str(approved[1])=="20000.00" and str(approved[2])=="3600.00",approved
+        assert approved[1]==20000 and approved[2]==3600,approved
         assert str(approved[4])=="368750.00",approved
 
         header={"po_id":po,"vendor_invoice_number":"QA-PUMP-BILL-"+str(uuid4()),
