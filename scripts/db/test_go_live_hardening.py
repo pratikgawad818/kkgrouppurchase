@@ -1220,9 +1220,13 @@ def test_vendor_invoice_po_pump_charge_gst():
           VALUES(%s,1,%s,%s,%s,%s,%s,45,6500,'cgst_sgst',18,292500,52650,345150)
           RETURNING id
         """,(po,rfq_item,quote_line,selection,MATERIAL,UNIT)).fetchone()[0]
+        # The synthetic PO bypasses the normal PO authoring RPC, so seed the
+        # already-approved material/charge totals that RPC would calculate.
         c.execute("""UPDATE purchase_orders SET
-          other_charges=20000,other_charges_tax_type='cgst_sgst',
-          other_charges_tax_rate_percent=18 WHERE id=%s""",(po,))
+          subtotal=292500,other_charges=20000,
+          other_charges_tax_type='cgst_sgst',other_charges_tax_rate_percent=18,
+          other_charges_tax_amount=3600,tax_total=56250,grand_total=368750
+          WHERE id=%s""",(po,))
         receipt=c.execute("""
           INSERT INTO goods_receipt_notes(
             grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
