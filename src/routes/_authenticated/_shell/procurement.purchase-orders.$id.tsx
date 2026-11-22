@@ -33,6 +33,7 @@ import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
 import { PoDraftEditor } from "@/components/erp/po-draft-editor";
 import { cn } from "@/lib/utils";
+import { canConfirmPoSentToSupplier } from "@/lib/po-supplier-dispatch";
 
 const META = "Purchase order details, approval and goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/procurement/purchase-orders/$id")({
@@ -234,14 +235,11 @@ function PoDetail() {
   const canReceive =
     ["approved", "sent", "partially_received", "partially_accepted"].includes(po.status) &&
     can("grn.create");
-  // Sending an approved PO to the supplier is a separate, optional
-  // procurement acknowledgment. After a supplier challan or goods receipt
-  // exists it must never look like a pending receiving prerequisite.
-  const hasDeliveryActivity =
-    challans.some((item) => item.status === "registered") ||
-    grns.some((item) => item.status !== "cancelled");
-  const canRecordPoSent =
-    po.status === "approved" && can("purchase_order.create") && !hasDeliveryActivity;
+  // A supplier challan already proves this PO reached the supplier;
+  // do not show a redundant "sent" action during the receiving workflow.
+  const canRecordPoSent = canConfirmPoSentToSupplier(
+    po.status, can("purchase_order.create"), challans, grns,
+  );
   const needsComment =
     dlg === "rejected" ||
     dlg === "cancelled" ||
