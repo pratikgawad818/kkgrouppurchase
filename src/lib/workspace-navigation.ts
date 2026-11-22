@@ -106,7 +106,20 @@ export function workspaceLocation(path: string, groups: WorkspaceNavGroup[]) {
 }
 
 /** Choose shortcuts only from already-authorized routes. Directors review work first. */
-export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirector = false) {
+export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirector = false, isSiteEngineer = false) {
+  if (isSiteEngineer && !isDirector) {
+    // Field staff need direct access to the two receiving records.
+    // Keep shortcuts permission-scoped and do not alter other roles.
+    const shortcuts = [
+      { key: "home", to: "/dashboard", label: "Home" },
+      { key: "receiving", to: "/inventory/goods-received", label: "Received" },
+      { key: "challans", to: "/inventory/delivery-challans", label: "Challan" },
+      { key: "stock", to: "/inventory/stock", label: "Stock" },
+    ];
+    return shortcuts.filter((shortcut) =>
+      groups.some((group) => group.items.some((item) => item.to === shortcut.to)),
+    );
+  }
   const hasSales = groups.some((group) => group.key === "sales");
   const keys = isDirector
     ? ["home", "approvals", "purchasing", "finance"]
