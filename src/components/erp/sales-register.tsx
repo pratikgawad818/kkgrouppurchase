@@ -103,8 +103,19 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
     if (filter.floor) query=query.eq("units.floor_id",filter.floor);
     if (filter.status) query=query.eq("status",filter.status);
     if (filter.search.trim()) {
-      const term=filter.search.trim().replace(/[,().]/g," ").slice(0,80);
-      query=query.or("buyer_name.ilike.%"+term+"%,buyer_mobile.ilike.%"+term+"%,sale_number.ilike.%"+term+"%");
+      const term=filter.search.trim().replace(/[,().%*\\:"']/g," ").replace(/\s+/g," ").slice(0,80);
+      const units=await db.from("units").select("id",{count:"exact"})
+        .eq("record_status","active").ilike("unit_number","%"+term+"%")
+        .order("id").limit(500);
+      if (units.error) throw units.error;
+      if ((units.count??0)>500) throw new Error("Too many matching flats. Search a longer flat number.");
+      const ids=(units.data??[]).map((u:{id:string})=>u.id);
+      query=query.or([
+        "buyer_name.ilike.%"+term+"%",
+        "buyer_mobile.ilike.%"+term+"%",
+        "sale_number.ilike.%"+term+"%",
+        ...(ids.length?["unit_id.in.("+ids.join(",")+")"]:[]),
+      ].join(","));
     }
     query=query.order("booked_on",{ascending:false}).order("id",{ascending:false});
   } else {
@@ -115,7 +126,19 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
     if (filter.building) query=query.eq("property_sales.units.building_id",filter.building);
     if (filter.floor) query=query.eq("property_sales.units.floor_id",filter.floor);
     if (filter.status) query=query.eq("status",filter.status);
-    if (filter.search.trim()) query=query.ilike("reference","%"+filter.search.trim().replaceAll("%","\\%").replaceAll("_","\\_")+"%");
+    if (filter.search.trim()) {
+      const term=filter.search.trim().replace(/[,().%*\\:"']/g," ").replace(/\s+/g," ").slice(0,80);
+      const sales=await db.from("property_sales").select("id",{count:"exact"})
+        .or("buyer_name.ilike.%"+term+"%,buyer_mobile.ilike.%"+term+"%,sale_number.ilike.%"+term+"%")
+        .order("id").limit(500);
+      if (sales.error) throw sales.error;
+      if ((sales.count??0)>500) throw new Error("Too many matching buyers. Search a longer name or booking number.");
+      const ids=(sales.data??[]).map((u:{id:string})=>u.id);
+      query=query.or([
+        "reference.ilike.%"+term+"%",
+        ...(ids.length?["sale_id.in.("+ids.join(",")+")"]:[]),
+      ].join(","));
+    }
     query=query.order("created_at",{ascending:false}).order("id",{ascending:false});
   }
   const result=await query.range(filter.page*PAGE_SIZE,filter.page*PAGE_SIZE+PAGE_SIZE-1);
@@ -312,7 +335,7 @@ export function SalesPage() {
           {filteredStatus.map(x=><option key={x} value={x}>{labels[x]}</option>)}
         </select>
         <input aria-label="Search records" className={input} value={search}
-          placeholder={tab==="inventory"?"Search flat number":tab==="bookings"?"Buyer, mobile or booking #":"Payment reference"}
+          placeholder={tab==="inventory"?"Search flat number":tab==="bookings"?"Buyer, mobile, booking or flat #":"Reference, buyer or booking #"}
           onChange={e=>{setSearch(e.target.value);setPage(0);}}/>
       </div>
     </div>
