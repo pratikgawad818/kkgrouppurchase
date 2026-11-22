@@ -1189,6 +1189,87 @@ def test_accounts_staff_material_create_edit_only():
     print("PASS Accountant and Accounts Manager: material insert/edit permitted; delete, stock and category admin excluded")
 
 
+def test_vendor_invoice_po_pump_charge_gst():
+    """Supplier M40 delivery is invoiced once, with GST on approved PO pump
+    charges separately. 45 CUM stays 45 CUM, not a second GRN for the pump.
+    """
+    with db() as c:
+        po=seed_po(c)
+        c.execute("RESET ROLE")
+        po_line=c.execute("""
+          INSERT INTO purchase_order_items(
+            po_id,line_no,material_id,unit_id,ordered_quantity,
+            rate,tax_type,tax_rate_percent,taxable_amount,tax_amount,line_total)
+          VALUES(%s,1,%s,%s,45,6500,'cgst_sgst',18,292500,52650,345150)
+          RETURNING id
+        """,(po,MATERIAL,UNIT)).fetchone()[0]
+        c.execute("""UPDATE purchase_orders SET
+          other_charges=20000,other_charges_tax_type='cgst_sgst',
+          other_charges_tax_rate_percent=18 WHERE id=%s""",(po,))
+        receipt=c.execute("""
+          INSERT INTO goods_receipt_notes(
+            grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+            received_by,status,posted_at)
+          VALUES(%s,%s,%s,%s,%s,%s,%s,'posted',now()) RETURNING id
+        """,("QA-PUMP-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+        c.execute("""
+          INSERT INTO goods_receipt_items(
+            grn_id,po_item_id,material_id,unit_id,
+            ordered_quantity,previously_received,received_quantity,
+            accepted_quantity,unit_cost)
+          VALUES(%s,%s,%s,%s,45,0,45,45,6500)
+        """,(receipt,po_line,MATERIAL,UNIT))
+        grn_line=c.execute("SELECT id FROM goods_receipt_items WHERE grn_id=%s",(receipt,)).fetchone()[0]
+        c.execute("UPDATE purchase_orders SET status='fully_received' WHERE id=%s",(po,))
+        approved=c.execute("""
+          SELECT subtotal,other_charges,other_charges_tax_amount,tax_total,grand_total
+          FROM purchase_orders WHERE id=%s
+        """,(po,)).fetchone()
+        assert str(approved[1])=="20000.00" and str(approved[2])=="3600.00",approved
+        assert str(approved[4])=="368750.00",approved
+
+        header={"po_id":po,"vendor_invoice_number":"QA-PUMP-BILL-"+str(uuid4()),
+                "vendor_invoice_date":"2026-11-22","freight":0,
+                "other_charges":20000,"tds_rate":0,"round_off_mode":"none"}
+        invoice_lines=[{"grn_item_id":str(grn_line),"quantity":45,"rate":6500,
+                        "tax_type":"cgst_sgst","tax_rate_percent":18}]
+        actor(c,ACCOUNTS)
+        denied(c,lambda:c.execute("SELECT save_vendor_invoice(NULL,%s::jsonb,%s::jsonb)",
+             (json.dumps(dict(header,other_charges=-1)),json.dumps(invoice_lines))),
+             "cannot be negative")
+        inv=c.execute("SELECT save_vendor_invoice(NULL,%s::jsonb,%s::jsonb)",
+             (json.dumps(header),json.dumps(invoice_lines))).fetchone()[0]
+        totals=c.execute("""
+          SELECT subtotal,tax_total,cgst,sgst,igst,other_charges,
+                 grand_total,net_payable FROM vendor_invoices WHERE id=%s
+        """,(inv,)).fetchone()
+        assert tuple(str(x) for x in totals)==(
+            "292500.00","56250.00","28125.00","28125.00","0.00",
+            "20000.00","368750.00","368750.00"),totals
+        assert c.execute("SELECT sum(quantity) FROM vendor_invoice_items WHERE invoice_id=%s",(inv,)).fetchone()[0]==45
+        assert c.execute("SELECT invoice_transition(%s,'submit','matched supplier pump charge')",
+                         (inv,)).fetchone()[0]=="pending_review"
+        summary=c.execute("SELECT match_summary FROM vendor_invoices WHERE id=%s",(inv,)).fetchone()[0]
+        assert summary["total_variance"]==0 and summary["extra_charges_tax"]==3600,summary
+        assert c.execute("SELECT count(*) FROM inventory_transactions WHERE grn_id=%s",(receipt,)).fetchone()[0]==0
+
+        # A second active invoice with another 20k pump charge must not be
+        # silently classified as matched against the same PO allowance.
+        c.execute("RESET ROLE")
+        c.execute("""INSERT INTO vendor_invoices(
+          invoice_number,company_id,vendor_id,project_id,po_id,
+          vendor_invoice_number,vendor_invoice_date,other_charges,created_by)
+          VALUES(%s,%s,%s,%s,%s,%s,current_date,20000,%s)""",
+          ("QA-DUP-PUMP-"+str(uuid4()),A,VENDOR,PROJECT,po,"QA-DUP-BILL-"+str(uuid4()),ACCOUNTS))
+        actor(c,ACCOUNTS)
+        assert c.execute("SELECT run_invoice_match(%s)",(inv,)).fetchone()[0]=="exception"
+        exceptions=c.execute("SELECT match_summary->'exceptions' FROM vendor_invoices WHERE id=%s",
+                             (inv,)).fetchone()[0]
+        assert any(item["type"]=="other_charges" for item in exceptions),exceptions
+        c.rollback()
+    print("PASS concrete 45 CUM + 20k pump + 3.6k GST, matching, and duplicate charge exception")
+
+
 def test_optional_invoice_roundoff_accounting():
     """Only opted-in vendor bills round gross totals, with separate balanced journals."""
     with db() as c:
@@ -1967,6 +2048,7 @@ if __name__ == "__main__":
     test_structured_opening_bills_and_prior_paid()
     test_accounts_staff_material_create_edit_only()
     test_optional_invoice_roundoff_accounting()
+    test_vendor_invoice_po_pump_charge_gst()
     test_accounts_manager_finance_settings_permission()
     test_small_expense_in_place_and_bills()
     test_site_engineer_own_small_expense_scope()
