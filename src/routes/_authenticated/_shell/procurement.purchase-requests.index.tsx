@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Empty, Loading, PageHeader, SearchBox } from "@/components/erp/common";
 import { errMsg, fmtDate } from "@/lib/format";
 import { useCan } from "@/lib/session";
+import { useSiteEngineerProjectScope } from "@/lib/site-engineer-receiving-scope";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { PR_PRIORITY, PR_STATUS, type PrPriority, type PrStatus } from "@/lib/pr";
 
@@ -41,6 +42,7 @@ function fyOf(d: Date) {
 
 function PrList() {
   const can = useCan();
+  const scope = useSiteEngineerProjectScope();
   const sp = Route.useSearch();
   const [status, setStatus] = useState(sp.status ?? "");
   const [projectId, setProjectId] = useState("");
@@ -56,7 +58,7 @@ function PrList() {
   const cur = fyOf(new Date());
 
   const refs = useQuery({
-    queryKey: ["pr-list-refs"],
+    queryKey: ["pr-list-refs", scope.userId, scope.assignedProjectIds],
     queryFn: async () => {
       const [p, b, u] = await Promise.all([
         supabase.from("projects").select("id,name,code").order("name"),
@@ -71,11 +73,13 @@ function PrList() {
   const searching = settledText.trim().length > 0;
   const q = useQuery({
     queryKey: [
-      "prs", status, projectId, buildingId, priority, requester, fy,
+      "prs", scope.userId, scope.assignedProjectIds, status, projectId, buildingId, priority, requester, fy,
       from, to, page, sp.due,
     ],
-    enabled: !searching,
+    enabled: !searching && !scope.isLoading && !scope.error,
     queryFn: async () => {
+      if (scope.isScopedEngineer && !scope.assignedProjectIds.length)
+        return { rows: [], count: 0 };
       let r = supabase
         .from("purchase_requests")
         .select(
@@ -85,6 +89,7 @@ function PrList() {
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .range(page * PAGE, page * PAGE + PAGE - 1);
+      if (scope.isScopedEngineer) r = r.in("project_id", scope.assignedProjectIds);
       if (status) r = r.eq("status", status as PrStatus);
       if (projectId) r = r.eq("project_id", projectId);
       if (buildingId) r = r.eq("building_id", buildingId);
@@ -111,11 +116,13 @@ function PrList() {
   // No text is interpolated into PostgREST .or() syntax.
   const searchResults = useQuery({
     queryKey: [
-      "pr-search-catalog", status, projectId, buildingId, priority,
+      "pr-search-catalog", scope.userId, scope.assignedProjectIds, status, projectId, buildingId, priority,
       requester, fy, from, to, sp.due,
     ],
-    enabled: searching && refs.isSuccess,
-    queryFn: async () => loadCompleteRows(async (start,end) => {
+    enabled: searching && refs.isSuccess && !scope.isLoading && !scope.error,
+    queryFn: async () => {
+      if (scope.isScopedEngineer && !scope.assignedProjectIds.length) return [];
+      return loadCompleteRows(async (start,end) => {
       let r = supabase
         .from("purchase_requests")
         .select(
@@ -125,6 +132,7 @@ function PrList() {
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .range(start,end);
+      if (scope.isScopedEngineer) r = r.in("project_id", scope.assignedProjectIds);
       if (status) r = r.eq("status", status as PrStatus);
       if (projectId) r = r.eq("project_id", projectId);
       if (buildingId) r = r.eq("building_id", buildingId);
@@ -140,7 +148,8 @@ function PrList() {
           .in("status", ["draft", "pending_approval", "approved"]);
       }
       return await r;
-    }),
+    });
+    },
   });
 
   const peopleById = new Map((refs.data?.people ?? []).map(p => [p.id,p]));
@@ -157,8 +166,8 @@ function PrList() {
   const result = searching
     ? { rows: matched.slice(page*PAGE,(page+1)*PAGE), count:matched.length }
     : q.data;
-  const loading = searching ? refs.isLoading || searchResults.isLoading : q.isLoading;
-  const error = searching ? refs.error ?? searchResults.error : q.error;
+  const loading = scope.isLoading || (searching ? refs.isLoading || searchResults.isLoading : q.isLoading);
+  const error = scope.error ?? (searching ? refs.error ?? searchResults.error : q.error);
 
   const reset = () => setPage(0);
   const people = refs.data?.people ?? [];
@@ -171,8 +180,8 @@ function PrList() {
   return (
     <>
       <PageHeader
-        title="Purchase Requests"
-        subtitle={`${result?.count ?? 0} requests${sp.due ? " · due within 7 days" : ""}`}
+        title={scope.isScopedEngineer ? "My Project Purchase Requests" : "Purchase Requests"}
+        subtitle={`${result?.count ?? 0} ${scope.isScopedEngineer ? "assigned-project " : ""}requests${sp.due ? " · due within 7 days" : ""}`}
         actions={
           can("purchase_request.create") && (
             <Button asChild size="sm">
