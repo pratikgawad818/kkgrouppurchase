@@ -1,5 +1,5 @@
 import { autoCode } from "@/lib/format";
-import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
+import { matchesRecordSearch } from "@/lib/erp-search";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { createFileRoute } from "@tanstack/react-router"; import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query"; import { useState } from "react"; import { Plus,Pencil,MapPin } from "lucide-react"; import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
