@@ -4,7 +4,8 @@
 
 An internal web application for KK GROUP. This repository contains the application, database migration history, automated tests and operations documentation.
 
-**Production application:** https://kkgrouppurchase.lovable.app  
+**Company access:** https://kkgrouppurchase.in (publication state must be verified separately from GitHub synchronization)  
+**Lovable host:** https://kkgrouppurchase.lovable.app  
 **New maintainer:** Begin with the [handover guide](docs/HANDOVER.md).
 
 ## Documentation
@@ -15,7 +16,8 @@ An internal web application for KK GROUP. This repository contains the applicati
 | [Developer guide](docs/developer-guide.md) | Architecture, source navigation and code-maintenance rules |
 | [Operations runbook](docs/operations-runbook.md) | Release, backup, monitoring and incident procedures |
 | [Access and security](docs/access-and-security.md) | Permission boundaries, credentials and successor account setup |
-| [Documentation index](docs/README.md) | Detailed workflows and historical evidence |
+| [Documentation index](docs/README.md) | Current workflows, dated implementation notes and historical evidence |
+| [Purchasing authority](docs/purchasing-authority.md) | Current PO approval roles, source chain and independent-Director rules |
 
 ## Business modules
 
