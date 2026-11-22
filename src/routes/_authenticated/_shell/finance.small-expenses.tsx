@@ -488,20 +488,27 @@ function SmallExpenses() {
     </>}
     <SmallExpenseDetail expense={viewing} onClose={()=>setViewing(null)}/>
     <Dialog open={open} onOpenChange={value=>{if(!save.isPending)setOpen(value);}}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>{editingId?"Edit existing expense":"Record a small expense"}</DialogTitle><DialogDescription>
+      <DialogContent className={isSiteEngineer
+          ?"site-expense-mobile-dialog max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+          :"max-h-[90vh] overflow-y-auto sm:max-w-2xl"}>
+        <DialogHeader className={isSiteEngineer?"site-expense-form-header":undefined}>
+          <DialogTitle>{editingId?"Edit existing expense":"Record a small expense"}</DialogTitle><DialogDescription>
           {editingId
             ?"Save changes to this same expense. No replacement entry and no void. Previous values remain in the audit history."
             :"Record an actual payment and attach up to 8 bill images or PDFs."}
         </DialogDescription></DialogHeader>
+        <div className={isSiteEngineer?"site-expense-form-body sm:contents":"contents"}>
         {context.error&&<p role="alert" className="text-sm text-destructive">Could not verify your assigned projects. No expense can be recorded until access is restored. {errMsg(context.error)}</p>}
         {isSiteEngineer&&context.isSuccess&&!context.data.projects.length&&
           <p role="alert" className="rounded-lg border p-3 text-sm text-destructive">
             No projects are assigned to your account. Ask your administrator to assign your site before recording expenses.
           </p>}
+        {isSiteEngineer&&<p className="mb-3 rounded-xl bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+          Record one payment at a time. Choose your assigned project, then add the amount and bill if available.
+        </p>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <div><label className="text-sm font-medium">Date *</label><Input type="date" max={todayIst()} value={form.spentOn} onChange={e=>setField("spentOn",e.target.value)}/></div>
-          <div><label className="text-sm font-medium">Amount (₹) *</label><Input inputMode="decimal" placeholder="e.g. 75000.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
+          <div><label htmlFor="small-expense-date" className="text-sm font-medium">Date *</label><Input id="small-expense-date" type="date" max={todayIst()} value={form.spentOn} onChange={e=>setField("spentOn",e.target.value)}/></div>
+          <div><label htmlFor="small-expense-amount" className="text-sm font-medium">Amount (₹) *</label><Input id="small-expense-amount" type="text" inputMode="decimal" placeholder="e.g. 750.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
           <div>
             <label className="text-sm font-medium" htmlFor="small-expense-category">Category *</label>
             <select id="small-expense-category" className={selectCls} value={form.category}
@@ -527,18 +534,18 @@ function SmallExpenses() {
               </p>
             </div>
           }
-          <div><label className="text-sm font-medium">Paid through *</label><select className={selectCls} value={form.method} onChange={e=>setField("method",e.target.value as SmallExpensePayment)}>
+          <div><label htmlFor="small-expense-payment-method" className="text-sm font-medium">Paid through *</label><select id="small-expense-payment-method" className={selectCls} value={form.method} onChange={e=>setField("method",e.target.value as SmallExpensePayment)}>
             {Object.entries(SMALL_EXPENSE_PAYMENTS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
-          <div><label className="text-sm font-medium">Project {isSiteEngineer?"*":""}</label><select className={selectCls} value={form.projectId} onChange={e=>{setForm(v=>({...v,projectId:e.target.value,buildingId:""}));}}>
+          <div><label htmlFor="small-expense-project" className="text-sm font-medium">Project {isSiteEngineer?"*":""}</label><select id="small-expense-project" className={selectCls} value={form.projectId} onChange={e=>{setForm(v=>({...v,projectId:e.target.value,buildingId:""}));}}>
             <option value="">{isSiteEngineer?"Choose assigned project":"General office / no project"}</option>{context.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
-          <div><label className="text-sm font-medium">Building / wing</label><select className={selectCls} disabled={!form.projectId} value={form.buildingId} onChange={e=>setField("buildingId",e.target.value)}>
+          <div><label htmlFor="small-expense-building" className="text-sm font-medium">Building / wing</label><select id="small-expense-building" className={selectCls} disabled={!form.projectId} value={form.buildingId} onChange={e=>setField("buildingId",e.target.value)}>
             <option value="">General project expense</option>{context.data?.buildings.filter(x=>x.project_id===form.projectId).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
-          <div><label className="text-sm font-medium">Paid to *</label><Input maxLength={120} placeholder="Shop / worker / service provider" value={form.paidTo} onChange={e=>setField("paidTo",e.target.value)}/></div>
-          <div><label className="text-sm font-medium">Receipt / bill reference</label><Input maxLength={120} placeholder="Optional receipt number" value={form.reference} onChange={e=>setField("reference",e.target.value)}/></div>
-          <div className="sm:col-span-2"><label className="text-sm font-medium">What was paid for? *</label><Textarea rows={3} maxLength={500} placeholder="Purpose and site details" value={form.description} onChange={e=>setField("description",e.target.value)}/></div>
+          <div><label htmlFor="small-expense-paid-to" className="text-sm font-medium">Paid to *</label><Input id="small-expense-paid-to" maxLength={120} placeholder="Shop / worker / service provider" value={form.paidTo} onChange={e=>setField("paidTo",e.target.value)}/></div>
+          <div><label htmlFor="small-expense-reference" className="text-sm font-medium">Receipt / bill reference</label><Input id="small-expense-reference" maxLength={120} placeholder="Optional receipt number" value={form.reference} onChange={e=>setField("reference",e.target.value)}/></div>
+          <div className="sm:col-span-2"><label htmlFor="small-expense-description" className="text-sm font-medium">What was paid for? *</label><Textarea id="small-expense-description" rows={3} maxLength={500} placeholder="Purpose and site details" value={form.description} onChange={e=>setField("description",e.target.value)}/></div>
         </div>
-        <section className="mt-4 rounded-xl border bg-muted/20 p-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
+        <section className="mt-4 min-w-0 rounded-xl border bg-muted/20 p-3">
+          <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
             <Paperclip className="h-4 w-4"/>Bill images / invoice photos / PDFs
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -582,9 +589,10 @@ function SmallExpenses() {
             placeholder="What was changed? The previous values are saved automatically."
             value={correctionReason} onChange={e=>setCorrectionReason(e.target.value)}/>
         </div>}
-        <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)} disabled={save.isPending}>Cancel</Button>
+        </div>
+        <DialogFooter className={isSiteEngineer?"site-expense-form-actions":undefined}><Button variant="outline" onClick={()=>setOpen(false)} disabled={save.isPending}>Cancel</Button>
           <Button onClick={()=>save.mutate()} disabled={save.isPending||context.isLoading||!!context.error||
-            (isSiteEngineer&&!form.projectId)||
+            (isSiteEngineer&&(!form.projectId||!context.data?.projects.some(project=>project.id===form.projectId)))||
             (!!editingId&&(editBills.isLoading||!!editBills.error))}>
             <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":editingId?"Save changes":"Record paid expense"}</Button></DialogFooter>
       </DialogContent>
