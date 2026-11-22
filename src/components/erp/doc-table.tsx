@@ -36,11 +36,13 @@ export function useDocTableLabels(root: () => HTMLElement | null) {
       if (!area) {
         const onWheel = (event: WheelEvent) => {
           const target = tableWheelScrollTarget(container, event);
-          if (target === null) return;
+          // Non-cancelable follow-up wheel events must stay native; forcing
+          // scrollLeft as well could double the movement in some browsers.
+          if (target === null || !event.cancelable) return;
           // Consume horizontal swipes even at either edge; otherwise Opera/
           // Chromium may turn the reverse gesture into browser Back/Forward.
           // Ordinary vertical wheel scrolling and pinch-zoom pass through.
-          if (event.cancelable) event.preventDefault();
+          event.preventDefault();
           container.scrollLeft = target;
         };
         container.addEventListener("wheel", onWheel, { passive: false });
