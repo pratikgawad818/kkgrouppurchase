@@ -15,6 +15,7 @@ import { PAGE } from "@/lib/fy";
 import { selectCls } from "@/lib/po";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { summarizeSelectedMaterial } from "@/lib/material-usage-tracker";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 export const Route = createFileRoute("/_authenticated/_shell/inventory/material-consumption")({
   head: () => ({ meta: [{ title: "Project Material Consumption — KK GROUP ERP" }] }),
@@ -81,8 +82,7 @@ function MaterialConsumption() {
     (!projectId||x.project_id===projectId)&&
     (!buildingId||(buildingId==="general"?!x.building_id:x.building_id===buildingId))&&
     (!materialId||x.material_id===materialId)&&
-    (!search.trim()||[x.reference,x.projects?.name,x.buildings?.name,x.items?.name,x.items?.code]
-      .some(v=>v?.toLowerCase().includes(search.toLowerCase().trim()))));
+    matchesRecordSearch([x.reference,x.projects?.name,x.buildings?.name,x.items?.name,x.items?.code],search));
   const historicalValue=historicalFiltered.reduce((total,x)=>total+Number(x.quantity)*Number(x.unit_cost),0);
   const all = q.data ?? [];
   const projects = projectOptions.data ?? [...new Map(all.map(x=>[x.project_id,{id:x.project_id,name:x.project_name}])).values()];
@@ -106,11 +106,11 @@ function MaterialConsumption() {
   const rows = all.filter(x =>
     (!buildingId || (buildingId==="general"?!x.building_id:x.building_id===buildingId)) &&
     (!materialId || x.material_id===materialId) &&
-    (!search.trim() || [x.material_name,x.material_code,x.project_name,x.building_name]
-      .some(v=>v?.toLowerCase().includes(search.toLowerCase().trim()))));
+    matchesRecordSearch([x.material_name,x.material_code,x.project_name,x.building_name],search));
   const totals=rows.reduce((a,x)=>({
     issued:a.issued+Number(x.issued_value),returned:a.returned+Number(x.returned_value),net:a.net+Number(x.net_value),
   }),{issued:0,returned:0,net:0});
+  const visiblePage=visibleSearchPage(page,rows.length,PAGE);
   const selectedMaterialRows=all.filter(x=>
     (!materialId||x.material_id===materialId) &&
     (!buildingId||(buildingId==="general"?!x.building_id:x.building_id===buildingId)));
@@ -226,7 +226,7 @@ function MaterialConsumption() {
             <th className="p-3 text-right">Issued value</th><th className="p-3 text-right">Return credit</th>
             <th className="p-3 text-right">Net cost</th>
           </tr></thead>
-          <tbody>{rows.slice(page*PAGE,(page+1)*PAGE).map(x=><tr key={x.project_id+":"+(x.building_id??"")+":"+x.material_id} className="border-b last:border-0 hover:bg-muted/30">
+          <tbody>{rows.slice(visiblePage*PAGE,(visiblePage+1)*PAGE).map(x=><tr key={x.project_id+":"+(x.building_id??"")+":"+x.material_id} className="border-b last:border-0 hover:bg-muted/30">
             <td className="p-3">{x.project_name}</td>
             <td className="p-3">{x.building_name??"General project work"}</td>
             <td className="p-3">{x.material_name} <span className="text-xs text-muted-foreground">{x.material_code}</span></td>
@@ -239,7 +239,7 @@ function MaterialConsumption() {
           </tr>)}</tbody>
         </table>
       </div></>}
-      <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
+      <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
       <p className="mt-3 text-xs text-muted-foreground">This operational report tracks the consumption of materials from stock. It is not a second purchase invoice, cash-flow record or general-ledger expense posting.</p>
     </>}
     <section className="mt-6 rounded-xl border bg-card p-4 sm:p-5">
