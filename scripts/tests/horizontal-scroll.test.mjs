@@ -45,7 +45,8 @@ test("desktop tables provide native horizontal overflow and prevent browser swip
   assert.match(hook, /Horizontally scrollable table/);
   assert.match(hook, /tabIndex = 0/);
   assert.match(hook, /tableWheelScrollTarget\(container, event\)/);
-  assert.match(hook, /if \(event\.cancelable\) event\.preventDefault\(\)/);
+  assert.match(hook, /if \(target === null \|\| !event\.cancelable\) return/);
+  assert.match(hook, /event\.preventDefault\(\)/);
   assert.match(hook, /container\.addEventListener\("wheel", onWheel, \{ passive: false \}\)/);
   assert.match(hook, /window\.addEventListener\("resize", resize\)/);
   assert.match(hook, /container\.removeEventListener\("wheel", area\.onWheel\)/);
