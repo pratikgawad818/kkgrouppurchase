@@ -1,13 +1,14 @@
 import * as React from "react";
 import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { displayDateToIso, isoDateToDisplay } from "@/lib/date-format";
+import { displayDateToIso, formatDateEntryInput, isoDateToDisplay } from "@/lib/date-format";
 
 /**
  * Display DD/MM/YYYY in every shared ERP date field while keeping the API
- * value ISO YYYY-MM-DD. The hidden native date picker remains available for
- * mobile/keyboard selection; its locale-dependent appearance is never shown
- * as the canonical date entry format.
+ * value ISO YYYY-MM-DD. iPhone Safari must receive a real touch on the
+ * native date input; programmatically clicking a 1-pixel hidden picker can fail.
+ * The native control covers the calendar icon on touch screens and leaves the
+ * canonical DD/MM/YYYY text field editable for manual numeric entry.
  *
  * The onChange adapter provides the ISO value expected by existing forms.
  */
@@ -71,7 +72,7 @@ export const ErpDateInput = React.forwardRef<
   }
 
   function onTextChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const next = event.target.value.replace(/[^0-9/]/g, "").slice(0, 10);
+    const next = formatDateEntryInput(event.target.value);
     setDisplay(next);
     const iso = displayDateToIso(next);
     const valid = iso && (!min || iso >= String(min)) && (!max || iso <= String(max));
@@ -81,9 +82,11 @@ export const ErpDateInput = React.forwardRef<
 
   function onPicked(event: React.ChangeEvent<HTMLInputElement>) {
     const iso = event.target.value;
-    setDisplay(isoDateToDisplay(iso));
+    const valid = !!iso && displayDateToIso(isoDateToDisplay(iso)) === iso &&
+      (!min || iso >= String(min)) && (!max || iso <= String(max));
+    setDisplay(valid ? isoDateToDisplay(iso) : "");
     setTouched(false);
-    forwardIso(iso, event);
+    forwardIso(valid ? iso : "", event);
   }
 
   function openPicker() {
@@ -133,6 +136,8 @@ export const ErpDateInput = React.forwardRef<
       >
         <CalendarDays className="h-4 w-4" aria-hidden="true" />
       </button>
+      {/* Direct touch targets bypass iOS Safari's restriction on synthetic
+          clicks to a tiny hidden date input. Desktop keeps showPicker(). */}
       <input
         ref={picker}
         type="date"
@@ -142,8 +147,8 @@ export const ErpDateInput = React.forwardRef<
         disabled={disabled || readOnly}
         onChange={onPicked}
         tabIndex={-1}
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-0 h-px w-px opacity-0"
+        aria-label={`Choose date for ${props["aria-label"] ?? "Date"}`}
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 h-full w-11 min-w-11 cursor-pointer opacity-0 [@media(hover:none)_and_(pointer:coarse)]:pointer-events-auto"
       />
       {touched && invalid && (
         <p role="alert" className="mt-1 text-xs text-destructive">

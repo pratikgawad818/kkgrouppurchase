@@ -41,6 +41,21 @@ export function isoDateToDisplay(value: string | null | undefined): string {
   return `${d}/${m}/${y}`;
 }
 
+/**
+ * iPhone's numeric keyboard may not expose "/". Accept eight typed digits
+ * (or a pasted display/ISO date) and progressively show DD/MM/YYYY.
+ * This is only display formatting; a full valid date is still required
+ * before displayDateToIso() returns an API value.
+ */
+export function formatDateEntryInput(raw: string): string {
+  const pastedIso = isoDateToDisplay(raw.trim());
+  if (pastedIso) return pastedIso;
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
 /** Strict date entry: rejects 31/02/2026, incorrect year and ambiguities. */
 export function displayDateToIso(value: string): string | null {
   const match = DISPLAY_DATE.exec(value.trim());
