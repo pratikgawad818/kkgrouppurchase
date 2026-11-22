@@ -8,6 +8,7 @@ import { inr, num, errMsg } from "@/lib/format";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { summarizeManagement } from "@/lib/management-overview";
 import { PageHeader, Loading, SearchBox } from "@/components/erp/common";
+import { matchesRecordSearch } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
 import { Button } from "@/components/ui/button";
 import { selectCls } from "@/lib/po";
@@ -81,9 +82,8 @@ function ManagementOverview() {
     const name = row.items?.name ?? "";
     const code = row.items?.code ?? "";
     const storeName = row.warehouses?.name ?? "";
-    const needle = search.trim().toLocaleLowerCase();
     return (!warehouse || row.warehouse_id === warehouse) &&
-      (!needle || [name, code, storeName].some(value => value.toLocaleLowerCase().includes(needle)));
+      matchesRecordSearch([name,code,storeName],search);
   });
   const filteredPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / PAGE_SIZE) - 1));
   const pageRows = filtered.slice(filteredPage * PAGE_SIZE, (filteredPage + 1) * PAGE_SIZE);
