@@ -390,6 +390,60 @@ def seed_po(c, creator=PURCHASER, requester=PURCHASER):
 
 
 
+def test_engineer_assigned_project_pr_po_visibility():
+    """Assigned project membership grants PR/PO read, independent of creator.
+    Revoking it immediately blocks both tables and PO detail access.
+    """
+    with db() as c:
+        po_id = seed_po(c, creator=PURCHASER, requester=PURCHASER)
+        c.execute("RESET ROLE")
+        pr_id = c.execute(
+            "SELECT purchase_request_id FROM purchase_orders WHERE id=%s",
+            (po_id,),
+        ).fetchone()[0]
+
+        actor(c, SITE)
+        assert c.execute(
+            "SELECT count(*) FROM purchase_requests WHERE id=%s", (pr_id,)
+        ).fetchone()[0] == 1, "Site Engineer should see another requester's PR in assigned project"
+        assert c.execute(
+            "SELECT count(*) FROM purchase_orders WHERE id=%s", (po_id,)
+        ).fetchone()[0] == 1, "Site Engineer should see a Purchase Manager's PO in assigned project"
+        assert c.execute(
+            "SELECT po_can_view(%s::uuid)", (po_id,)
+        ).fetchone()[0], "PO detail must be visible for assigned project"
+        assert not c.execute(
+            "SELECT has_permission(auth.uid(),'projects.view_all')"
+        ).fetchone()[0], "Site Engineer must not gain global project access"
+
+        c.execute("RESET ROLE")
+        c.execute(
+            "DELETE FROM user_project_assignments WHERE user_id=%s AND project_id=%s",
+            (SITE, PROJECT),
+        )
+        actor(c, SITE)
+        assert c.execute(
+            "SELECT count(*) FROM purchase_requests WHERE id=%s", (pr_id,)
+        ).fetchone()[0] == 0, "Removed assignment must hide the PR"
+        assert c.execute(
+            "SELECT count(*) FROM purchase_orders WHERE id=%s", (po_id,)
+        ).fetchone()[0] == 0, "Removed assignment must hide the PO"
+        assert not c.execute(
+            "SELECT po_can_view(%s::uuid)", (po_id,)
+        ).fetchone()[0], "Revocation must block direct PO details"
+
+        for reviewer in (ACCOUNTS, DIRECTOR, ADMIN):
+            actor(c, reviewer)
+            assert c.execute(
+                "SELECT count(*) FROM purchase_requests WHERE id=%s", (pr_id,)
+            ).fetchone()[0] == 1
+            assert c.execute(
+                "SELECT count(*) FROM purchase_orders WHERE id=%s", (po_id,)
+            ).fetchone()[0] == 1
+        c.rollback()
+    print("PASS assigned-project PR/PO visibility, creator independence, revocation and manager rights")
+
+
 def test_pr_manager_received_notification():
     """A requester's notification is receipt, not Director PO approval."""
     with db() as c:
@@ -1635,6 +1689,7 @@ if __name__ == "__main__":
     test_square_metre_unit_seed_is_idempotent()
     test_private_procurement_attachment_access()
     test_site_engineer_requires_project_assignment_for_pr()
+    test_engineer_assigned_project_pr_po_visibility()
     from pr_0099_access_acceptance import exercise_pr_revocation
     exercise_pr_revocation(db,actor,denied,save_pr,ADMIN,SITE,PROJECT)
     test_quote_freight_gst_matches_supplier_and_po()

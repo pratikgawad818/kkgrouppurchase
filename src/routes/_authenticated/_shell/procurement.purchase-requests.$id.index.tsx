@@ -23,6 +23,7 @@ import { ProcurementRevisionHistory } from "@/components/erp/procurement-revisio
 import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
 import { useCan, useMe } from "@/lib/session";
+import { useSiteEngineerProjectScope } from "@/lib/site-engineer-receiving-scope";
 import { RFQ_STATUS } from "@/lib/rfq";
 import { PR_PRIORITY, PR_STATUS, PR_TYPE, type PrAction } from "@/lib/pr";
 
@@ -64,13 +65,15 @@ function PrDetail() {
   const { id } = Route.useParams();
   const can = useCan();
   const me = useMe();
+  const scope = useSiteEngineerProjectScope();
   const qc = useQueryClient();
   const [act, setAct] = useState<PrAction | null>(null);
   const [comment, setComment] = useState("");
   const [correctionResponses, setCorrectionResponses] = useState<Record<string,string>>({});
 
   const q = useQuery({
-    queryKey: ["pr", id],
+    queryKey: ["pr", id, scope.userId, scope.assignedProjectIds],
+    enabled: !scope.isLoading && !scope.error,
     queryFn: async () => {
       const [p, i, h] = await Promise.all([
         supabase
@@ -100,7 +103,7 @@ function PrDetail() {
   });
 
   const rfqs = useQuery({
-    queryKey: ["pr-rfqs", id],
+    queryKey: ["pr-rfqs", id, scope.userId, scope.assignedProjectIds],
     enabled: can("rfq.view"),
     queryFn: async () => {
       const { data, error } = await supabase
@@ -114,7 +117,7 @@ function PrDetail() {
   });
 
   const selectedQuotations = useQuery({
-    queryKey: ["pr-selected-supplier-quotations", id],
+    queryKey: ["pr-selected-supplier-quotations", id, scope.userId, scope.assignedProjectIds],
     enabled: can("purchase_request.view") && can("purchase_order.view"),
     staleTime: 30_000,
     refetchOnMount: "always",
@@ -132,7 +135,7 @@ function PrDetail() {
   });
 
   const siteCorrections = useQuery({
-    queryKey: ["pr-site-corrections", id],
+    queryKey: ["pr-site-corrections", id, scope.userId, scope.assignedProjectIds],
     queryFn: async () => {
       // Table introduced in migration 0079; permissions remain project scoped.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -189,9 +192,11 @@ function PrDetail() {
     onError: (e) => toast.error(errMsg(e)),
   });
 
-  if (q.isLoading) return <Loading />;
-  if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
+  if (scope.isLoading || q.isLoading) return <Loading />;
+  if (scope.error || q.error) return <div role="alert" className="text-sm text-destructive">{errMsg(scope.error || q.error)}</div>;
   const { pr, items, history, name } = q.data!;
+  if (scope.isScopedEngineer && !scope.canAccess(pr.project_id))
+    return <div role="alert" className="rounded-lg border p-5 text-sm">This purchase request is not in your assigned projects.</div>;
   const mine = pr.requested_by === me.data?.profile.id;
   const st = PR_STATUS[pr.status];
   const pending = pr.status === "pending_approval";

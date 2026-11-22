@@ -4,14 +4,12 @@ import { useMe } from "@/lib/session";
 import { canReceiveAssignedProject } from "@/lib/receiving-project-access";
 
 /**
- * Site Engineers operate by explicit project assignment, not by PR/PO creator.
- * This hook scopes the two field-receiving selectors in the UI. Database
- * RLS and the register_vendor_delivery_challan/create_goods_receipt RPCs
- * independently enforce the same company/project rule at write time.
- *
- * Other authorized roles retain their existing permissions and visibility.
+ * Scope field-facing PR / PO registers and receiving to explicitly assigned
+ * projects (not purchase requester or PO creator). SQL RLS and write RPCs
+ * independently enforce the same company/project membership rule.
+ * Management roles with projects.view_all keep their existing access.
  */
-export function useSiteEngineerReceivingScope() {
+export function useSiteEngineerProjectScope() {
   const me = useMe();
   const userId = me.data?.profile.id;
   const isScopedEngineer =
@@ -35,6 +33,7 @@ export function useSiteEngineerReceivingScope() {
 
   const assignedProjectIds = isScopedEngineer ? (assigned.data ?? []) : [];
   return {
+    userId,
     isScopedEngineer,
     assignedProjectIds,
     isLoading: isScopedEngineer && assigned.isLoading,
@@ -43,3 +42,6 @@ export function useSiteEngineerReceivingScope() {
       canReceiveAssignedProject(projectId, assignedProjectIds, isScopedEngineer),
   };
 }
+
+/** Backwards-compatible name for the two field-receiving screens. */
+export const useSiteEngineerReceivingScope = useSiteEngineerProjectScope;
