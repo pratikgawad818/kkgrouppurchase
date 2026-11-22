@@ -81,7 +81,8 @@ export function StaffProjectAssignments({ staffId }: { staffId: string }) {
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold">Project access</h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Site Engineers can create Purchase Requests only for assigned projects.
+              Site Engineers can create purchase requests, register supplier challans,
+              and record goods receipts for assigned projects—even for a colleague's PO.
               Select the sites this staff member may access.
             </p>
           </div>
