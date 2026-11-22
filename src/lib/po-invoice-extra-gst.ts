@@ -1,4 +1,4 @@
-import { toPaise } from "@/lib/invoice-roundoff";
+import { toPaise } from "./invoice-roundoff.ts";
 
 /** PO-approved GST rules are the source of truth for an invoice's non-material charges. */
 export type PoChargeTaxType = "none" | "cgst_sgst" | "igst";
