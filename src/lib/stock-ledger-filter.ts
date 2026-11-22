@@ -1,4 +1,4 @@
-import { matchesRecordSearch } from "@/lib/erp-search";
+import { matchesRecordSearch } from "./erp-search.ts";
 
 /**
  * Filter a COMPLETE warehouse movement register in one pass.
