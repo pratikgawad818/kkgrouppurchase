@@ -757,6 +757,13 @@
       "when": 1795364400000,
       "tag": "0107_super_admin_delete_unused_grn",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1795368000000,
+      "tag": "0108_vendor_invoice_po_extra_charge_gst",
+      "breakpoints": true
     }
   ]
 }
