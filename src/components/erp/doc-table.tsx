@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { shiftWheelScrollTarget } from "@/lib/horizontal-scroll";
+import { tableWheelScrollTarget } from "@/lib/horizontal-scroll";
 
 type ScrollArea = {
   onWheel: (event: WheelEvent) => void;
@@ -9,8 +9,9 @@ type ScrollArea = {
 };
 
 /** Keep one semantic table on desktop, with header labels on its mobile cells.
- * Also make real overflowing register regions keyboard accessible and preserve
- * native horizontal trackpad scrolling on macOS. DOM work is frame-coalesced.
+ * Make overflowing register regions keyboard accessible and handle Mac
+ * trackpad gestures inside the table in both directions. DOM work is
+ * frame-coalesced.
  */
 export function useDocTableLabels(root: () => HTMLElement | null) {
   useEffect(() => {
@@ -34,8 +35,13 @@ export function useDocTableLabels(root: () => HTMLElement | null) {
       let area = scrollAreas.get(container);
       if (!area) {
         const onWheel = (event: WheelEvent) => {
-          const target = shiftWheelScrollTarget(container, event);
+          const target = tableWheelScrollTarget(container, event);
+          // Non-cancelable follow-up wheel events must stay native; forcing
+          // scrollLeft as well could double the movement in some browsers.
           if (target === null || !event.cancelable) return;
+          // Consume horizontal swipes even at either edge; otherwise Opera/
+          // Chromium may turn the reverse gesture into browser Back/Forward.
+          // Ordinary vertical wheel scrolling and pinch-zoom pass through.
           event.preventDefault();
           container.scrollLeft = target;
         };
@@ -49,8 +55,8 @@ export function useDocTableLabels(root: () => HTMLElement | null) {
         scrollAreas.set(container, area);
       }
 
-      // Native touchpad deltaX is handled by CSS overflow-x:auto. Do not
-      // capture or modify it: that would break Mac trackpad momentum.
+      // Only actual overflowing tables intercept horizontal wheel events.
+      // Non-overflowing lists retain ordinary browser gesture behavior.
       const overflowing = container.scrollWidth > container.clientWidth + 1;
       if (overflowing) {
         if (!container.hasAttribute("tabindex")) {
