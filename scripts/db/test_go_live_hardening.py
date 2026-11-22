@@ -532,6 +532,107 @@ def test_director_notifications_and_names():
 
 
 
+def test_director_approved_po_alerts_original_pr_engineer_phone():
+    """A real Director PO approval notifies only the original PR engineer;
+    the inbox row also enqueues a push for that engineer's opted-in device.
+    """
+    with db() as c:
+        doc=seed_po(c,requester=SITE)
+        actor(c,PURCHASER)
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
+        c.execute("RESET ROLE")
+        pr_number,po_number,project_name,vendor_name=c.execute("""
+            SELECT pr.pr_number,po.po_number,project.name,v.company_name
+            FROM purchase_orders po
+            JOIN purchase_requests pr ON pr.id=po.purchase_request_id
+            JOIN projects project ON project.id=po.project_id
+            JOIN vendors v ON v.id=po.vendor_id WHERE po.id=%s
+        """,(doc,)).fetchone()
+        link="/procurement/purchase-orders/"+doc
+
+        # Fake an opted-in engineer device. The disposable QA database has a
+        # pg_net spy; no phone traffic actually leaves the test process.
+        c.execute("""INSERT INTO push_config(id,vapid_private_jwk,dispatch_secret,dispatch_url)
+            VALUES(1,'{}'::jsonb,'QA secret','https://example.invalid/push-dispatch')""")
+        c.execute("""INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth)
+            VALUES(%s,%s,'QA P256DH','QA AUTH')""",
+            (SITE,"https://fcm.googleapis.com/fcm/send/qa-po-"+str(uuid4())))
+
+        # A second engineer assigned to the SAME project is never notified.
+        same_project_engineer=str(uuid4())
+        c.execute("""INSERT INTO profiles(id,company_id,full_name,email,is_active)
+            VALUES(%s,%s,'QA second engineer',%s,true)""",
+            (same_project_engineer,A,same_project_engineer+"@example.invalid"))
+        c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,'site_engineer')",(same_project_engineer,))
+        c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",
+                  (same_project_engineer,PROJECT))
+        c.execute("UPDATE profiles SET full_name='Karim Sir' WHERE id=%s",(DIRECTOR,))
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
+                         (SITE,link)).fetchone()[0]==0, "Submitting a PO must not claim it was approved"
+
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT po_transition(%s,'approved','QA Director approved')",
+                         (doc,)).fetchone()[0]=='approved'
+        c.execute("RESET ROLE")
+        rows=c.execute("""
+            SELECT id,user_id,title,body,link FROM notifications
+            WHERE user_id=%s AND link=%s ORDER BY created_at DESC
+        """,(SITE,link)).fetchall()
+        assert len(rows)==1,rows
+        n=rows[0]
+        assert "Karim Sir approved PO " + po_number == n[2],n
+        assert pr_number in n[3] and po_number in n[3],n
+        assert project_name in n[3] and vendor_name in n[3],n
+        assert n[4]==link
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
+                         (same_project_engineer,link)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
+                         (PURCHASER,link)).fetchone()[0]==1, "PO preparer keeps existing approved alert"
+        assert c.execute("SELECT count(*) FROM qa_http_requests WHERE body->>'id'=%s",
+                         (str(n[0]),)).fetchone()[0]==1, "Push must be queued once for registered engineer"
+        actor(c,SITE)
+        assert c.execute("SELECT count(*) FROM notifications WHERE id=%s",
+                         (n[0],)).fetchone()[0]==1, "Engineer can open own inbox item"
+        actor(c,PURCHASER)
+        assert c.execute("SELECT count(*) FROM notifications WHERE id=%s",
+                         (n[0],)).fetchone()[0]==0, "PO manager cannot see engineer's inbox"
+        c.execute("RESET ROLE")
+        c.execute("UPDATE purchase_orders SET status=status WHERE id=%s",(doc,))
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
+                         (SITE,link)).fetchone()[0]==1, "Unchanged PO status must not resend the push"
+        c.rollback()
+
+    with db() as c:
+        # If a Site Engineer is also the PO creator, use the personalized
+        # alert in place of (not in addition to) the generic creator alert.
+        doc=seed_po(c,creator=SITE,requester=SITE)
+        actor(c,PURCHASER)
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)).fetchone()[0]=='approved'
+        c.execute("RESET ROLE")
+        alerts=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                         (SITE,"/procurement/purchase-orders/"+doc)).fetchall()
+        assert len(alerts)==1 and "approved PO" in alerts[0][0],alerts
+        c.rollback()
+
+    with db() as c:
+        doc=seed_po(c,requester=SITE)
+        actor(c,PURCHASER)
+        assert c.execute("SELECT po_transition(%s,'submitted','QA')",(doc,)).fetchone()[0]=='pending_approval'
+        c.execute("RESET ROLE")
+        c.execute("DELETE FROM user_project_assignments WHERE user_id=%s AND project_id=%s",
+                  (SITE,PROJECT))
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)).fetchone()[0]=='approved'
+        c.execute("RESET ROLE")
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
+                         (SITE,"/procurement/purchase-orders/"+doc)).fetchone()[0]==0, \
+            "Revoked engineer assignment must block access and alerts"
+        c.rollback()
+    print("PASS Director approval -> original PR engineer inbox + push, one alert, project revocation")
+
+
 def test_director_origin_and_super_admin_purchasing():
     with db() as c:
         actor(c,DIRECTOR)
@@ -1696,6 +1797,7 @@ if __name__ == "__main__":
     test_atomic_requests_and_rfqs()
     test_pr_manager_received_notification()
     test_director_notifications_and_names()
+    test_director_approved_po_alerts_original_pr_engineer_phone()
     test_director_origin_and_super_admin_purchasing()
     test_push_and_email_boundaries()
     test_real_payment_posting()
