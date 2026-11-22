@@ -6,7 +6,7 @@ Route: `/procurement/follow-ups` (authenticated).
 
 The follow-up center is designed for purchase managers, site engineers, and accounts teams coordinating several construction projects and suppliers. It is **read-only**; clicking a document opens its existing authorised workflow.
 
-1. **POs awaiting director approval** — open the purchase order and get the required three independent decisions. This screen cannot approve anything itself.
+1. **POs awaiting director approval** — open the purchase order and get the required independent Director decision under the current approval policy. This screen cannot approve anything itself.
 2. **Overdue supplier deliveries** — investigate the vendor and confirm a revised dispatch plan. A PO appears if an open accepted-material commitment has an expected date earlier than the current Indian date.
 3. **Due in the next seven days** — confirm delivery slot, site readiness and receipt personnel with vendors.
 4. **Missing expected delivery dates** — open the PO to record realistic terms. A missing date is not automatically classified as late.

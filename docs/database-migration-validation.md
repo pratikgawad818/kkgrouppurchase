@@ -1,5 +1,7 @@
 # KK GROUP ERP — Database migration verification (0012–0015)
 
+> **Historical release procedure.** This document preserves the original 0012–0015 acceptance plan, not today's deployment status or Director quorum. Current PO approval requirements are documented in [Purchasing authority](purchasing-authority.md); always check the live SQL function before release.
+
 ## Connection/access status
 
 Repository Supabase project reference: `bcyealtsynxuqxqhnxpu` (from `supabase/config.toml`).
@@ -48,4 +50,4 @@ The production release is blocked until staging outcomes and database change his
 - If Lovable account/project lookup returns `project_not_found`, the connected Lovable session has no access. Do not interpret that as missing Supabase tables.
 - Without an accessible **staging database** or authorised database connection, actual SQL deployment, permission tests, and transactional tests cannot be executed.
 - The four SQL files are *not* a safe substitute for actual test results, regardless of passing syntax checks.
-- Exactly three active directors per company are necessary for existing vote RPC to approve PO/payments. If a director is the request creator, self-approval restrictions may prevent a 3-of-3 decision; separate requester/operator roles are preferred.
+- **Historical note:** The initial 0012–0015 staged tests assumed three Director votes. The current PO workflow (migration 0100) instead requires one independent Director, and prohibits PO creator self-approval. Do not apply historical quorum assumptions to current live operations.

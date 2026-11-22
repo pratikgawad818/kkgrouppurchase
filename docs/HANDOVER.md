@@ -1,5 +1,7 @@
 # KK GROUP ERP — maintainer handover
 
+> **Dated baseline (19 November 2026), not a live status dashboard.** Some migration numbers, deployment results and module coverage recorded below have since changed. Before authorizing work, verify the latest GitHub `main`, applied database functions, active staff/project permissions and publication status. See [Purchasing authority](purchasing-authority.md) for current independent-Director PO approval.
+
 **Document date:** 19 November 2026  
 **System:** KK GROUP internal construction operations ERP  
 **Production URL:** https://kkgrouppurchase.lovable.app  

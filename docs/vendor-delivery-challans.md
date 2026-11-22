@@ -4,7 +4,7 @@ This module records the supplier's **physical dispatch document** separately fro
 
 ## Workflow
 
-1. Three directors independently approve the commercial purchase order.
+1. An eligible Director other than the PO creator independently approves the commercial purchase order under the current policy (see [Purchasing authority](purchasing-authority.md)).
 2. Buyer/store staff open PO → **Register vendor challan**, enter the vendor's actual challan number, date, vehicle reference and dispatched material quantities.
 3. ERP stores a standalone challan header + immutable dispatch lines. PO, project, vendor and company are inherited from the PO; the vendor number must be unique per vendor and company.
 4. On **Receive goods**, store staff select the registered challan. ERP shows the quantities remaining on that challan (after any prior, non-cancelled GRNs, including drafts).

@@ -1,5 +1,7 @@
 # KK GROUP ERP — Proposed vendor payment integrity migration 0018
 
+> **Archived proposal / historical snapshot.** The statements below about a proposed, unapplied migration, director count, and live data were recorded at the time of drafting. They are **not** a description of the current production database. Check the current migration registry, SQL functions and [Purchasing authority](purchasing-authority.md) before acting. Keep the historical acceptance evidence; do not reapply migration 0018.
+
 **Status: PROPOSED SOURCE MIGRATION ONLY. NOT INSTALLED IN LIVE LOVABLE CLOUD.**
 
 The earlier migration 0017 is live and protects accepted GRN invoice quantities. This proposal addresses the **next** stage of the builders' purchase-to-payment cycle: scheduling and recording vendor payments.

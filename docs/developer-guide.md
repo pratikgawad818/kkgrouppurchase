@@ -1,5 +1,7 @@
 # Developer guide
 
+> **Read current policy first:** Purchase orders always require independent Director approval under migration `0100`. The initial `0046` director self-finalization code was superseded. For details see [Purchasing authority](purchasing-authority.md). Treat `docs/archive/` as historical evidence, not instructions to replay migrations or change production data.
+
 This guide explains the current source layout and the boundaries that must be preserved when maintaining KK GROUP ERP. For transfer and acceptance, start with [HANDOVER.md](HANDOVER.md). For deployment and incident procedures, read [operations-runbook.md](operations-runbook.md).
 
 ## Stack and local setup

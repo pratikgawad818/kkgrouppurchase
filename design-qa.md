@@ -1,5 +1,7 @@
 # Daily Workspace design QA
 
+> **Historical visual QA record (October 2026).** This document is retained as design evidence only. It is not current browser acceptance for all modules or proof that the latest GitHub commit has been published.
+
 final result: passed
 
 Scope: the selected option 1 applied to the existing ERP, with the user's later

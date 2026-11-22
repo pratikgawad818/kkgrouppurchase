@@ -1,5 +1,9 @@
 # Documentation
 
+**Start with the four maintainer guides below.** For current purchase-order approval rules, use [Purchasing authority](purchasing-authority.md), not an older SQL migration or one-off rollout note. The live database and current applied migrations remain authoritative.
+
+Markdown files in this repository are **documentation, not ERP business records**. Cleanup must not delete database rows, storage objects, SQL migration sources, audit logs or Lovable planning metadata. The obsolete root-level roadmap was retired because it described unsafe/outdated operational shortcuts; source-control history preserves its earlier text.
+
 ## Incoming maintainer — start here
 
 - [Handover, ownership transfer and acceptance](HANDOVER.md)
@@ -19,6 +23,7 @@
 
 ## Access and approvals
 
+- [Purchasing authority — current policy](purchasing-authority.md)
 - [Role-based page access](role-based-page-access.md)
 - [Director approval queue integrity](director-approval-queue-integrity.md)
 - [Management overview](single-operator-management-view.md)
