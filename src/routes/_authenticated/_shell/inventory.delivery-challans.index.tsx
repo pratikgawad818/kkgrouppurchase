@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Search, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,10 @@ import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, num } from "@/lib/format";
 import { PAGE } from "@/lib/fy";
 import { selectCls } from "@/lib/po";
-import { useCan } from "@/lib/session";
+import { useCan, useMe } from "@/lib/session";
+import { ChallanPhotoInput } from "@/components/erp/challan-photo-input";
+import { validateChallanPhoto } from "@/lib/challan-photo";
+import { uploadProcurementAttachment } from "@/lib/procurement-attachments";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
@@ -28,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/_shell/inventory/delivery-
 
 function DeliveryChallanRegister() {
   const can = useCan();
+  const me = useMe();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const search = Route.useSearch();
@@ -37,6 +41,9 @@ function DeliveryChallanRegister() {
   const [page, setPage] = useState(0);
   const [h, setH] = useState({ challan_number: "", challan_date: todayIst(), vehicle_number: "", invoice_reference: "", remarks: "" });
   const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  // Keep the staged upload for retry after a duplicate challan-number error.
+  const uploadedPhoto = useRef<{ file: File; path: string } | null>(null);
 
   useEffect(() => {
     if (search.po) { setPoId(search.po); setOpen(true); }
@@ -90,7 +97,23 @@ function DeliveryChallanRegister() {
         return qty > 0 ? [{ po_item_id: x.id, quantity: qty }] : [];
       });
       if (!lines.length) throw new Error("Enter dispatched quantities for at least one material.");
-      const { data, error } = await supabase.rpc("register_vendor_delivery_challan", { _po_id: poId, _header: { ...h, challan_number }, _items: lines });
+      if (!photoFile) throw new Error("A photo of the supplier challan is compulsory.");
+      validateChallanPhoto(photoFile);
+      const companyId = me.data?.profile.company_id;
+      const userId = me.data?.profile.id;
+      if (!companyId || !userId) throw new Error("Sign in to upload the challan photo.");
+      let photoPath: string;
+      if (uploadedPhoto.current?.file === photoFile) {
+        photoPath = uploadedPhoto.current.path;
+      } else {
+        photoPath = await uploadProcurementAttachment(photoFile, companyId, userId);
+        uploadedPhoto.current = { file: photoFile, path: photoPath };
+      }
+      const { data, error } = await supabase.rpc("register_vendor_delivery_challan", {
+        _po_id: poId,
+        _header: { ...h, challan_number, photo_path: photoPath },
+        _items: lines,
+      });
       if (error) throw error;
       return data;
     },
@@ -102,6 +125,8 @@ function DeliveryChallanRegister() {
       setPoId("");
       setH({ challan_number: "", challan_date: todayIst(), vehicle_number: "", invoice_reference: "", remarks: "" });
       setQuantities({});
+      setPhotoFile(null);
+      uploadedPhoto.current = null;
       navigate({ to: "/inventory/delivery-challans/$id", params: { id } });
     },
     onError: error => toast.error(errMsg(error)),
@@ -166,8 +191,16 @@ function DeliveryChallanRegister() {
               </tr>)}</tbody>
             </table>}
         </div>}
+        <ChallanPhotoInput
+          file={photoFile}
+          disabled={create.isPending}
+          onChange={(next) => {
+            setPhotoFile(next);
+            uploadedPhoto.current = null;
+          }}
+        />
         <p className="text-xs text-muted-foreground">Registering a vendor challan records dispatch evidence only. It does not increase physical stock or create a payable.</p>
-        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button><Button disabled={create.isPending || items.isLoading} onClick={() => create.mutate()}>Register delivery challan</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button><Button disabled={create.isPending || items.isLoading || !photoFile} onClick={() => create.mutate()}>{create.isPending ? "Uploading & registering…" : "Register delivery challan"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>}
   </>;
