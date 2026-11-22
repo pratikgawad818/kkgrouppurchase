@@ -1,3 +1,5 @@
+import { matchesRecordSearch } from "./erp-search.ts";
+
 /** Small expenses are ACTUAL independent cash/UPI/etc outgoings.
  * Never add vendor invoice value or material issue cost to this register:
  * procurement stages overlap, and these records must not double-count them.
@@ -36,8 +38,7 @@ export function parseSmallExpenseAmount(value: string): number | null {
  * without falsely implying a formal vendor-master relationship.
  */
 export function matchesSmallExpenseVendor(paidTo: string | null | undefined, search: string): boolean {
-  const term = search.trim().toLocaleLowerCase();
-  return !term || (paidTo ?? "").trim().toLocaleLowerCase().includes(term);
+  return matchesRecordSearch([paidTo], search);
 }
 
 /** Distinct case-insensitive suggestions from the accessible complete register. */
