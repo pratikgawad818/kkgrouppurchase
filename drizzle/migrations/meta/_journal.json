@@ -722,6 +722,13 @@
       "when": 1795305600000,
       "tag": "0102_pr_manager_received_notification",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1795350000000,
+      "tag": "0103_delivery_challan_photo_required",
+      "breakpoints": true
     }
   ]
 }

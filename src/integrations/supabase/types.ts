@@ -4319,6 +4319,7 @@ export type Database = {
           created_by: string
           id: string
           invoice_reference: string | null
+          photo_path: string | null
           po_id: string
           project_id: string
           remarks: string | null
@@ -4338,6 +4339,7 @@ export type Database = {
           created_by: string
           id?: string
           invoice_reference?: string | null
+          photo_path?: string | null
           po_id: string
           project_id: string
           remarks?: string | null
@@ -4357,6 +4359,7 @@ export type Database = {
           created_by?: string
           id?: string
           invoice_reference?: string | null
+          photo_path?: string | null
           po_id?: string
           project_id?: string
           remarks?: string | null

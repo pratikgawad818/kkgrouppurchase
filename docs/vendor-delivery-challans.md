@@ -15,6 +15,17 @@ This module records the supplier's **physical dispatch document** separately fro
 
 Existing legacy GRNs remain visible with an unlinked text challan number. The five-argument `create_goods_receipt` supports a legacy **unlinked** receipt for controlled integrations; the new UI requires a registered challan. The deprecated **four-argument** RPC has its public/authenticated execute privilege revoked because it bypasses newer GRN guards. Before imposing a strict all-new-GRNs mandate at database level, ensure legacy API clients have migrated.
 
+## Photo evidence for new challans (migration 0103)
+
+- **Compulsory for every new vendor challan:** upload a photo of the physical supplier challan from the device gallery or rear camera. JPG/JPEG/PNG, nonempty, up to 10 MB.
+- Photos use the existing private `procurement-attachments` storage bucket and immutable `company_id/uploader_id/random_uuid.ext` object paths. A database check verifies uploaded object ownership and image MIME before the registration transaction inserts the challan.
+- The file path is recorded on the challan header and displayed with a secure photo viewer for project-authorized staff. No public image URLs are created.
+- Existing challan records remain untouched and their photo path can be null for historical compatibility; the protected registration RPC refuses new records without photo evidence.
+- Store/buyer staff must register the supplier challan with the photo **before** recording GRNs. A challan registration never adjusts stock by itself.
+- If an upload succeeds but the vendor challan number is rejected, the form can retry using the same staged upload. Private unlinked uploads are not automatically deleted so that failed saves do not erase evidence.
+
+**Release requirement:** Apply migration `0103_delivery_challan_photo_required.sql` in staging, verify the new storage INSERT/SELECT policy and RPC (including unauthorized cross-company users), then apply it to the actual production database before releasing the new form. Merely merging GitHub does not apply SQL.
+
 ## Deployment and staging gates — DO NOT SKIP
 
 - Approval migrations 0012 and 0013 and their financial tests must be applied before 0014.
