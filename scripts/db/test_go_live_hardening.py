@@ -613,7 +613,8 @@ def test_director_approved_po_alerts_original_pr_engineer_phone():
         c.execute("RESET ROLE")
         alerts=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
                          (SITE,"/procurement/purchase-orders/"+doc)).fetchall()
-        assert len(alerts)==1 and "approved PO" in alerts[0][0],alerts
+        po_number=c.execute("SELECT po_number FROM purchase_orders WHERE id=%s",(doc,)).fetchone()[0]
+        assert len(alerts)==1 and alerts[0][0].endswith("approved "+po_number),alerts
         c.rollback()
 
     with db() as c:
