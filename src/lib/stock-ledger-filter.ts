@@ -1,3 +1,5 @@
+import { matchesRecordSearch } from "./erp-search.ts";
+
 /**
  * Filter a COMPLETE warehouse movement register in one pass.
  * RLS is enforced by the backend, not here.
@@ -23,7 +25,6 @@ export type LedgerSearchRow = {
 export function filterStockLedger<T extends LedgerSearchRow>(
   all: readonly T[], filter: LedgerFilter, search: string,
 ): T[] {
-  const term = search.trim().toLocaleLowerCase();
   return all.filter(x => {
     if (filter.wh && x.warehouse_id !== filter.wh) return false;
     if (filter.project && x.project_id !== filter.project) return false;
@@ -31,14 +32,13 @@ export function filterStockLedger<T extends LedgerSearchRow>(
     if (filter.type && x.tx_type !== filter.type) return false;
     if (filter.from && x.tx_date < filter.from) return false;
     if (filter.to && x.tx_date > filter.to) return false;
-    if (!term) return true;
-    return [
+    return matchesRecordSearch([
       x.items?.name, x.items?.code,
       x.goods_receipt_notes?.grn_number,
       x.stock_transfers?.transfer_number,
       x.stock_adjustments?.adjustment_number,
       x.material_issues?.issue_number,
       x.material_returns?.return_number,
-    ].some(value => value?.toLocaleLowerCase().includes(term));
+    ], search);
   });
 }

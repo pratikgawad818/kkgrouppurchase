@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowUpRight, PackageX, ShoppingCart, Truck, Warehouse }
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Empty, Loading, PageHeader, SearchBox, Stat } from "@/components/erp/common";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
 import { fmtDate, num, errMsg } from "@/lib/format";
 import { useMe } from "@/lib/session";
@@ -161,13 +162,13 @@ function ReorderPlanning() {
   ])).values()].sort((a, b) => a.name.localeCompare(b.name));
   const warehouses = storeList.filter(w => w.status === "active" && (!project || (project === "company" ? !w.project_id : w.project_id === project)))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const term = search.trim().toLowerCase();
   const scoped = result.lines.filter(x =>
     (!project || (project === "company" ? !x.store.project_id : x.store.project_id === project)) &&
     (!warehouse || x.store.id === warehouse) &&
-    (!term || [x.material.name, x.material.code, x.store.name, x.store.code].some(s => s.toLowerCase().includes(term))));
+    matchesRecordSearch([x.material.name,x.material.code,x.store.name,x.store.code],search));
   const filtered = scoped.filter(x => state === "all" || x.state === state);
-  const pageRows = filtered.slice(page * PAGE, (page + 1) * PAGE);
+  const visiblePage=visibleSearchPage(page,filtered.length,PAGE);
+  const pageRows = filtered.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   const counts = {
     out: scoped.filter(x => x.state === "out_of_stock").length,
     reorder: scoped.filter(x => x.state === "order_review").length,
@@ -238,7 +239,7 @@ function ReorderPlanning() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {pageRows.map(row => <ReorderCard key={row.key} line={row} canPO={canPO} poDataReady={canTrustPos} />)}
       </div>}
-    <Pager page={page} total={filtered.length} size={PAGE} onPage={setPage} />
+    <Pager page={visiblePage} total={filtered.length} size={PAGE} onPage={setPage} />
 
     {(result.unallocated.length > 0 || result.notAssignedToStore.length > 0 || result.unconfiguredStockLines > 0) && <section className="mt-7 rounded-xl border bg-card p-4 sm:p-5">
       <h2 className="flex items-center gap-2 text-base font-semibold"><AlertTriangle className="h-4 w-4 text-amber-600" /> Configuration & allocation checks</h2>

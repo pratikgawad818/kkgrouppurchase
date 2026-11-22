@@ -14,6 +14,8 @@ import { errMsg, fmtDate, num } from "@/lib/format";
 import { PAGE } from "@/lib/fy";
 import { selectCls } from "@/lib/po";
 import { useCan } from "@/lib/session";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 const todayIst = () => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 export const Route = createFileRoute("/_authenticated/_shell/inventory/delivery-challans/")({
@@ -43,11 +45,11 @@ function DeliveryChallanRegister() {
   const register = useQuery({
     queryKey: ["vendor-delivery-challans"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendor_delivery_challans")
-        .select("id,challan_number,challan_date,status,po_id,created_at,purchase_orders(po_number),vendors(company_name),projects(name),vendor_delivery_challan_items(quantity)")
-        .order("created_at", { ascending: false }).limit(2000);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start,end) =>
+        await supabase.from("vendor_delivery_challans")
+          .select("id,challan_number,challan_date,status,po_id,created_at,purchase_orders(po_number),vendors(company_name),projects(name),vendor_delivery_challan_items(quantity)", {count:"exact"})
+          .order("created_at", { ascending:false }).order("id", {ascending:false}).range(start,end)
+      );
     },
   });
   const pos = useQuery({
@@ -105,9 +107,12 @@ function DeliveryChallanRegister() {
     onError: error => toast.error(errMsg(error)),
   });
 
-  const visible = (register.data ?? []).filter(x => [x.challan_number, x.purchase_orders?.po_number, x.vendors?.company_name, x.projects?.name]
-    .some(value => value?.toLowerCase().includes(searchText.trim().toLowerCase())));
-  const paginated = visible.slice(page * PAGE, (page + 1) * PAGE);
+  const visible = (register.data ?? []).filter(x => matchesRecordSearch(
+    [x.challan_number, x.purchase_orders?.po_number, x.vendors?.company_name, x.projects?.name],
+    searchText
+  ));
+  const visiblePage = visibleSearchPage(page, visible.length, PAGE);
+  const paginated = visible.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
 
   return <>
     <PageHeader title="Vendor Delivery Challans" subtitle="Register what the supplier dispatched before the site records and posts a GRN. Registering a challan never adds stock."
@@ -133,7 +138,7 @@ function DeliveryChallanRegister() {
           </tr>)}</tbody>
         </table>
       </div>}
-    <Pager page={page} total={visible.length} size={PAGE} onPage={setPage} />
+    <Pager page={visiblePage} total={visible.length} size={PAGE} onPage={setPage} />
 
     {open && <Dialog open onOpenChange={value => { if (!value && !create.isPending) setOpen(false); }}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">

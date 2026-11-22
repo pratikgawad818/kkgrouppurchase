@@ -14,6 +14,7 @@ import { ACTIVE_DELIVERY_PO_STATUSES } from "@/lib/procurement-followup";
 import { summarizeProjectCosts, type CostProjectTotals } from "@/lib/project-cost-control";
 import { PAGE } from "@/lib/fy";
 import { cn } from "@/lib/utils";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 const MAX_ROWS = 3000;
 const BATCH = 500;
@@ -147,11 +148,10 @@ function ProjectCostControl() {
     canInventory && !consumptionQ.error ? consumptionQ.data?.rows ?? [] : [],
     canPayables && !invoicesQ.error ? invoicesQ.data?.rows ?? [] : []);
 
-  const query = search.trim().toLowerCase();
   const filtered = all.filter(x =>
     (!projectId || x.project.id === projectId) &&
     (!status || x.project.status === status) &&
-    (!query || [x.project.name, x.project.code].some(v => v.toLowerCase().includes(query))));
+    matchesRecordSearch([x.project.name,x.project.code],search));
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "name") return a.project.name.localeCompare(b.project.name);
     if (sort === "budget") return Number(b.project.budget) - Number(a.project.budget);
@@ -160,7 +160,8 @@ function ProjectCostControl() {
     const bShare = b.materialToBudgetPercent ?? -Infinity;
     return bShare - aShare || a.project.name.localeCompare(b.project.name);
   });
-  const rows = sorted.slice(page * PAGE, (page + 1) * PAGE);
+  const visiblePage=visibleSearchPage(page,sorted.length,PAGE);
+  const rows = sorted.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   const budget = filtered.reduce((s, x) => s + Math.max(0, Number(x.project.budget) || 0), 0);
   const materials = filtered.reduce((s, x) => s + x.netMaterialConsumed, 0);
   const openPos = filtered.reduce((s, x) => s + x.estimatedOpenPoLines, 0);
@@ -243,7 +244,7 @@ function ProjectCostControl() {
             </tr>)}</tbody>
           </table>
         </div>
-        <Pager page={page} total={sorted.length} size={PAGE} onPage={setPage} />
+        <Pager page={visiblePage} total={sorted.length} size={PAGE} onPage={setPage} />
       </>}
 
       <section className="mt-7 rounded-xl border bg-card p-4 sm:p-5">

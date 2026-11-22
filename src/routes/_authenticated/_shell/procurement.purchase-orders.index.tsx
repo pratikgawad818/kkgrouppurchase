@@ -12,6 +12,8 @@ import { PO_STATUS, selectCls, type PoStatus } from "@/lib/po";
 import { purchaseOrderLineValues } from "@/lib/procurement-followup";
 import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { cn } from "@/lib/utils";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 const META = "Purchase orders raised from awarded vendor quotations.";
 export const Route = createFileRoute("/_authenticated/_shell/procurement/purchase-orders/")({
@@ -44,15 +46,17 @@ function PoList() {
   const q = useQuery({
     queryKey: ["pos"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_orders")
-        .select(
-          "id,po_number,po_date,grand_total,status,vendor_id,project_id,building_id,vendors(company_name),projects(name),buildings(name),rfqs(rfq_number),purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total,items(name))",
-        )
-        .order("created_at", { ascending: false })
-        .limit(2000);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start, end) =>
+        await supabase
+          .from("purchase_orders")
+          .select(
+            "id,po_number,po_date,grand_total,status,vendor_id,project_id,building_id,vendors(company_name),projects(name),buildings(name),rfqs(rfq_number),purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total,items(name))",
+            { count: "exact" },
+          )
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(start, end),
+      );
     },
   });
   const all = useMemo(() => q.data ?? [], [q.data]);
@@ -76,7 +80,6 @@ function PoList() {
     (x) => x.building_id!,
   );
   const rows = useMemo(() => {
-    const s = deferredSearch.trim().toLowerCase();
     return all.filter(
       (x) =>
         (!f.status || x.status === f.status) &&
@@ -86,18 +89,16 @@ function PoList() {
         (!f.fy || fyOf(x.po_date) === Number(f.fy)) &&
         (!f.from || x.po_date >= f.from) &&
         (!f.to || x.po_date <= f.to) &&
-        (!s ||
-          [
-            x.po_number,
-            x.vendors?.company_name,
-            x.projects?.name,
-            x.rfqs?.rfq_number,
-            ...x.purchase_order_items.map((i) => i.items?.name),
-          ].some((v) => v?.toLowerCase().includes(s))),
+        matchesRecordSearch([
+          x.po_number, x.vendors?.company_name, x.projects?.name,
+          x.buildings?.name, x.rfqs?.rfq_number,
+          ...x.purchase_order_items.map(i => i.items?.name),
+        ], deferredSearch),
     );
   }, [all, f, deferredSearch]);
   const val = (x: (typeof all)[number]) => purchaseOrderLineValues(x.purchase_order_items);
-  const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
+  const visiblePage = visibleSearchPage(page, rows.length, PAGE);
+  const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   return (
     <>
       <PageHeader
@@ -282,7 +283,7 @@ function PoList() {
               </tbody>
             </table>
           </div>
-          <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
+          <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
           <p className="mt-2 text-xs text-muted-foreground">
             ¹ Estimated material line value based on <strong>accepted</strong> quantities and
             remaining commitment after short-closing. Excludes PO-level freight, other charges and

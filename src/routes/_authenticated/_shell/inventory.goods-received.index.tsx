@@ -10,6 +10,8 @@ import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { GRN_STATUS, selectCls } from "@/lib/po";
 import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { cn } from "@/lib/utils";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 const META = "Register of goods received against purchase orders.";
 export const Route = createFileRoute("/_authenticated/_shell/inventory/goods-received/")({
@@ -41,15 +43,17 @@ function GrnList() {
   const q = useQuery({
     queryKey: ["grns"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("goods_receipt_notes")
-        .select(
-          "id,grn_number,received_date,status,po_id,project_id,building_id,warehouse_id,vendor_id,purchase_orders(po_number),vendors(company_name),warehouses(name),projects(name),buildings(name),profiles!goods_receipt_notes_received_by_fkey(full_name),goods_receipt_items(accepted_quantity,unit_cost)",
-        )
-        .order("created_at", { ascending: false })
-        .limit(2000);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start, end) =>
+        await supabase
+          .from("goods_receipt_notes")
+          .select(
+            "id,grn_number,received_date,status,po_id,project_id,building_id,warehouse_id,vendor_id,purchase_orders(po_number),vendors(company_name),warehouses(name),projects(name),buildings(name),profiles!goods_receipt_notes_received_by_fkey(full_name),goods_receipt_items(accepted_quantity,unit_cost)",
+            { count: "exact" },
+          )
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(start, end),
+      );
     },
   });
   const all = q.data ?? [];
@@ -60,7 +64,6 @@ function GrnList() {
   const uniq = <T,>(arr: T[], key: (x: T) => string | null) => [
     ...new Map(arr.filter((x) => key(x)).map((x) => [key(x)!, x])).values(),
   ];
-  const s = search.trim().toLowerCase();
   const rows = all.filter(
     (x) =>
       (!f.project || x.project_id === f.project) &&
@@ -70,12 +73,14 @@ function GrnList() {
       (!f.fy || fyOf(x.received_date) === Number(f.fy)) &&
       (!f.from || x.received_date >= f.from) &&
       (!f.to || x.received_date <= f.to) &&
-      (!s ||
-        [x.grn_number, x.purchase_orders?.po_number, x.vendors?.company_name].some((v) =>
-          v?.toLowerCase().includes(s),
-        )),
+      matchesRecordSearch([
+        x.grn_number, x.purchase_orders?.po_number, x.vendors?.company_name,
+        x.projects?.name, x.buildings?.name, x.warehouses?.name,
+        x.profiles?.full_name,
+      ], search),
   );
-  const pageRows = rows.slice(page * PAGE, (page + 1) * PAGE);
+  const visiblePage = visibleSearchPage(page, rows.length, PAGE);
+  const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
   return (
     <>
       <PageHeader
@@ -90,7 +95,7 @@ function GrnList() {
               setSearch(v);
               setPage(0);
             }}
-            placeholder="GRN, PO, vendor"
+            placeholder="GRN, PO, vendor, project or store"
           />
         </div>
         <select
@@ -262,7 +267,7 @@ function GrnList() {
               </tbody>
             </table>
           </div>
-          <Pager page={page} total={rows.length} size={PAGE} onPage={setPage} />
+          <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
         </>
       )}
     </>

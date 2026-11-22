@@ -1,3 +1,5 @@
+import { matchesRecordSearch } from "./erp-search.ts";
+
 /** Complete and validated physical stock rollup, never a truncated preview. */
 export type StockRollupLine = {
   warehouse_id: string;
@@ -19,7 +21,6 @@ export function stockLevel(line: StockRollupLine): StockLevel {
 export function filteredStockSummary<T extends StockRollupLine>(
   all: readonly T[], warehouseId: string, search: string,
 ): { rows: T[]; totalValue: number; low: number; out: number } {
-  const term = search.trim().toLocaleLowerCase();
   const rows: T[] = [];
   let valuePaise = 0, low = 0, out = 0;
   for (const item of all) {
@@ -32,8 +33,7 @@ export function filteredStockSummary<T extends StockRollupLine>(
       throw new Error("Stock has invalid values. Refresh or contact Inventory.");
     }
     if (warehouseId && item.warehouse_id !== warehouseId) continue;
-    if (term && ![item.items?.name,item.items?.code].some(text =>
-      text?.toLocaleLowerCase().includes(term))) continue;
+    if (!matchesRecordSearch([item.items?.name,item.items?.code],search)) continue;
     rows.push(item);
     valuePaise += Math.round(value * 100);
     const level = stockLevel(item);

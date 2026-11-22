@@ -36,8 +36,13 @@ export function parseSmallExpenseAmount(value: string): number | null {
  * without falsely implying a formal vendor-master relationship.
  */
 export function matchesSmallExpenseVendor(paidTo: string | null | undefined, search: string): boolean {
-  const term = search.trim().toLocaleLowerCase();
-  return !term || (paidTo ?? "").trim().toLocaleLowerCase().includes(term);
+  // Keep this helper dependency-free: older audit tests load this finance
+  // module in an isolated runtime without module imports.
+  const normal = (text: string) => text.normalize("NFKC").toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ").trim().replace(/\s+/g, " ");
+  const words = normal(search).split(" ").filter(Boolean);
+  const value = normal(paidTo ?? "");
+  return words.every(word => value.includes(word));
 }
 
 /** Distinct case-insensitive suggestions from the accessible complete register. */
