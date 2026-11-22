@@ -2,7 +2,7 @@ import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, ReceiptText, Paperclip, X } from "lucide-react";
+import { Plus, ReceiptText, Paperclip, X, SlidersHorizontal, Search, ChevronRight, CalendarDays, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 // These backend objects are not yet installed in the live database (pending approved rollout), so they are absent from generated types.
@@ -78,6 +78,7 @@ function SmallExpenses() {
   const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
   const [page,setPage]=useState(0);
+  const [mobileFiltersOpen,setMobileFiltersOpen]=useState(false);
 
   const register=useQuery({
     queryKey:["small-expenses",companyId,me.data?.profile.id,isSiteEngineer],enabled:permitted,staleTime:30_000,
@@ -88,7 +89,10 @@ function SmallExpenses() {
       // Defense-in-depth: Site Engineers never download another user's rows,
       // so filters, vendor suggestions and aggregate totals are own-only.
       if (isSiteEngineer) query=query.eq("created_by",me.data!.profile.id);
-      const {data,count,error}=await query.order("id").range(start,end);
+      const {data,count,error}=await query
+        .order("spent_on",{ascending:false})
+        .order("created_at",{ascending:false})
+        .order("id",{ascending:false}).range(start,end);
       return {data,count,error};
     },{maxRows:10000}),
   });
@@ -236,6 +240,12 @@ function SmallExpenses() {
   const total=summarizeSmallExpenses(rows);
   const filteredPage=Math.min(page,Math.max(0,Math.ceil(rows.length/PAGE)-1));
   const pageRows=rows.slice(filteredPage*PAGE,(filteredPage+1)*PAGE);
+  const activeFilterCount=[projectFilter,buildingFilter,categoryFilter,dateFrom,dateTo]
+    .filter(Boolean).length;
+  const clearFilters=()=>{
+    setProjectFilter("");setBuildingFilter("");setCategoryFilter("");
+    setVendorFilter("");setDateFrom("");setDateTo("");setPage(0);
+  };
   const buildingOptions=[...new Map(all
     .filter(x=>!!x.building_id&&(!projectFilter||projectFilter==="office"||x.project_id===projectFilter))
     .map(x=>[x.building_id!,{id:x.building_id!,name:x.buildings?.name??"Building",project:x.projects?.name??"Project"}]))
@@ -257,30 +267,67 @@ function SmallExpenses() {
     setOpen(true);
   };
 
-  return <div className="pb-16">
+  return <div className="min-w-0 pb-20 sm:pb-16">
     <PageHeader title={isSiteEngineer?"My Small Expenses":"Small Expenses"}
       subtitle={isSiteEngineer
-        ?"Record site expenses for your assigned projects. Only expenses entered by you are visible here."
+        ?"Your expenses only · Assigned projects"
         :"Record actual petty expenses paid for your sites and office. Project/building breakdown, receipts and correction history."}
-      actions={canCreate&&<Button size="sm" onClick={startNew}>
-        <Plus className="mr-1 h-4 w-4"/>Record expense</Button>} />
-    <p className="mb-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-      These are incidental expenses actually paid—not supplier invoices, purchase orders or material consumption.
-      Do not enter a bill/payment already tracked elsewhere. {isSiteEngineer
-        ?"Your register, summaries, receipts and history show only your own expenses. The Accounts Manager, Director and Super Admin can review all expenses."
-        :"You can view full details and attached bills; authorized edits update the same expense without creating a replacement."}
-    </p>
+      actions={canCreate&&<Button size="sm" className={isSiteEngineer?"min-h-11 w-full justify-center gap-2 text-sm sm:w-auto":undefined} onClick={startNew}>
+        <Plus className="h-4 w-4" aria-hidden="true"/>Record expense</Button>} />
+    {isSiteEngineer
+      ?<details className="mb-4 rounded-xl border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
+        <summary className="cursor-pointer font-medium text-foreground">What should I record here?</summary>
+        <p className="mt-2 leading-relaxed">Only expenses you actually paid for your assigned sites. Do not enter a supplier invoice, a purchase order or material consumption again. Only your own records are shown here; authorized management can review them.</p>
+      </details>
+      :<p className="mb-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+        These are incidental expenses actually paid—not supplier invoices, purchase orders or material consumption.
+        Do not enter a bill/payment already tracked elsewhere. You can view full details and attached bills; authorized edits update the same expense without creating a replacement.
+      </p>}
     {register.isLoading?<Loading/>:register.error?
       <div role="alert" className="rounded-lg border border-destructive/30 p-5 text-sm text-destructive">
         Could not load the full small-expense register. The database migration may not be deployed yet.
         No partial totals are shown. {errMsg(register.error)}
       </div>:<>
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+      {isSiteEngineer&&<section aria-label="My expense summary" className="mb-4 flex min-w-0 items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-4 shadow-card md:hidden">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-muted-foreground">My total paid expenses</p>
+          <p className="mt-1 break-words text-[clamp(1.35rem,6vw,2rem)] font-bold leading-tight tracking-tight tabular-nums [overflow-wrap:anywhere]">{inr(total.total)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Based on the filters below</p>
+        </div>
+        <div className="shrink-0 rounded-xl bg-muted/70 px-3 py-2 text-center">
+          <div className="text-xl font-semibold tabular-nums">{total.count}</div>
+          <div className="text-[11px] text-muted-foreground">Entries</div>
+        </div>
+      </section>}
+      <div className={isSiteEngineer?"mb-4 hidden gap-3 md:grid md:grid-cols-2":"mb-4 grid gap-3 sm:grid-cols-2"}>
         <Stat label={isSiteEngineer?"My paid expenses":"Total paid expenses"} value={inr(total.total)} hint={isSiteEngineer?"Only expenses entered by you":"Current recorded expenses"}/>
         <Stat label="Expense entries" value={total.count}/>
       </div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        <select aria-label="Project filter" className={selectCls} value={projectFilter} onChange={e=>{setProjectFilter(e.target.value);setBuildingFilter("");setPage(0);}}>
+      {isSiteEngineer&&<div className="mb-3 flex min-w-0 items-center gap-2 md:hidden">
+        <div className="relative min-w-0 flex-1">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/>
+          <Input aria-label="Search my expenses by vendor or payee"
+            className="min-h-11 w-full pl-9" placeholder="Search shop or paid to…"
+            list="my-small-expense-vendors"
+            value={vendorFilter} onChange={e=>{setVendorFilter(e.target.value);setPage(0);}}/>
+          <datalist id="my-small-expense-vendors">
+            {vendorSuggestions.map(name=><option key={name} value={name}/>)}
+          </datalist>
+        </div>
+        <Button type="button" variant="outline" className="min-h-11 shrink-0 gap-1.5 px-3"
+          aria-controls="my-small-expense-filters" aria-expanded={mobileFiltersOpen}
+          onClick={()=>setMobileFiltersOpen(open=>!open)}>
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>
+          Filters{activeFilterCount>0?` (${activeFilterCount})`:null}
+        </Button>
+      </div>}
+      <div id={isSiteEngineer?"my-small-expense-filters":undefined}
+        className={isSiteEngineer
+          ?mobileFiltersOpen
+            ?"mb-3 grid min-w-0 grid-cols-1 gap-3 rounded-2xl border bg-card p-3 shadow-sm md:flex md:flex-wrap md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+            :"mb-3 hidden flex-wrap gap-2 md:flex"
+          :"mb-3 flex flex-wrap gap-2"}>
+        <select aria-label="Project filter" className={isSiteEngineer?selectCls+" min-w-0 w-full md:w-auto":selectCls} value={projectFilter} onChange={e=>{setProjectFilter(e.target.value);setBuildingFilter("");setPage(0);}}>
           <option value="">All projects and office</option>
           <option value="office">General office (no project)</option>
           {[...new Map(all.filter(x=>x.project_id).map(x=>[x.project_id!,{id:x.project_id!,name:x.projects?.name??"Project"}])).values()]
