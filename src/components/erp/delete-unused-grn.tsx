@@ -4,23 +4,12 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
+import { canPermanentlyDeleteUnusedGrn } from "@/lib/grn-delete-eligibility";
 import { errMsg } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-/** A cancelled GRN is not necessarily unused: posted-then-reversed
- * receipts have posted_at and must remain permanent financial evidence. */
-export function canPermanentlyDeleteUnusedGrn(
-  role: readonly string[],
-  active: boolean,
-  status: string,
-  postedAt: string | null,
-): boolean {
-  return active && role.includes("super_admin") &&
-    (status === "draft" || status === "cancelled") && postedAt === null;
-}
 
 // New secured RPC pending regeneration of the Supabase client type snapshot.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
