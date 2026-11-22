@@ -254,6 +254,38 @@
   letter-spacing: -0.01em;
 }
 
+/* Desktop/Mac: keep wide business registers in their OWN horizontal scrolling
+ * region instead of letting document overflow be clipped by body. Native
+ * two-finger trackpad horizontal gestures remain native (no wheel hijacking).
+ * Containment prevents a gesture at the table edge from navigating Back.
+ */
+@media (min-width: 768px) {
+  .workspace-frame,
+  .workspace-body,
+  .workspace-main {
+    min-width: 0;
+  }
+
+  :is(.doc-table, .overflow-x-auto:has(> table)) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* A dense table must be wider than its card when its columns need room.
+   * Otherwise width:100% compresses columns and there is no scroll range. */
+  :is(.doc-table, .overflow-x-auto:has(> table)) > table {
+    min-width: max-content;
+  }
+
+  :is(.doc-table, .overflow-x-auto:has(> table)):focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
 /* Responsive document lists: tables inside .doc-table become stacked cards below 640px. */
 .doc-table tbody tr {
   transition: background-color 0.12s;
