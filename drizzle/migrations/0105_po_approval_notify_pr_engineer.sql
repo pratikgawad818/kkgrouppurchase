@@ -35,7 +35,7 @@ BEGIN
         INSERT INTO public.notifications(user_id,title,body,link)
         SELECT requester.id,
           left(coalesce(nullif(btrim(approver.full_name),''),'Director'),70)||
-            ' approved PO '||NEW.po_number,
+            ' approved '||NEW.po_number,
           'Your purchase request '||pr.pr_number||
             ' • '||left(coalesce(nullif(btrim(project.name),''),'Project'),70)||
             ' • PO '||NEW.po_number||
