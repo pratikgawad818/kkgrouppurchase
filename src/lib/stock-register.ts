@@ -1,4 +1,4 @@
-import { matchesRecordSearch } from "@/lib/erp-search";
+import { matchesRecordSearch } from "./erp-search.ts";
 
 /** Complete and validated physical stock rollup, never a truncated preview. */
 export type StockRollupLine = {
