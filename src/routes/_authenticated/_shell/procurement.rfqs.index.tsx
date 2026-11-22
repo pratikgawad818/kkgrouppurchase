@@ -10,6 +10,8 @@ import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate } from "@/lib/format";
 import { RFQ_STATUS, type RfqStatus } from "@/lib/rfq";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/")({
   head: () => ({
@@ -33,30 +35,34 @@ function RfqList() {
   const settledSearch = useDebouncedValue(search);
   const [page, setPage] = useState(0);
   const q = useQuery({
-    queryKey: ["rfqs", status, settledSearch, page],
-    queryFn: async () => {
-      let x = supabase
-        .from("rfqs")
-        .select(
-          "id,rfq_number,rfq_date,response_due_date,status,projects(code,name),buildings(name),purchase_requests(pr_number),rfq_vendors(status)",
-          { count: "exact" },
-        )
-        .order("created_at", { ascending: false })
-        .range(page * PAGE, page * PAGE + PAGE - 1);
-      if (status) x = x.eq("status", status);
-      if (settledSearch.trim()) x = x.ilike("rfq_number", `%${settledSearch.trim()}%`);
-      const { data, error, count } = await x;
-      if (error) throw error;
-      return { rows: data ?? [], count: count ?? 0 };
-    },
+    queryKey: ["rfqs"],
+    queryFn: async () => loadCompleteRows(async (start,end) => await supabase
+      .from("rfqs")
+      .select(
+        "id,rfq_number,rfq_date,response_due_date,status,projects(code,name),buildings(name),purchase_requests(pr_number),rfq_vendors(status)",
+        { count: "exact" },
+      )
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(start,end)),
   });
+  const rows = (q.data ?? []).filter(r =>
+    (!status || r.status === status) &&
+    matchesRecordSearch([
+      r.rfq_number,r.purchase_requests?.pr_number,
+      r.projects?.name,r.projects?.code,r.buildings?.name,
+    ], settledSearch)
+  );
+  const visiblePage=visibleSearchPage(page,rows.length,PAGE);
+  const pageRows=rows.slice(visiblePage*PAGE,(visiblePage+1)*PAGE);
+
   return (
     <>
       <PageHeader title="RFQs" subtitle="Create RFQs from an approved purchase request." />
       <RegisterFilters activeCount={Number(Boolean(status))}>
         <Input
           className="h-11 w-full sm:h-9 sm:w-56"
-          placeholder="Search RFQ number"
+          placeholder="Search RFQ, PR, project or building"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -100,14 +106,14 @@ function RfqList() {
               </tr>
             </thead>
             <tbody>
-              {(q.data?.rows ?? []).length === 0 && (
+              {(pageRows).length === 0 && (
                 <tr>
                   <td colSpan={8} className="p-4 text-xs text-muted-foreground">
                     No RFQs yet. Open an approved purchase request and choose “Create RFQ”.
                   </td>
                 </tr>
               )}
-              {(q.data?.rows ?? []).map((r) => {
+              {(pageRows).map((r) => {
                 const v = r.rfq_vendors ?? [];
                 return (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/40">
@@ -146,21 +152,21 @@ function RfqList() {
             </tbody>
           </table>
           <div className="flex items-center justify-between border-t p-2 text-xs text-muted-foreground">
-            <span>{(q.data?.count ?? 0)} RFQs</span>
+            <span>{(rows.length)} RFQs</span>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                disabled={page === 0}
-                onClick={() => setPage(page - 1)}
+                disabled={visiblePage === 0}
+                onClick={() => setPage(visiblePage - 1)}
               >
                 Previous
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                disabled={(page + 1) * PAGE >= (q.data?.count ?? 0)}
-                onClick={() => setPage(page + 1)}
+                disabled={(visiblePage + 1) * PAGE >= rows.length}
+                onClick={() => setPage(visiblePage + 1)}
               >
                 Next
               </Button>
