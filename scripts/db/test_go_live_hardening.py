@@ -390,6 +390,37 @@ def seed_po(c, creator=PURCHASER, requester=PURCHASER):
 
 
 
+def test_pr_manager_received_notification():
+    """A requester's notification is receipt, not Director PO approval."""
+    with db() as c:
+        actor(c,SITE)
+        pr=save_pr(c,submit=True,purpose="QA - manager receipt notification")
+        actor(c,PURCHASER)
+        assert c.execute("SELECT has_role(auth.uid(),'purchase_manager')").fetchone()[0]
+        assert c.execute("SELECT pr_transition(%s,'approved','Received by purchasing')",(pr,)).fetchone()[0]=='approved'
+        c.execute("RESET ROLE")
+        pr_number=c.execute("SELECT pr_number FROM purchase_requests WHERE id=%s",(pr,)).fetchone()[0]
+        message=c.execute(
+          "SELECT title FROM notifications WHERE user_id=%s AND link=%s ORDER BY created_at DESC LIMIT 1",
+          (SITE,"/procurement/purchase-requests/"+pr)).fetchone()
+        assert message and message[0]==f"Purchase Manager received your request • {pr_number}",message
+        # Receipt of a PR does not approve any PO or create Director votes.
+        assert c.execute("SELECT count(*) FROM purchase_orders WHERE purchase_request_id=%s",(pr,)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM director_approval_votes").fetchone()[0]==0
+
+        actor(c,DIRECTOR)
+        director_pr=save_pr(c,submit=True,purpose="QA - director-origin PR fallback")
+        c.execute("RESET ROLE")
+        director_title=c.execute(
+          "SELECT title FROM notifications WHERE user_id=%s AND link=%s ORDER BY created_at DESC LIMIT 1",
+          (DIRECTOR,"/procurement/purchase-requests/"+director_pr)).fetchone()
+        assert director_title and director_title[0].startswith(
+          "Your purchase request was accepted for procurement • "),director_title
+        assert "Purchase Manager" not in director_title[0]
+        c.rollback()
+    print("PASS PR receipt notifications distinguish Purchase Manager actions from Director-origin requests")
+
+
 def test_director_notifications_and_names():
     with db() as c:
         # The original Site Engineer created the PR; a Purchase Manager
@@ -1516,6 +1547,7 @@ if __name__ == "__main__":
     exercise_pr_revocation(db,actor,denied,save_pr,ADMIN,SITE,PROJECT)
     test_quote_freight_gst_matches_supplier_and_po()
     test_atomic_requests_and_rfqs()
+    test_pr_manager_received_notification()
     test_director_notifications_and_names()
     test_director_origin_and_super_admin_purchasing()
     test_push_and_email_boundaries()
