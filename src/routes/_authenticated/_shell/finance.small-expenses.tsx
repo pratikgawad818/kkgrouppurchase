@@ -46,14 +46,20 @@ const optionLabel = (value: string, options: Record<string, string>) => options[
 function SmallExpenses() {
   const me=useMe(), qc=useQueryClient();
   const companyId=me.data?.profile.company_id;
-  const permitted=!!me.data?.permissions.has("financial.view") && !!companyId;
   const isSuperAdmin=!!me.data?.roles.includes("super_admin");
   const isDirector=!!me.data?.roles.includes("director");
   const isAccountsManager=!!me.data?.roles.includes("accounts_manager");
+  // Site Engineers need only this narrow permission, NOT broad financial.view.
+  const isSiteEngineer=!!me.data?.roles.includes("site_engineer") &&
+    !isSuperAdmin && !isAccountsManager && !isDirector;
+  const canCreateOwn=!!me.data?.permissions.has("small_expense.create") && isSiteEngineer;
+  const permitted=!!companyId && (
+    !!me.data?.permissions.has("financial.view") || canCreateOwn
+  );
   const canEdit=!!me.data?.profile.is_active && permitted &&
     !!me.data?.permissions.has("small_expense.manage") &&
     (isSuperAdmin || (isAccountsManager && !isDirector));
-  const canCreate=canEdit;
+  const canCreate=canEdit || (!!me.data?.profile.is_active && canCreateOwn);
   const canDelete=canEdit && isSuperAdmin;
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState<Form>(createForm);
@@ -73,16 +79,20 @@ function SmallExpenses() {
   const [page,setPage]=useState(0);
 
   const register=useQuery({
-    queryKey:["small-expenses",companyId],enabled:permitted,staleTime:30_000,
+    queryKey:["small-expenses",companyId,me.data?.profile.id,isSiteEngineer],enabled:permitted,staleTime:30_000,
     queryFn:()=>loadCompleteRows<any>(async (start,end)=>{
-      const {data,count,error}=await untypedDb.from("site_small_expenses")
-        .select("id,spent_on,project_id,building_id,category,other_category_detail,amount,payment_method,paid_to,description,receipt_reference,status,created_at,updated_at,projects(name),buildings(name)",{count:"exact"})
-        .eq("company_id",companyId!).eq("status","recorded").order("id").range(start,end);
+      let query=untypedDb.from("site_small_expenses")
+        .select("id,spent_on,project_id,building_id,created_by,category,other_category_detail,amount,payment_method,paid_to,description,receipt_reference,status,created_at,updated_at,projects(name),buildings(name)",{count:"exact"})
+        .eq("company_id",companyId!).eq("status","recorded");
+      // Defense-in-depth: Site Engineers never download another user's rows,
+      // so filters, vendor suggestions and aggregate totals are own-only.
+      if (isSiteEngineer) query=query.eq("created_by",me.data!.profile.id);
+      const {data,count,error}=await query.order("id").range(start,end);
       return {data,count,error};
     },{maxRows:10000}),
   });
   const context=useQuery({
-    queryKey:["small-expense-context",companyId],enabled:canEdit&&open,
+    queryKey:["small-expense-context",companyId,me.data?.profile.id],enabled:canCreate&&open,
     queryFn:async()=>{
       const [projects,buildings]=await Promise.all([
         supabase.from("projects").select("id,name,company_id").eq("company_id",companyId!).order("name").limit(3000),
@@ -130,6 +140,10 @@ function SmallExpenses() {
       if(otherCategoryDetail&&(otherCategoryDetail.length<2||otherCategoryDetail.length>120))
         throw new Error("Other category details must be 2–120 characters.");
       if(form.buildingId&&!form.projectId)throw new Error("Select a project for this building.");
+      if(isSiteEngineer&&!form.projectId)
+        throw new Error("Select your assigned project for this expense.");
+      if(isSiteEngineer && !context.data?.projects.some(project=>project.id===form.projectId))
+        throw new Error("You are not assigned to this project.");
       const fields={
         _entry_key:entryKey,_project_id:form.projectId||null,_building_id:form.buildingId||null,
         _spent_on:form.spentOn,_category:form.category,_amount:amount,_payment_method:form.method,
@@ -187,7 +201,7 @@ function SmallExpenses() {
     onError:e=>toast.error(errMsg(e)),
   });
   if(me.isLoading)return <Loading />;
-  if(!permitted)return <div role="alert" className="rounded-lg border p-6 text-sm">Financial access is required to view site small expenses.</div>;
+  if(!permitted)return <div role="alert" className="rounded-lg border p-6 text-sm">You do not have permission to view or record small expenses.</div>;
   const all=register.data??[];
   const vendorSuggestions=smallExpenseVendorSuggestions(all);
   const rows=all.filter(x=>
@@ -221,12 +235,17 @@ function SmallExpenses() {
   };
 
   return <div className="pb-16">
-    <PageHeader title="Small Expenses" subtitle="Record actual petty expenses paid for your sites and office. Project/building breakdown, receipts and correction history."
+    <PageHeader title={isSiteEngineer?"My Small Expenses":"Small Expenses"}
+      subtitle={isSiteEngineer
+        ?"Record site expenses for your assigned projects. Only expenses entered by you are visible here."
+        :"Record actual petty expenses paid for your sites and office. Project/building breakdown, receipts and correction history."}
       actions={canCreate&&<Button size="sm" onClick={startNew}>
         <Plus className="mr-1 h-4 w-4"/>Record expense</Button>} />
     <p className="mb-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
       These are incidental expenses actually paid—not supplier invoices, purchase orders or material consumption.
-      Do not enter a bill/payment already tracked elsewhere. You can view full details and attached bills; authorized edits update the same expense without creating a replacement.
+      Do not enter a bill/payment already tracked elsewhere. {isSiteEngineer
+        ?"Your register, summaries, receipts and history show only your own expenses. The Accounts Manager, Director and Super Admin can review all expenses."
+        :"You can view full details and attached bills; authorized edits update the same expense without creating a replacement."}
     </p>
     {register.isLoading?<Loading/>:register.error?
       <div role="alert" className="rounded-lg border border-destructive/30 p-5 text-sm text-destructive">
@@ -234,7 +253,7 @@ function SmallExpenses() {
         No partial totals are shown. {errMsg(register.error)}
       </div>:<>
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
-        <Stat label="Total paid expenses" value={inr(total.total)} hint="Current recorded expenses"/>
+        <Stat label={isSiteEngineer?"My paid expenses":"Total paid expenses"} value={inr(total.total)} hint={isSiteEngineer?"Only expenses entered by you":"Current recorded expenses"}/>
         <Stat label="Expense entries" value={total.count}/>
       </div>
       <div className="mb-3 flex flex-wrap gap-2">
@@ -362,8 +381,8 @@ function SmallExpenses() {
           }
           <div><label className="text-sm font-medium">Paid through *</label><select className={selectCls} value={form.method} onChange={e=>setField("method",e.target.value as SmallExpensePayment)}>
             {Object.entries(SMALL_EXPENSE_PAYMENTS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
-          <div><label className="text-sm font-medium">Project</label><select className={selectCls} value={form.projectId} onChange={e=>{setForm(v=>({...v,projectId:e.target.value,buildingId:""}));}}>
-            <option value="">General office / no project</option>{context.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+          <div><label className="text-sm font-medium">Project {isSiteEngineer?"*":""}</label><select className={selectCls} value={form.projectId} onChange={e=>{setForm(v=>({...v,projectId:e.target.value,buildingId:""}));}}>
+            <option value="">{isSiteEngineer?"Choose assigned project":"General office / no project"}</option>{context.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
           <div><label className="text-sm font-medium">Building / wing</label><select className={selectCls} disabled={!form.projectId} value={form.buildingId} onChange={e=>setField("buildingId",e.target.value)}>
             <option value="">General project expense</option>{context.data?.buildings.filter(x=>x.project_id===form.projectId).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
           <div><label className="text-sm font-medium">Paid to *</label><Input maxLength={120} placeholder="Shop / worker / service provider" value={form.paidTo} onChange={e=>setField("paidTo",e.target.value)}/></div>
@@ -376,7 +395,7 @@ function SmallExpenses() {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Add JPG, PNG, WebP or PDF receipts (10 MB each, up to 8 per expense).
-            Only authorized company finance viewers can open attached bills.
+            Only authorized reviewers and the original Site Engineer can open these private bills.
           </p>
           {editingId&&editBills.isLoading&&<p className="mt-2 text-xs">Loading existing bills…</p>}
           {editingId&&editBills.error&&<p role="alert" className="text-xs text-destructive">{errMsg(editBills.error)}</p>}
@@ -417,6 +436,7 @@ function SmallExpenses() {
         </div>}
         <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)} disabled={save.isPending}>Cancel</Button>
           <Button onClick={()=>save.mutate()} disabled={save.isPending||context.isLoading||!!context.error||
+            (isSiteEngineer&&!form.projectId)||
             (!!editingId&&(editBills.isLoading||!!editBills.error))}>
             <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":editingId?"Save changes":"Record paid expense"}</Button></DialogFooter>
       </DialogContent>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { fmtDate, fmtDateTime, inr, errMsg } from "@/lib/format";
 import { SMALL_EXPENSE_CATEGORIES, SMALL_EXPENSE_PAYMENTS } from "@/lib/small-expenses";
 import { viewSmallExpenseBill, type ExpenseBill } from "@/lib/small-expense-bills";
+import { useMe } from "@/lib/session";
 
 // The bill attachment table was added after the original Supabase type snapshot.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,6 +142,8 @@ export function SmallExpenseDetail({
   expense: SmallExpenseRecord | null;
   onClose: () => void;
 }) {
+  const me = useMe();
+  const viewerId = me.data?.profile.id;
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -185,13 +188,13 @@ export function SmallExpenseDetail({
   }, [expense?.id]);
 
   const bills = useQuery({
-    queryKey: ["small-expense-detail", expense?.id, "bills"],
-    enabled: !!expense,
+    queryKey: ["small-expense-detail", expense?.id, "bills", viewerId],
+    enabled: !!expense && !!viewerId,
     queryFn: () => getSmallExpenseBills(expense!.id),
   });
   const events = useQuery({
-    queryKey: ["small-expense-detail", expense?.id, "events"],
-    enabled: !!expense,
+    queryKey: ["small-expense-detail", expense?.id, "events", viewerId],
+    enabled: !!expense && !!viewerId,
     queryFn: async () => {
       const { data, error } = await billsDb.from("site_small_expense_events")
         .select("id,action,reason,actor_id,created_at,before_values,after_values")

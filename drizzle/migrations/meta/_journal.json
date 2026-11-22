@@ -729,6 +729,13 @@
       "when": 1795350000000,
       "tag": "0103_delivery_challan_photo_required",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1795353600000,
+      "tag": "0104_site_engineer_own_small_expenses",
+      "breakpoints": true
     }
   ]
 }
