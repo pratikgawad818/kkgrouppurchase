@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
-import { CancelDraftGrnButton, canCancelDraftGrn } from "@/components/erp/cancel-draft-grn";
+import { CancelDraftGrnButton } from "@/components/erp/cancel-draft-grn";
+import { canCancelDraftGrn } from "@/lib/grn-draft-cancellation";
 import { useMe } from "@/lib/session";
 import { GRN_STATUS, TX_LABEL } from "@/lib/po";
 import { cn } from "@/lib/utils";
