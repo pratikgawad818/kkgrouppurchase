@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loading, PageHeader } from "@/components/erp/common";
+import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/_shell/inventory/delivery-challans/$id")({
@@ -83,6 +84,14 @@ function ChallanDetails() {
       <div><p className="text-xs text-muted-foreground">Supplier invoice reference</p><p>{h.invoice_reference || "—"}</p></div>
       <div><p className="text-xs text-muted-foreground">Registered by</p><p>{h.profiles?.full_name || "Authorised staff"}</p></div>
       <div><p className="text-xs text-muted-foreground">Registered at</p><p>{fmtDateTime(h.created_at)}</p></div>
+      <div className="sm:col-span-2 lg:col-span-4">
+        <p className="mb-2 text-xs text-muted-foreground">Supplier challan photo</p>
+        {h.photo_path ? (
+          <ProcurementAttachmentLink path={h.photo_path} label="View challan photo" />
+        ) : (
+          <p className="text-xs text-muted-foreground">No photo on this historical record.</p>
+        )}
+      </div>
       {h.remarks && <div className="sm:col-span-2 lg:col-span-4"><p className="text-xs text-muted-foreground">Remarks</p><p className="whitespace-pre-wrap">{h.remarks}</p></div>}
     </section>
     <section className="mt-5 rounded-xl border bg-card p-5">
