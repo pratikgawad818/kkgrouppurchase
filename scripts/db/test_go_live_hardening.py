@@ -475,6 +475,96 @@ def test_pr_manager_received_notification():
     print("PASS PR receipt notifications distinguish Purchase Manager actions from Director-origin requests")
 
 
+def test_cancel_draft_grn_engineer_and_super_admin():
+    """Only creator engineer/super-admin can cancel unposted GRNs.
+    Audit and original receipts remain. No PO/stock change or expanded ACL.
+    """
+    with db() as c:
+        po = seed_po(c, requester=SITE)
+        c.execute("RESET ROLE")
+        po_number = c.execute("SELECT po_number FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]
+        original_qty = c.execute("""SELECT received_quantity,accepted_quantity,short_closed_quantity
+            FROM purchase_order_items WHERE po_id=%s ORDER BY line_no""",(po,)).fetchall()
+        name = "QA-DRAFT-GRN-" + str(uuid4())
+        draft = c.execute("""INSERT INTO goods_receipt_notes(
+            grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+            received_by,status
+        ) VALUES(%s,%s,%s,%s,%s,%s,%s,'draft') RETURNING id""",
+            (name,A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+
+        # Another engineer in the same project can RECEIVE goods, not cancel
+        # someone else's draft. A manager/director cannot use this narrow RPC.
+        colleague = str(uuid4())
+        c.execute("INSERT INTO profiles(id,company_id,full_name,email,is_active) VALUES(%s,%s,'QA colleague',%s,true)",
+                  (colleague,A,colleague+"@example.invalid"))
+        c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,'site_engineer')",(colleague,))
+        c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",
+                  (colleague,PROJECT))
+        actor(c,colleague)
+        denied(c,lambda:c.execute("SELECT cancel_draft_goods_receipt(%s,'Not my draft')",(draft,)),
+               "only the draft GRNs you recorded")
+        actor(c,PURCHASER)
+        denied(c,lambda:c.execute("SELECT cancel_draft_goods_receipt(%s,'Manager')",(draft,)),
+               "Only the creating Site Engineer or Super Admin")
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute("SELECT cancel_draft_goods_receipt(%s,'Director')",(draft,)),
+               "Only the creating Site Engineer or Super Admin")
+        actor(c,SITE)
+        denied(c,lambda:c.execute("SELECT cancel_draft_goods_receipt(%s,'  ')",(draft,)),
+               "cancellation reason")
+        c.execute("SELECT cancel_draft_goods_receipt(%s,'Duplicate quantity entry')",(draft,))
+        assert c.execute("SELECT status FROM goods_receipt_notes WHERE id=%s",(draft,)).fetchone()[0]=='cancelled'
+
+        c.execute("RESET ROLE")
+        saved = c.execute("SELECT status,received_by,cancelled_by,cancel_reason,posted_at FROM goods_receipt_notes WHERE id=%s",
+                          (draft,)).fetchone()
+        assert str(saved[1])==SITE and str(saved[2])==SITE
+        assert saved[3]=='Duplicate quantity entry' and saved[4] is None
+        assert c.execute("SELECT count(*) FROM inventory_transactions WHERE grn_id=%s",(draft,)).fetchone()[0]==0
+        assert c.execute("SELECT received_quantity,accepted_quantity,short_closed_quantity FROM purchase_order_items WHERE po_id=%s ORDER BY line_no",(po,)).fetchall()==original_qty
+        assert c.execute("SELECT po_number FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]==po_number
+        assert c.execute("SELECT count(*) FROM audit_logs WHERE document_number=%s AND action='grn_cancelled'",(name,)).fetchone()[0]==1
+        actor(c,SITE)
+        denied(c,lambda:c.execute("SELECT cancel_draft_goods_receipt(%s,'Try duplicate cancel')",(draft,)),
+               "Only unposted draft")
+        c.execute("RESET ROLE")
+
+        # A different engineer-owned draft is cancellable by Super Admin;
+        # it remains in the ledger and has no inventory effect.
+        second = c.execute("""INSERT INTO goods_receipt_notes(
+            grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,received_by,status
+        ) VALUES(%s,%s,%s,%s,%s,%s,%s,'draft') RETURNING id""",
+            ("QA-ADMIN-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,colleague)).fetchone()[0]
+        actor(c,ADMIN)
+        c.execute("SELECT cancel_draft_goods_receipt(%s,'Superseded site draft')",(second,))
+        assert str(c.execute("SELECT cancelled_by FROM goods_receipt_notes WHERE id=%s",(second,)).fetchone()[0])==ADMIN
+        c.execute("RESET ROLE")
+
+        # Even the Super Admin cannot cancel a posted GRN with the draft RPC.
+        posted = c.execute("""INSERT INTO goods_receipt_notes(
+            grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+            received_by,status,posted_at
+        ) VALUES(%s,%s,%s,%s,%s,%s,%s,'posted',now()) RETURNING id""",
+            ("QA-POSTED-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT cancel_draft_goods_receipt(%s,'Must use stock reversal')",(posted,)),
+               "Only unposted draft")
+        c.execute("RESET ROLE")
+
+        # Revoking the assignment must immediately remove the engineer's
+        # cancellation right even though they originally created the draft.
+        revoked = c.execute("""INSERT INTO goods_receipt_notes(
+            grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,received_by,status
+        ) VALUES(%s,%s,%s,%s,%s,%s,%s,'draft') RETURNING id""",
+            ("QA-REVOKED-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+        c.execute("DELETE FROM user_project_assignments WHERE user_id=%s AND project_id=%s",(SITE,PROJECT))
+        actor(c,SITE)
+        denied(c,lambda:c.execute("SELECT cancel_draft_goods_receipt(%s,'No longer on project')",(revoked,)),
+               "project not assigned")
+        c.rollback()
+    print("PASS engineer own GRN draft cancel, colleague denied, admin override, no stock changes, posted denied, audit and revocation")
+
+
 def test_director_notifications_and_names():
     with db() as c:
         # The original Site Engineer created the PR; a Purchase Manager
@@ -1792,6 +1882,7 @@ if __name__ == "__main__":
     test_private_procurement_attachment_access()
     test_site_engineer_requires_project_assignment_for_pr()
     test_engineer_assigned_project_pr_po_visibility()
+    test_cancel_draft_grn_engineer_and_super_admin()
     from pr_0099_access_acceptance import exercise_pr_revocation
     exercise_pr_revocation(db,actor,denied,save_pr,ADMIN,SITE,PROJECT)
     test_quote_freight_gst_matches_supplier_and_po()

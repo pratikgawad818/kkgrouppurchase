@@ -10,6 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, fmtDate, fmtDateTime, inr, num } from "@/lib/format";
 import { useCan } from "@/lib/session";
+import { CancelDraftGrnButton } from "@/components/erp/cancel-draft-grn";
+import { canCancelDraftGrn } from "@/lib/grn-draft-cancellation";
+import { useMe } from "@/lib/session";
 import { GRN_STATUS, TX_LABEL } from "@/lib/po";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/_shell/inventory/goods-rec
 function GrnDetail() {
   const { id } = Route.useParams();
   const can = useCan();
+  const me = useMe();
   const qc = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -65,17 +69,24 @@ function GrnDetail() {
   if (q.error) return <div className="text-sm text-destructive">{errMsg(q.error)}</div>;
   const { g, items, txs } = q.data!;
   const st = GRN_STATUS[g.status];
+  const canUseDraftCancellation = canCancelDraftGrn({
+    status: g.status, receivedBy: g.received_by,
+    viewerId: me.data?.profile.id, roles: me.data?.roles ?? [],
+    canCreate: can("grn.create"),
+  });
   const poItems = g.purchase_orders?.purchase_order_items ?? [];
   return (
     <>
       <PageHeader deleteAction={<PermanentDelete force kind="goods_receipt" id={g.id} name={g.grn_number} onDeleted={()=>window.location.assign("/inventory/goods-received")}/>} crumbs={<Link to="/inventory/goods-received" className="hover:underline">Goods Received</Link>} title={g.grn_number}
         subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>{st.label}</span>{g.vendors?.company_name} · {g.warehouses?.name}</span>}
-        actions={<div className="flex gap-2">
+        actions={<div className="flex flex-wrap gap-2">
           {g.status === "draft" && can("grn.post") && <Button size="sm" disabled={post.isPending} onClick={() => post.mutate()}>Post to stock</Button>}
-          {g.status !== "cancelled" && can("grn.cancel") && <Button size="sm" variant="outline" onClick={() => setCancelOpen(true)}>Cancel GRN</Button>}
+          <CancelDraftGrnButton id={g.id} number={g.grn_number} status={g.status} receivedBy={g.received_by}/>
+          {g.status !== "cancelled" && can("grn.cancel") && !canUseDraftCancellation &&
+            <Button size="sm" variant="outline" onClick={() => setCancelOpen(true)}>Cancel GRN</Button>}
         </div>} />
       {g.status === "draft" && <div className="mb-3 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">Draft — not yet in stock. A user with posting rights must post it.</div>}
-      {g.status === "cancelled" && <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs">Cancelled {fmtDateTime(g.cancelled_at)} — “{g.cancel_reason}”. Any stock it added was reversed.</div>}
+      {g.status === "cancelled" && <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs">Cancelled {fmtDateTime(g.cancelled_at)} — “{g.cancel_reason}”. {g.posted_at ? "Any stock it added was reversed." : "This draft never affected stock."}</div>}
       <section className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 text-sm shadow-card sm:p-5 md:grid-cols-4">
         <Info l="Purchase order" v={<Link className="font-mono text-primary hover:underline" to="/procurement/purchase-orders/$id" params={{ id: g.po_id }}>{g.purchase_orders?.po_number}</Link>} />
         <Info l="RFQ" v={g.rfq_id ? <Link className="font-mono text-primary hover:underline" to="/procurement/rfqs/$id" params={{ id: g.rfq_id }}>{g.rfqs?.rfq_number}</Link> : "—"} />

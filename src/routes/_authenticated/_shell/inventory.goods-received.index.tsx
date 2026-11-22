@@ -16,6 +16,7 @@ import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
+import { CancelDraftGrnButton } from "@/components/erp/cancel-draft-grn";
 
 const META = "Register of goods received against purchase orders.";
 export const Route = createFileRoute("/_authenticated/_shell/inventory/goods-received/")({
@@ -56,7 +57,7 @@ function GrnList() {
         await supabase
           .from("goods_receipt_notes")
           .select(
-            "id,grn_number,received_date,status,po_id,project_id,building_id,warehouse_id,vendor_id,purchase_orders(po_number),vendors(company_name),warehouses(name),projects(name),buildings(name),profiles!goods_receipt_notes_received_by_fkey(full_name),goods_receipt_items(accepted_quantity,unit_cost)",
+            "id,grn_number,received_date,status,received_by,po_id,project_id,building_id,warehouse_id,vendor_id,purchase_orders(po_number),vendors(company_name),warehouses(name),projects(name),buildings(name),profiles!goods_receipt_notes_received_by_fkey(full_name),goods_receipt_items(accepted_quantity,unit_cost)",
             { count: "exact" },
           )
           .order("created_at", { ascending: false })
@@ -233,12 +234,13 @@ function GrnList() {
                   <th className="px-4 py-3 text-right">Accepted value</th>
                   <th className="px-4 py-3">By</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="p-4 text-xs text-muted-foreground">
+                    <td colSpan={12} className="p-4 text-xs text-muted-foreground">
                       No goods received match.
                     </td>
                   </tr>
@@ -291,6 +293,9 @@ function GrnList() {
                         >
                           {GRN_STATUS[x.status].label}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <CancelDraftGrnButton id={x.id} number={x.grn_number} status={x.status} receivedBy={x.received_by}/>
                       </td>
                     </tr>
                   );
