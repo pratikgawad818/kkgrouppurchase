@@ -7,6 +7,8 @@ import {
   Home,
   Layers,
   LogOut,
+  PackageCheck,
+  FileText,
   Menu,
   MoreHorizontal,
   Search,
@@ -70,6 +72,8 @@ const icons = {
   home: Home,
   purchasing: ShoppingCart,
   stock: Layers,
+  receiving: PackageCheck,
+  challans: FileText,
   finance: Wallet,
   approvals: ShieldCheck,
   projects: Building2,
@@ -111,6 +115,7 @@ export type WorkspaceFrameProps = {
   name: string;
   role: string;
   isDirector?: boolean;
+  isSiteEngineer?: boolean;
   avatar?: string | null | undefined;
   notifications?: ReactNode;
   pendingApprovals?: number | undefined;
@@ -126,6 +131,7 @@ export function WorkspaceFrame({
   name,
   role,
   isDirector = false,
+  isSiteEngineer = false,
   avatar,
   notifications,
   pendingApprovals = 0,
@@ -288,7 +294,14 @@ export function WorkspaceFrame({
       </div>
     </nav>
   );
-  const bottom = mobileWorkspaceNavigation(groups, isDirector);
+  const bottom = mobileWorkspaceNavigation(groups, isDirector, isSiteEngineer);
+  const isBottomActive = (item: (typeof bottom)[number]) => {
+    // Both receiving shortcuts live in Inventory. Match their exact route
+    // rather than activating Receive, Challan and Stock simultaneously.
+    if (isSiteEngineer && ["receiving", "challans", "stock"].includes(item.key))
+      return path === item.to || path.startsWith(item.to + "/");
+    return location?.group.key === item.key;
+  };
   return (
     <div className="workspace-frame">
       <a href="#workspace-main" className="workspace-skip-link">
@@ -458,7 +471,7 @@ export function WorkspaceFrame({
       >
         {bottom.map((group) => {
           const Icon = icons[group.key as keyof typeof icons] ?? Home;
-          const active = location?.group.key === group.key;
+          const active = isBottomActive(group);
           return (
             <Link
               key={group.key}
@@ -466,7 +479,8 @@ export function WorkspaceFrame({
               aria-label={
                 group.key === "approvals" && pendingApprovals > 0
                   ? `Approvals, ${pendingApprovals} pending`
-                  : undefined
+                  : group.key === "receiving" ? "Goods Received" :
+                    group.key === "challans" ? "Challan Entry" : undefined
               }
               aria-current={active ? "page" : undefined}
               className={cn(active && "is-active")}
@@ -486,7 +500,7 @@ export function WorkspaceFrame({
           onClick={() => setMenuOpen(true)}
           aria-label="More modules"
           aria-expanded={menuOpen}
-          className={cn(!bottom.some((group) => group.key === location?.group.key) && "is-active")}
+          className={cn(!bottom.some(isBottomActive) && "is-active")}
         >
           <MoreHorizontal aria-hidden />
           <span>More</span>

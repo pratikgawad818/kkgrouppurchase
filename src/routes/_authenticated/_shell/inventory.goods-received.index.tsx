@@ -1,10 +1,13 @@
 import { RegisterFilters } from "@/components/erp/register-filters";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Loading, PageHeader, SearchBox } from "@/components/erp/common";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useCan } from "@/lib/session";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { GRN_STATUS, selectCls } from "@/lib/po";
@@ -29,6 +32,10 @@ export const Route = createFileRoute("/_authenticated/_shell/inventory/goods-rec
 });
 
 function GrnList() {
+  const can = useCan();
+  const navigate = useNavigate();
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [poSearch, setPoSearch] = useState("");
   const [search, setSearch] = useState("");
   const [f, setF] = useState({
     project: "",
@@ -56,6 +63,22 @@ function GrnList() {
       );
     },
   });
+  const receivablePos = useQuery({
+    queryKey: ["grn-receivable-purchase-orders"],
+    enabled: receiveOpen && can("grn.create"),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("purchase_orders")
+        .select("id,po_number,status,vendors(company_name),projects(name),buildings(name)")
+        .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const matchingPos = (receivablePos.data ?? []).filter((po) =>
+    matchesRecordSearch([po.po_number, po.vendors?.company_name, po.projects?.name, po.buildings?.name], poSearch),
+  );
   const all = q.data ?? [];
   const set = (k: keyof typeof f, v: string) => {
     setF({ ...f, [k]: v, ...(k === "project" ? { building: "" } : {}) });
@@ -86,6 +109,7 @@ function GrnList() {
       <PageHeader
         title="Goods Received"
         subtitle="Receipts are recorded from a purchase order using “Receive goods”."
+        actions={can("grn.create") ? <Button size="sm" onClick={() => setReceiveOpen(true)}>Receive goods</Button> : undefined}
       />
       <RegisterFilters activeCount={Object.values(f).filter(Boolean).length}>
         <div className="w-full sm:w-60">
@@ -270,6 +294,47 @@ function GrnList() {
           <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
         </>
       )}
+      <Dialog open={receiveOpen} onOpenChange={setReceiveOpen}>
+        <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Choose a purchase order to receive</DialogTitle>
+            <DialogDescription>
+              Select an approved PO for the delivered materials. A registered vendor challan
+              is required before the goods receipt can be saved.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            aria-label="Search purchase orders to receive"
+            placeholder="Search PO, vendor, project or building"
+            value={poSearch}
+            onChange={(event) => setPoSearch(event.target.value)}
+          />
+          <div className="max-h-64 space-y-1 overflow-y-auto" aria-label="Receivable purchase orders">
+            {receivablePos.isLoading ? <Loading /> :
+              receivablePos.error ? <p className="p-3 text-sm text-destructive">{errMsg(receivablePos.error)}</p> :
+              matchingPos.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No approved purchase orders found.</p> :
+              matchingPos.slice(0, 50).map((po) => (
+                <Button key={po.id} variant="ghost" className="h-auto w-full justify-start px-3 py-2 text-left"
+                  onClick={() => {
+                    setReceiveOpen(false);
+                    void navigate({ to: "/procurement/purchase-orders/$id", params: { id: po.id } });
+                  }}>
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{po.po_number}</span>
+                    <span className="block whitespace-normal text-xs text-muted-foreground">
+                      {po.vendors?.company_name} · {po.projects?.name}
+                      {po.buildings?.name ? ` · ${po.buildings.name}` : ""}
+                    </span>
+                  </span>
+                </Button>
+              ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            On the PO page, tap "Receive goods" to inspect and record quantities.
+            Use Challan Entry first if the supplier challan is not registered.
+          </p>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -112,6 +112,7 @@ function Shell() {
       name={profile.full_name ?? profile.email ?? "My account"}
       role={roles.map((role) => ROLE_LABEL[role]).join(", ") || "Awaiting access"}
       isDirector={isDirector}
+      isSiteEngineer={roles.includes("site_engineer") && !isDirector && !roles.includes("super_admin")}
       avatar={avatar.data}
       notifications={
         <NotificationBell
