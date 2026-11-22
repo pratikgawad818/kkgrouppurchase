@@ -537,7 +537,7 @@ def test_cancel_draft_grn_engineer_and_super_admin():
             ("QA-ADMIN-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,colleague)).fetchone()[0]
         actor(c,ADMIN)
         c.execute("SELECT cancel_draft_goods_receipt(%s,'Superseded site draft')",(second,))
-        assert c.execute("SELECT cancelled_by FROM goods_receipt_notes WHERE id=%s",(second,)).fetchone()[0]==ADMIN
+        assert str(c.execute("SELECT cancelled_by FROM goods_receipt_notes WHERE id=%s",(second,)).fetchone()[0])==ADMIN
         c.execute("RESET ROLE")
 
         # Even the Super Admin cannot cancel a posted GRN with the draft RPC.
