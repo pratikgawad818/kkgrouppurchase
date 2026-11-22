@@ -234,6 +234,14 @@ function PoDetail() {
   const canReceive =
     ["approved", "sent", "partially_received", "partially_accepted"].includes(po.status) &&
     can("grn.create");
+  // Sending an approved PO to the supplier is a separate, optional
+  // procurement acknowledgment. After a supplier challan or goods receipt
+  // exists it must never look like a pending receiving prerequisite.
+  const hasDeliveryActivity =
+    challans.some((item) => item.status === "registered") ||
+    grns.some((item) => item.status !== "cancelled");
+  const canRecordPoSent =
+    po.status === "approved" && can("purchase_order.create") && !hasDeliveryActivity;
   const needsComment =
     dlg === "rejected" ||
     dlg === "cancelled" ||
@@ -319,17 +327,7 @@ function PoDetail() {
                   (isAdmin || can("purchase_order.create")) && (
                     <DirectorApprovalReminder id={id} kind="purchase_order" />
                   )}
-                {po.status === "approved" && can("purchase_order.create") && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={act.isPending}
-                    onClick={() => act.mutate("sent")}
-                  >
-                    Mark as sent
-                  </Button>
-                )}
-                {canReceive && (
+                 {canReceive && (
                   <Link to="/inventory/delivery-challans" search={{ po: id }}>
                     <Button size="sm" variant="outline">
                       Register vendor challan
@@ -377,6 +375,26 @@ function PoDetail() {
           <div className="mb-3 text-xs text-muted-foreground">
             Another approver must approve this PO — you created it.
           </div>
+        )}
+        {canRecordPoSent && (
+          <details className="mb-3 rounded-lg border bg-muted/20 px-4 py-3 text-sm">
+            <summary className="cursor-pointer font-medium">
+              Supplier communication (optional)
+            </summary>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Record this only if the approved PO was actually sent to the supplier.
+              You do not need to mark it as sent before registering a vendor challan or receiving goods.
+            </p>
+            <Button
+              className="mt-3"
+              size="sm"
+              variant="outline"
+              disabled={act.isPending}
+              onClick={() => act.mutate("sent")}
+            >
+              Confirm PO sent to supplier
+            </Button>
+          </details>
         )}
 
         <section className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 text-sm shadow-card sm:p-5 md:grid-cols-4">
