@@ -26,7 +26,7 @@ test("Director PO approval alerts the linked PR's originating Site Engineer",()=
 
 test("alert includes real approver name, PR, PO, project, supplier, and secured PO route",()=>{
   assert.match(sql,/approver\.full_name/);
-  assert.match(sql,/approved '\\|\\|NEW\\.po_number/);
+  assert.ok(sql.includes("' approved '||NEW.po_number"));
   assert.match(sql,/pr\.pr_number/);
   assert.match(sql,/NEW\.po_number/);
   assert.match(sql,/project\.name/);
