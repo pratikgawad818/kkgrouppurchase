@@ -1282,8 +1282,12 @@ def test_vendor_invoice_po_pump_charge_gst():
           vendor_invoice_number,vendor_invoice_date,other_charges,created_by)
           VALUES(%s,%s,%s,%s,%s,%s,current_date,20000,%s)""",
           ("QA-DUP-PUMP-"+str(uuid4()),A,VENDOR,PROJECT,po,"QA-DUP-BILL-"+str(uuid4()),ACCOUNTS))
+        # Invoke matching only through the authorized invoice transition.
+        # Direct run_invoice_match() is deliberately not granted to staff.
+        c.execute("UPDATE vendor_invoices SET status='exception' WHERE id=%s",(inv,))
         actor(c,ACCOUNTS)
-        assert c.execute("SELECT run_invoice_match(%s)",(inv,)).fetchone()[0]=="exception"
+        assert c.execute("SELECT invoice_transition(%s,'submit','Recheck duplicate pump charge')",
+                         (inv,)).fetchone()[0]=="exception"
         exceptions=c.execute("SELECT match_summary->'exceptions' FROM vendor_invoices WHERE id=%s",
                              (inv,)).fetchone()[0]
         assert any(item["type"]=="other_charges" for item in exceptions),exceptions
