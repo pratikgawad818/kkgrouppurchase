@@ -175,8 +175,12 @@ function PrDetail() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Updated");
+    onSuccess: (_data, action) => {
+      toast.success(action === "approved"
+        ? (me.data?.roles.includes("purchase_manager")
+          ? "Purchase Manager received your request"
+          : "Request accepted for procurement")
+        : "Updated");
       setAct(null);
       setComment("");
       qc.invalidateQueries({ queryKey: ["pr", id] });
