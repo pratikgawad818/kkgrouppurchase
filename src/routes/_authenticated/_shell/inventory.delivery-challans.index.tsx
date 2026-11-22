@@ -14,6 +14,7 @@ import { errMsg, fmtDate, num } from "@/lib/format";
 import { PAGE } from "@/lib/fy";
 import { selectCls } from "@/lib/po";
 import { useCan, useMe } from "@/lib/session";
+import { useSiteEngineerReceivingScope } from "@/lib/site-engineer-receiving-scope";
 import { ChallanPhotoInput } from "@/components/erp/challan-photo-input";
 import { validateChallanPhoto } from "@/lib/challan-photo";
 import { uploadProcurementAttachment } from "@/lib/procurement-attachments";
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/_authenticated/_shell/inventory/delivery-
 function DeliveryChallanRegister() {
   const can = useCan();
   const me = useMe();
+  const scope = useSiteEngineerReceivingScope();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const search = Route.useSearch();
@@ -60,13 +62,17 @@ function DeliveryChallanRegister() {
     },
   });
   const pos = useQuery({
-    queryKey: ["challan-eligible-pos"],
-    enabled: open,
+    queryKey: ["challan-eligible-pos", scope.isScopedEngineer, scope.assignedProjectIds],
+    enabled: open && !scope.isLoading && !scope.error,
     queryFn: async () => {
-      const { data, error } = await supabase.from("purchase_orders")
-        .select("id,po_number,status,vendors(company_name),projects(name)")
-        .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
-        .order("created_at", { ascending: false }).limit(500);
+      // Engineer B can register against Engineer A's PO when they are both
+      // assigned to its project. Never filter by purchase requester/creator.
+      if (scope.isScopedEngineer && !scope.assignedProjectIds.length) return [];
+      let query = supabase.from("purchase_orders")
+        .select("id,po_number,status,project_id,vendors(company_name),projects(name)")
+        .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
+      if (scope.isScopedEngineer) query = query.in("project_id", scope.assignedProjectIds);
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -87,6 +93,11 @@ function DeliveryChallanRegister() {
     mutationFn: async () => {
       const challan_number = h.challan_number.trim();
       if (!poId) throw new Error("Select an approved purchase order.");
+      // The registration RPC performs an independent project-access check.
+      // Keep a helpful front-end error if a project assignment changed.
+      if (scope.isScopedEngineer && !pos.data?.some((po) => po.id === poId && scope.canAccess(po.project_id))) {
+        throw new Error("You are not assigned to this purchase order's project.");
+      }
       if (!challan_number) throw new Error("Enter the vendor challan number.");
       if (!h.challan_date || h.challan_date > todayIst()) throw new Error("Enter a challan date that is not in the future.");
       const lines = (items.data ?? []).flatMap(x => {
@@ -168,8 +179,12 @@ function DeliveryChallanRegister() {
     {open && <Dialog open onOpenChange={value => { if (!value && !create.isPending) setOpen(false); }}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader><DialogTitle>Register supplier delivery challan</DialogTitle>
-          <DialogDescription>Record the vendor's actual document number and dispatched quantities against an approved PO. Receive goods separately after physical inspection.</DialogDescription>
+          <DialogDescription>Record the supplier's challan for an approved PO. Any Site Engineer assigned to the same project can register it, even when another engineer requested the purchase.</DialogDescription>
         </DialogHeader>
+        {scope.error && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">Could not verify your assigned projects: {errMsg(scope.error)}</p>}
+        {scope.isScopedEngineer && !scope.isLoading && !scope.error && !scope.assignedProjectIds.length && (
+          <p role="alert" className="rounded-md border p-3 text-sm text-muted-foreground">No project assigned. Ask your administrator to assign your site before registering a challan.</p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Purchase order *"><select className={selectCls} value={poId} onChange={e => { setPoId(e.target.value); setQuantities({}); }}>
             <option value="">Choose approved PO</option>
@@ -200,7 +215,7 @@ function DeliveryChallanRegister() {
           }}
         />
         <p className="text-xs text-muted-foreground">Registering a vendor challan records dispatch evidence only. It does not increase physical stock or create a payable.</p>
-        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button><Button disabled={create.isPending || items.isLoading || !photoFile} onClick={() => create.mutate()}>{create.isPending ? "Uploading & registering…" : "Register delivery challan"}</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button><Button disabled={create.isPending || items.isLoading || scope.isLoading || !!scope.error || !photoFile} onClick={() => create.mutate()}>{create.isPending ? "Uploading & registering…" : "Register delivery challan"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>}
   </>;

@@ -8,6 +8,7 @@ import { Loading, PageHeader, SearchBox } from "@/components/erp/common";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCan } from "@/lib/session";
+import { useSiteEngineerReceivingScope } from "@/lib/site-engineer-receiving-scope";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { GRN_STATUS, selectCls } from "@/lib/po";
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/_authenticated/_shell/inventory/goods-rec
 
 function GrnList() {
   const can = useCan();
+  const scope = useSiteEngineerReceivingScope();
   const navigate = useNavigate();
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [poSearch, setPoSearch] = useState("");
@@ -64,19 +66,24 @@ function GrnList() {
     },
   });
   const receivablePos = useQuery({
-    queryKey: ["grn-receivable-purchase-orders"],
-    enabled: receiveOpen && can("grn.create"),
+    queryKey: ["grn-receivable-purchase-orders", scope.isScopedEngineer, scope.assignedProjectIds],
+    enabled: receiveOpen && can("grn.create") && !scope.isLoading && !scope.error,
     queryFn: async () => {
-      const { data, error } = await supabase.from("purchase_orders")
-        .select("id,po_number,status,vendors(company_name),projects(name),buildings(name)")
-        .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
-        .order("created_at", { ascending: false })
-        .limit(500);
+      // Receive a colleague's PO for the same assigned project, never a PO
+      // from another project. Database RLS and create_goods_receipt enforce
+      // this independently of the displayed choices.
+      if (scope.isScopedEngineer && !scope.assignedProjectIds.length) return [];
+      let query = supabase.from("purchase_orders")
+        .select("id,po_number,status,project_id,vendors(company_name),projects(name),buildings(name)")
+        .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
+      if (scope.isScopedEngineer) query = query.in("project_id", scope.assignedProjectIds);
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(500);
       if (error) throw error;
       return data ?? [];
     },
   });
   const matchingPos = (receivablePos.data ?? []).filter((po) =>
+    scope.canAccess(po.project_id) &&
     matchesRecordSearch([po.po_number, po.vendors?.company_name, po.projects?.name, po.buildings?.name], poSearch),
   );
   const all = q.data ?? [];
@@ -299,8 +306,9 @@ function GrnList() {
           <DialogHeader>
             <DialogTitle>Choose a purchase order to receive</DialogTitle>
             <DialogDescription>
-              Select an approved PO for the delivered materials. A registered vendor challan
-              is required before the goods receipt can be saved.
+              Select an approved PO for a project assigned to you. Another Site Engineer may
+              have raised the original request. A registered supplier challan is required
+              before saving the goods receipt.
             </DialogDescription>
           </DialogHeader>
           <Input
@@ -309,8 +317,18 @@ function GrnList() {
             value={poSearch}
             onChange={(event) => setPoSearch(event.target.value)}
           />
+          {scope.error && (
+            <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">
+              Could not verify your assigned projects: {errMsg(scope.error)}
+            </p>
+          )}
+          {scope.isScopedEngineer && !scope.isLoading && !scope.error && !scope.assignedProjectIds.length && (
+            <p role="alert" className="rounded-md border p-3 text-sm text-muted-foreground">
+              No project assigned. Ask your administrator to assign your site before recording received goods.
+            </p>
+          )}
           <div className="max-h-64 space-y-1 overflow-y-auto" aria-label="Receivable purchase orders">
-            {receivablePos.isLoading ? <Loading /> :
+            {scope.isLoading || receivablePos.isLoading ? <Loading /> :
               receivablePos.error ? <p className="p-3 text-sm text-destructive">{errMsg(receivablePos.error)}</p> :
               matchingPos.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No approved purchase orders found.</p> :
               matchingPos.slice(0, 50).map((po) => (
