@@ -1421,9 +1421,18 @@ def test_small_expense_in_place_and_bills():
         assert c.execute("SELECT is_active FROM site_small_expense_bills WHERE id=%s",
                          (bill,)).fetchone()[0]
         actor(c,SITE)
-        denied(c,lambda:c.execute(create,(
+        own_expense = c.execute(create,(
             str(uuid4()),PROJECT,None,day,"transport","45.00","cash",
-            "Local transporter","Unauthorized new expense",None,None)))
+            "Local transporter","Own site expense",None,None)).fetchone()[0]
+        assert own_expense != original
+        assert c.execute(
+            "SELECT id FROM site_small_expenses ORDER BY id"
+        ).fetchall() == [(own_expense,)]
+        assert not c.execute("SELECT has_permission(auth.uid(),'financial.view')").fetchone()[0]
+        assert c.execute("SELECT has_permission(auth.uid(),'small_expense.create')").fetchone()[0]
+        denied(c,lambda:c.execute(create,(
+            str(uuid4()),None,None,day,"transport","45.00","cash",
+            "Local transporter","Office expense not assigned",None,None)),"assigned project")
         denied(c,lambda:c.execute(edit,(original,version,json.dumps(payload),"No access")))
         denied(c,lambda:c.execute("SELECT manage_site_small_expense_bill(%s,%s,NULL,NULL,NULL,true)",
                                  (original,bill_path)))
@@ -1451,6 +1460,89 @@ def test_small_expense_in_place_and_bills():
         assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id=%s",(original,)).fetchone()[0]==0
         c.rollback()
     print("PASS 0078 Accounts Manager creates new expenses, same-ID edits, Director view-only, bill privacy, admin deletion")
+
+
+def test_site_engineer_own_small_expense_scope():
+    """0104: field staff see only their own receipts even beside a colleague on the same project."""
+    with db() as c:
+        c.execute("RESET ROLE")
+        site_two = str(uuid4())
+        c.execute("""INSERT INTO profiles(id,company_id,full_name,email,is_active)
+                     VALUES(%s,%s,%s,%s,true)""",
+                  (site_two,A,"QA Second Site Engineer","qa-second-site@example.invalid"))
+        c.execute("INSERT INTO auth.users(id,email,email_confirmed_at) VALUES(%s,%s,now())",
+                  (site_two,"qa-second-site@example.invalid"))
+        c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,'site_engineer')",(site_two,))
+        c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",
+                  (site_two,PROJECT))
+        record="""SELECT public.record_site_small_expense_detailed(
+            %s::uuid,%s::uuid,%s::uuid,%s::date,%s,%s::numeric,%s,%s,%s,%s,%s
+        )"""
+        day=c.execute("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date").fetchone()[0]
+        def make(role,amount,category="transport"):
+            actor(c,role)
+            return c.execute(record,(str(uuid4()),PROJECT,None,day,category,amount,
+              "cash","Site supply shop","Materials for site work","OWN-RECEIPT",None)).fetchone()[0]
+
+        engineer_one = make(SITE,"110.00")
+        engineer_two = make(site_two,"220.00","fuel")
+        manager = make(ACCOUNTS,"330.00","office")
+
+        actor(c,SITE)
+        assert c.execute("SELECT id FROM site_small_expenses").fetchall()==[(engineer_one,)]
+        assert c.execute("SELECT count(*) FROM site_small_expense_events").fetchone()[0]==1
+        assert not c.execute("SELECT has_permission(auth.uid(),'financial.view')").fetchone()[0]
+        assert not c.execute("SELECT has_permission(auth.uid(),'small_expense.manage')").fetchone()[0]
+        denied(c,lambda:c.execute(record,(str(uuid4()),None,None,day,"office","20.00",
+                                    "cash","Site supply shop","Unauthorized office expense",None,None)),
+               "assigned project")
+        denied(c,lambda:c.execute(record,(str(uuid4()),OTHER_PROJECT,None,day,"office","20.00",
+                                    "cash","Site supply shop","Unauthorized other company",None,None)),
+               "not accessible")
+        denied(c,lambda:c.execute("UPDATE site_small_expenses SET amount=1 WHERE id=%s",(engineer_one,)))
+        denied(c,lambda:c.execute("DELETE FROM site_small_expenses WHERE id=%s",(engineer_one,)))
+
+        picture=f"{A}/{SITE}/{uuid4()}.jpg"
+        c.execute("""INSERT INTO storage.objects(bucket_id,name,metadata)
+                     VALUES('small-expense-bills',%s,%s::jsonb)""",
+                  (picture,json.dumps({"mimetype":"image/jpeg","size":1777})))
+        bill=c.execute("""SELECT manage_site_small_expense_bill(%s,%s,%s,%s,%s,false)""",
+                       (engineer_one,picture,"site-receipt.jpg","image/jpeg",1777)).fetchone()[0]
+        assert c.execute("SELECT id FROM site_small_expense_bills").fetchall()==[(bill,)]
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(picture,)).fetchone()[0]==1
+        denied(c,lambda:c.execute("SELECT manage_site_small_expense_bill(%s,%s,%s,%s,%s,false)",
+                                 (engineer_two,picture,"site-receipt.jpg","image/jpeg",1777)),
+               "not accessible")
+
+        actor(c,site_two)
+        assert c.execute("SELECT id FROM site_small_expenses").fetchall()==[(engineer_two,)]
+        assert c.execute("SELECT count(*) FROM site_small_expense_bills").fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(picture,)).fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM site_small_expense_events").fetchone()[0]==1
+        actor(c,ACCOUNTS)
+        assert {row[0] for row in c.execute("SELECT id FROM site_small_expenses")}=={
+            engineer_one,engineer_two,manager}
+        assert c.execute("SELECT count(*) FROM site_small_expense_bills").fetchone()[0]==1
+        actor(c,DIRECTOR)
+        assert c.execute("SELECT count(*) FROM site_small_expenses").fetchone()[0]==3
+        denied(c,lambda:c.execute(record,(str(uuid4()),PROJECT,None,day,"office","40.00",
+                                    "cash","Site supply shop","Director cannot record",None,None)))
+        actor(c,ADMIN)
+        assert c.execute("SELECT count(*) FROM site_small_expenses").fetchone()[0]==3
+
+        # Assignment revocation blocks future entry and private records immediately.
+        c.execute("RESET ROLE")
+        c.execute("DELETE FROM user_project_assignments WHERE user_id=%s AND project_id=%s",
+                  (SITE,PROJECT))
+        actor(c,SITE)
+        assert c.execute("SELECT count(*) FROM site_small_expenses").fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM site_small_expense_bills").fetchone()[0]==0
+        assert c.execute("SELECT count(*) FROM storage.objects WHERE name=%s",(picture,)).fetchone()[0]==0
+        denied(c,lambda:c.execute(record,(str(uuid4()),PROJECT,None,day,"transport","80.00",
+                                    "cash","Site supply shop","Assignment revoked",None,None)),
+               "not accessible")
+        c.rollback()
+    print("PASS Site Engineer own-only RLS, other engineer privacy, company reviewer access, bills and revocation")
 
 
 def test_po_review_correction_handoff():
@@ -1560,6 +1652,7 @@ if __name__ == "__main__":
     test_optional_invoice_roundoff_accounting()
     test_accounts_manager_finance_settings_permission()
     test_small_expense_in_place_and_bills()
+    test_site_engineer_own_small_expense_scope()
     test_po_review_correction_handoff()
     test_google_sheets_retired_archives_preserved()
     from sales_0093_acceptance import exercise_sales
