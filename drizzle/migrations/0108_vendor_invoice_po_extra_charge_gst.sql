@@ -142,7 +142,7 @@ BEGIN
       'freight_gst', frtax, 'other_charges_gst', octax),
     'purchase_order', po.id);
   RETURN vid;
-END $function$
+END $function$;
 
 
 CREATE OR REPLACE FUNCTION public.run_invoice_match(_id uuid)
@@ -216,5 +216,5 @@ BEGIN
   PERFORM log_event('invoice_matched', 'Vendor invoice', inv.invoice_number, inv.id, NULL, jsonb_build_object('match_status', inv.match_status),
     jsonb_build_object('match_status', res, 'tolerances', tol, 'exceptions', ex), 'purchase_order', inv.po_id);
   RETURN res;
-END $function$
+END $function$;
 
