@@ -4,7 +4,10 @@ import { mobileWorkspaceNavigation } from "../../src/lib/workspace-navigation.ts
 
 const groups = [
   { key: "home", label: "Overview", items: [{ to: "/dashboard", label: "Dashboard" }] },
-  { key: "purchasing", label: "Procurement", items: [{ to: "/procurement/purchase-requests", label: "Purchase requests" }] },
+  { key: "purchasing", label: "Procurement", items: [
+    { to: "/procurement/purchase-requests", label: "Purchase requests" },
+    { to: "/procurement/purchase-orders", label: "Purchase orders" },
+  ] },
   { key: "stock", label: "Inventory", items: [
     { to: "/inventory/stock", label: "Stock on hand" },
     { to: "/inventory/delivery-challans", label: "Delivery challans" },
