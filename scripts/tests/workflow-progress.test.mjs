@@ -11,7 +11,7 @@ import {
 test("Site Engineer sees the next eligible PR approver without inventing a named person", () => {
   const pending = workflowPresentation("purchase_request", "pending_approval");
   assert.equal(pending.stateLabel, "Awaiting purchasing review");
-  assert.equal(pending.nextTitle, "Review and decide on the request");
+  assert.equal(pending.nextTitle, "Review and receive the purchase request");
   assert.match(pending.nextOwner, /Project Manager \/ Purchase Manager \/ Director/);
   assert.match(pending.nextDescription, /other than the requester/);
   assert.equal(pending.stages[0].state, "complete");
