@@ -11,6 +11,7 @@ const untypedDb = supabase as any;
 import { useMe } from "@/lib/session";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { today as todayIst } from "@/lib/finance";
+import { scopeSmallExpenseProjectOptions } from "@/lib/small-expense-project-scope";
 import { SMALL_EXPENSE_CATEGORIES, SMALL_EXPENSE_PAYMENTS, matchesSmallExpenseVendor, smallExpenseVendorSuggestions, parseSmallExpenseAmount, summarizeSmallExpenses,
   type SmallExpenseCategory, type SmallExpensePayment } from "@/lib/small-expenses";
 import { Button } from "@/components/ui/button";
@@ -92,15 +93,34 @@ function SmallExpenses() {
     },{maxRows:10000}),
   });
   const context=useQuery({
-    queryKey:["small-expense-context",companyId,me.data?.profile.id],enabled:canCreate&&open,
+    queryKey:["small-expense-context",companyId,me.data?.profile.id,isSiteEngineer],enabled:canCreate&&open,
     queryFn:async()=>{
+      // Fetch ONLY the signed-in engineer's explicit assignments. Company-wide
+      // project visibility alone must never authorize an expense allocation.
+      let assignedIds:string[]=[];
+      if(isSiteEngineer){
+        const {data,error}=await supabase.from("user_project_assignments")
+          .select("project_id").eq("user_id",me.data!.profile.id);
+        if(error)throw error; // Fail closed; never fall back to all projects.
+        assignedIds=[...new Set((data??[]).map(assignment=>assignment.project_id))];
+        if(!assignedIds.length)return {projects:[],buildings:[]};
+      }
+      let projectQuery=supabase.from("projects")
+        .select("id,name,company_id").eq("company_id",companyId!);
+      let buildingQuery=supabase.from("buildings").select("id,name,project_id");
+      if(isSiteEngineer){
+        projectQuery=projectQuery.in("id",assignedIds);
+        buildingQuery=buildingQuery.in("project_id",assignedIds);
+      }
       const [projects,buildings]=await Promise.all([
-        supabase.from("projects").select("id,name,company_id").eq("company_id",companyId!).order("name").limit(3000),
-        supabase.from("buildings").select("id,name,project_id").order("name").limit(3000),
+        projectQuery.order("name").limit(3000),
+        buildingQuery.order("name").limit(3000),
       ]);
       if(projects.error)throw projects.error;
       if(buildings.error)throw buildings.error;
-      return {projects:projects.data??[],buildings:buildings.data??[]};
+      // Defense-in-depth: remove any leaked project/building rows before
+      // populating selectors or validating submissions.
+      return scopeSmallExpenseProjectOptions(projects.data??[],buildings.data??[],assignedIds,isSiteEngineer);
     },
   });
 
@@ -144,6 +164,9 @@ function SmallExpenses() {
         throw new Error("Select your assigned project for this expense.");
       if(isSiteEngineer && !context.data?.projects.some(project=>project.id===form.projectId))
         throw new Error("You are not assigned to this project.");
+      if(form.buildingId && !context.data?.buildings.some(building=>
+        building.id===form.buildingId && building.project_id===form.projectId))
+        throw new Error("Choose a building belonging to your selected project.");
       const fields={
         _entry_key:entryKey,_project_id:form.projectId||null,_building_id:form.buildingId||null,
         _spent_on:form.spentOn,_category:form.category,_amount:amount,_payment_method:form.method,
@@ -350,7 +373,11 @@ function SmallExpenses() {
             ?"Save changes to this same expense. No replacement entry and no void. Previous values remain in the audit history."
             :"Record an actual payment and attach up to 8 bill images or PDFs."}
         </DialogDescription></DialogHeader>
-        {context.error&&<p role="alert" className="text-sm text-destructive">{errMsg(context.error)}</p>}
+        {context.error&&<p role="alert" className="text-sm text-destructive">Could not verify your assigned projects. No expense can be recorded until access is restored. {errMsg(context.error)}</p>}
+        {isSiteEngineer&&context.isSuccess&&!context.data.projects.length&&
+          <p role="alert" className="rounded-lg border p-3 text-sm text-destructive">
+            No projects are assigned to your account. Ask your administrator to assign your site before recording expenses.
+          </p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label className="text-sm font-medium">Date *</label><Input type="date" max={todayIst()} value={form.spentOn} onChange={e=>setField("spentOn",e.target.value)}/></div>
           <div><label className="text-sm font-medium">Amount (₹) *</label><Input inputMode="decimal" placeholder="e.g. 75000.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
