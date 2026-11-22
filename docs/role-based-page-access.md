@@ -1,5 +1,7 @@
 # KK GROUP ERP — role-specific screens and data access
 
+> **Historical implementation note.** Migration rollout statuses and director quorum references in this original review describe its release period, not today's production database. For current approval rules see [Purchasing authority](purchasing-authority.md); never replay an old migration on a live project solely because this note calls it pending.
+
 This source change protects **sidebar navigation, direct route URLs, and nested edit/create forms** through one explicit, default-deny `canAccessPage` mapping. A hidden menu is not used as authorization.
 
 ## Roles and interface
@@ -36,7 +38,7 @@ An account with multiple roles receives the **union of explicit permissions**; o
 
 Changing profile details and role assignments currently uses multiple HTTP requests rather than one transaction. Concurrency and rollback protection for these administrator writes should be moved into an audited server-side transaction before broad staff rollout.
 
-The existing **three-director PO/payment quorum** remains unchanged. This PR does not change live data, user accounts, Supabase schema, Lovable credits or publication.
+At the time of this historical UI change, the then-existing **three-director PO/payment quorum** was left unchanged. Subsequent migrations superseded that PO rule; the current workflow requires independent Director approval as detailed in [Purchasing authority](purchasing-authority.md).
 
 
 ## Pending company and project RLS migration 0020
