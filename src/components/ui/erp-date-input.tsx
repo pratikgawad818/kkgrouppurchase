@@ -136,6 +136,8 @@ export const ErpDateInput = React.forwardRef<
       >
         <CalendarDays className="h-4 w-4" aria-hidden="true" />
       </button>
+      {/* Direct touch targets bypass iOS Safari's restriction on synthetic
+          clicks to a tiny hidden date input. Desktop keeps showPicker(). */}
       <input
         ref={picker}
         type="date"
@@ -145,10 +147,6 @@ export const ErpDateInput = React.forwardRef<
         disabled={disabled || readOnly}
         onChange={onPicked}
         tabIndex={-1}
-        // On iOS Safari showPicker() and .click() on tiny hidden inputs may
-        // be blocked. This *native* input receives the user's actual tap
-        // across the full 44px calendar target. Fine-pointer browsers keep
-        // using the visible button's showPicker() behavior.
         aria-label={`Choose date for ${props["aria-label"] ?? "Date"}`}
         className="pointer-events-none absolute inset-y-0 right-0 z-10 h-full w-11 min-w-11 cursor-pointer opacity-0 [@media(hover:none)_and_(pointer:coarse)]:pointer-events-auto"
       />
