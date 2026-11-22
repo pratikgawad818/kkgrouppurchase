@@ -54,7 +54,7 @@ type SelectedSupplierQuotation = {
 const ACTION_COPY: Partial<
   Record<PrAction, { title: string; needs: boolean; variant?: "destructive" }>
 > = {
-  approved: { title: "Approve request", needs: false },
+  approved: { title: "Receive request for procurement", needs: false },
   returned: { title: "Return for correction", needs: true },
   rejected: { title: "Reject request", needs: true, variant: "destructive" },
   cancelled: { title: "Cancel request", needs: false, variant: "destructive" },
@@ -175,8 +175,12 @@ function PrDetail() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Updated");
+    onSuccess: (_data, action) => {
+      toast.success(action === "approved"
+        ? (me.data?.roles.includes("purchase_manager")
+          ? "Purchase Manager received your request"
+          : "Request accepted for procurement")
+        : "Updated");
       setAct(null);
       setComment("");
       qc.invalidateQueries({ queryKey: ["pr", id] });
@@ -224,7 +228,7 @@ function PrDetail() {
             {pending && !mine && can("purchase_request.approve") && (
               <>
                 <Button size="sm" onClick={() => setAct("approved")}>
-                  Approve
+                  {me.data?.roles.includes("purchase_manager") ? "Receive request" : "Accept for procurement"}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setAct("returned")}>
                   Return
@@ -497,8 +501,10 @@ function PrDetail() {
           <DialogHeader>
             <DialogTitle>{act && ACTION_COPY[act]?.title}</DialogTitle>
             <DialogDescription>
-              {act && ACTION_COPY[act]?.needs ? "A comment is required." : "Comment is optional."}{" "}
-              It is recorded permanently in the approval history.
+              {act === "approved"
+                ? "This marks the request as received for procurement and allows RFQ processing. It does not approve the final Purchase Order; that needs a separate Director decision."
+                : act && ACTION_COPY[act]?.needs ? "A comment is required." : "Comment is optional."}{" "}
+              Your action is recorded permanently in the audit history.
             </DialogDescription>
           </DialogHeader>
           <Textarea

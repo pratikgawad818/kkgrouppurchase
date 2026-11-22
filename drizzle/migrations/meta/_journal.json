@@ -715,6 +715,13 @@
       "when": 1795280000000,
       "tag": "0101_po_requester_project_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1795305600000,
+      "tag": "0102_pr_manager_received_notification",
+      "breakpoints": true
     }
   ]
 }
