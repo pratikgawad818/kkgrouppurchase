@@ -14,6 +14,7 @@ import { addDays, today, uploadVendorDoc, type FinanceSettings } from "@/lib/fin
 import { cn } from "@/lib/utils";
 import { inspectVendorInvoice } from "@/lib/invoice-preflight";
 import { optionalInvoiceRoundOff, toPaise, type InvoiceRoundOffMode } from "@/lib/invoice-roundoff";
+import { poInvoiceChargeGst } from "@/lib/po-invoice-extra-gst";
 
 const META = "Enter a vendor bill against a purchase order and its goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/new")({
@@ -59,7 +60,7 @@ function NewInvoice() {
     queryKey: ["vi-form-base"],
     queryFn: async () => {
       const [p, c] = await Promise.all([
-        supabase.from("purchase_orders").select("id,po_number,po_date,vendor_id,status,grand_total,payment_terms,projects(name),buildings(name),vendors(id,company_name,gstin,address,city,state,contact_person,mobile,email,payment_terms_days)")
+        supabase.from("purchase_orders").select("id,po_number,po_date,vendor_id,status,grand_total,payment_terms,freight,other_charges,freight_tax_type,freight_tax_rate_percent,other_charges_tax_type,other_charges_tax_rate_percent,projects(name),buildings(name),vendors(id,company_name,gstin,address,city,state,contact_person,mobile,email,payment_terms_days)")
           .in("status", ["partially_received", "partially_accepted", "fully_received", "short_closed", "closed"]).order("po_date", { ascending: false }),
         supabase.from("companies").select("finance_settings").limit(1).maybeSingle(),
       ]);
@@ -121,7 +122,8 @@ function NewInvoice() {
   const sub = toPaise(active.reduce((a,l)=>a+toPaise(Number(l.quantity)*Number(l.rate)),0));
   const tax = toPaise(active.reduce((a,l)=>a+toPaise(Number(l.quantity)*Number(l.rate)*Number(l.tax_rate_percent)/100),0));
   const extra = Number(h.freight||0)+Number(h.other_charges||0);
-  const total = toPaise(sub+tax+extra);
+  const extrasGst = poInvoiceChargeGst(Number(h.freight||0),Number(h.other_charges||0),selPo);
+  const total = toPaise(sub+tax+extra+extrasGst.total);
   const roundOffAmount = Number.isFinite(total) && total >= 0 ? optionalInvoiceRoundOff(total,h.round_off_mode) : 0;
   const roundedTotal = toPaise(total+roundOffAmount);
   const tds = toPaise((sub+extra)*Number(h.tds_rate||0)/100);
@@ -235,8 +237,14 @@ function NewInvoice() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 rounded-md border bg-card p-4 lg:col-span-2">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Freight"><Input type="number" min={0} value={h.freight} onChange={(e) => setH({ ...h, freight: e.target.value })} /></Field>
-            <Field label="Other charges"><Input type="number" min={0} value={h.other_charges} onChange={(e) => setH({ ...h, other_charges: e.target.value })} /></Field>
+            <Field label="Freight (before GST)"><Input type="number" min={0} value={h.freight} onChange={(e) => setH({ ...h, freight: e.target.value })} /></Field>
+            <Field label="Other charges (before GST)"><Input type="number" min={0} value={h.other_charges} onChange={(e) => setH({ ...h, other_charges: e.target.value })} /></Field>
+            {selPo && <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground sm:col-span-2">
+              <p className="font-medium text-foreground">Approved PO extra-charge GST</p>
+              <p className="mt-1">Other charges approved: {inr(selPo.other_charges)} · {Number(selPo.other_charges_tax_rate_percent)}% {selPo.other_charges_tax_type === "cgst_sgst" ? "CGST + SGST" : selPo.other_charges_tax_type === "igst" ? "IGST" : "No GST"}.</p>
+              <p>Freight approved: {inr(selPo.freight)} · {Number(selPo.freight_tax_rate_percent)}% {selPo.freight_tax_type === "cgst_sgst" ? "CGST + SGST" : selPo.freight_tax_type === "igst" ? "IGST" : "No GST"}.</p>
+              <p className="mt-1">These charges are entered once from the supplier's actual bill. GST is calculated separately at the approved PO rates; do not include GST inside these amount fields.</p>
+            </div>}
             <Field label="TDS section">
               <select className={selectCls} value={h.tds_section} onChange={(e) => { const s = tdsSections.find((t) => t.code === e.target.value); setH({ ...h, tds_section: e.target.value, tds_rate: String(s?.rate ?? 0) }); }}>
                 <option value="">No TDS</option>{tdsSections.map((t) => <option key={t.code} value={t.code}>{t.code} · {t.label} ({t.rate}%)</option>)}
@@ -254,7 +262,7 @@ function NewInvoice() {
           <Field label="Remarks"><Textarea rows={2} value={h.remarks} onChange={(e) => setH({ ...h, remarks: e.target.value })} /></Field>
         </div>
         <div className="space-y-1 rounded-md border bg-card p-4 text-sm">
-          {[["Taxable value", sub], ["GST", tax], ["Freight + other", extra], ["Gross invoice amount", total], ["TDS", -tds]].map(([k, v]) => <div key={k as string} className="flex justify-between"><span className="text-muted-foreground">{k}</span><span className="font-mono">{inr(v as number)}</span></div>)}
+          {[["Material taxable value", sub], ["GST on materials", tax], ["Freight + other (before GST)", extra], ["GST on freight", extrasGst.freightGst], ["GST on other charges", extrasGst.otherGst], ["Total GST", toPaise(tax+extrasGst.total)], ["Gross invoice amount", total], ["TDS", -tds]].map(([k, v]) => <div key={k as string} className="flex justify-between"><span className="text-muted-foreground">{k}</span><span className="font-mono">{inr(v as number)}</span></div>)}
           <div className="flex justify-between"><span>Round-off (only if selected)</span><span className="font-mono">{inr(roundOffAmount)}</span></div>
            <div className="flex justify-between"><span>Gross after round-off</span><span className="font-mono">{inr(roundedTotal)}</span></div>
            <div className="flex justify-between border-t pt-2 font-semibold"><span>Net payable</span><span className="font-mono">{inr(toPaise(roundedTotal - tds))}</span></div>
