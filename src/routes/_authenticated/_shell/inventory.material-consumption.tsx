@@ -65,12 +65,10 @@ function MaterialConsumption() {
     queryFn: async () => {
       // RLS restricts historic records to the signed-in company's inventory viewers.
       const client = supabase as unknown as SupabaseClient;
-      const {data,count,error}=await client.from("erp_historical_material_consumptions")
+      const data=await loadCompleteRows(async(start,end)=>await client.from("erp_historical_material_consumptions")
         .select("id,reference,occurred_on,project_id,building_id,material_id,quantity,unit_cost,purpose,projects(name),buildings(name),items(name,code,units_of_measure(code))",
-          {count:"exact"}).order("occurred_on",{ascending:false}).limit(2000);
-      if(error) throw error;
-      if((count??0)>2000) throw new Error("Historical register exceeds 2,000 entries. Use a paginated export.");
-      return (data??[]) as unknown as {
+          {count:"exact"}).order("occurred_on",{ascending:false}).order("id",{ascending:false}).range(start,end));
+      return data as unknown as {
         id:string;reference:string;occurred_on:string;project_id:string;building_id:string|null;
         material_id:string;quantity:number;unit_cost:number;purpose:string;
         projects:{name:string}|null;buildings:{name:string}|null;
