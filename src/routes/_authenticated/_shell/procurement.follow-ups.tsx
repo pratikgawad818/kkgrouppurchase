@@ -12,6 +12,8 @@ import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { today as todayIst, type InvoiceStatus } from "@/lib/finance";
 import { useCan } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 import {
   ACTIVE_DELIVERY_PO_STATUSES,
   deliverySnapshot,
@@ -29,7 +31,6 @@ const PRIORITY: Record<DeliveryPriority, { label: string; cls: string; hint: str
   on_track: { label: "Upcoming", cls: "border-border bg-muted text-muted-foreground", hint: "Track confirmed delivery date" },
 };
 const PRIORITY_RANK: Record<DeliveryPriority, number> = { overdue: 0, due_soon: 1, unscheduled: 2, on_track: 3 };
-const CAP = 2000;
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/follow-ups")({
   head: () => ({ meta: [{ title: "Procurement Follow-ups — KK GROUP ERP" }] }),
@@ -54,11 +55,10 @@ function ProcurementFollowUps() {
     enabled: canPo,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("purchase_orders")
-        .select("id,po_number,po_date,expected_delivery_date,grand_total,status,project_id,vendor_id,building_id,vendors(company_name,mobile),projects(name),buildings(name),purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total)")
-        .in("status", OPEN_PO_STATUSES).order("created_at", { ascending: false }).limit(CAP + 1);
-      if (error) throw error;
-      return { rows: (data ?? []).slice(0, CAP), truncated: (data?.length ?? 0) > CAP };
+      const rows = await loadCompleteRows(async (start,end) => await supabase.from("purchase_orders")
+        .select("id,po_number,po_date,expected_delivery_date,grand_total,status,project_id,vendor_id,building_id,vendors(company_name,mobile),projects(name),buildings(name),purchase_order_items(ordered_quantity,accepted_quantity,short_closed_quantity,line_total)", {count:"exact"})
+        .in("status",OPEN_PO_STATUSES).order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,end));
+      return { rows };
     },
   });
   const invoiceQuery = useQuery({
@@ -66,11 +66,10 @@ function ProcurementFollowUps() {
     enabled: canInvoice || canPayable,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendor_invoices")
-        .select("id,invoice_number,vendor_invoice_number,due_date,vendor_invoice_date,status,match_status,grand_total,balance_due,project_id,vendor_id,po_id,vendors(company_name),projects(name),purchase_orders(po_number)")
-        .in("status", INVOICE_STATES).order("created_at", { ascending: false }).limit(CAP + 1);
-      if (error) throw error;
-      return { rows: (data ?? []).slice(0, CAP), truncated: (data?.length ?? 0) > CAP };
+      const rows = await loadCompleteRows(async (start,end) => await supabase.from("vendor_invoices")
+        .select("id,invoice_number,vendor_invoice_number,due_date,vendor_invoice_date,status,match_status,grand_total,balance_due,project_id,vendor_id,po_id,vendors(company_name),projects(name),purchase_orders(po_number)",{count:"exact"})
+        .in("status",INVOICE_STATES).order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,end));
+      return { rows };
     },
   });
 
@@ -83,13 +82,12 @@ function ProcurementFollowUps() {
     .map(x => [x.vendor_id, { id: x.vendor_id, name: x.vendors?.company_name ?? "Vendor" }])).values()]
     .sort((a, b) => a.name.localeCompare(b.name));
   const yearOptions = fyOptions([...pos.map(x => x.po_date), ...invoices.map(x => x.vendor_invoice_date)]);
-  const term = search.trim().toLowerCase();
 
   const scoped = (x: { project_id: string; vendor_id: string }, date: string, values: (string | null | undefined)[]) =>
     (!project || x.project_id === project) &&
     (!vendor || x.vendor_id === vendor) &&
     (!fy || fyOf(date) === Number(fy)) &&
-    (!term || values.some(value => value?.toLowerCase().includes(term)));
+    matchesRecordSearch(values, search);
 
   const scopedPos = pos.filter(x => scoped(x, x.po_date, [x.po_number, x.vendors?.company_name, x.projects?.name, x.buildings?.name]));
   const pendingApproval = scopedPos.filter(x => x.status === "pending_approval");
@@ -102,7 +100,8 @@ function ProcurementFollowUps() {
   const upcoming = deliveries.filter(x => x.snapshot.priority === "due_soon");
   const unscheduled = deliveries.filter(x => x.snapshot.priority === "unscheduled");
   const deliveryRows = priority === "all" ? deliveries : deliveries.filter(x => x.snapshot.priority === priority);
-  const pagedDeliveries = deliveryRows.slice(page * PAGE, (page + 1) * PAGE);
+  const visiblePage = visibleSearchPage(page, deliveryRows.length, PAGE);
+  const pagedDeliveries = deliveryRows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
 
   const scopedInvoices = invoices.filter(x => scoped(x, x.vendor_invoice_date,
     [x.invoice_number, x.vendor_invoice_number, x.vendors?.company_name, x.projects?.name, x.purchase_orders?.po_number]));
@@ -115,7 +114,6 @@ function ProcurementFollowUps() {
   const poError = canPo ? poQuery.error : null;
   const invoiceError = canInvoice || canPayable ? invoiceQuery.error : null;
   const changeFilter = (setter: (v: string) => void, value: string) => { setter(value); setPage(0); };
-  const capped = (canPo && poQuery.data?.truncated) || ((canInvoice || canPayable) && invoiceQuery.data?.truncated);
 
   return (
     <>
@@ -141,9 +139,6 @@ function ProcurementFollowUps() {
             {poError && <p>Purchase orders could not be loaded: {errMsg(poError)}</p>}
             {invoiceError && <p>Invoices could not be loaded: {errMsg(invoiceError)}</p>}
           </div>}
-          {capped && <p role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            Your database has more than {CAP.toLocaleString("en-IN")} active records in at least one queue. Figures here cover only the latest {CAP.toLocaleString("en-IN")} records in that queue; use individual modules for the complete history.
-          </p>}
           <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-5">
             {canPo && <>
               <a href="#pending-po-approvals"><Stat label="POs awaiting approval" value={poError ? "—" : pendingApproval.length} hint="Director decisions needed" className="hover:border-primary/40" /></a>
@@ -210,7 +205,7 @@ function ProcurementFollowUps() {
                     </tr>)}</tbody>
                   </table>
                 </div>
-                <Pager page={page} total={deliveryRows.length} size={PAGE} onPage={setPage} />
+                <Pager page={visiblePage} total={deliveryRows.length} size={PAGE} onPage={setPage} />
               </>}
               <p className="mt-2 text-xs text-muted-foreground">
                 ¹ Estimated undelivered purchase-order line value (proportional to quantity, excluding unallocated PO-level freight/charges/discounts). Not a payable or accounting balance.
