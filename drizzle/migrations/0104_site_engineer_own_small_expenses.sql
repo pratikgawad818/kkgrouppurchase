@@ -107,8 +107,7 @@ AS $function$
        )
      )
  );
-$function$
-
+$function$;
 
 REVOKE ALL ON FUNCTION public.can_view_site_small_expense_bill(text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.can_view_site_small_expense_bill(text) TO authenticated;
@@ -198,8 +197,7 @@ BEGIN
     VALUES(current_company,inserted_id,'recorded',auth.uid());
   RETURN inserted_id;
 END
-$function$
-
+$function$;
 
 REVOKE ALL ON FUNCTION public.record_site_small_expense(uuid,uuid,uuid,date,text,numeric,text,text,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.record_site_small_expense(uuid,uuid,uuid,date,text,numeric,text,text,text,text) TO authenticated;
@@ -284,8 +282,7 @@ BEGIN
   UPDATE public.site_small_expenses SET updated_at=greatest(clock_timestamp(),updated_at+interval '1 microsecond')
     WHERE id=_expense_id;
   RETURN result_id;
-END $function$
-
+END $function$;
 
 REVOKE ALL ON FUNCTION public.manage_site_small_expense_bill(uuid,text,text,text,bigint,boolean) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.manage_site_small_expense_bill(uuid,text,text,text,bigint,boolean) TO authenticated;
