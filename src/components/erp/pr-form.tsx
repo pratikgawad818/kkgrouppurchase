@@ -332,13 +332,18 @@ export function PrForm({
             </select>
           </div>
           <div>
-            <Label>Required by *</Label>
+            <Label htmlFor="pr-required-by">Required by *</Label>
             <Input
+              id="pr-required-by"
               aria-label="Required by"
+              aria-describedby="pr-required-by-help"
               type="date"
               value={h.required_by}
               onChange={(e) => setH({ ...h, required_by: e.target.value })}
             />
+            <p id="pr-required-by-help" className="mt-1 text-xs text-muted-foreground">
+              Type DDMMYYYY (slashes added automatically) or tap the calendar.
+            </p>
           </div>
           <div>
             <Label>Priority</Label>
@@ -459,9 +464,10 @@ export function PrForm({
                     </select>
                   </div>
                   <div className="lg:col-span-2">
-                    <Label>Required by</Label>
+                    <Label htmlFor={`pr-line-${i}-required-by`}>Required by</Label>
                     <Input
-                      aria-label="Required by"
+                      id={`pr-line-${i}-required-by`}
+                      aria-label={`Required by for item ${i + 1}`}
                       type="date"
                       value={l.required_by}
                       onChange={(e) => setLine(i, { required_by: e.target.value })}
