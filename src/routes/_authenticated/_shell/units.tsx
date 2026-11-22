@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { matchesRecordSearch } from "@/lib/erp-search";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,11 +31,12 @@ function Units() {
   const [search, setSearch] = useState("");
   const [edit, setEdit] = useState<any | "new" | null>(null);
   const units = useQuery({ queryKey: ["units"], queryFn: async () => {
-    const r = await supabase.from("units").select("*, floors(name, floor_number), buildings(name), projects(name)").order("unit_number");
-    if (r.error) throw r.error; return r.data;
+    return loadCompleteRows(async(start,end)=>await supabase.from("units")
+      .select("*, floors(name, floor_number), buildings(name), projects(name)",{count:"exact"})
+      .order("unit_number").order("id").range(start,end));
   } });
   const projects = useQuery({ queryKey: ["projects-lite"], queryFn: async () => (await supabase.from("projects").select("id,name").order("name")).data ?? [] });
-  const rows = useMemo(() => (units.data ?? []).filter((u) => (!project || u.project_id === project) && (!status || u.status === status) && u.unit_number.toLowerCase().includes(search.toLowerCase())), [units.data, project, status, search]);
+  const rows = useMemo(() => (units.data ?? []).filter((u) => (!project || u.project_id === project) && (!status || u.status === status) && matchesRecordSearch([u.unit_number,u.projects?.name,u.buildings?.name,u.floors?.name],search)), [units.data, project, status, search]);
   if (units.isLoading) return <Loading />;
   const refresh = () => qc.invalidateQueries({ queryKey: ["units"] });
 
@@ -55,7 +58,7 @@ function Units() {
             <option value="">All statuses</option>
             {Object.entries(UNIT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
-          <input aria-label="Search unit number" className="h-11 w-full rounded-lg border bg-card px-3 text-sm sm:h-9 sm:w-40" placeholder="Search unit no." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input aria-label="Search unit number" className="h-11 w-full rounded-lg border bg-card px-3 text-sm sm:h-9 sm:w-40" placeholder="Flat no., project, building or floor" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         {canEditUnits && <Button onClick={() => setEdit("new")}><Plus className="h-4 w-4" /> Add Flat</Button>}
       </div>
