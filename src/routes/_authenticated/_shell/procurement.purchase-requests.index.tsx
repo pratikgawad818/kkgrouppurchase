@@ -1,6 +1,7 @@
 import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { RegisterFilters } from "@/components/erp/register-filters";
-import { safeSearch } from "@/lib/utils";
+import { matchesRecordSearch } from "@/lib/erp-search";
+import { loadCompleteRows } from "@/lib/complete-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -62,25 +63,18 @@ function PrList() {
         supabase.from("buildings").select("id,name,project_id").order("name"),
         supabase.from("profiles").select("id,full_name,email").order("full_name"),
       ]);
+      for (const x of [p,b,u]) if (x.error) throw x.error;
       return { projects: p.data ?? [], buildings: b.data ?? [], people: u.data ?? [] };
     },
   });
 
+  const searching = settledText.trim().length > 0;
   const q = useQuery({
     queryKey: [
-      "prs",
-      status,
-      projectId,
-      buildingId,
-      priority,
-      requester,
-      fy,
-      from,
-      to,
-      settledText,
-      page,
-      sp.due,
+      "prs", status, projectId, buildingId, priority, requester, fy,
+      from, to, page, sp.due,
     ],
+    enabled: !searching,
     queryFn: async () => {
       let r = supabase
         .from("purchase_requests")
@@ -89,46 +83,82 @@ function PrList() {
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .range(page * PAGE, page * PAGE + PAGE - 1);
       if (status) r = r.eq("status", status as PrStatus);
       if (projectId) r = r.eq("project_id", projectId);
       if (buildingId) r = r.eq("building_id", buildingId);
       if (priority) r = r.eq("priority", priority as PrPriority);
       if (requester) r = r.eq("requested_by", requester);
-      if (fy)
-        r = r.gte("request_date", `${fy}-04-01`).lte("request_date", `${Number(fy) + 1}-03-31`);
+      if (fy) r = r.gte("request_date", `${fy}-04-01`).lte("request_date", `${Number(fy) + 1}-03-31`);
       if (from) r = r.gte("request_date", from);
       if (to) r = r.lte("request_date", to);
       if (sp.due) {
         const d = new Date();
         d.setDate(d.getDate() + 7);
-        r = r
-          .lte("required_by", d.toISOString().slice(0, 10))
+        r = r.lte("required_by", d.toISOString().slice(0, 10))
           .in("status", ["draft", "pending_approval", "approved"]);
       }
-      const t = safeSearch(settledText);
-      if (t) {
-        const ors = [`pr_number.ilike.%${t}%`];
-        const [mat, proj, ppl] = await Promise.all([
-          supabase
-            .from("purchase_request_items")
-            .select("purchase_request_id, items!inner(name)")
-            .ilike("items.name", `%${t}%`)
-            .limit(200),
-          supabase.from("projects").select("id").or(`name.ilike.%${t}%,code.ilike.%${t}%`),
-          supabase.from("profiles").select("id").or(`full_name.ilike.%${t}%,email.ilike.%${t}%`),
-        ]);
-        const ids = [...new Set((mat.data ?? []).map((x) => x.purchase_request_id))];
-        if (ids.length) ors.push(`id.in.(${ids.join(",")})`);
-        if (proj.data?.length) ors.push(`project_id.in.(${proj.data.map((x) => x.id).join(",")})`);
-        if (ppl.data?.length) ors.push(`requested_by.in.(${ppl.data.map((x) => x.id).join(",")})`);
-        r = r.or(ors.join(","));
-      }
-      const { data, error, count } = await r;
+      const {data,error,count} = await r;
       if (error) throw error;
       return { rows: data ?? [], count: count ?? 0 };
     },
   });
+
+  // When searching, fetch the complete currently authorized/filter-scoped set
+  // before applying multi-field terms and pagination. The old 200-row material
+  // lookup silently omitted PRs and stripped punctuation from pasted names.
+  // No text is interpolated into PostgREST .or() syntax.
+  const searchResults = useQuery({
+    queryKey: [
+      "pr-search-catalog", status, projectId, buildingId, priority,
+      requester, fy, from, to, sp.due,
+    ],
+    enabled: searching && refs.isSuccess,
+    queryFn: async () => loadCompleteRows(async (start,end) => {
+      let r = supabase
+        .from("purchase_requests")
+        .select(
+          "id,pr_number,request_date,required_by,priority,status,requested_by,projects(code,name),buildings(name),purchase_request_items(items(name,code))",
+          { count: "exact" },
+        )
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(start,end);
+      if (status) r = r.eq("status", status as PrStatus);
+      if (projectId) r = r.eq("project_id", projectId);
+      if (buildingId) r = r.eq("building_id", buildingId);
+      if (priority) r = r.eq("priority", priority as PrPriority);
+      if (requester) r = r.eq("requested_by", requester);
+      if (fy) r = r.gte("request_date", `${fy}-04-01`).lte("request_date", `${Number(fy) + 1}-03-31`);
+      if (from) r = r.gte("request_date", from);
+      if (to) r = r.lte("request_date", to);
+      if (sp.due) {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        r = r.lte("required_by", d.toISOString().slice(0, 10))
+          .in("status", ["draft", "pending_approval", "approved"]);
+      }
+      return await r;
+    }),
+  });
+
+  const peopleById = new Map((refs.data?.people ?? []).map(p => [p.id,p]));
+  const matched = searching
+    ? (searchResults.data ?? []).filter(pr => {
+        const person=peopleById.get(pr.requested_by);
+        return matchesRecordSearch([
+          pr.pr_number,pr.projects?.name,pr.projects?.code,
+          pr.buildings?.name,person?.full_name,person?.email,
+          ...(pr.purchase_request_items ?? []).flatMap(line => [line.items?.name,line.items?.code]),
+        ],settledText);
+      })
+    : [];
+  const result = searching
+    ? { rows: matched.slice(page*PAGE,(page+1)*PAGE), count:matched.length }
+    : q.data;
+  const loading = searching ? refs.isLoading || searchResults.isLoading : q.isLoading;
+  const error = searching ? refs.error ?? searchResults.error : q.error;
 
   const reset = () => setPage(0);
   const people = refs.data?.people ?? [];
@@ -136,13 +166,13 @@ function PrList() {
     const p = people.find((x) => x.id === id);
     return p?.full_name ?? p?.email ?? "—";
   };
-  const pages = Math.max(1, Math.ceil((q.data?.count ?? 0) / PAGE));
+  const pages = Math.max(1, Math.ceil((result?.count ?? 0) / PAGE));
 
   return (
     <>
       <PageHeader
         title="Purchase Requests"
-        subtitle={`${q.data?.count ?? 0} requests${sp.due ? " · due within 7 days" : ""}`}
+        subtitle={`${result?.count ?? 0} requests${sp.due ? " · due within 7 days" : ""}`}
         actions={
           can("purchase_request.create") && (
             <Button asChild size="sm">
@@ -288,11 +318,11 @@ function PrList() {
           aria-label="To date"
         />
       </RegisterFilters>
-      {q.isLoading ? (
+      {loading ? (
         <Loading />
-      ) : q.error ? (
-        <div className="text-sm text-destructive">{errMsg(q.error)}</div>
-      ) : (q.data?.rows ?? []).length === 0 ? (
+      ) : error ? (
+        <div className="text-sm text-destructive">{errMsg(error)}</div>
+      ) : (result?.rows ?? []).length === 0 ? (
         <Empty>No purchase requests match these filters.</Empty>
       ) : (
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
@@ -311,7 +341,7 @@ function PrList() {
               </tr>
             </thead>
             <tbody>
-              {(q.data?.rows ?? []).map((r) => (
+              {(result?.rows ?? []).map((r) => (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium tabular-nums font-medium">
                     <Link
