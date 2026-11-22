@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { shiftWheelScrollTarget } from "../../src/lib/horizontal-scroll.ts";
+import { shiftWheelScrollTarget, tableWheelScrollTarget } from "../../src/lib/horizontal-scroll.ts";
 
 const state = { scrollLeft: 50, clientWidth: 900, scrollWidth: 2200 };
 const wheel = (props = {}) => ({
@@ -44,8 +44,59 @@ test("desktop tables provide native horizontal overflow and prevent browser swip
   assert.match(css, /@media \(max-width: 767px\)/);
   assert.match(hook, /Horizontally scrollable table/);
   assert.match(hook, /tabIndex = 0/);
-  assert.match(hook, /shiftWheelScrollTarget\(container, event\)/);
+  assert.match(hook, /tableWheelScrollTarget\(container, event\)/);
+  assert.match(hook, /if \(event\.cancelable\) event\.preventDefault\(\)/);
   assert.match(hook, /container\.addEventListener\("wheel", onWheel, \{ passive: false \}\)/);
   assert.match(hook, /window\.addEventListener\("resize", resize\)/);
   assert.match(hook, /container\.removeEventListener\("wheel", area\.onWheel\)/);
+});
+
+test("Mac two-finger wheel moves tables in both directions with natural deltaX sign", () => {
+  const at = { scrollLeft: 530, clientWidth: 800, scrollWidth: 2200 };
+  // Move the scroll position right, then return left using negative deltaX.
+  const right = tableWheelScrollTarget(at, wheel({ shiftKey:false, deltaX:140, deltaY:8 }));
+  assert.equal(right,670);
+  assert.equal(tableWheelScrollTarget({ ...at, scrollLeft:right },wheel({
+    shiftKey:false, deltaX:-125, deltaY:5
+  })),545);
+  assert.equal(tableWheelScrollTarget(at,wheel({ shiftKey:false,deltaX:-140,deltaY:3 })),390);
+  assert.equal(tableWheelScrollTarget(at,wheel({ shiftKey:false,deltaX:90,deltaY:-20 })),620);
+});
+
+test("horizontal gestures are consumed at BOTH ends to avoid Opera/Chrome history swipe", () => {
+  const max=1400;
+  const start={scrollLeft:0, clientWidth:800, scrollWidth:2200};
+  assert.equal(tableWheelScrollTarget(start,wheel({shiftKey:false,deltaX:-200,deltaY:0})),0);
+  assert.equal(tableWheelScrollTarget({...start,scrollLeft:max},wheel({
+    shiftKey:false,deltaX:200,deltaY:0
+  })),max);
+  // A null result only occurs when it truly should be left to the browser.
+  assert.equal(tableWheelScrollTarget(start,wheel({shiftKey:false,deltaX:0,deltaY:80})),null);
+  assert.equal(tableWheelScrollTarget({...start,scrollWidth:800},wheel({
+    shiftKey:false,deltaX:-100,deltaY:0
+  })),null);
+});
+
+test("horizontal gesture detection preserves vertical scroll, zoom and Mac modifier keys",()=>{
+  assert.equal(tableWheelScrollTarget(state,wheel({
+    shiftKey:false,deltaX:20,deltaY:200
+  })),null);
+  assert.equal(tableWheelScrollTarget(state,wheel({
+    shiftKey:false,deltaX:-30,deltaY:5,metaKey:true
+  })),null);
+  assert.equal(tableWheelScrollTarget(state,wheel({
+    shiftKey:false,deltaX:-30,deltaY:5,ctrlKey:true
+  })),null);
+  assert.equal(tableWheelScrollTarget(state,wheel({
+    shiftKey:false,deltaX:-30,deltaY:5,altKey:true
+  })),null);
+  assert.equal(tableWheelScrollTarget(state,wheel({
+    shiftKey:false,deltaX:40,deltaY:0,deltaMode:1
+  })),850);
+  assert.equal(tableWheelScrollTarget(state,wheel({
+    shiftKey:false,deltaX:1,deltaY:0,deltaMode:2
+  })),950);
+  assert.equal(tableWheelScrollTarget(state,wheel({
+    shiftKey:true,deltaX:0,deltaY:-90
+  })),0);
 });
