@@ -475,6 +475,73 @@ def test_pr_manager_received_notification():
     print("PASS PR receipt notifications distinguish Purchase Manager actions from Director-origin requests")
 
 
+def test_super_admin_delete_unused_grn():
+    """Super Admin may permanently remove only an unposted, unlinked GRN.
+    The full receipt snapshot remains audited and PO/stock is untouched.
+    """
+    with db() as c:
+        po=seed_po(c,requester=SITE)
+        c.execute("RESET ROLE")
+        original_stock=c.execute("SELECT count(*) FROM inventory_transactions").fetchone()[0]
+        original_po=c.execute("SELECT status::text FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]
+        name="QA-UNUSED-GRN-"+str(uuid4())
+        draft=c.execute("""INSERT INTO goods_receipt_notes(
+            grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+            received_by,status
+          ) VALUES(%s,%s,%s,%s,%s,%s,%s,'draft') RETURNING id""",
+            (name,A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+
+        actor(c,SITE)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_unused_grn(%s,'Wrong entry')",(draft,)),
+               "Only an active Super Admin")
+        actor(c,DIRECTOR)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_unused_grn(%s,'Wrong entry')",(draft,)),
+               "Only an active Super Admin")
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT super_admin_delete_unused_grn(%s,'')",(draft,)),
+               "deletion reason")
+        c.execute("SELECT super_admin_delete_unused_grn(%s,'Duplicate unused draft')",(draft,))
+        assert c.execute("SELECT count(*) FROM goods_receipt_notes WHERE id=%s",(draft,)).fetchone()[0]==0
+        c.execute("RESET ROLE")
+        snapshots=c.execute("""SELECT reason,old_data->'header'->>'grn_number',
+                  jsonb_array_length(old_data->'items')
+                FROM audit_logs WHERE entity_id=%s AND action='grn_permanently_deleted'""",
+                (str(draft),)).fetchall()
+        assert snapshots==[('Duplicate unused draft',name,0)],snapshots
+        assert c.execute("SELECT count(*) FROM inventory_transactions").fetchone()[0]==original_stock
+        assert c.execute("SELECT status::text FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]==original_po
+
+        cancelled=c.execute("""INSERT INTO goods_receipt_notes(
+          grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+          received_by,status,cancel_reason
+          ) VALUES(%s,%s,%s,%s,%s,%s,%s,'cancelled','Mistake')
+          RETURNING id""",
+          ("QA-CANCELLED-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+        actor(c,ADMIN)
+        c.execute("SELECT super_admin_delete_unused_grn(%s,'Cancelled duplicate receipt')",(cancelled,))
+        assert c.execute("SELECT count(*) FROM goods_receipt_notes WHERE id=%s",(cancelled,)).fetchone()[0]==0
+
+        c.execute("RESET ROLE")
+        posted=c.execute("""INSERT INTO goods_receipt_notes(
+          grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+          received_by,status,posted_at
+          ) VALUES(%s,%s,%s,%s,%s,%s,%s,'posted',now()) RETURNING id""",
+          ("QA-POSTED-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+        reversed_grn=c.execute("""INSERT INTO goods_receipt_notes(
+          grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+          received_by,status,posted_at
+          ) VALUES(%s,%s,%s,%s,%s,%s,%s,'cancelled',now()) RETURNING id""",
+          ("QA-REVERSED-GRN-"+str(uuid4()),A,po,VENDOR,PROJECT,WAREHOUSE,SITE)).fetchone()[0]
+        actor(c,ADMIN)
+        for protected in (posted,reversed_grn):
+            denied(c,lambda: c.execute("SELECT super_admin_delete_unused_grn(%s,'Must remain')",
+                                        (protected,)),
+                   "Only never-posted")
+            assert c.execute("SELECT count(*) FROM goods_receipt_notes WHERE id=%s",(protected,)).fetchone()[0]==1
+        c.rollback()
+    print("PASS Super Admin only deletes unused GRNs, preserves audit snapshot and PO/stock; posted/reversed blocked")
+
+
 def test_cancel_draft_grn_engineer_and_super_admin():
     """Only creator engineer/super-admin can cancel unposted GRNs.
     Audit and original receipts remain. No PO/stock change or expanded ACL.
@@ -1883,6 +1950,7 @@ if __name__ == "__main__":
     test_site_engineer_requires_project_assignment_for_pr()
     test_engineer_assigned_project_pr_po_visibility()
     test_cancel_draft_grn_engineer_and_super_admin()
+    test_super_admin_delete_unused_grn()
     from pr_0099_access_acceptance import exercise_pr_revocation
     exercise_pr_revocation(db,actor,denied,save_pr,ADMIN,SITE,PROJECT)
     test_quote_freight_gst_matches_supplier_and_po()
