@@ -57,7 +57,7 @@ export function workflowPresentation(
   lastAction?: string | null,
 ): WorkflowPresentation {
   if (kind === "purchase_request") {
-    const labels = ["Prepare request", "PR approval", "Vendor quotations", "Purchase order"];
+    const labels = ["Prepare request", "Purchase Manager review", "Vendor quotations", "Purchase order"];
     if (TERMINATED.has(status)) return {
       stateLabel: status === "cancelled" ? "Cancelled" : "Rejected",
       stages: progress(labels, 1, null, 1),
@@ -78,11 +78,11 @@ export function workflowPresentation(
       finished: false, blocked: lastAction === "returned",
     };
     if (status === "pending_approval") return {
-      stateLabel: "Awaiting PR approval",
+      stateLabel: "Awaiting purchasing review",
       stages: progress(labels, 1, 1),
-      nextTitle: "Review and decide on the request",
+      nextTitle: "Review and receive the purchase request",
       nextOwner: "Authorized Project Manager / Purchase Manager / Director",
-      nextDescription: "An eligible approver other than the requester must approve or return the request. No individual has been assigned by this display.",
+      nextDescription: "An authorized reviewer other than the requester must accept this PR for quotations or return it for correction. Director approval of the resulting PO is a separate stage; no individual has been assigned by this display.",
       finished: false, blocked: false,
     };
     if (status === "approved") {
@@ -97,7 +97,7 @@ export function workflowPresentation(
       let nextDescription = "Procurement can issue an RFQ, collect quotations and prepare the next Purchase Order.";
       if (hasVisibleRFQ && rfqStatuses.length === 0) {
         nextTitle = "Create the RFQ";
-        nextDescription = "The approved request is ready for procurement staff to create an RFQ.";
+        nextDescription = "The purchase request has been received for procurement and is ready for staff to create an RFQ.";
       } else if (rfqReady) {
         nextTitle = "Continue Purchase Order processing";
         nextDescription = "A linked RFQ is ready for PO processing. Procurement should check for an existing PO before creating another.";
@@ -118,7 +118,7 @@ export function workflowPresentation(
         nextDescription = "The visible RFQs are cancelled; procurement must decide how to proceed.";
       }
       return {
-        stateLabel: "PR approved",
+        stateLabel: "Purchase Manager received your request",
         stages: progress(labels, rfqReady || rfqClosed ? 3 : 2, rfqReady || rfqClosed ? 3 : 2),
         nextTitle, nextOwner: "Authorized procurement staff",
         nextDescription, finished: false, blocked: false,
@@ -251,7 +251,7 @@ const ACTION_LABELS: Record<WorkflowKind, Record<string, string>> = {
   purchase_request: {
     created: "Request created",
     submitted: "Submitted for approval",
-    approved: "Request approved",
+    approved: "Purchase Manager received your request",
     returned: "Returned for correction",
     rejected: "Request rejected",
     cancelled: "Request cancelled",
@@ -281,6 +281,12 @@ export function workflowEventTitle(kind: WorkflowKind, event: WorkflowEvent): st
   if (event.action === "submitted" && event.newStatus === "approved") {
     return kind === "purchase_order" ? "PO finalized by creating Director"
       : "Request finalized by creating Director";
+  }
+  // Director-authored PRs can be finalized directly; do not attribute that
+  // special path to the Purchase Manager simply because its status is approved.
+  if (kind === "purchase_request" && event.action === "approved" &&
+      event.comment?.includes("Finalized by the requesting Director")) {
+    return "Request finalized by requesting Director";
   }
   return ACTION_LABELS[kind][event.action] ?? event.action.replaceAll("_", " ");
 }
