@@ -580,7 +580,7 @@ def test_director_approved_po_alerts_original_pr_engineer_phone():
         """,(SITE,link)).fetchall()
         assert len(rows)==1,rows
         n=rows[0]
-        assert "Karim Sir approved PO " + po_number == n[2],n
+        assert "Karim Sir approved " + po_number == n[2],n
         assert pr_number in n[3] and po_number in n[3],n
         assert project_name in n[3] and vendor_name in n[3],n
         assert n[4]==link
