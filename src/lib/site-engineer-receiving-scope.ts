@@ -1,15 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
-
-/** Match immutable project IDs, never project names or original request owners. */
-export function canReceiveAssignedProject(
-  projectId: string,
-  assignedProjectIds: readonly string[],
-  isScopedEngineer: boolean,
-): boolean {
-  return !isScopedEngineer || assignedProjectIds.includes(projectId);
-}
+import { canReceiveAssignedProject } from "@/lib/receiving-project-access";
 
 /**
  * Site Engineers operate by explicit project assignment, not by PR/PO creator.
