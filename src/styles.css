@@ -1835,7 +1835,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
-.workspace-more-grid button {
+.workspace-more-grid button,
+.workspace-more-grid a {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1855,10 +1856,15 @@
   color: var(--primary);
   stroke-width: 1.7;
 }
-.workspace-more-grid button[aria-pressed="true"] {
+.workspace-more-grid button[aria-pressed="true"],
+.workspace-more-grid a[aria-current="page"] {
   background: var(--accent);
   color: var(--primary);
   border-color: var(--primary);
+}
+.workspace-more-grid a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .workspace-more-links {
   margin-top: 20px;
