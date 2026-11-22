@@ -328,21 +328,21 @@ function SmallExpenses() {
             :"mb-3 hidden flex-wrap gap-2 md:flex"
           :"mb-3 flex flex-wrap gap-2"}>
         <select aria-label="Project filter" className={isSiteEngineer?selectCls+" min-w-0 w-full md:w-auto":selectCls} value={projectFilter} onChange={e=>{setProjectFilter(e.target.value);setBuildingFilter("");setPage(0);}}>
-          <option value="">All projects and office</option>
-          <option value="office">General office (no project)</option>
+          <option value="">{isSiteEngineer?"All my projects":"All projects and office"}</option>
+          {!isSiteEngineer&&<option value="office">General office (no project)</option>}
           {[...new Map(all.filter(x=>x.project_id).map(x=>[x.project_id!,{id:x.project_id!,name:x.projects?.name??"Project"}])).values()]
             .map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
-        <select aria-label="Building filter" className={selectCls} value={buildingFilter}
+        <select aria-label="Building filter" className={isSiteEngineer?selectCls+" min-w-0 w-full md:w-auto":selectCls} value={buildingFilter}
           disabled={projectFilter==="office"} onChange={e=>{setBuildingFilter(e.target.value);setPage(0);}}>
           <option value="">All buildings and general work</option>
           <option value="general">General project work / no building</option>
           {buildingOptions.map(x=><option key={x.id} value={x.id}>{x.project} / {x.name}</option>)}
         </select>
-        <select aria-label="Category filter" className={selectCls} value={categoryFilter} onChange={e=>{setCategoryFilter(e.target.value);setPage(0);}}>
+        <select aria-label="Category filter" className={isSiteEngineer?selectCls+" min-w-0 w-full md:w-auto":selectCls} value={categoryFilter} onChange={e=>{setCategoryFilter(e.target.value);setPage(0);}}>
           <option value="">All categories</option>{Object.entries(SMALL_EXPENSE_CATEGORIES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
         </select>
-        <div className="min-w-[190px] flex-1 sm:max-w-[280px]">
+        <div className={isSiteEngineer?"hidden min-w-0 flex-1 md:block md:min-w-[190px] md:max-w-[280px]":"min-w-[190px] flex-1 sm:max-w-[280px]"}>
           <Input
             aria-label="Vendor name filter"
             placeholder="Search vendor / paid to"
@@ -354,10 +354,46 @@ function SmallExpenses() {
             {vendorSuggestions.map(name=><option key={name} value={name}/>)}
           </datalist>
         </div>
-        <Input aria-label="From date" type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setPage(0);}}/>
-        <Input aria-label="To date" type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setPage(0);}}/>
+        <div className={isSiteEngineer?"min-w-0 md:w-auto":"contents"}>
+          {isSiteEngineer&&<label htmlFor="small-expense-filter-from" className="mb-1 block text-xs font-medium md:sr-only">From date</label>}
+          <Input id="small-expense-filter-from" aria-label="From date" className={isSiteEngineer?"min-h-11 w-full md:w-auto":undefined} type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setPage(0);}}/>
+        </div>
+        <div className={isSiteEngineer?"min-w-0 md:w-auto":"contents"}>
+          {isSiteEngineer&&<label htmlFor="small-expense-filter-to" className="mb-1 block text-xs font-medium md:sr-only">To date</label>}
+          <Input id="small-expense-filter-to" aria-label="To date" className={isSiteEngineer?"min-h-11 w-full md:w-auto":undefined} type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setPage(0);}}/>
+        </div>
+        {isSiteEngineer&&<Button type="button" variant="ghost" className="min-h-11 md:hidden" onClick={clearFilters}>
+          Clear filters
+        </Button>}
       </div>
-      <div className="mb-3 grid gap-3 md:grid-cols-2">
+      {isSiteEngineer&&<details className="mb-4 rounded-xl border bg-card px-4 py-3 md:hidden">
+        <summary className="cursor-pointer text-sm font-medium">Expense breakdown by category and project</summary>
+        <div className="mt-4 grid gap-4 border-t pt-4 text-sm">
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h3>
+            <div className="space-y-2">
+              {[...total.byCategory.entries()].sort((a,b)=>b[1]-a[1]).map(([category,amount])=>
+                <div key={category} className="flex min-w-0 items-baseline justify-between gap-3">
+                  <span className="min-w-0 break-words">{optionLabel(category,SMALL_EXPENSE_CATEGORIES)}</span>
+                  <strong className="shrink-0 tabular-nums">{inr(amount)}</strong>
+                </div>)}
+              {!total.byCategory.size&&<p className="text-muted-foreground">No expenses match these filters.</p>}
+            </div>
+          </section>
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</h3>
+            <div className="space-y-2">
+              {[...total.byProject.entries()].sort((a,b)=>b[1]-a[1]).map(([id,amount])=>
+                <div key={id} className="flex min-w-0 items-baseline justify-between gap-3">
+                  <span className="min-w-0 break-words">{id==="office"?"General office":all.find(x=>x.project_id===id)?.projects?.name??"Project"}</span>
+                  <strong className="shrink-0 tabular-nums">{inr(amount)}</strong>
+                </div>)}
+              {!total.byProject.size&&<p className="text-muted-foreground">No expenses match these filters.</p>}
+            </div>
+          </section>
+        </div>
+      </details>}
+      <div className={isSiteEngineer?"mb-3 hidden gap-3 md:grid md:grid-cols-2":"mb-3 grid gap-3 md:grid-cols-2"}>
         <div className="rounded-xl border bg-card p-4"><h3 className="text-sm font-semibold">Category totals</h3>
           <div className="mt-3 space-y-2 text-sm">{[...total.byCategory.entries()].sort((a,b)=>b[1]-a[1]).map(([category,amount])=>
             <div key={category} className="flex justify-between gap-3"><span>{optionLabel(category,SMALL_EXPENSE_CATEGORIES)}</span><strong>{inr(amount)}</strong></div>)}
@@ -378,7 +414,45 @@ function SmallExpenses() {
           </>}
         </div>
       </div>
-      <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
+      {isSiteEngineer&&<section aria-label="My expense records" className="mb-3 space-y-3 md:hidden">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">My expenses</h3>
+          <span className="text-xs text-muted-foreground">{rows.length} results</span>
+        </div>
+        {pageRows.map(x=>
+          <article key={x.id} className="min-w-0 overflow-hidden rounded-2xl border bg-card p-4 shadow-card">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CalendarDays aria-hidden="true" className="h-3.5 w-3.5 shrink-0"/>{fmtDate(x.spent_on)}
+                </p>
+                <h4 className="mt-2 break-words text-base font-semibold leading-snug [overflow-wrap:anywhere]">{x.paid_to}</h4>
+                <p className="mt-1 break-words text-xs text-muted-foreground">{optionLabel(x.category,SMALL_EXPENSE_CATEGORIES)}{x.category==="other"&&x.other_category_detail?" · "+x.other_category_detail:""}</p>
+              </div>
+              <p className="max-w-[52%] shrink-0 break-words text-right text-lg font-bold leading-tight tracking-tight tabular-nums [overflow-wrap:anywhere]">{inr(x.amount)}</p>
+            </div>
+            <p className="mt-3 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{x.description}</p>
+            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 border-t pt-3 text-xs text-muted-foreground">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Building2 aria-hidden="true" className="h-3.5 w-3.5 shrink-0"/>
+                <span className="min-w-0 break-words">{x.projects?.name??"General office"}{x.buildings?.name?" / "+x.buildings.name:""}</span>
+              </span>
+              <span className="rounded-md bg-muted px-2 py-1">{optionLabel(x.payment_method,SMALL_EXPENSE_PAYMENTS)}</span>
+              {x.receipt_reference&&<span className="break-all">Ref: {x.receipt_reference}</span>}
+            </div>
+            <Button type="button" variant="outline"
+              className="mt-3 min-h-11 w-full justify-between"
+              onClick={()=>setViewing(x as SmallExpenseRecord)}>
+              View expense <ChevronRight aria-hidden="true" className="h-4 w-4"/>
+            </Button>
+          </article>)}
+        {!rows.length&&<div className="rounded-2xl border border-dashed bg-muted/20 px-5 py-12 text-center">
+          <ReceiptText aria-hidden="true" className="mx-auto mb-3 h-8 w-8 text-muted-foreground"/>
+          <p className="text-sm font-semibold">No expenses found</p>
+          <p className="mt-1 text-xs text-muted-foreground">Record your first expense, or clear the filters.</p>
+        </div>}
+      </section>}
+      <div className={isSiteEngineer?"doc-table hidden overflow-x-auto rounded-xl border bg-card shadow-card md:block":"doc-table overflow-x-auto rounded-xl border bg-card shadow-card"}>
         <table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b bg-muted/30 text-xs"><tr>
           <th className="p-3">Date</th><th className="p-3">Project / building</th><th className="p-3">Category</th>
           <th className="p-3">Paid to / purpose</th><th className="p-3">Method</th><th className="p-3">Receipt</th>
