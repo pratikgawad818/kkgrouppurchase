@@ -42,6 +42,30 @@ import {
 } from "@/lib/workspace-navigation";
 import { cn } from "@/lib/utils";
 
+// Page finder uses only navigation destinations that the authenticated shell
+// already authorized. These aliases improve Ctrl/Cmd+K without exposing
+// cross-role records or pretending to search individual business documents.
+export const PAGE_SEARCH_ALIASES: Record<string,string> = {
+  "/procurement/purchase-requests": "PR requisition material request",
+  "/procurement/rfqs": "RFQ request quotation vendor quote",
+  "/procurement/vendor-quotations": "quote bid vendor rate",
+  "/procurement/purchase-orders": "PO supplier order",
+  "/inventory/goods-received": "GRN goods receipt",
+  "/inventory/delivery-challans": "DC supplier dispatch",
+  "/inventory/material-issues": "issue return consumption",
+  "/inventory/stock-movements": "stock transfer ledger",
+  "/inventory/reorder-planning": "low minimum reorder",
+  "/finance/vendor-invoices": "invoice bill",
+  "/finance/payments": "payment",
+  "/finance/small-expenses": "petty cash small bill",
+  "/sales": "flat unit buyer booking cancellation",
+  "/vendors": "supplier directory",
+  "/materials": "item catalogue",
+  "/warehouses": "stores warehouse",
+  "/settings/users": "staff permissions roles",
+  "/audit": "audit history",
+};
+
 const icons = {
   home: Home,
   purchasing: ShoppingCart,
@@ -351,7 +375,7 @@ export function WorkspaceFrame({
               {group.items.map((item) => (
                 <CommandItem
                   key={item.to}
-                  value={`${group.label} ${item.label}`}
+                  value={`${group.label} ${item.label} ${PAGE_SEARCH_ALIASES[item.to] ?? ""}`}
                   onSelect={() => go(item.to)}
                 >
                   {item.label}
