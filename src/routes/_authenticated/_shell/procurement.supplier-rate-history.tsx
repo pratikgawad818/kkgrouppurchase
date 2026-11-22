@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowUpRight, BadgeIndianRupee, CalendarDays, Package, Store, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Empty, Loading, SearchBox, Stat } from "@/components/erp/common";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
 import { fmtDate, errMsg } from "@/lib/format";
 import { today } from "@/lib/finance";
@@ -76,13 +77,13 @@ function SupplierRates() {
     (!project || x.projectId === project) &&
     (days === null || (calendarDaysBetween(x.date, current) >= 0 && calendarDaysBetween(x.date, current) <= days)));
   const groups = summarizeSupplierRates(scoped);
-  const term = search.trim().toLowerCase();
   const matching = groups.filter(x =>
     (!onlyComparable || x.vendors.length >= 2) &&
-    (!term || [x.materialName, x.materialCode, x.unitCode].some(s => s.toLowerCase().includes(term))));
+    matchesRecordSearch([x.materialName, x.materialCode, x.unitCode],search));
   const compared = groups.filter(x => x.vendors.length >= 2).length;
   const vendorCount = new Set(scoped.map(x => x.vendorId)).size;
-  const pageRows = matching.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const visiblePage = visibleSearchPage(page,matching.length,PAGE_SIZE);
+  const pageRows = matching.slice(visiblePage * PAGE_SIZE, (visiblePage + 1) * PAGE_SIZE);
   const change = (setter: (value: string) => void, value: string) => { setter(value); setPage(0); };
 
   return <div className="pb-16">
@@ -124,7 +125,7 @@ function SupplierRates() {
         {pageRows.map(material => <MaterialRateCard key={material.materialId + ":" + material.unitId} material={material} />)}
       </div>
     }
-    <Pager page={page} total={matching.length} size={PAGE_SIZE} onPage={setPage} />
+    <Pager page={visiblePage} total={matching.length} size={PAGE_SIZE} onPage={setPage} />
 
     <section className="mt-7 rounded-xl border bg-card p-4 sm:p-5">
       <h3 className="text-sm font-semibold">Purchasing interpretation</h3>
