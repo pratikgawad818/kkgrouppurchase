@@ -4,27 +4,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { errMsg } from "@/lib/format";
+import { canCancelDraftGrn } from "@/lib/grn-draft-cancellation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-/**
- * Draft-only permission, independent of grn.cancel (which can reverse posted
- * stock). Backend enforces the same checks under row lock.
- */
-export function canCancelDraftGrn({
-  status, receivedBy, viewerId, roles, canCreate,
-}: {
-  status: string;
-  receivedBy: string | null;
-  viewerId: string | null | undefined;
-  roles: readonly string[];
-  canCreate: boolean;
-}): boolean {
-  if (status !== "draft" || !viewerId) return false;
-  if (roles.includes("super_admin")) return true;
-  return roles.includes("site_engineer") && canCreate && receivedBy === viewerId;
-}
 
 // The new RPC is deployed separately from the generated Supabase type snapshot.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
