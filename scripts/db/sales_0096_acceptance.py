@@ -5,6 +5,7 @@ Every synthetic record is rolled back.
 """
 import json
 from decimal import Decimal
+from datetime import timedelta
 from uuid import uuid4
 
 
@@ -60,12 +61,18 @@ def exercise_commercial(db,actor,denied,project,admin,site,foreign_director,comp
         denied(c,lambda:c.execute("SELECT sales_save_buyer_details(%s,'',NULL,NULL,NULL,NULL,'pan','1234567890',NULL)",
                                   (booking,)))
         actor(c,admin)
+        # Keep QA instalments relative to this freshly created synthetic
+        # booking. A hard-coded 2026-11-21 date broke the daily CI after
+        # that day passed, despite no production sales workflow regression.
+        booked_on=c.execute("SELECT booked_on FROM property_sales WHERE id=%s",(booking,)).fetchone()[0]
+        booking_due=booked_on.isoformat()
+        agreement_due=(booked_on+timedelta(days=30)).isoformat()
         milestones=[
-            {"label":"Booking","due_on":"2026-11-21","amount":"17000"},
-            {"label":"Agreement","due_on":"2026-12-31","amount":"1600000"}
+            {"label":"Booking","due_on":booking_due,"amount":"17000"},
+            {"label":"Agreement","due_on":agreement_due,"amount":"1600000"}
         ]
         denied(c,lambda:c.execute("SELECT sales_set_payment_plan(%s,%s::jsonb,'Wrong sum')",
-                                  (booking,json.dumps([{"label":"Booking","due_on":"2026-11-21","amount":"1"}]))))
+                                  (booking,json.dumps([{"label":"Booking","due_on":booking_due,"amount":"1"}]))))
         assert c.execute("SELECT sales_set_payment_plan(%s,%s::jsonb,'Agreed sale schedule')",
                          (booking,json.dumps(milestones))).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM sales_current_milestones(%s)",(booking,)).fetchone()[0]==2
