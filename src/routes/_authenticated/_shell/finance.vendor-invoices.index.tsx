@@ -15,6 +15,7 @@ import { useCan } from "@/lib/session";
 import { badge, INVOICE_STATUS, MATCH_STATUS, type InvoiceStatus } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { summarizeInvoiceStatuses } from "@/lib/invoice-status-summary";
+import { matchesRecordSearch } from "@/lib/erp-search";
 
 const META = "Vendor invoices matched against purchase orders and goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/")({
@@ -66,20 +67,16 @@ function InvoiceList() {
     ...new Map(arr.map((x) => [key(x), x])).values(),
   ];
   const rows = useMemo(() => {
-    const s = deferredSearch.trim().toLowerCase();
     return (q.data ?? []).filter(
       (x) =>
         (!f.status || x.status === f.status) &&
         (!f.vendor || x.vendor_id === f.vendor) &&
         (!f.project || x.project_id === f.project) &&
         (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)) &&
-        (!s ||
-          [
-            x.invoice_number,
-            x.vendor_invoice_number,
-            x.vendors?.company_name,
-            x.purchase_orders?.po_number,
-          ].some((v) => v?.toLowerCase().includes(s))),
+        matchesRecordSearch([
+          x.invoice_number, x.vendor_invoice_number, x.vendors?.company_name,
+          x.projects?.name, x.purchase_orders?.po_number,
+        ], deferredSearch),
     );
   }, [q.data, f, deferredSearch]);
   const totals = useMemo(() => summarizeInvoiceStatuses(rows), [rows]);
@@ -114,7 +111,7 @@ function InvoiceList() {
               setSearch(v);
               setPage(0);
             }}
-            placeholder="Invoice, bill no., vendor, PO"
+            placeholder="Invoice, bill, vendor, project or PO"
           />
         </div>
         <select
