@@ -9,6 +9,7 @@ import {
   LogOut,
   PackageCheck,
   FileText,
+  Receipt,
   Menu,
   MoreHorizontal,
   Search,
@@ -39,6 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   mobileWorkspaceNavigation,
+  siteEngineerMoreQuickLinks,
   workspaceLocation,
   type WorkspaceNavGroup,
 } from "@/lib/workspace-navigation";
@@ -295,6 +297,7 @@ export function WorkspaceFrame({
     </nav>
   );
   const bottom = mobileWorkspaceNavigation(groups, isDirector, isSiteEngineer);
+  const moreQuickLinks = siteEngineerMoreQuickLinks(groups, isSiteEngineer);
   const isBottomActive = (item: (typeof bottom)[number]) => {
     // Both receiving shortcuts live in Inventory. Match their exact route
     // rather than activating Receive, Challan and Stock simultaneously.
@@ -324,6 +327,20 @@ export function WorkspaceFrame({
                 <p>Everything else in your workspace</p>
               </div>
               <div className="workspace-more-grid" aria-label="Workspace modules">
+                {moreQuickLinks.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => {
+                      setMobileGroup(null);
+                      setMenuOpen(false);
+                    }}
+                    aria-current={path === item.to ? "page" : undefined}
+                  >
+                    <Receipt aria-hidden />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
                 {groups
                   .filter((group) => group.key !== "home")
                   .map((group) => {
