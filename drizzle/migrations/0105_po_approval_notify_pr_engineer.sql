@@ -10,7 +10,7 @@ RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $function$
-DECLARE ctx record;
+DECLARE ctx record; engineer_notified uuid;
 BEGIN
   -- A status-only change triggers once; updates leaving status unchanged
   -- must not notify the engineer or dispatch another phone push.
@@ -26,13 +26,6 @@ BEGIN
         '/approvals?kind=purchase_order&id='||NEW.id
       );
     ELSIF NEW.status IN ('approved','rejected') THEN
-      -- Preserve the existing notification for the PO preparer.
-      PERFORM public.notify_document_creator(
-        NEW.created_by,NEW.company_id,NEW.project_id,
-        'Purchase order '||NEW.po_number||' was '||NEW.status::text,
-        '/procurement/purchase-orders/'||NEW.id
-      );
-
       IF NEW.status='approved' AND NEW.approved_by IS NOT NULL THEN
         -- This is a *separate* recipient: only the original PR requester,
         -- only if that person is an active Site Engineer in the same
@@ -68,7 +61,18 @@ BEGIN
           AND public.has_role(approver.id,'director')
           AND public.has_permission(requester.id,'purchase_order.view')
           AND public.can_access_project(requester.id,NEW.project_id)
-          AND requester.id IS DISTINCT FROM NEW.created_by;
+        RETURNING user_id INTO engineer_notified;
+      END IF;
+
+      -- Preserve the existing message to the PO preparer; if the original
+      -- engineer also prepared the order, the personalized approval alert
+      -- above replaces the generic alert so they receive exactly one.
+      IF NEW.created_by IS DISTINCT FROM engineer_notified THEN
+        PERFORM public.notify_document_creator(
+          NEW.created_by,NEW.company_id,NEW.project_id,
+          'Purchase order '||NEW.po_number||' was '||NEW.status::text,
+          '/procurement/purchase-orders/'||NEW.id
+        );
       END IF;
     END IF;
   END IF;
