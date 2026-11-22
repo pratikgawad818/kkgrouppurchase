@@ -25,7 +25,7 @@ test("site challan entry blocks saving without a photo and uploads evidence befo
   assert.match(src, /if \(!photoFile\) throw new Error/);
   assert.match(src, /uploadProcurementAttachment\(photoFile, companyId, userId\)/);
   assert.match(src, /photo_path: photoPath/);
-  assert.match(src, /disabled=\{create\.isPending \|\| items\.isLoading \|\| !photoFile\}/);
+  assert.match(src, /disabled=\{create\.isPending \|\| items\.isLoading \|\| [^}]*!photoFile\}/);
   assert.match(input, /capture="environment"/);
   assert.match(input, /Choose photo/);
   assert.match(input, /Selected supplier challan photo/);
