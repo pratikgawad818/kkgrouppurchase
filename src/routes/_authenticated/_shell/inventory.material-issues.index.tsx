@@ -13,6 +13,8 @@ import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { PAGE } from "@/lib/fy";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 export const Route = createFileRoute("/_authenticated/_shell/inventory/material-issues/")({
   component: MaterialIssues,
@@ -37,11 +39,11 @@ function MaterialIssues() {
   const register = useQuery({
     queryKey: ["material-issues"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("material_issues")
-        .select("id,issue_number,issue_date,project_id,building_id,warehouse_id,issued_to,purpose,projects(name),buildings(name),warehouses(name),material_issue_items(quantity,total_cost)")
-        .order("created_at", { ascending: false }).limit(2000);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start,end) =>
+        await supabase.from("material_issues")
+          .select("id,issue_number,issue_date,project_id,building_id,warehouse_id,issued_to,purpose,projects(name),buildings(name),warehouses(name),material_issue_items(quantity,total_cost)",{count:"exact"})
+          .order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,end)
+      );
     },
   });
   const context = useQuery({
@@ -66,8 +68,10 @@ function MaterialIssues() {
     const f = findMaterial.toLowerCase().trim();
     return !f || x.items?.name.toLowerCase().includes(f) || x.items?.code.toLowerCase().includes(f);
   }).slice(0, 100);
-  const matched = (register.data ?? []).filter(x => [x.issue_number,x.issued_to,x.projects?.name,x.buildings?.name,x.warehouses?.name]
-    .some(v => v?.toLowerCase().includes(filter.trim().toLowerCase())));
+  const matched = (register.data ?? []).filter(x => matchesRecordSearch(
+    [x.issue_number,x.issued_to,x.purpose,x.projects?.name,x.buildings?.name,x.warehouses?.name],filter
+  ));
+  const visiblePage=visibleSearchPage(page,matched.length,PAGE);
   const create = useMutation({
     mutationFn: async () => {
       if (!projectId || !warehouseId) throw new Error("Choose a project and source store");
@@ -115,7 +119,7 @@ function MaterialIssues() {
     </div> : <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
       <table className="w-full text-left text-sm"><thead className="border-b bg-muted/40 text-xs">
         <tr><th className="p-3">Issue</th><th className="p-3">Date</th><th className="p-3">Project / building</th><th className="p-3">Store</th><th className="p-3">Issued to</th><th className="p-3 text-right">Issue value</th></tr>
-      </thead><tbody>{matched.slice(page * PAGE, (page + 1)*PAGE).map(x => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/30">
+      </thead><tbody>{matched.slice(visiblePage * PAGE, (visiblePage + 1)*PAGE).map(x => <tr key={x.id} className="border-b last:border-0 hover:bg-muted/30">
         <td className="p-3 font-medium"><Link className="text-primary hover:underline" to="/inventory/material-issues/$id" params={{ id: x.id }}>{x.issue_number}</Link></td>
         <td className="p-3">{fmtDate(x.issue_date)}</td>
         <td className="p-3">{x.projects?.name}{x.buildings?.name ? ` / ${x.buildings.name}` : ""}</td>
@@ -124,7 +128,7 @@ function MaterialIssues() {
         <td className="p-3 text-right tabular-nums">{inr((x.material_issue_items ?? []).reduce((a,i) => a + Number(i.total_cost),0))}</td>
       </tr>)}</tbody></table>
     </div>}
-    <Pager page={page} total={matched.length} size={PAGE} onPage={setPage} />
+    <Pager page={visiblePage} total={matched.length} size={PAGE} onPage={setPage} />
     <Dialog open={show} onOpenChange={value => { if (!value && !create.isPending) setShow(false); }}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader><DialogTitle>Issue materials to site</DialogTitle>
