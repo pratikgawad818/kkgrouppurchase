@@ -15,6 +15,25 @@ This module records the supplier's **physical dispatch document** separately fro
 
 Existing legacy GRNs remain visible with an unlinked text challan number. The five-argument `create_goods_receipt` supports a legacy **unlinked** receipt for controlled integrations; the new UI requires a registered challan. The deprecated **four-argument** RPC has its public/authenticated execute privilege revoked because it bypasses newer GRN guards. Before imposing a strict all-new-GRNs mandate at database level, ensure legacy API clients have migrated.
 
+## Shared-project receiving for Site Engineers
+
+Multiple Site Engineers may register vendor challans and create goods receipts
+for the **same project**. Access is based on a currently assigned, matching
+`project_id`, not the `created_by` or `requested_by` of the PR/PO.
+
+- A second assigned Site Engineer may record a delivery for a purchase initiated
+  by a colleague at the same site; the audit records the actual operator.
+- A Site Engineer without that project assignment must not see or act on its
+  POs, GRNs or challans, even if the project names appear similar.
+- Company isolation, existing `grn.create` versus `grn.post` separation,
+  mandatory challan photo, challan quantity, PO state, and stock-posting
+  protections remain in force.
+- A Super Admin can assign multiple engineers to the same project in
+  **Users & roles → Project access**. There is no need to duplicate the PO.
+- The UI filters the PO selectors by assignments, while the database's
+  `can_access_project`, RLS, and registering/receiving RPCs remain authoritative.
+  Revoking an assignment immediately prevents new server-side transactions.
+
 ## Photo evidence for new challans (migration 0103)
 
 - **Compulsory for every new vendor challan:** upload a photo of the physical supplier challan from the device gallery or rear camera. JPG/JPEG/PNG, nonempty, up to 10 MB.
