@@ -1196,13 +1196,14 @@ def test_vendor_invoice_po_pump_charge_gst():
     with db() as c:
         po=seed_po(c)
         c.execute("RESET ROLE")
+        rfq_item=c.execute("SELECT id FROM rfq_items WHERE rfq_id=(SELECT rfq_id FROM purchase_orders WHERE id=%s) ORDER BY line_no LIMIT 1",(po,)).fetchone()[0]
         po_line=c.execute("""
           INSERT INTO purchase_order_items(
-            po_id,line_no,material_id,unit_id,ordered_quantity,
+            po_id,line_no,rfq_item_id,material_id,unit_id,ordered_quantity,
             rate,tax_type,tax_rate_percent,taxable_amount,tax_amount,line_total)
-          VALUES(%s,1,%s,%s,45,6500,'cgst_sgst',18,292500,52650,345150)
+          VALUES(%s,1,%s,%s,%s,45,6500,'cgst_sgst',18,292500,52650,345150)
           RETURNING id
-        """,(po,MATERIAL,UNIT)).fetchone()[0]
+        """,(po,rfq_item,MATERIAL,UNIT)).fetchone()[0]
         c.execute("""UPDATE purchase_orders SET
           other_charges=20000,other_charges_tax_type='cgst_sgst',
           other_charges_tax_rate_percent=18 WHERE id=%s""",(po,))
