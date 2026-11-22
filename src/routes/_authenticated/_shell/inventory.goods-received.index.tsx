@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 import { CancelDraftGrnButton } from "@/components/erp/cancel-draft-grn";
+import { DeleteUnusedGrnButton } from "@/components/erp/delete-unused-grn";
 
 const META = "Register of goods received against purchase orders.";
 export const Route = createFileRoute("/_authenticated/_shell/inventory/goods-received/")({
@@ -57,7 +58,7 @@ function GrnList() {
         await supabase
           .from("goods_receipt_notes")
           .select(
-            "id,grn_number,received_date,status,received_by,po_id,project_id,building_id,warehouse_id,vendor_id,purchase_orders(po_number),vendors(company_name),warehouses(name),projects(name),buildings(name),profiles!goods_receipt_notes_received_by_fkey(full_name),goods_receipt_items(accepted_quantity,unit_cost)",
+            "id,grn_number,received_date,status,posted_at,received_by,po_id,project_id,building_id,warehouse_id,vendor_id,purchase_orders(po_number),vendors(company_name),warehouses(name),projects(name),buildings(name),profiles!goods_receipt_notes_received_by_fkey(full_name),goods_receipt_items(accepted_quantity,unit_cost)",
             { count: "exact" },
           )
           .order("created_at", { ascending: false })
@@ -295,7 +296,10 @@ function GrnList() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <CancelDraftGrnButton id={x.id} number={x.grn_number} status={x.status} receivedBy={x.received_by}/>
+                        <div className="flex flex-wrap gap-2">
+                          <CancelDraftGrnButton id={x.id} number={x.grn_number} status={x.status} receivedBy={x.received_by}/>
+                          <DeleteUnusedGrnButton id={x.id} number={x.grn_number} status={x.status} postedAt={x.posted_at}/>
+                        </div>
                       </td>
                     </tr>
                   );
