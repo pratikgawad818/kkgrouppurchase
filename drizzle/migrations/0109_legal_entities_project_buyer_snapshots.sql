@@ -31,6 +31,10 @@ CREATE INDEX IF NOT EXISTS legal_entities_tenant_idx ON public.legal_entities(co
 CREATE UNIQUE INDEX IF NOT EXISTS legal_entities_one_registration_per_tenant
   ON public.legal_entities(company_id,gstin) WHERE gstin IS NOT NULL;
 ALTER TABLE public.legal_entities ENABLE ROW LEVEL SECURITY;
+-- PostgreSQL table privileges and RLS are separate; missing GRANT would
+-- make even authorized Super Admin unable to load or edit these profiles.
+GRANT SELECT,INSERT,UPDATE ON public.legal_entities TO authenticated;
+REVOKE DELETE ON public.legal_entities FROM PUBLIC,anon,authenticated;
 
 DROP POLICY IF EXISTS "Company staff view legal entities" ON public.legal_entities;
 CREATE POLICY "Company staff view legal entities" ON public.legal_entities
