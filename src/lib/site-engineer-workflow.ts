@@ -1,4 +1,5 @@
 import type { PurchaseChain } from "./purchase-pipeline.ts";
+import { buildSiteEngineerPrTasks, type SitePrJourneySource } from "./site-engineer-pr-milestones.ts";
 
 /**
  * Field engineers only own procurement requests, site deliveries, GRNs, stock
@@ -26,7 +27,12 @@ export function isSiteEngineerFieldPortal(roles: readonly string[]): boolean {
  */
 export function siteEngineerAttentionTasks(
   tasks: readonly PurchaseChain[],
+  journey?: SitePrJourneySource,
 ): PurchaseChain[] {
+  // The PR-centric five-stage journey is the source of truth when the caller
+  // has project-scoped PR/PO/challan/GRN rows. The legacy projection is kept
+  // for old callers that only provide generic purchase-chain objects.
+  if (journey) return buildSiteEngineerPrTasks(journey);
   return tasks
     .filter((task) => task.group !== "payments")
     .map((task) => ({

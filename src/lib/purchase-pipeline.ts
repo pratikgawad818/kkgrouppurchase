@@ -40,7 +40,7 @@ export type PipelineInput = {
 export type StepKey = "request" | "rfq" | "order" | "delivery" | "invoice" | "payment";
 export type PipelineDocument = { number: string; href: string };
 export type PipelineStep = {
-  key: StepKey;
+  key: StepKey | "pr_received" | "director_approval" | "challan_entry" | "goods_received";
   label: string;
   documents: PipelineDocument[];
   state: "done" | "current" | "todo";
@@ -372,7 +372,7 @@ export function buildPurchaseChains(input: PipelineInput): PurchaseChain[] {
       draft: "Request draft — finish and submit",
       rejected: "Request returned — correct and resubmit",
       pending_approval: "Awaiting purchasing review",
-      approved: "Purchase Manager received your request — prepare RFQ",
+      approved: "PR received for procurement — prepare RFQ",
     };
     result.push(makeChain("pr:" + pr.id,
       { request: [doc(pr.number, route.pr(pr.id))] },

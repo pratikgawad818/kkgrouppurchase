@@ -8,10 +8,10 @@ export type PrAction = Database["public"]["Enums"]["pr_action"];
 export const PR_STATUS: Record<PrStatus, { label: string; cls: string }> = {
   draft: { label: "Draft", cls: "border-border bg-muted text-muted-foreground" },
   pending_approval: { label: "Awaiting purchasing review", cls: "border-primary/30 bg-primary/10 text-primary" },
-  approved: { label: "Request received · RFQ ready", cls: "border-primary bg-primary text-primary-foreground" },
+  approved: { label: "PR received for procurement · RFQ ready", cls: "border-primary bg-primary text-primary-foreground" },
   rejected: { label: "Rejected", cls: "border-destructive/30 bg-destructive/10 text-destructive" },
   cancelled: { label: "Cancelled", cls: "border-border bg-secondary text-muted-foreground line-through" },
 };
 export const PR_PRIORITY: Record<PrPriority, string> = { low: "Low", normal: "Normal", high: "High", urgent: "Urgent" };
 export const PR_TYPE: Record<PrType, string> = { material: "Material", equipment: "Equipment", service: "Service", other: "Other" };
-export const PR_ACTION: Record<PrAction, string> = { created: "Created", submitted: "Submitted for approval", approved: "Purchase Manager received your request", rejected: "Rejected", returned: "Returned for correction", cancelled: "Cancelled" };
+export const PR_ACTION: Record<PrAction, string> = { created: "Created", submitted: "PR requested · awaiting procurement review", approved: "PR received for procurement", rejected: "Rejected", returned: "Returned for correction", cancelled: "Cancelled" };

@@ -57,7 +57,7 @@ export function workflowPresentation(
   lastAction?: string | null,
 ): WorkflowPresentation {
   if (kind === "purchase_request") {
-    const labels = ["Prepare request", "Purchase Manager review", "Vendor quotations", "Purchase order"];
+    const labels = ["Prepare request", "Procurement review", "Vendor quotations", "Purchase order"];
     if (TERMINATED.has(status)) return {
       stateLabel: status === "cancelled" ? "Cancelled" : "Rejected",
       stages: progress(labels, 1, null, 1),
@@ -81,8 +81,8 @@ export function workflowPresentation(
       stateLabel: "Awaiting purchasing review",
       stages: progress(labels, 1, 1),
       nextTitle: "Review and receive the purchase request",
-      nextOwner: "Authorized Project Manager / Purchase Manager / Director",
-      nextDescription: "An authorized reviewer other than the requester must accept this PR for quotations or return it for correction. Director approval of the resulting PO is a separate stage; no individual has been assigned by this display.",
+      nextOwner: "Purchase Manager / Super Admin / Director",
+      nextDescription: "An authorized reviewer other than the requester must receive this PR for procurement or return it for correction. Director approval of the resulting PO is a separate stage; no individual has been assigned by this display.",
       finished: false, blocked: false,
     };
     if (status === "approved") {
@@ -118,7 +118,7 @@ export function workflowPresentation(
         nextDescription = "The visible RFQs are cancelled; procurement must decide how to proceed.";
       }
       return {
-        stateLabel: "Purchase Manager received your request",
+        stateLabel: "PR received for procurement",
         stages: progress(labels, rfqReady || rfqClosed ? 3 : 2, rfqReady || rfqClosed ? 3 : 2),
         nextTitle, nextOwner: "Authorized procurement staff",
         nextDescription, finished: false, blocked: false,
@@ -250,8 +250,8 @@ export function workflowPresentation(
 const ACTION_LABELS: Record<WorkflowKind, Record<string, string>> = {
   purchase_request: {
     created: "Request created",
-    submitted: "Submitted for approval",
-    approved: "Purchase Manager received your request",
+    submitted: "PR requested",
+    approved: "PR received for procurement",
     returned: "Returned for correction",
     rejected: "Request rejected",
     cancelled: "Request cancelled",
