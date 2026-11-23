@@ -551,11 +551,11 @@ def test_pr_manager_received_notification():
         director_title=c.execute(
           "SELECT title FROM notifications WHERE user_id=%s AND link=%s AND title LIKE 'PR received for procurement%%' ORDER BY created_at DESC LIMIT 1",
           (DIRECTOR,"/procurement/purchase-requests/"+director_pr)).fetchone()
-        assert director_title and director_title[0].startswith(
-          "PR received for procurement"),director_title
-        assert "Purchase Manager" not in director_title[0]
+        # Director-created PRs remain valid, but their creator must not
+        # receive routine procurement notifications under policy 0115.
+        assert director_title is None, director_title
         c.rollback()
-    print("PASS PR receipt notifications distinguish Purchase Manager actions from Director-origin requests")
+    print("PASS Site Engineer PR receipt notification; Director-origin PR creates no routine Director alert")
 
 
 def test_super_admin_delete_unused_grn():
