@@ -82,7 +82,7 @@ export function workflowPresentation(
       stages: progress(labels, 1, 1),
       nextTitle: "Review and receive the purchase request",
       nextOwner: "Authorized Project Manager / Purchase Manager / Director",
-      nextDescription: "An authorized reviewer other than the requester must accept this PR for quotations or return it for correction. Director approval of the resulting PO is a separate stage; no individual has been assigned by this display.",
+      nextDescription: "An authorized reviewer other than the requester must receive this PR for procurement or return it for correction. Director approval of the resulting PO is a separate stage; no individual has been assigned by this display.",
       finished: false, blocked: false,
     };
     if (status === "approved") {
