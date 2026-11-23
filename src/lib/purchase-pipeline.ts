@@ -40,7 +40,7 @@ export type PipelineInput = {
 export type StepKey = "request" | "rfq" | "order" | "delivery" | "invoice" | "payment";
 export type PipelineDocument = { number: string; href: string };
 export type PipelineStep = {
-  key: StepKey;
+  key: StepKey | "pr_received" | "director_approval" | "challan_entry" | "goods_received";
   label: string;
   documents: PipelineDocument[];
   state: "done" | "current" | "todo";
