@@ -372,7 +372,7 @@ export function buildPurchaseChains(input: PipelineInput): PurchaseChain[] {
       draft: "Request draft — finish and submit",
       rejected: "Request returned — correct and resubmit",
       pending_approval: "Awaiting purchasing review",
-      approved: "Purchase Manager received your request — prepare RFQ",
+      approved: "PR received for procurement — prepare RFQ",
     };
     result.push(makeChain("pr:" + pr.id,
       { request: [doc(pr.number, route.pr(pr.id))] },
