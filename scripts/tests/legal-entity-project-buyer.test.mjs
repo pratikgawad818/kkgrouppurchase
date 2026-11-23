@@ -60,5 +60,5 @@ test("legal entity master and mapping restricted to Super Admin, with company is
  assert.match(settings,/<LegalEntityManager companyId=\{query\.data\.id\}/);
  assert.match(manager,/legal_entity_id/);
  assert.match(manager,/New POs for those projects cannot be created/);
- assert.match(manager,/Navali → KK Infra/);
+ assert.doesNotMatch(manager,/Navali → KK Infra/);
 });
