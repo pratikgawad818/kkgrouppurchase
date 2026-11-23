@@ -17,8 +17,11 @@ try {
   }).outputText;
   const taxSource = readFileSync("src/lib/po-commercial-summary.ts", "utf8")
     .replace(/^export /gm, "");
+  const buyerSource = readFileSync("src/lib/po-buyer-identity.ts", "utf8")
+    .replace(/^export /gm, "");
   const pdfSource = readFileSync("src/lib/po-pdf.ts", "utf8")
     .replace(/^import .*po-commercial-summary.*\r?\n/m, "")
+    .replace(/^import .*po-buyer-identity.*\r?\n/m, "")
     .replace(/^export /gm, "");
   const po = {
     po_number: "PO-2026-0003", po_date: "2026-11-19",
@@ -83,7 +86,7 @@ try {
     "   image:await encode(one.previewPages[0]),pdf:await encode(one.pdf)});",
     "})().catch(error => {document.getElementById('result').textContent = JSON.stringify({ok:false,error:String(error.stack||error)});});",
   ].join("\n");
-  writeFileSync(join(work, "app.js"), canvasShim + "\n" + compile(taxSource) + "\n" + compile(pdfSource) +
+  writeFileSync(join(work, "app.js"), canvasShim + "\n" + compile(taxSource) + "\n" + compile(buyerSource) + "\n" + compile(pdfSource) +
     "\nwindow.samplePO=" + JSON.stringify(po) + ";\nwindow.sampleItems=" +
     JSON.stringify(items) + ";\n" + runner);
   writeFileSync(join(work, "index.html"), '<!doctype html><meta charset="utf-8">' +
