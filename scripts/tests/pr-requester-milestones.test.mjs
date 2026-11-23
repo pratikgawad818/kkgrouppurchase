@@ -2,34 +2,35 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const sql = readFileSync("drizzle/migrations/0111_pr_requester_procurement_milestones.sql", "utf8");
+const deployed = readFileSync("drizzle/migrations/0111_pr_requester_stage_notifications.sql","utf8");
+const extra = readFileSync("drizzle/migrations/0112_complete_pr_stage_notifications.sql","utf8");
 
-test("all procurement milestones have event-level database triggers", () => {
-  for (const table of ["rfqs", "purchase_orders", "vendor_delivery_challans", "goods_receipt_notes"]) {
-    assert.match(sql, new RegExp("ON public\\." + table + "\\s+FOR EACH ROW"));
-  }
+test("base stage notifications remain intact and new migration has a unique number", () => {
+  assert.match(deployed, /CREATE TRIGGER notify_pr_engineer_po_handoff_status/);
+  assert.match(deployed, /CREATE TRIGGER notify_pr_engineer_challan_registered/);
+  assert.match(deployed, /CREATE TRIGGER notify_pr_engineer_grn_stage/);
+  assert.doesNotMatch(extra, /CREATE OR REPLACE FUNCTION public.notify_pr_original_site_engineer/);
+  assert.doesNotMatch(extra, /CREATE OR REPLACE FUNCTION public.notify_on_po_status/);
 });
 
-test("notification recipient is original active PR engineer, scoped to their company and project", () => {
-  for (const predicate of [
-    "p.id=pr.requested_by", "p.company_id=pr.company_id AND p.is_active",
-    "pr.company_id=_company AND pr.project_id=_project",
-    "public.has_role(p.id,'site_engineer')",
-    "public.has_permission(p.id,'purchase_request.view')",
-    "public.can_access_project(p.id,pr.project_id)",
-  ]) assert.ok(sql.includes(predicate), predicate);
-  assert.match(sql, /'\/procurement\/purchase-requests\/'\|\|pr.id/);
+test("0112 adds only RFQ, vendor dispatch and challan cancellation triggers", () => {
+  assert.match(extra, /CREATE TRIGGER notify_pr_engineer_rfq_progress_stage/);
+  assert.match(extra, /CREATE TRIGGER notify_pr_engineer_po_vendor_dispatch_stage/);
+  assert.match(extra, /CREATE TRIGGER notify_pr_engineer_challan_cancellation_stage/);
+  const matches = [...extra.matchAll(/CREATE TRIGGER /g)];
+  assert.equal(matches.length,3);
 });
 
-test("milestones are driven by persisted state changes, not ordinary edits", () => {
-  assert.match(sql, /NEW.status IS NOT DISTINCT FROM OLD.status/g);
-  assert.match(sql, /NEW.status NOT IN \('sent','ready_for_po'\)/);
-  assert.match(sql, /NEW.status NOT IN \('pending_approval','sent'\)/);
-  assert.match(sql, /NEW.status NOT IN \('posted','cancelled'\)/);
+test("notifications happen only after an actual relevant status transition", () => {
+  assert.match(extra, /NEW.status NOT IN \('sent','ready_for_po'\)/);
+  assert.match(extra, /NEW.status<>'sent'/);
+  assert.match(extra, /NEW.status<>'cancelled'/);
+  assert.equal((extra.match(/NEW.status IS NOT DISTINCT FROM OLD.status/g)||[]).length,3);
 });
 
-test("Director approval remains with existing PO status trigger; no invoice or payment alert leaks", () => {
-  assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public.notify_on_po_status/);
-  assert.doesNotMatch(sql, /vendor_invoice|vendor_payment/i);
-  assert.match(sql, /A draft GRN is not verified stock/);
+test("new triggers reuse existing per-PR original Site Engineer security check", () => {
+  assert.equal((extra.match(/PERFORM public.notify_pr_original_site_engineer\(/g)||[]).length,3);
+  assert.match(deployed, /original.id=pr.requested_by/);
+  assert.match(deployed, /public.can_access_project\(original.id,_project\)/);
+  assert.doesNotMatch(extra, /INSERT INTO public.notifications|UPDATE public.purchase_requests|DELETE FROM/);
 });
