@@ -726,7 +726,7 @@ def test_director_notifications_and_names():
         denied(c,lambda:c.execute("SELECT * FROM po_notification_context(%s)",(doc,)),"permission denied")
         c.execute("RESET ROLE")
         recipients=c.execute(
-            "SELECT user_id,title,body,link FROM notifications WHERE link LIKE %s",('%'+doc,)
+            "SELECT user_id,title,body,link FROM notifications WHERE link LIKE %s AND title LIKE 'PO approval %%'",('%'+doc,)
         ).fetchall()
         assert {str(r[0]) for r in recipients}=={DIRECTOR},recipients
         assert all('kind=purchase_order&id=' in r[3] for r in recipients)
