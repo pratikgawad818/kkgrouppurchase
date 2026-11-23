@@ -9,7 +9,7 @@ import psycopg
 dsn = os.environ["DIRECTOR_NOTIFY_QA_DSN"]
 migration = Path("drizzle/migrations/0115_director_approval_notifications_only.sql").read_text()
 setup = """
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
     CREATE ROLE anon;
@@ -17,7 +17,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
     CREATE ROLE authenticated;
   END IF;
-END $;
+END $$;
 CREATE TABLE public.profiles (
   id uuid PRIMARY KEY, company_id uuid NOT NULL, is_active boolean NOT NULL
 );
