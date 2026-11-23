@@ -55,7 +55,7 @@ test("all generated staff pages remain classified by the central permission boun
     // Synthetic test user with all page permissions. A missing route rule is
     // an error even if its page happens to compile.
     permissions: new Set(
-      [...read("src/lib/page-access.ts").matchAll(/["']([a-z_]+\.[a-z_]+)["']/g)].map(m => m[1]),
+      [...read("src/lib/page-access.ts").matchAll(/["']([a-z_]+(?:\.[a-z_]+)+)["']/g)].map(m => m[1]),
     ),
   };
   const excluded = new Set(["/", "/auth", "/reset-password"]);
