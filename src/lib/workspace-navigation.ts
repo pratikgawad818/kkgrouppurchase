@@ -75,6 +75,7 @@ export const WORKSPACE_NAV: WorkspaceNavGroup[] = [
       { to: "/settings/users", label: "Users & roles" },
       { to: "/settings/data-cleanup", label: "Data cleanup" },
       { to: "/settings/company", label: "Company settings" },
+      { to: "/settings/bank-accounts", label: "Bank accounts" },
       { to: "/settings/finance", label: "Finance settings" },
       { to: "/audit", label: "Audit log" },
     ],
