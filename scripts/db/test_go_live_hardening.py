@@ -463,7 +463,7 @@ def test_multi_legal_entity_project_po_buyer_snapshot():
         actor(c,ADMIN)
         c.execute("UPDATE projects SET legal_entity_id=%s WHERE id=%s",(kanesa,PROJECT))
         denied(c,lambda:seed_po(c,creator=PURCHASER),
-               "Complete legal name, GSTIN and registered address")
+               "Complete legal name, GSTIN and billing address")
         c.execute("RESET ROLE")
         assert c.execute("SELECT count(*) FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]==1
         assert c.execute("SELECT count(*) FROM purchase_orders WHERE id=%s",
