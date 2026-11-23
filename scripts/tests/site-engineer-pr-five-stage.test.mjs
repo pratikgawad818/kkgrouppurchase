@@ -10,7 +10,7 @@ const po={id:"po1",number:"PO-2026-0004",prId:"pr1",status:"approved"};
 const ch={id:"challan1",number:"8519",poId:"po1",status:"registered"};
 const grn={id:"grn1",number:"GRN-2026-0001",poId:"po1",status:"draft"};
 const records=(extra={})=>({prs:[pr],pos:[po],challans:[],grns:[],...extra});
-const labels=["PR requested","PR received","PO sent for Director approval","Challan entry","Goods received"];
+const labels=["PR requested","PR received for procurement","PO sent for Director approval","Challan entry","Goods received"];
 const isDone=(j,i)=>j.stages[i]?.state==="done";
 const read=(p)=>readFileSync(new URL("../../"+p,import.meta.url),"utf8");
 
