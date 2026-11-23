@@ -32,7 +32,7 @@ test("PR draft, submitted and received show real milestones only",()=>{
  assert.equal(submitted.stages[1].state,"current");
  const received=sitePrMilestones(pr,records({pos:[]}));
  assert.deepEqual(received.stages.map(s=>s.state),["done","done","current","todo","todo"]);
- assert.match(received.stage,/procurement is preparing/);
+ assert.match(received.stage,/PR received for procurement/);
  const awaiting=sitePrMilestones(pr,records({pos:[{...po,status:"pending_approval"}]}));
  assert.equal(awaiting.stages[2].state,"current");
  assert.match(awaiting.stage,/awaiting approval/);
