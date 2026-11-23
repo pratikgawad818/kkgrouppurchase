@@ -203,7 +203,7 @@ function Dashboard() {
         project: row.projects?.name ?? "Company-wide",
       }));
 
-      const allTasks = buildPurchaseChains({
+      const chainInput = {
         prs: p.map(row => ({
           id: row.id, number: row.pr_number, purpose: row.purpose,
           status: row.status, due: row.required_by,
@@ -239,9 +239,10 @@ function Dashboard() {
           advanceAdjusted: Number(row.advance_adjusted),
         })),
         payments: paymentRows,
-      });
+      };
+      const allTasks = buildPurchaseChains(chainInput);
       const tasks = isSiteEngineerPortal
-        ? siteEngineerAttentionTasks(allTasks)
+        ? siteEngineerAttentionTasks(allTasks, chainInput)
         : allTasks;
       const payable = outstanding.reduce((sum, row) => {
         const value = Number(row.balance_due);
