@@ -82,6 +82,7 @@ const rules: readonly Rule[] = [
   { pattern: /^\/settings\/users\/?$/, any: ["users.manage"] },
   { pattern: /^\/settings\/data-cleanup\/?$/ },
   { pattern: /^\/settings\/company\/?$/, any: ["company.view", "company.manage"] },
+  { pattern: /^\/settings\/bank-accounts\/?$/, any: ["company.bank.manage"], roles: ["super_admin", "accounts_manager"] },
   { pattern: /^\/settings\/finance\/?$/, any: ["company.view", "company.manage"] },
   { pattern: /^\/audit\/?$/, any: ["audit.view"] },
 ];

@@ -813,6 +813,13 @@
       "when": 1795457040000,
       "tag": "0115_director_approval_notifications_only",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1795457100000,
+      "tag": "0116_account_and_vendor_bank_management",
+      "breakpoints": true
     }
   ]
 }

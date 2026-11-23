@@ -39,6 +39,7 @@ import { Route as AuthenticatedShellProcurementFollowUpsRouteImport } from './ro
 import { Route as AuthenticatedShellProcurementSupplierRateHistoryRouteImport } from './routes/_authenticated/_shell/procurement.supplier-rate-history'
 import { Route as AuthenticatedShellProcurementVendorQuotationsRouteImport } from './routes/_authenticated/_shell/procurement.vendor-quotations'
 import { Route as AuthenticatedShellReportsProjectCostControlRouteImport } from './routes/_authenticated/_shell/reports.project-cost-control'
+import { Route as AuthenticatedShellSettingsBankAccountsRouteImport } from './routes/_authenticated/_shell/settings.bank-accounts'
 import { Route as AuthenticatedShellSettingsCompanyRouteImport } from './routes/_authenticated/_shell/settings.company'
 import { Route as AuthenticatedShellSettingsDataCleanupRouteImport } from './routes/_authenticated/_shell/settings.data-cleanup'
 import { Route as AuthenticatedShellSettingsFinanceRouteImport } from './routes/_authenticated/_shell/settings.finance'
@@ -236,6 +237,12 @@ const AuthenticatedShellReportsProjectCostControlRoute =
   AuthenticatedShellReportsProjectCostControlRouteImport.update({
     id: '/reports/project-cost-control',
     path: '/reports/project-cost-control',
+    getParentRoute: () => AuthenticatedShellRoute,
+  } as any)
+const AuthenticatedShellSettingsBankAccountsRoute =
+  AuthenticatedShellSettingsBankAccountsRouteImport.update({
+    id: '/settings/bank-accounts',
+    path: '/settings/bank-accounts',
     getParentRoute: () => AuthenticatedShellRoute,
   } as any)
 const AuthenticatedShellSettingsCompanyRoute =
@@ -440,6 +447,7 @@ export interface FileRoutesByFullPath {
   '/procurement/supplier-rate-history': typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
+  '/settings/bank-accounts': typeof AuthenticatedShellSettingsBankAccountsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
@@ -498,6 +506,7 @@ export interface FileRoutesByTo {
   '/procurement/supplier-rate-history': typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   '/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
+  '/settings/bank-accounts': typeof AuthenticatedShellSettingsBankAccountsRoute
   '/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
   '/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
@@ -560,6 +569,7 @@ export interface FileRoutesById {
   '/_authenticated/_shell/procurement/supplier-rate-history': typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   '/_authenticated/_shell/procurement/vendor-quotations': typeof AuthenticatedShellProcurementVendorQuotationsRoute
   '/_authenticated/_shell/reports/project-cost-control': typeof AuthenticatedShellReportsProjectCostControlRoute
+  '/_authenticated/_shell/settings/bank-accounts': typeof AuthenticatedShellSettingsBankAccountsRoute
   '/_authenticated/_shell/settings/company': typeof AuthenticatedShellSettingsCompanyRoute
   '/_authenticated/_shell/settings/data-cleanup': typeof AuthenticatedShellSettingsDataCleanupRoute
   '/_authenticated/_shell/settings/finance': typeof AuthenticatedShellSettingsFinanceRoute
@@ -621,6 +631,7 @@ export interface FileRouteTypes {
     | '/procurement/supplier-rate-history'
     | '/procurement/vendor-quotations'
     | '/reports/project-cost-control'
+    | '/settings/bank-accounts'
     | '/settings/company'
     | '/settings/data-cleanup'
     | '/settings/finance'
@@ -679,6 +690,7 @@ export interface FileRouteTypes {
     | '/procurement/supplier-rate-history'
     | '/procurement/vendor-quotations'
     | '/reports/project-cost-control'
+    | '/settings/bank-accounts'
     | '/settings/company'
     | '/settings/data-cleanup'
     | '/settings/finance'
@@ -740,6 +752,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_shell/procurement/supplier-rate-history'
     | '/_authenticated/_shell/procurement/vendor-quotations'
     | '/_authenticated/_shell/reports/project-cost-control'
+    | '/_authenticated/_shell/settings/bank-accounts'
     | '/_authenticated/_shell/settings/company'
     | '/_authenticated/_shell/settings/data-cleanup'
     | '/_authenticated/_shell/settings/finance'
@@ -993,6 +1006,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShellReportsProjectCostControlRouteImport
       parentRoute: typeof AuthenticatedShellRoute
     }
+    '/_authenticated/_shell/settings/bank-accounts': {
+      id: '/_authenticated/_shell/settings/bank-accounts'
+      path: '/settings/bank-accounts'
+      fullPath: '/settings/bank-accounts'
+      preLoaderRoute: typeof AuthenticatedShellSettingsBankAccountsRouteImport
+      parentRoute: typeof AuthenticatedShellRoute
+    }
     '/_authenticated/_shell/settings/company': {
       id: '/_authenticated/_shell/settings/company'
       path: '/settings/company'
@@ -1242,6 +1262,7 @@ interface AuthenticatedShellRouteChildren {
   AuthenticatedShellProcurementSupplierRateHistoryRoute: typeof AuthenticatedShellProcurementSupplierRateHistoryRoute
   AuthenticatedShellProcurementVendorQuotationsRoute: typeof AuthenticatedShellProcurementVendorQuotationsRoute
   AuthenticatedShellReportsProjectCostControlRoute: typeof AuthenticatedShellReportsProjectCostControlRoute
+  AuthenticatedShellSettingsBankAccountsRoute: typeof AuthenticatedShellSettingsBankAccountsRoute
   AuthenticatedShellSettingsCompanyRoute: typeof AuthenticatedShellSettingsCompanyRoute
   AuthenticatedShellSettingsDataCleanupRoute: typeof AuthenticatedShellSettingsDataCleanupRoute
   AuthenticatedShellSettingsFinanceRoute: typeof AuthenticatedShellSettingsFinanceRoute
@@ -1305,6 +1326,8 @@ const AuthenticatedShellRouteChildren: AuthenticatedShellRouteChildren = {
     AuthenticatedShellProcurementVendorQuotationsRoute,
   AuthenticatedShellReportsProjectCostControlRoute:
     AuthenticatedShellReportsProjectCostControlRoute,
+  AuthenticatedShellSettingsBankAccountsRoute:
+    AuthenticatedShellSettingsBankAccountsRoute,
   AuthenticatedShellSettingsCompanyRoute:
     AuthenticatedShellSettingsCompanyRoute,
   AuthenticatedShellSettingsDataCleanupRoute:

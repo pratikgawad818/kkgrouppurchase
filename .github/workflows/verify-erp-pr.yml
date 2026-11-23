@@ -502,3 +502,32 @@ jobs:
       - run: python -m pip install "psycopg[binary]>=3.2,<4"
       - name: Enforce exact PO and invoice-payment notification gate
         run: python scripts/db/test_director_notifications_0115.py
+
+  bank-master-security:
+    name: Company and vendor bank management ACL (PostgreSQL 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: bank_master_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bank_master_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      BANK_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/bank_master_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Verify only Super Admin and Accounts Manager can edit bank details
+        run: python scripts/db/test_bank_master_0116.py
