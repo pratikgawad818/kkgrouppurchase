@@ -33,6 +33,7 @@ import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
 import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
 import { PoDraftEditor } from "@/components/erp/po-draft-editor";
 import { cn } from "@/lib/utils";
+import { poBuyerIdentity } from "@/lib/po-buyer-identity";
 import { canConfirmPoSentToSupplier } from "@/lib/po-supplier-dispatch";
 
 const META = "Purchase order details, approval and goods receipts.";
@@ -270,6 +271,12 @@ function PoDetail() {
                   {po.vendors?.company_name} · {po.projects?.name}
                   {po.buildings?.name ? ` · ${po.buildings.name}` : ""}
                 </span>
+                <p className="text-xs text-muted-foreground">
+                  Purchasing entity: <strong className="text-foreground">
+                    {poBuyerIdentity(po)?.legal_name || poBuyerIdentity(po)?.name || "Unspecified"}
+                  </strong>
+                  {poBuyerIdentity(po)?.gstin ? ` · GSTIN ${poBuyerIdentity(po)?.gstin}` : " · GSTIN not recorded"}
+                </p>
                 <p className="num text-3xl font-semibold tracking-tight text-foreground">
                   <span className="sr-only">Grand total </span>
                   {inr(po.grand_total)}
