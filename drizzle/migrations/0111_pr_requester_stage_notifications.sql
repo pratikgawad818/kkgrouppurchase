@@ -70,7 +70,11 @@ BEGIN
         THEN 'Director'
       ELSE 'Authorized reviewer'
     END;
-    receipt_title := role_name||' received your request';
+    receipt_title := CASE
+      WHEN actor_name IS NOT NULL THEN
+        'PR received for procurement by '||actor_name||' ('||role_name||')'
+      ELSE 'PR received for procurement'
+    END;
     -- The existing callback already notifies ALL authorized PR creators;
     -- retain it for non-engineer requesters, without adding a duplicate.
     PERFORM public.notify_document_creator(
