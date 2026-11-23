@@ -26,18 +26,28 @@ export function NotificationBell({
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const key = ["notifications", userId];
+  const key = ["notifications", userId, isDirector ? "approvals-only" : "all"];
   const q = useQuery({
     queryKey: key,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Keep historical notifications in the database, but Directors should
+      // see only actionable PO / vendor-payment approval entries in their bell.
+      // Server-side filtering happens before LIMIT, so old PR and invoice
+      // review spam cannot displace legitimate approvals from the newest 30.
+      let request = supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", userId);
+      if (isDirector) request = request.like("link", "/approvals?kind=%");
+      const { data, error } = await request
         .order("created_at", { ascending: false })
         .limit(30);
       if (error) throw error;
-      return data;
+      return isDirector
+        ? (data ?? []).filter(n =>
+            n.link?.startsWith("/approvals?kind=purchase_order&id=") ||
+            n.link?.startsWith("/approvals?kind=vendor_payment&id="))
+        : data;
     },
     refetchInterval: 30000,
   });
