@@ -446,8 +446,12 @@ def test_multi_legal_entity_project_po_buyer_snapshot():
                              'QA registered address'),buyer
         actor(c,PURCHASER)
         denied(c,lambda:c.execute("UPDATE purchase_orders SET buyer_gstin='27AAAAA0000A1Z5' WHERE id=%s",
-                                  (po,)), "PO buyer identity is immutable")
+                                  (po,)), "permission denied")
         c.execute("RESET ROLE")
+        # Even the fixture's privileged DB owner cannot bypass the immutable
+        # buyer trigger by directly updating a purchase order's tax identity.
+        denied(c,lambda:c.execute("UPDATE purchase_orders SET buyer_gstin='27AAAAA0000A1Z5' WHERE id=%s",
+                                  (po,)), "PO buyer identity is immutable")
         c.execute("""UPDATE legal_entities SET gstin='27AAAAA0000A1Z5',
             legal_name='Updated registration',registered_address='Another address'
             WHERE id=%s""",(kk,))
