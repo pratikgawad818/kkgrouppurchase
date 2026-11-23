@@ -26,6 +26,7 @@ export type PoPdfOrder = PoBuyerSnapshot & {
   po_number: string;
   po_date: string;
   status: string;
+  pr_requested_by_name?: string | null;
   prepared_by_name?: string | null;
   approved_by_name?: string | null;
   approved_at?: string | null;
@@ -483,23 +484,40 @@ function commercial(p: Paper, po: PoPdfOrder, items: PoPdfLine[]) {
   p.y = cursor + 18;
 }
 
-function signatureRow(p: Paper, po: PoPdfOrder) {
-  const w = CW / 3, y = p.y + 12;
-  const labels = ["Prepared by", "Approved by", "Authorised signatory"];
-  const values = [
+function poSignatureValues(po: PoPdfOrder) {
+  return [
+    po.pr_requested_by_name || "—",
     po.prepared_by_name || "—",
     po.approved_by_name || (po.status === "approved" || po.status === "sent"
       ? "Approval recorded" : "Pending approval"),
     "For " + (poBuyerIdentity(po)?.legal_name || poBuyerIdentity(po)?.name || "KK GROUP"),
   ];
-  for (let i = 0; i < 3; i++) {
+}
+
+function signatureBlockHeight(p: Paper, po: PoPdfOrder) {
+  const cellWidth = CW / 4 - 14;
+  font(p.ctx, 8, true);
+  const longest = Math.max(...poSignatureValues(po)
+    .map(value => breakLines(p.ctx, value, cellWidth - 2).length));
+  // Reserve enough room for multiline legal-entity names and staff names.
+  const rowHeight = Math.max(53, 22 + longest * 10.6 + 10);
+  return 12 + rowHeight + (po.status === "pending_approval" ? 14 : 0);
+}
+
+function signatureRow(p: Paper, po: PoPdfOrder) {
+  const w = CW / 4, y = p.y + 12;
+  const labels = ["PR Requested By", "Prepared by", "Approved by", "Authorised signatory"];
+  const values = poSignatureValues(po);
+  const rowHeight = signatureBlockHeight(p, po) - 12 -
+    (po.status === "pending_approval" ? 14 : 0);
+  for (let i = 0; i < 4; i++) {
     drawLine(p, M + i * w + 3, y, M + (i + 1) * w - 9, y, 0.95);
-    write(p, labels[i]!, M + i * w + 3, y + 7, w - 12, 8,
+    write(p, labels[i]!, M + i * w + 3, y + 7, w - 12, 7.6,
       { align: "center" });
-    write(p, values[i]!, M + i * w + 3, y + 22, w - 12, 8.4,
-      { align: "center", bold: true });
+    write(p, values[i]!, M + i * w + 3, y + 22, w - 12, 8,
+      { align: "center", bold: true, leading: 10.6 });
   }
-  p.y = y + 53;
+  p.y = y + rowHeight;
   if (po.status === "pending_approval") {
     write(p, "Review copy only. A pending approval is not an authorised sign-off.",
       M, p.y, CW, 7.5, { color: MUTED });
@@ -600,7 +618,7 @@ export async function buildPoReviewDocument(order: PoPdfOrder, items: PoPdfLine[
   const unreconciled = Math.abs(data.difference) >= 0.01 || Math.abs(data.gstDifference) >= 0.01;
   const summaryHeight = 24 + bodyHeight + (extraChargeNote ? 19 : 0) +
     19 + (extraTaxNote ? 19 : 0) + (unreconciled ? 25 : 0) + 18;
-  const signaturesHeight = 80;
+  const signaturesHeight = signatureBlockHeight(p, order);
   if (p.y + summaryHeight + signaturesHeight > END) {
     p = drawPage(order, pages.length + 1);
     pages.push(p);
@@ -608,7 +626,7 @@ export async function buildPoReviewDocument(order: PoPdfOrder, items: PoPdfLine[
     p.y += 23;
   }
   commercial(p, order, items);
-  p = needNewPage(p, 85, order, pages);
+  p = needNewPage(p, signatureBlockHeight(p, order), order, pages);
   signatureRow(p, order);
   return assemblePdf(pages.map(page => page.canvas));
 }
