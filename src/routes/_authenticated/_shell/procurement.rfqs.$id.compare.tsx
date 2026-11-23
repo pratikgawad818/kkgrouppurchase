@@ -24,6 +24,20 @@ function Compare() {
   const q = useQuery({ queryKey: ["rfq", id], queryFn: () => loadRfq(id) });
   const [pick, setPick] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
+  const [skipped, setSkipped] = useState<Record<string, boolean>>({});
+
+  const chooseQuote = (itemId: string, quotationItemId: string) => {
+    setPick((current) => ({ ...current, [itemId]: quotationItemId }));
+    setSkipped((current) => ({ ...current, [itemId]: false }));
+  };
+  const toggleSkip = (itemId: string) => {
+    setSkipped((current) => ({ ...current, [itemId]: !current[itemId] }));
+    setPick((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
+  };
 
   const award = useMutation({
     mutationFn: async () => {
@@ -50,7 +64,16 @@ function Compare() {
     const p: Record<string, string> = {};
     for (const it of items) { const c = cell(qtId, it.id); if (c?.is_quoted) p[it.id] = c.id; }
     setPick(p);
+    setSkipped((current) => {
+      const next = { ...current };
+      for (const key of Object.keys(p)) next[key] = false;
+      return next;
+    });
   };
+  const skippedCount = items.filter((it) => skipped[it.id]).length;
+  const pendingCount = items.filter((it) => !pick[it.id] && !skipped[it.id]).length;
+  const canConfirm = Object.keys(pick).length > 0 && pendingCount === 0 &&
+    reason.trim().length >= (skippedCount > 0 ? 15 : 3);
   const pickedTotal = Object.entries(pick).reduce((a, [itemId, qiId]) => {
     for (const c of cols) { const x = c.qt.vendor_quotation_items.find((y) => y.id === qiId && y.rfq_item_id === itemId); if (x) return a + Number(x.line_total); }
     return a;
@@ -58,7 +81,7 @@ function Compare() {
 
   return (
     <>
-      <PageHeader crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{rfq.rfq_number}</Link>} title="Quotation comparison" subtitle="Lowest rate per item is highlighted. Select a vendor per item, or award all items to one vendor." />
+      <PageHeader crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{rfq.rfq_number}</Link>} title="Quotation comparison" subtitle="Select which materials to purchase. Explicitly exclude items covered by stock or no longer needed; the original PR remains unchanged." />
       {cols.length === 0 ? <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">No quotations recorded yet.</div> : (
         <div><p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div role="region" aria-label="Quotation comparison" tabIndex={0} className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
@@ -74,13 +97,18 @@ function Compare() {
             <tbody>
               {items.map((it) => { const lo = lowest(it.id); const sel = selections.find((s) => s.rfq_item_id === it.id); return (
                 <tr key={it.id} className="border-b">
-                  <td className="px-4 py-3 align-top"><div className="font-medium">{it.items?.name}</div><div className="text-xs text-muted-foreground">{num(it.requested_quantity)} {it.units_of_measure?.code}{it.target_rate != null ? ` · target ${inr(it.target_rate)}` : ""}</div></td>
+                  <td className="px-4 py-3 align-top"><div className="font-medium">{it.items?.name}</div><div className="text-xs text-muted-foreground">{num(it.requested_quantity)} {it.units_of_measure?.code}{it.target_rate != null ? ` · target ${inr(it.target_rate)}` : ""}</div>
+                    {canSelect && <button type="button" className={`mt-2 rounded border px-2 py-1 text-xs ${skipped[it.id] ? "bg-muted font-semibold" : "text-muted-foreground"}`} onClick={() => toggleSkip(it.id)} aria-label={`Exclude ${it.items?.name ?? "material"} from this PO`}>
+                      {skipped[it.id] ? "Excluded — undo" : "Exclude from this PO"}
+                    </button>}
+                    {!canSelect && rfq.status === "ready_for_po" && !sel && <span className="mt-2 block text-xs text-muted-foreground">Not included in this PO award</span>}
+                  </td>
                   {cols.map(({ qt }) => { const c = cell(qt.id, it.id); const chosen = sel ? sel.quotation_item_id === c?.id : pick[it.id] === c?.id; return (
                     <td key={qt.id} className={`p-2 align-top ${chosen ? "bg-primary/10" : ""}`}>
                       {!c || !c.is_quoted ? <span className="inline-flex rounded-sm border px-1.5 text-[11px] text-muted-foreground">Not quoted</span> : (
                         <label className={`block ${canSelect ? "cursor-pointer" : ""}`}>
                           <div className="flex items-center gap-2">
-                            {canSelect && <input type="radio" name={it.id} checked={pick[it.id] === c.id} onChange={() => setPick({ ...pick, [it.id]: c.id })} />}
+                            {canSelect && <input type="radio" name={it.id} checked={pick[it.id] === c.id} onChange={() => chooseQuote(it.id, c.id)} />}
                             <span className={`font-mono ${Number(c.rate) === lo ? "font-semibold text-primary" : ""}`}>{inr(c.rate)}</span>
                           </div>
                           <div className="text-xs text-muted-foreground">Qty {num(c.quoted_quantity)}{Number(c.quoted_quantity) !== Number(it.requested_quantity) ? " (partial/different)" : ""} · tax {num(c.tax_rate_percent)}%{c.delivery_days != null ? ` · ${c.delivery_days}d` : ""}</div>
@@ -100,11 +128,12 @@ function Compare() {
       )}
       {canSelect && cols.length > 0 && (
         <section className="mt-4 rounded-md border bg-card p-4">
-          <div className="mb-2 text-sm">Selected {Object.keys(pick).length} of {items.length} items · items value incl. tax <span className="font-mono font-semibold">{inr(pickedTotal)}</span> (freight/charges as per each quote)</div>
-          <Textarea rows={2} placeholder="Reason for selection (required) — e.g. lowest landed cost, better delivery time" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <div className="mb-2 text-sm">Awarded {Object.keys(pick).length} · Excluded {skippedCount} · To decide {pendingCount} (of {items.length}) · items value incl. tax <span className="font-mono font-semibold">{inr(pickedTotal)}</span> (freight/charges as per each quote)</div>
+          <p className="mb-2 text-xs text-muted-foreground">Excluded materials remain in the original PR; they are not automatically fulfilled or cancelled. Record stock sourcing or a future order separately. For goods already delivered, use the actual challan date and keep PO approval dates truthful.</p>
+          <Textarea rows={2} placeholder="Explain vendor selection AND any exclusions — e.g. Cement available at KK Park (separate stock sourcing); only bricks ordered from this vendor." value={reason} onChange={(e) => setReason(e.target.value)} />
           <div className="mt-3 flex items-center justify-end gap-3">
-            {(Object.keys(pick).length !== items.length || !reason.trim()) && <span className="text-xs text-muted-foreground">{Object.keys(pick).length !== items.length ? "Pick a vendor for every item" : "Enter a reason to continue"}</span>}
-            <Button disabled={award.isPending || !reason.trim() || Object.keys(pick).length !== items.length} onClick={() => award.mutate()}>Confirm selection · Ready for PO</Button>
+            {!canConfirm && <span className="text-xs text-muted-foreground">{pendingCount > 0 ? "Award or explicitly exclude every item" : Object.keys(pick).length === 0 ? "Award at least one material" : skippedCount > 0 ? "Explain skipped materials (at least 15 characters)" : "Enter a selection reason"}</span>}
+            <Button disabled={award.isPending || !canConfirm} onClick={() => award.mutate()}>Confirm selected materials · Ready for PO</Button>
           </div>
         </section>
       )}
