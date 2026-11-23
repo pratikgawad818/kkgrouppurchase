@@ -18,6 +18,7 @@ export type LegalEntity = {
   gstin: string | null;
   pan: string | null;
   registered_address: string | null;
+  billing_address: string | null;
   office_address: string | null;
   phone: string | null;
   email: string | null;
@@ -31,12 +32,13 @@ type ProjectRecord = {
 type LegalEntityForm = {
   code: string; display_name: string; legal_name: string;
   gstin: string; pan: string; registered_address: string;
+  billing_address: string;
   office_address: string; phone: string; email: string;
   is_active: boolean;
 };
 const EMPTY: LegalEntityForm = {
   code: "", display_name: "", legal_name: "", gstin: "", pan: "",
-  registered_address: "", office_address: "", phone: "", email: "", is_active: true,
+  registered_address: "", billing_address: "", office_address: "", phone: "", email: "", is_active: true,
 };
 const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$/;
 const clean = (value: string): string | null => value.trim() || null;
@@ -46,11 +48,11 @@ const clean = (value: string): string | null => value.trim() || null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
-export function isLegalEntityReady(entity: Pick<LegalEntity, "is_active" | "legal_name" | "gstin" | "registered_address">) {
+export function isLegalEntityReady(entity: Pick<LegalEntity, "is_active" | "legal_name" | "gstin" | "billing_address">) {
   return entity.is_active &&
     !!entity.legal_name?.trim() &&
     !!entity.gstin?.match(GSTIN_PATTERN) &&
-    !!entity.registered_address?.trim();
+    !!entity.billing_address?.trim();
 }
 
 export function LegalEntityManager({
@@ -64,7 +66,7 @@ export function LegalEntityManager({
     queryKey: ["legal-entities", companyId],
     queryFn: async (): Promise<LegalEntity[]> => {
       const { data, error } = await db.from("legal_entities")
-        .select("id,company_id,code,display_name,legal_name,gstin,pan,registered_address,office_address,phone,email,is_active")
+        .select("id,company_id,code,display_name,legal_name,gstin,pan,registered_address,billing_address,office_address,phone,email,is_active")
         .eq("company_id", companyId).order("display_name");
       if (error) throw error;
       return (data ?? []) as LegalEntity[];
@@ -101,6 +103,7 @@ export function LegalEntityManager({
         gstin,
         pan,
         registered_address: clean(form.registered_address),
+        billing_address: clean(form.billing_address),
         office_address: clean(form.office_address),
         phone: clean(form.phone),
         email: clean(form.email),
@@ -152,6 +155,7 @@ export function LegalEntityManager({
       code: entity.code, display_name: entity.display_name,
       legal_name: entity.legal_name ?? "", gstin: entity.gstin ?? "",
       pan: entity.pan ?? "", registered_address: entity.registered_address ?? "",
+      billing_address: entity.billing_address ?? "",
       office_address: entity.office_address ?? "", phone: entity.phone ?? "",
       email: entity.email ?? "", is_active: entity.is_active,
     });
@@ -173,7 +177,7 @@ export function LegalEntityManager({
             <h2 id="legal-entities-heading" className="text-base font-semibold">Legal entities &amp; project GST</h2>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
               One KK Group workspace, separate registered buyers. New POs use
-              the project\'s assigned legal name, GSTIN and registered address.
+              the project's assigned legal name, GSTIN and billing address.
               Existing issued documents are not rewritten.
             </p>
           </div>
@@ -190,7 +194,7 @@ export function LegalEntityManager({
         <ShieldCheck className="mr-1 inline h-4 w-4" aria-hidden="true" />
         <strong>{pending.length} legal {pending.length === 1 ? "entity needs" : "entities need"} official details.</strong>
         {" "}New POs for those projects cannot be created until their legal name,
-        GSTIN and registered address are entered.
+        GSTIN and billing address are entered.
       </p>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {(entities.data ?? []).map((entity) => (
@@ -206,7 +210,8 @@ export function LegalEntityManager({
             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
               <p className="break-words">{entity.legal_name || "Legal name not verified"}</p>
               <p className="font-mono">{entity.gstin || "GSTIN not entered"}</p>
-              <p className="break-words">{entity.registered_address || "Registered address pending"}</p>
+              <p className="break-words">Bill to: {entity.billing_address || "Billing address pending"}</p>
+              <p className="break-words">Registered: {entity.registered_address || "Not supplied"}</p>
               <p>{(projects.data ?? []).filter((p) => p.legal_entity_id === entity.id).length} assigned project(s)</p>
             </div>
             {editable && <Button type="button" variant="outline" size="sm"
@@ -241,7 +246,10 @@ export function LegalEntityManager({
           <div><Label htmlFor="legal-entity-phone">Phone</Label>
             <Input id="legal-entity-phone" value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-          <div className="sm:col-span-2"><Label htmlFor="legal-entity-address">Registered address</Label>
+          <div className="sm:col-span-2"><Label htmlFor="legal-entity-billing-address">Billing address (Bill To) *</Label>
+            <Textarea id="legal-entity-billing-address" rows={2} required
+              value={form.billing_address} onChange={(e) => setForm({ ...form, billing_address: e.target.value })} /></div>
+          <div className="sm:col-span-2"><Label htmlFor="legal-entity-address">Registered address (if verified; can differ)</Label>
             <Textarea id="legal-entity-address" rows={2}
               value={form.registered_address} onChange={(e) => setForm({ ...form, registered_address: e.target.value })} /></div>
           <div className="sm:col-span-2"><Label htmlFor="legal-entity-office">Office address</Label>
