@@ -44,6 +44,7 @@ function shortDocumentNumber(value: string) {
 function PurchaseProgressRow({ task, today }: { task: PurchaseChain; today: string }) {
   const Icon = taskIcons[task.kind];
   const due = taskDue(task.due, today);
+  const showSiteStages = task.steps.some(step => step.key === "pr_received");
   return (
     <article className="min-w-0 border-b border-border/70 px-3 py-4 last:border-0 sm:px-5" aria-label={"Purchase " + task.number}>
       <div className="flex min-w-0 flex-wrap items-start gap-3">
@@ -85,6 +86,7 @@ function PurchaseProgressRow({ task, today }: { task: PurchaseChain; today: stri
                 : step.state === "current"
                   ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
                   : null}
+              {showSiteStages && <span className="max-w-[185px] whitespace-normal">{step.label}</span>}
               {step.documents.length ? (
                 <span className="flex min-w-0 items-center gap-1.5">
                   {step.documents.map((item, docIndex) => (
@@ -105,7 +107,7 @@ function PurchaseProgressRow({ task, today }: { task: PurchaseChain; today: stri
                   )}
                 </span>
               ) : (
-                <span>{step.label}</span>
+                !showSiteStages && <span>{step.label}</span>
               )}
             </span>
           </div>
@@ -209,7 +211,13 @@ export function DailyWorkspace({
     </Link>
   );
   const unknown = error ? "Unavailable" : "—";
-  const steps = [
+  const steps = isSiteEngineerPortal ? [
+    { label: "PR requested", href: "/procurement/purchase-requests", allowed: canRequests, icon: ClipboardList },
+    { label: "PR received for procurement", href: "/procurement/purchase-requests", allowed: canRequests, icon: CheckCircle2 },
+    { label: "PO sent for Director approval", href: "/procurement/purchase-orders", allowed: canOrders, icon: ShoppingCart },
+    { label: "Challan entry", href: "/inventory/delivery-challans", allowed: true, icon: FileText },
+    { label: "Goods received", href: "/inventory/goods-received", allowed: canStock, icon: Truck },
+  ] : [
     {
       label: "Request",
       href: "/procurement/purchase-requests",
