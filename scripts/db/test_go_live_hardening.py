@@ -772,6 +772,95 @@ def test_director_notifications_and_names():
 
 
 
+def test_site_pr_five_milestone_notifications():
+    """The original site requester is notified at each real source-document
+    transition: PR submitted, PR received, PO submitted, PO approved,
+    individual supplier challans, and draft/posted goods receipt. No duplicate
+    on edits, no notification to a second engineer on the same project.
+    """
+    with db() as c:
+        doc=seed_po(c,requester=SITE)
+        c.execute("RESET ROLE")
+        company,project,vendor,pr,pr_number,po_number=c.execute("""
+          SELECT o.company_id,o.project_id,o.vendor_id,o.purchase_request_id,
+            pr.pr_number,o.po_number
+          FROM purchase_orders o JOIN purchase_requests pr
+            ON pr.id=o.purchase_request_id WHERE o.id=%s
+        """,(doc,)).fetchone()
+        pr_link="/procurement/purchase-requests/"+str(pr)
+        po_link="/procurement/purchase-orders/"+doc
+        pr_alerts=c.execute("""
+          SELECT title FROM notifications WHERE user_id=%s AND link=%s
+          ORDER BY created_at
+        """,(SITE,pr_link)).fetchall()
+        assert sum("PR requested" in row[0] for row in pr_alerts)==1,pr_alerts
+        assert sum("PR received for procurement" in row[0] for row in pr_alerts)==1,pr_alerts
+
+        same_engineer=str(uuid4())
+        c.execute("""INSERT INTO profiles(id,company_id,full_name,email,is_active)
+          VALUES(%s,%s,'QA same project engineer',%s,true)""",
+          (same_engineer,A,same_engineer+"@example.invalid"))
+        c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,'site_engineer')",(same_engineer,))
+        c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",
+          (same_engineer,PROJECT))
+
+        actor(c,PURCHASER)
+        c.execute("SELECT po_transition(%s,'submitted','QA review')",(doc,))
+        c.execute("RESET ROLE")
+        sent=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                       (SITE,po_link)).fetchall()
+        assert len(sent)==1 and "sent for Director approval" in sent[0][0],sent
+        actor(c,DIRECTOR)
+        c.execute("SELECT po_transition(%s,'approved','QA review completed')",(doc,))
+        c.execute("RESET ROLE")
+        po_titles=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                            (SITE,po_link)).fetchall()
+        assert len(po_titles)==2 and sum(" approved " in x[0] for x in po_titles)==1,po_titles
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s",
+                         (same_engineer,)).fetchone()[0]==0
+
+        challans=[]
+        for idx in (1,2):
+            number="QA-SITE-CHALLAN-"+str(uuid4())
+            ch=c.execute("""INSERT INTO vendor_delivery_challans(
+              company_id,po_id,vendor_id,project_id,challan_number,challan_date,
+              status,created_by,photo_path)
+              VALUES(%s,%s,%s,%s,%s,current_date,'registered',%s,%s)
+              RETURNING id""",
+              (company,doc,vendor,project,number,SITE,
+               'qa-only/'+number+'.jpg')).fetchone()[0]
+            challans.append(ch)
+            chlink="/inventory/delivery-challans/"+str(ch)
+            title=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                            (SITE,chlink)).fetchone()
+            assert title and number in title[0],title
+            c.execute("UPDATE vendor_delivery_challans SET remarks='QA no-op update' WHERE id=%s",(ch,))
+            assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
+                             (SITE,chlink)).fetchone()[0]==1
+
+        grn_number="QA-ENGINEER-GRN-"+str(uuid4())
+        grn=c.execute("""INSERT INTO goods_receipt_notes(
+          grn_number,company_id,po_id,vendor_id,project_id,warehouse_id,
+          received_by,status,challan_id)
+          VALUES(%s,%s,%s,%s,%s,%s,%s,'draft',%s) RETURNING id""",
+          (grn_number,company,doc,vendor,project,WAREHOUSE,SITE,challans[0])).fetchone()[0]
+        glink="/inventory/goods-received/"+str(grn)
+        notices=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                          (SITE,glink)).fetchall()
+        assert len(notices)==1 and "draft recorded" in notices[0][0],notices
+        c.execute("UPDATE goods_receipt_notes SET remarks='QA draft edit' WHERE id=%s",(grn,))
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
+                         (SITE,glink)).fetchone()[0]==1
+        c.execute("UPDATE goods_receipt_notes SET status='posted',posted_at=now() WHERE id=%s",(grn,))
+        notices=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                          (SITE,glink)).fetchall()
+        assert len(notices)==2 and sum("posted" in x[0] for x in notices)==1,notices
+        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s",
+                         (same_engineer,)).fetchone()[0]==0
+        c.rollback()
+    print("PASS original Site Engineer milestone notifications on PR, Director PO handoff, 2 challans and draft/posted GRN; no edits or same-project leaks")
+
+
 def test_director_approved_po_alerts_original_pr_engineer_phone():
     """A real Director PO approval notifies only the original PR engineer;
     the inbox row also enqueues a push for that engineer's opted-in device.
@@ -2151,6 +2240,7 @@ if __name__ == "__main__":
     test_quote_freight_gst_matches_supplier_and_po()
     test_atomic_requests_and_rfqs()
     test_pr_manager_received_notification()
+    test_site_pr_five_milestone_notifications()
     test_director_notifications_and_names()
     test_director_approved_po_alerts_original_pr_engineer_phone()
     test_director_origin_and_super_admin_purchasing()
