@@ -792,6 +792,13 @@
       "when": 1795456860000,
       "tag": "0112_complete_pr_stage_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1795456920000,
+      "tag": "0113_partial_rfq_vendor_award",
+      "breakpoints": true
     }
   ]
 }
