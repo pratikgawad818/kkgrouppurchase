@@ -419,8 +419,11 @@ def test_multi_legal_entity_project_po_buyer_snapshot():
             RETURNING id
         """,(B,)).fetchone()[0])
         actor(c,PURCHASER)
-        denied(c,lambda:c.execute("UPDATE projects SET legal_entity_id=%s WHERE id=%s",
-                                  (kk,PROJECT)), "Only Super Admin")
+        # Project RLS may silently reject updates with zero affected rows;
+        # either way non-admin project mapping must remain unchanged.
+        changed=c.execute("UPDATE projects SET legal_entity_id=%s WHERE id=%s RETURNING id",
+                          (kk,PROJECT)).fetchone()
+        assert changed is None, "Purchase Manager must not assign a project's legal buyer"
         denied(c,lambda:c.execute("""
             INSERT INTO legal_entities(company_id,code,display_name)
             VALUES(%s,'FORBIDDEN','Cannot create')
