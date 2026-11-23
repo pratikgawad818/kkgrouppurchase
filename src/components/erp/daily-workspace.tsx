@@ -144,6 +144,7 @@ export function DailyWorkspace({
   canStock,
   canInvoices,
   canRfqs,
+  isSiteEngineerPortal,
   today,
   dateLabel,
   children,
@@ -164,6 +165,7 @@ export function DailyWorkspace({
   canStock: boolean;
   canInvoices: boolean;
   canRfqs: boolean;
+  isSiteEngineerPortal: boolean;
   today: string;
   dateLabel: string;
   children?: ReactNode;
@@ -443,8 +445,9 @@ export function DailyWorkspace({
           </section>
         )}
       </div>
-      <section className="daily-workflow" aria-label="Procurement and payment workflow">
-        <h2>From request to payment</h2>
+      <section className="daily-workflow"
+        aria-label={isSiteEngineerPortal ? "Procurement and site receiving workflow" : "Procurement and payment workflow"}>
+        <h2>{isSiteEngineerPortal ? "From request to goods received" : "From request to payment"}</h2>
         <div>
           {steps
             .filter((step) => step.allowed)
