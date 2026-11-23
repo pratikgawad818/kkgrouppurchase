@@ -77,13 +77,17 @@ try {
     " const data = new Uint8Array(await one.pdf.arrayBuffer());",
     " if (new TextDecoder().decode(data.slice(0,8)) !== '%PDF-1.4') throw new Error('Invalid PDF');",
     " if (data.byteLength < 5000) throw new Error('PDF unexpectedly short');",
+    " const longBuyer = {...window.samplePO, buyer_legal_entity_id:'synthetic-kanesa', buyer_legal_name:'KANESA EDIFICE PRIVATE LIMITED', buyer_gstin:'27AAJCK7799N1ZC', buyer_pan:'AAJCK7799N', buyer_billing_address:'Head Office - Kacheri Road, Palghar, Maharashtra 401404', buyer_phone:null,buyer_email:null, vendors:{company_name:'SANJARI TRADERS',address:null,city:null,state:null,pincode:null,gstin:null,contact_person:null,mobile:'9823428097',email:null}, projects:{name:'City Centre'},buildings:{name:'City Centre - C'},warehouses:{name:'CC - Main godown',address:'Opp CP-2'}};",
+    " const longDocument = await buildPoReviewDocument(longBuyer,window.sampleItems);",
+    " if (longDocument.previewPages.length !== 1) throw new Error('Long legal buyer should still fit ONE A4 page; got '+longDocument.previewPages.length);",
     " const longer = Array.from({length:30}, (_,i) => ({...window.sampleItems[i%2],line_no:i+1}));",
     " const many = await buildPoReviewDocument(window.samplePO,longer);",
     " if (many.previewPages.length < 2) throw new Error('Long PO was not paginated');",
     " const encode = async b => { const raw = new Uint8Array(await b.arrayBuffer());let out='';for(let i=0;i<raw.length;i+=8000) out+=String.fromCharCode(...raw.subarray(i,i+8000));return 'data:'+b.type+';base64,'+btoa(out);};",
     " document.getElementById('result').textContent = JSON.stringify({ok:true,pages:one.previewPages.length,",
     "   extended:many.previewPages.length,bytes:data.byteLength,",
-    "   image:await encode(one.previewPages[0]),pdf:await encode(one.pdf)});",
+    "   image:await encode(one.previewPages[0]),pdf:await encode(one.pdf),",
+    "   longImage:await encode(longDocument.previewPages[0]),longPdf:await encode(longDocument.pdf)});",
     "})().catch(error => {document.getElementById('result').textContent = JSON.stringify({ok:false,error:String(error.stack||error)});});",
   ].join("\n");
   writeFileSync(join(work, "app.js"), canvasShim + "\n" + compile(taxSource) + "\n" + compile(buyerSource) + "\n" + compile(pdfSource) +
@@ -140,11 +144,14 @@ try {
   if (!result.ok) throw new Error(result.error);
   writeFileSync(join(output, "po-reference.jpg"), Buffer.from(result.image.split(",")[1], "base64"));
   writeFileSync(join(output, "po-reference.pdf"), Buffer.from(result.pdf.split(",")[1], "base64"));
+  writeFileSync(join(output, "po-long-legal-buyer.jpg"), Buffer.from(result.longImage.split(",")[1], "base64"));
+  writeFileSync(join(output, "po-long-legal-buyer.pdf"), Buffer.from(result.longPdf.split(",")[1], "base64"));
   console.log("PASS real A4 PDF browser test:", {
     onePageReference: result.pages,
     longOrderPages: result.extended,
     pdfBytes: result.bytes,
     visualPreview: "artifacts/po-layout-smoke/po-reference.jpg",
+    longBuyerPreview: "artifacts/po-layout-smoke/po-long-legal-buyer.jpg",
   });
 } finally {
   rmSync(work, { recursive: true, force: true });
