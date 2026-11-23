@@ -58,7 +58,7 @@ export function PrintPo({
   const quote = po.vendor_quotations;
   const amounts = poCommercialSummary(po, items);
   const issuer = company?.legal_name || company?.name || "Company";
-  const issuerAddress = company?.registered_address || company?.office_address;
+  const issuerAddress = company?.billing_address || company?.registered_address || company?.office_address;
   const vendorAddress = [
     vendor?.address, vendor?.city, vendor?.state, vendor?.pincode,
   ].filter(Boolean).join(", ");
