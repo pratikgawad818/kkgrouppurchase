@@ -211,7 +211,7 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
   const headerPad = 12;
   const leftW = w * 0.61;
   const cName = company?.legal_name || company?.name || "KK GROUP";
-  const cAddress = company?.registered_address || company?.office_address || "Registered address not recorded";
+  const cAddress = company?.billing_address || company?.registered_address || company?.office_address || "Billing address not recorded";
   const contact = [company?.phone, company?.email].filter(Boolean).join(" | ") || "Contact not recorded";
   const gst = "GSTIN: " + (company?.gstin || "Not recorded") +
     (company?.pan ? "  |  PAN: " + company.pan : "");
