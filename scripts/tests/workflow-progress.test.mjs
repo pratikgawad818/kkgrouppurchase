@@ -72,7 +72,7 @@ test("Site Engineer sees Purchase Manager receipt, not a misleading second PO ap
   const dashboardFile = readFileSync("src/lib/purchase-pipeline.ts","utf8");
   assert.match(prFile, /Request received · RFQ ready/);
   assert.match(prFile, /approved: "Purchase Manager received your request"/);
-  assert.match(detailFile, /"Receive request" : "Accept for procurement"/);
+  assert.match(detailFile, /"Receive for procurement"/);
   assert.match(detailFile, /It does not approve the final Purchase Order/);
   assert.match(dashboardFile, /Purchase Manager received your request — prepare RFQ/);
 });
