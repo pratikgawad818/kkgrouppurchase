@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useCan } from "@/lib/session";
+import { useCan, useMe } from "@/lib/session";
+import { LegalEntityManager } from "@/components/erp/legal-entity-manager";
 import brandMark from "@/assets/kk-groups-full.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/_shell/settings/company")({
@@ -57,6 +58,7 @@ const EMPTY_FORM: CompanyForm = {
 
 function Company() {
   const can = useCan();
+  const me = useMe();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<CompanyForm>(EMPTY_FORM);
   const query = useQuery({
@@ -112,6 +114,7 @@ function Company() {
   const setValue = (key: keyof CompanyForm, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
   return (
+    <>
     <form
       className="mx-auto max-w-5xl overflow-hidden rounded-lg border bg-card shadow-card"
       onSubmit={(event) => {
@@ -185,6 +188,9 @@ function Company() {
         </section>
       </div>
     </form>
+    <LegalEntityManager companyId={query.data.id}
+      editable={can("company.manage") && !!me.data?.roles.includes("super_admin")} />
+    </>
   );
 }
 
