@@ -539,7 +539,8 @@ def test_pr_manager_received_notification():
         message=c.execute(
           "SELECT title FROM notifications WHERE user_id=%s AND link=%s ORDER BY created_at DESC LIMIT 1",
           (SITE,"/procurement/purchase-requests/"+pr)).fetchone()
-        assert message and message[0]==f"Purchase Manager received your request • {pr_number}",message
+        assert message and message[0].startswith("PR received for procurement by "),message
+        assert message[0].endswith(" (Purchase Manager) • "+pr_number),message
         # Receipt of a PR does not approve any PO or create Director votes.
         assert c.execute("SELECT count(*) FROM purchase_orders WHERE purchase_request_id=%s",(pr,)).fetchone()[0]==0
         assert c.execute("SELECT count(*) FROM director_approval_votes").fetchone()[0]==0
@@ -551,7 +552,7 @@ def test_pr_manager_received_notification():
           "SELECT title FROM notifications WHERE user_id=%s AND link=%s ORDER BY created_at DESC LIMIT 1",
           (DIRECTOR,"/procurement/purchase-requests/"+director_pr)).fetchone()
         assert director_title and director_title[0].startswith(
-          "Your purchase request was accepted for procurement • "),director_title
+          "PR received for procurement"),director_title
         assert "Purchase Manager" not in director_title[0]
         c.rollback()
     print("PASS PR receipt notifications distinguish Purchase Manager actions from Director-origin requests")
@@ -806,8 +807,11 @@ def test_director_approved_po_alerts_original_pr_engineer_phone():
         c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",
                   (same_project_engineer,PROJECT))
         c.execute("UPDATE profiles SET full_name='Karim Sir' WHERE id=%s",(DIRECTOR,))
-        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
-                         (SITE,link)).fetchone()[0]==0, "Submitting a PO must not claim it was approved"
+        submitted_alerts=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                         (SITE,link)).fetchall()
+        assert len(submitted_alerts)==1,submitted_alerts
+        assert "sent for Director approval" in submitted_alerts[0][0],submitted_alerts
+        assert all("approved " not in title[0] for title in submitted_alerts),submitted_alerts
 
         actor(c,DIRECTOR)
         assert c.execute("SELECT po_transition(%s,'approved','QA Director approved')",
@@ -817,8 +821,8 @@ def test_director_approved_po_alerts_original_pr_engineer_phone():
             SELECT id,user_id,title,body,link FROM notifications
             WHERE user_id=%s AND link=%s ORDER BY created_at DESC
         """,(SITE,link)).fetchall()
-        assert len(rows)==1,rows
-        n=rows[0]
+        assert len(rows)==2,rows
+        n=next(row for row in rows if row[2].endswith("approved "+po_number))
         assert "Karim Sir approved " + po_number == n[2],n
         assert pr_number in n[3] and po_number in n[3],n
         assert project_name in n[3] and vendor_name in n[3],n
@@ -838,7 +842,7 @@ def test_director_approved_po_alerts_original_pr_engineer_phone():
         c.execute("RESET ROLE")
         c.execute("UPDATE purchase_orders SET status=status WHERE id=%s",(doc,))
         assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
-                         (SITE,link)).fetchone()[0]==1, "Unchanged PO status must not resend the push"
+                         (SITE,link)).fetchone()[0]==2, "Unchanged PO status must not resend the push"
         c.rollback()
 
     with db() as c:
@@ -853,7 +857,7 @@ def test_director_approved_po_alerts_original_pr_engineer_phone():
         alerts=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
                          (SITE,"/procurement/purchase-orders/"+doc)).fetchall()
         po_number=c.execute("SELECT po_number FROM purchase_orders WHERE id=%s",(doc,)).fetchone()[0]
-        assert len(alerts)==1 and alerts[0][0].endswith("approved "+po_number),alerts
+        assert len(alerts)==2 and sum(row[0].endswith("approved "+po_number) for row in alerts)==1,alerts
         c.rollback()
 
     with db() as c:
@@ -866,9 +870,11 @@ def test_director_approved_po_alerts_original_pr_engineer_phone():
         actor(c,DIRECTOR)
         assert c.execute("SELECT po_transition(%s,'approved','QA')",(doc,)).fetchone()[0]=='approved'
         c.execute("RESET ROLE")
-        assert c.execute("SELECT count(*) FROM notifications WHERE user_id=%s AND link=%s",
-                         (SITE,"/procurement/purchase-orders/"+doc)).fetchone()[0]==0, \
-            "Revoked engineer assignment must block access and alerts"
+        retained=c.execute("SELECT title FROM notifications WHERE user_id=%s AND link=%s",
+                         (SITE,"/procurement/purchase-orders/"+doc)).fetchall()
+        assert len(retained)==1 and "sent for Director approval" in retained[0][0], retained
+        # The original submission alert remains in history; revocation
+        # prevents a NEW Director-approval push from being inserted.
         c.rollback()
     print("PASS Director approval -> original PR engineer inbox + push, one alert, project revocation")
 
