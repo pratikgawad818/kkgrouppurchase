@@ -58,7 +58,7 @@ test("Site Engineer dashboard does not query finance or show financial workflow 
   assert.match(dash,/const canInvoices = !isSiteEngineerPortal && can\("\/finance\/vendor-invoices"\)/);
   assert.match(dash,/const canPayments = !isSiteEngineerPortal && can\("\/finance\/payments"\)/);
   assert.match(dash,/const canPayables = !isSiteEngineerPortal && can\("\/finance\/payables"\)/);
-  assert.match(dash,/const tasks = isSiteEngineerPortal\s*\? siteEngineerAttentionTasks\(allTasks\)/);
+  assert.match(dash,/const tasks = isSiteEngineerPortal\s*\? siteEngineerAttentionTasks\(allTasks, chainInput\)/);
   assert.match(dash,/purchasing: tasks\.filter\(t => t\.group === "purchasing"\)\.length/);
   assert.match(dash,/isSiteEngineerPortal=\{isSiteEngineerPortal\}/);
   assert.match(workspace,/From request to goods received/);
