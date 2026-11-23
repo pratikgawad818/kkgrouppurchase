@@ -6,7 +6,7 @@ const sql = readFileSync("drizzle/migrations/0111_pr_requester_procurement_miles
 
 test("all procurement milestones have event-level database triggers", () => {
   for (const table of ["rfqs", "purchase_orders", "vendor_delivery_challans", "goods_receipt_notes"]) {
-    assert.match(sql, new RegExp("ON public\\." + table + " FOR EACH ROW"));
+    assert.match(sql, new RegExp("ON public\\." + table + "\\s+FOR EACH ROW"));
   }
 });
 
