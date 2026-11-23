@@ -402,9 +402,9 @@ def test_multi_legal_entity_project_po_buyer_snapshot():
                          (historical,)).fetchone()==(None,None)
         kk=str(c.execute("""
             INSERT INTO legal_entities(company_id,code,display_name,legal_name,
-                gstin,pan,registered_address)
+                gstin,pan,registered_address,billing_address)
             VALUES(%s,'KKCON','K.K. Construction','K.K.CONSTRUCTION',
-                '27AALFK3094R1ZG','AALFK3094R','QA registered address')
+                '27AALFK3094R1ZG','AALFK3094R','QA registered address','Shared QA billing address')
             RETURNING id
         """,(A,)).fetchone()[0])
         kanesa=str(c.execute("""
@@ -439,11 +439,11 @@ def test_multi_legal_entity_project_po_buyer_snapshot():
         c.execute("RESET ROLE")
         buyer=c.execute("""
             SELECT buyer_legal_entity_id,buyer_legal_name,buyer_gstin,
-                buyer_pan,buyer_registered_address FROM purchase_orders WHERE id=%s
+                buyer_pan,buyer_registered_address,buyer_billing_address FROM purchase_orders WHERE id=%s
         """,(po,)).fetchone()
         assert str(buyer[0])==kk,buyer
         assert buyer[1:] == ('K.K.CONSTRUCTION','27AALFK3094R1ZG','AALFK3094R',
-                             'QA registered address'),buyer
+                             'QA registered address','Shared QA billing address'),buyer
         actor(c,PURCHASER)
         denied(c,lambda:c.execute("UPDATE purchase_orders SET buyer_gstin='27AAAAA0000A1Z5' WHERE id=%s",
                                   (po,)), "permission denied")
