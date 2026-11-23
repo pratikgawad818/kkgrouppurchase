@@ -164,9 +164,9 @@ SET search_path TO 'public','pg_temp' AS $function$
 DECLARE
   po record;
 BEGIN
-  IF NEW.status <> 'registered' OR
-    (TG_OP='UPDATE' AND NEW.status IS NOT DISTINCT FROM OLD.status) THEN
-    RETURN NEW;
+  IF NEW.status <> 'registered' THEN RETURN NEW; END IF;
+  IF TG_OP='UPDATE' THEN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
   END IF;
   SELECT o.purchase_request_id,o.po_number,pr.pr_number,p.name AS project_name
     INTO po
@@ -204,8 +204,9 @@ SET search_path TO 'public','pg_temp' AS $function$
 DECLARE
   po record;
 BEGIN
-  IF TG_OP='UPDATE' AND NEW.status IS NOT DISTINCT FROM OLD.status
-    THEN RETURN NEW; END IF;
+  IF TG_OP='UPDATE' THEN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
+  END IF;
   IF NEW.status NOT IN ('draft','posted','cancelled')
     THEN RETURN NEW; END IF;
   SELECT o.purchase_request_id,o.po_number,pr.pr_number,p.name AS project_name
