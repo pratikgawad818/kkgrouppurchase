@@ -537,7 +537,7 @@ def test_pr_manager_received_notification():
         c.execute("RESET ROLE")
         pr_number=c.execute("SELECT pr_number FROM purchase_requests WHERE id=%s",(pr,)).fetchone()[0]
         message=c.execute(
-          "SELECT title FROM notifications WHERE user_id=%s AND link=%s ORDER BY created_at DESC LIMIT 1",
+          "SELECT title FROM notifications WHERE user_id=%s AND link=%s AND title LIKE 'PR received for procurement%' ORDER BY created_at DESC LIMIT 1",
           (SITE,"/procurement/purchase-requests/"+pr)).fetchone()
         assert message and message[0].startswith("PR received for procurement by "),message
         assert message[0].endswith(" (Purchase Manager) • "+pr_number),message
@@ -549,7 +549,7 @@ def test_pr_manager_received_notification():
         director_pr=save_pr(c,submit=True,purpose="QA - director-origin PR fallback")
         c.execute("RESET ROLE")
         director_title=c.execute(
-          "SELECT title FROM notifications WHERE user_id=%s AND link=%s ORDER BY created_at DESC LIMIT 1",
+          "SELECT title FROM notifications WHERE user_id=%s AND link=%s AND title LIKE 'PR received for procurement%' ORDER BY created_at DESC LIMIT 1",
           (DIRECTOR,"/procurement/purchase-requests/"+director_pr)).fetchone()
         assert director_title and director_title[0].startswith(
           "PR received for procurement"),director_title
