@@ -11,6 +11,7 @@ import { fmtDate } from "@/lib/format";
 import { Loading } from "@/components/erp/common";
 import { DailyWorkspace, type WorkspaceSnapshot } from "@/components/erp/daily-workspace";
 import { buildPurchaseChains, type PipePayment } from "@/lib/purchase-pipeline";
+import { isSiteEngineerFieldPortal, siteEngineerAttentionTasks } from "@/lib/site-engineer-workflow";
 
 const DetailedDashboard = lazy(() => import("@/components/erp/detailed-dashboard"));
 export const Route = createFileRoute("/_authenticated/_shell/dashboard")({
@@ -38,9 +39,12 @@ function Dashboard() {
   const canPr = can("/procurement/purchase-requests");
   const canRfqs = can("/procurement/rfqs");
   const canPo = can("/procurement/purchase-orders");
-  const canInvoices = can("/finance/vendor-invoices");
-  const canPayments = can("/finance/payments");
-  const canPayables = can("/finance/payables");
+  const isSiteEngineerPortal = isSiteEngineerFieldPortal(access.roles);
+  // Even if an incorrect finance permission is ever granted, a field-only
+  // engineer's dashboard must not fetch or expose supplier financial documents.
+  const canInvoices = !isSiteEngineerPortal && can("/finance/vendor-invoices");
+  const canPayments = !isSiteEngineerPortal && can("/finance/payments");
+  const canPayables = !isSiteEngineerPortal && can("/finance/payables");
   const canChallans = can("/inventory/delivery-challans");
   const canGrns = can("/inventory/goods-received");
   const canProjects = can("/projects");
@@ -66,7 +70,7 @@ function Dashboard() {
     queryKey: [
       "daily-workspace", "purchase-chains", me.data?.profile.id, effectiveProject, day,
       canPr, canRfqs, canPo, canChallans, canGrns,
-      canInvoices, canPayments, canPayables,
+      canInvoices, canPayments, canPayables, isSiteEngineerPortal,
     ],
     staleTime: 30_000,
     queryFn: async (): Promise<WorkspaceSnapshot> => {
@@ -199,7 +203,7 @@ function Dashboard() {
         project: row.projects?.name ?? "Company-wide",
       }));
 
-      const tasks = buildPurchaseChains({
+      const allTasks = buildPurchaseChains({
         prs: p.map(row => ({
           id: row.id, number: row.pr_number, purpose: row.purpose,
           status: row.status, due: row.required_by,
@@ -236,6 +240,9 @@ function Dashboard() {
         })),
         payments: paymentRows,
       });
+      const tasks = isSiteEngineerPortal
+        ? siteEngineerAttentionTasks(allTasks)
+        : allTasks;
       const payable = outstanding.reduce((sum, row) => {
         const value = Number(row.balance_due);
         if (!Number.isFinite(value)) throw new Error("Payable totals could not be verified.");
@@ -275,6 +282,7 @@ function Dashboard() {
       canStock={can("/inventory/goods-received")}
       canInvoices={canInvoices}
       canRfqs={canRfqs}
+      isSiteEngineerPortal={isSiteEngineerPortal}
       today={day}
       dateLabel={new Intl.DateTimeFormat("en-GB", {
         weekday: "long", timeZone: "Asia/Kolkata",
