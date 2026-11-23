@@ -162,8 +162,6 @@ export function LegalEntityManager({
     setShowEditor(true);
   };
   const pending = entities.data?.filter((e) => !isLegalEntityReady(e)) ?? [];
-  const missingNavali = projects.isSuccess &&
-    !projects.data.some((p) => p.name.trim().toLowerCase() === "navali");
 
   return (
     <section className="mx-auto mt-6 max-w-5xl space-y-5 rounded-lg border bg-card p-4 shadow-card sm:p-6"
@@ -300,12 +298,6 @@ export function LegalEntityManager({
             </div>;
           })}
         </div>
-        {missingNavali && <p className="mt-3 rounded-lg border p-3 text-xs text-muted-foreground">
-          <strong>Navali → KK Infra:</strong> KK Infra is prepared in the legal-entity
-          master, but no ERP project named Navali exists. Create the correct
-          project in Projects first, then assign it here. Existing Central Hub
-          and Supreme Park are intentionally not guessed or renamed.
-        </p>}
       </div>
     </section>
   );
