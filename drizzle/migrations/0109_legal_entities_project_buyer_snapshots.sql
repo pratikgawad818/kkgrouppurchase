@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS public.legal_entities (
   CONSTRAINT legal_entities_nonblank_name CHECK (length(trim(display_name))>0)
 );
 CREATE INDEX IF NOT EXISTS legal_entities_tenant_idx ON public.legal_entities(company_id);
+CREATE UNIQUE INDEX IF NOT EXISTS legal_entities_one_registration_per_tenant
+  ON public.legal_entities(company_id,gstin) WHERE gstin IS NOT NULL;
 ALTER TABLE public.legal_entities ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Company staff view legal entities" ON public.legal_entities;
@@ -124,17 +126,20 @@ BEGIN
       RAISE EXCEPTION 'Legal entity must belong to the project company';
     END IF;
   END IF;
-  IF NEW.legal_entity_id IS DISTINCT FROM OLD.legal_entity_id AND
-    (NOT public.has_role(auth.uid(),'super_admin')
-     OR NOT public.has_permission(auth.uid(),'company.manage')) THEN
-    RAISE EXCEPTION 'Only Super Admin can change a project legal entity';
+  IF (TG_OP='INSERT' AND NEW.legal_entity_id IS NOT NULL)
+    OR (TG_OP='UPDATE'
+      AND NEW.legal_entity_id IS DISTINCT FROM OLD.legal_entity_id) THEN
+    IF NOT public.has_role(auth.uid(),'super_admin')
+       OR NOT public.has_permission(auth.uid(),'company.manage') THEN
+      RAISE EXCEPTION 'Only Super Admin can change a project legal entity';
+    END IF;
   END IF;
   RETURN NEW;
 END
 $function$;
 DROP TRIGGER IF EXISTS guard_project_legal_entity_update ON public.projects;
 CREATE TRIGGER guard_project_legal_entity_update
-BEFORE UPDATE OF legal_entity_id ON public.projects
+BEFORE INSERT OR UPDATE OF legal_entity_id,company_id ON public.projects
 FOR EACH ROW EXECUTE FUNCTION public.guard_project_legal_entity();
 
 -- Snapshot official buyer fields at the actual moment a new PO is created,
