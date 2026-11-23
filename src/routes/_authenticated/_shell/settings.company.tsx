@@ -127,7 +127,7 @@ function Company() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Settings</span><span aria-hidden="true">/</span><span className="font-medium text-foreground">Company Profile</span>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Company identity used across ERP records and documents.</p>
+          <p className="mt-1 text-sm text-muted-foreground">The original company profile remains the historical K.K. Construction identity. For Kanesa Edifice or KK Infra, use the separate legal-entity master below—do not overwrite this record's GSTIN.</p>
         </div>
         {editable && (
           <Button type="submit" size="sm" disabled={save.isPending || !form.name.trim()}>
