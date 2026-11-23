@@ -20,7 +20,7 @@ test("PR received for procurement wording preserves internal approved status",()
  assert.match(current,/PR received for procurement by/);
  assert.doesNotMatch(current,/Your purchase request was accepted for procurement/);
  assert.match(current,/NEW\.status='approved'/);
- assert.match(flow,/Purchase Manager review/);
+ assert.match(flow,/Procurement review/);
 });
 test("Director PO approval remains separate and unchanged",()=>{
  assert.match(po,/stateLabel: "Awaiting Director approval"/);
