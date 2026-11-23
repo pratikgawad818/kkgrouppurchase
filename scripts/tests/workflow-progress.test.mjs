@@ -12,7 +12,7 @@ test("Site Engineer sees the next eligible PR approver without inventing a named
   const pending = workflowPresentation("purchase_request", "pending_approval");
   assert.equal(pending.stateLabel, "Awaiting purchasing review");
   assert.equal(pending.nextTitle, "Review and receive the purchase request");
-  assert.match(pending.nextOwner, /Project Manager \/ Purchase Manager \/ Director/);
+  assert.match(pending.nextOwner, /Purchase Manager \/ Super Admin \/ Director/);
   assert.match(pending.nextDescription, /other than the requester/);
   assert.equal(pending.stages[0].state, "complete");
   assert.equal(pending.stages[1].state, "current");
@@ -47,16 +47,16 @@ test("Approved PR follows actual RFQ visibility; does not claim no RFQ for unaut
   assert.equal(ready.stages[2].state, "complete");
 });
 
-test("Site Engineer sees Purchase Manager receipt, not a misleading second PO approval", () => {
+test("Site Engineer sees PR received for procurement, not a false PO approval", () => {
   const received = workflowPresentation("purchase_request", "approved", []);
-  assert.equal(received.stateLabel, "Purchase Manager received your request");
-  assert.equal(received.stages[1].label, "Purchase Manager review");
+  assert.equal(received.stateLabel, "PR received for procurement");
+  assert.equal(received.stages[1].label, "Procurement review");
   assert.equal(received.nextTitle, "Create the RFQ");
   assert.match(received.nextDescription, /received for procurement/);
   assert.equal(workflowEventTitle("purchase_request", {
     id: "manager-1", action: "approved", occurredAt: "2026-11-22T09:00:00Z",
     actorName: "Purchase Manager",
-  }), "Purchase Manager received your request");
+  }), "PR received for procurement");
   assert.equal(workflowEventTitle("purchase_request", {
     id: "director-1", action: "approved", occurredAt: "2026-11-22T09:00:00Z",
     comment: "Finalized by the requesting Director; no additional approval required.",
@@ -71,10 +71,10 @@ test("Site Engineer sees Purchase Manager receipt, not a misleading second PO ap
     "src/routes/_authenticated/_shell/procurement.purchase-requests.$id.index.tsx","utf8");
   const dashboardFile = readFileSync("src/lib/purchase-pipeline.ts","utf8");
   assert.match(prFile, /PR received for procurement · RFQ ready/);
-  assert.match(prFile, /approved: "Purchase Manager received your request"/);
+  assert.match(prFile, /approved: "PR received for procurement"/);
   assert.match(detailFile, /"Receive for procurement"/);
   assert.match(detailFile, /It does not approve the final Purchase Order/);
-  assert.match(dashboardFile, /Purchase Manager received your request — prepare RFQ/);
+  assert.match(dashboardFile, /PR received for procurement — prepare RFQ/);
 });
 
 test("Independent Director is responsible for pending PO and payment approvals", () => {
@@ -137,7 +137,7 @@ test("Real audit history retains original actor, time, comment and event orderin
   const sorted = chronologicalWorkflowEvents(events);
   assert.deepEqual(sorted.map((event) => event.id), ["a", "b"]);
   assert.equal(sorted[0].actorName, "Engineer");
-  assert.equal(workflowEventTitle("purchase_request", sorted[0]), "Submitted for approval");
+  assert.equal(workflowEventTitle("purchase_request", sorted[0]), "PR requested");
   assert.equal(workflowEventTitle("purchase_request", { ...sorted[0], newStatus: "approved" }), "Request finalized by creating Director");
   assert.equal(workflowEventTone({ id:"r", action:"returned", occurredAt:"2026-11-19T10:00:00Z" }), "warning");
 });
