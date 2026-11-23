@@ -38,11 +38,15 @@ export async function fetchPoReviewPdf(poId: string) {
   const approver = [...history].reverse().find(event => event.action === "approved");
   // The official document-actor RPC resolves staff names within the user's
   // authorised PO. Never invent the signatories or treat submitted as approved.
-  const [names, selectedQuotation, supplier] = await Promise.all([
+  const [names, selectedQuotation, supplier, prRequester] = await Promise.all([
     documentActorNames("purchase_order", [poId]),
     fetchSelectedPoQuotation(poId),
     resolvePoSupplierForDocument(poId, order.data.vendors),
+    supabase.rpc("get_po_pr_requester_name" as never, { _po_id: poId } as never),
   ]);
+  if (prRequester.error) throw prRequester.error;
+  // The generated database types are refreshed independently of this migration.
+  const originalRequesterName: unknown = prRequester.data;
   return buildPoReviewDocument({
     ...order.data,
     vendors: supplier,
@@ -54,6 +58,7 @@ export async function fetchPoReviewPdf(poId: string) {
         remarks: selectedQuotation.remarks,
       },
     }),
+    pr_requested_by_name: typeof originalRequesterName === "string" ? originalRequesterName : null,
     prepared_by_name: creator?.acted_by ? names.get(creator.acted_by) ?? null : null,
     approved_by_name: approver?.acted_by ? names.get(approver.acted_by) ?? null : null,
   }, lines.data);
