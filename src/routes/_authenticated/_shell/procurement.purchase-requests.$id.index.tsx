@@ -184,7 +184,7 @@ function PrDetail() {
       toast.success(action === "approved"
         ? (me.data?.roles.includes("purchase_manager")
           ? "Purchase Manager received your request"
-          : "Request accepted for procurement")
+          : "Request received for procurement")
         : "Updated");
       setAct(null);
       setComment("");
@@ -235,7 +235,7 @@ function PrDetail() {
             {pending && !mine && can("purchase_request.approve") && (
               <>
                 <Button size="sm" onClick={() => setAct("approved")}>
-                  {me.data?.roles.includes("purchase_manager") ? "Receive request" : "Accept for procurement"}
+                  {"Receive for procurement"}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setAct("returned")}>
                   Return
