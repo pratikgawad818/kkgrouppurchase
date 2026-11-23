@@ -75,18 +75,28 @@ REVOKE DELETE,TRUNCATE ON public.company_bank_accounts FROM anon,authenticated;
 CREATE OR REPLACE FUNCTION public.guard_vendor_bank_edit_roles()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'public','pg_temp' AS $function$
+DECLARE
+  bank_fields_changed boolean;
 BEGIN
-  IF NEW.bank_account_name IS DISTINCT FROM OLD.bank_account_name
-     OR NEW.bank_name IS DISTINCT FROM OLD.bank_name
-     OR NEW.bank_account_number IS DISTINCT FROM OLD.bank_account_number
-     OR NEW.ifsc IS DISTINCT FROM OLD.ifsc THEN
-    IF auth.uid() IS NULL OR NOT public.actor_in_company(OLD.company_id)
+  IF TG_OP='INSERT' THEN
+    bank_fields_changed := NEW.bank_account_name IS NOT NULL
+      OR NEW.bank_name IS NOT NULL
+      OR NEW.bank_account_number IS NOT NULL
+      OR NEW.ifsc IS NOT NULL;
+  ELSE
+    bank_fields_changed := NEW.bank_account_name IS DISTINCT FROM OLD.bank_account_name
+      OR NEW.bank_name IS DISTINCT FROM OLD.bank_name
+      OR NEW.bank_account_number IS DISTINCT FROM OLD.bank_account_number
+      OR NEW.ifsc IS DISTINCT FROM OLD.ifsc;
+  END IF;
+  IF bank_fields_changed THEN
+    IF auth.uid() IS NULL OR NOT public.actor_in_company(NEW.company_id)
        OR NOT public.has_permission(auth.uid(),'vendors.manage')
        OR NOT (public.has_role(auth.uid(),'super_admin')
                OR public.has_role(auth.uid(),'accounts_manager')) THEN
       RAISE EXCEPTION 'Only Super Admin or Accounts Manager can edit supplier bank details';
     END IF;
-    IF NEW.company_id IS DISTINCT FROM OLD.company_id THEN
+    IF TG_OP='UPDATE' AND NEW.company_id IS DISTINCT FROM OLD.company_id THEN
       RAISE EXCEPTION 'Cannot move bank details to another company';
     END IF;
     IF coalesce(NEW.bank_account_number,'') <> '' THEN
@@ -105,8 +115,8 @@ END $function$;
 REVOKE ALL ON FUNCTION public.guard_vendor_bank_edit_roles() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS guard_vendor_bank_edit_roles_update ON public.vendors;
 CREATE TRIGGER guard_vendor_bank_edit_roles_update
-BEFORE UPDATE OF bank_account_name,bank_name,bank_account_number,ifsc
+BEFORE INSERT OR UPDATE OF bank_account_name,bank_name,bank_account_number,ifsc
 ON public.vendors FOR EACH ROW EXECUTE FUNCTION public.guard_vendor_bank_edit_roles();
 
 COMMENT ON FUNCTION public.guard_vendor_bank_edit_roles() IS
-'Prevents other vendor-editing roles from changing payout instructions; audited vendor rows and existing financial allocations are preserved.';
+'Prevents other vendor-editing roles from creating or changing payout instructions; audited vendor rows and existing financial allocations are preserved.';
