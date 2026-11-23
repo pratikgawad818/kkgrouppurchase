@@ -216,43 +216,41 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
   const gst = "GSTIN: " + (company?.gstin || "Not recorded") +
     (company?.pan ? "  |  PAN: " + company.pan : "");
 
-  // Measure with the same fonts used to render. Long registered buyer names
-  // must never overlap their postal address or tax identification details.
+  // Size each row using its actual font. Keep buyer details restricted
+  // to the left column, so they cannot collide with the right-hand PO metadata.
   const nameSize = 15.5;
-  const nameLeading = 19.4;
+  const nameLeading = 18.2;
   const leftTextW = leftW - headerPad * 2;
-  const legalTextW = w - headerPad * 2;
   font(p.ctx, nameSize, true);
   const nameLines = breakLines(p.ctx, cName, leftTextW - 2).length;
-  font(p.ctx, 8.3);
-  const addressLines = breakLines(p.ctx, cAddress, leftTextW - 2).length;
   font(p.ctx, 8.2);
-  const legalLineCount = breakLines(p.ctx, gst, legalTextW - 2).length;
-  const contactLineCount = breakLines(p.ctx, contact, legalTextW - 2).length;
-  const nameTop = y + 12;
-  const addressTop = nameTop + nameLines * nameLeading + 8;
-  const addressBottom = addressTop + addressLines * 11;
-  // GST and contact occupy their own full-width strip below both columns.
-  // The PO date in the right-hand column ends above y + 66.
-  const taxTop = Math.max(addressBottom + 10, y + 79);
-  const contactTop = taxTop + legalLineCount * 11 + 4;
-  const headerH = Math.max(111, contactTop - y + contactLineCount * 11 + 12);
+  const addressLines = breakLines(p.ctx, cAddress, leftTextW - 2).length;
+  font(p.ctx, 7.8);
+  const legalLineCount = breakLines(p.ctx, gst, leftTextW - 2).length;
+  const contactLineCount = breakLines(p.ctx, contact, leftTextW - 2).length;
+
+  const nameTop = y + 8;
+  const addressTop = nameTop + nameLines * nameLeading + 3;
+  const taxTop = addressTop + addressLines * 10.6 + 3;
+  const contactTop = taxTop + legalLineCount * 10 + 2;
+  const headerH = Math.max(76,
+    contactTop - y + contactLineCount * 10 + 7);
+
   rect(p, x, y, w, headerH);
   drawLine(p, x, y + 1, x + w, y + 1, 2.25);
   write(p, cName, x + headerPad, nameTop, leftTextW, nameSize,
     { bold: true, leading: nameLeading });
-  write(p, cAddress, x + headerPad, addressTop, leftTextW, 8.3,
-    { leading: 11 });
+  write(p, cAddress, x + headerPad, addressTop, leftTextW, 8.2,
+    { leading: 10.6 });
+  write(p, gst, x + headerPad, taxTop, leftTextW, 7.8, { leading: 10 });
+  write(p, contact, x + headerPad, contactTop, leftTextW, 7.8,
+    { leading: 10 });
   write(p, "PURCHASE ORDER", x + leftW, y + 14, w - leftW - headerPad,
     13.5, { bold: true, align: "right" });
   write(p, "PO No.: " + po.po_number, x + leftW, y + 37,
     w - leftW - headerPad, 9.5, { bold: true, align: "right" });
   write(p, "PO Date: " + formatDate(po.po_date), x + leftW, y + 53,
     w - leftW - headerPad, 8.8, { align: "right" });
-  drawLine(p, x + headerPad, taxTop - 6, x + w - headerPad, taxTop - 6, 0.35);
-  write(p, gst, x + headerPad, taxTop, legalTextW, 8.2, { leading: 11 });
-  write(p, contact, x + headerPad, contactTop, legalTextW, 8.2,
-    { leading: 11 });
 
   let rowY = y + headerH;
   const half = w / 2;
