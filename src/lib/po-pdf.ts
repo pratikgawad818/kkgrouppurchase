@@ -216,27 +216,43 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
   const gst = "GSTIN: " + (company?.gstin || "Not recorded") +
     (company?.pan ? "  |  PAN: " + company.pan : "");
 
-  font(p.ctx, 8.5);
-  const addressLines = lineCount(p, cAddress, leftW - 20, 8.3);
-  const legalLineCount = lineCount(p, gst, w - headerPad * 2, 8.2);
-  const contactLineCount = lineCount(p, contact, w - headerPad * 2, 8.2);
-  const headerH = Math.max(85,
-    39 + addressLines * 11 + 3 + legalLineCount * 11 + 3 + contactLineCount * 11 + 9);
+  // Measure with the same fonts used to render. Long registered buyer names
+  // must never overlap their postal address or tax identification details.
+  const nameSize = 15.5;
+  const nameLeading = 19.4;
+  const leftTextW = leftW - headerPad * 2;
+  const legalTextW = w - headerPad * 2;
+  font(p.ctx, nameSize, true);
+  const nameLines = breakLines(p.ctx, cName, leftTextW - 2).length;
+  font(p.ctx, 8.3);
+  const addressLines = breakLines(p.ctx, cAddress, leftTextW - 2).length;
+  font(p.ctx, 8.2);
+  const legalLineCount = breakLines(p.ctx, gst, legalTextW - 2).length;
+  const contactLineCount = breakLines(p.ctx, contact, legalTextW - 2).length;
+  const nameTop = y + 12;
+  const addressTop = nameTop + nameLines * nameLeading + 8;
+  const addressBottom = addressTop + addressLines * 11;
+  // GST and contact occupy their own full-width strip below both columns.
+  // The PO date in the right-hand column ends above y + 66.
+  const taxTop = Math.max(addressBottom + 10, y + 79);
+  const contactTop = taxTop + legalLineCount * 11 + 4;
+  const headerH = Math.max(111, contactTop - y + contactLineCount * 11 + 12);
   rect(p, x, y, w, headerH);
   drawLine(p, x, y + 1, x + w, y + 1, 2.25);
-  write(p, cName, x + headerPad, y + 13, leftW - headerPad * 2, 17.5, { bold: true });
-  write(p, "PURCHASE ORDER", x + leftW, y + 14, w - leftW - 12, 13.5,
-    { bold: true, align: "right" });
-  write(p, "PO No.: " + po.po_number, x + leftW, y + 37, w - leftW - 12,
-    9.5, { bold: true, align: "right" });
-  write(p, "PO Date: " + formatDate(po.po_date), x + leftW, y + 53,
-    w - leftW - 12, 8.8, { align: "right" });
-  const addrY = write(p, cAddress, x + headerPad, y + 39, leftW - headerPad * 2, 8.3,
+  write(p, cName, x + headerPad, nameTop, leftTextW, nameSize,
+    { bold: true, leading: nameLeading });
+  write(p, cAddress, x + headerPad, addressTop, leftTextW, 8.3,
     { leading: 11 });
-  const taxY = Math.max(addrY + 3, y + 51);
-  write(p, gst, x + headerPad, taxY, w - headerPad * 2, 8.2);
-  write(p, contact, x + headerPad, taxY + legalLineCount * 11 + 3,
-    w - headerPad * 2, 8.2);
+  write(p, "PURCHASE ORDER", x + leftW, y + 14, w - leftW - headerPad,
+    13.5, { bold: true, align: "right" });
+  write(p, "PO No.: " + po.po_number, x + leftW, y + 37,
+    w - leftW - headerPad, 9.5, { bold: true, align: "right" });
+  write(p, "PO Date: " + formatDate(po.po_date), x + leftW, y + 53,
+    w - leftW - headerPad, 8.8, { align: "right" });
+  drawLine(p, x + headerPad, taxTop - 6, x + w - headerPad, taxTop - 6, 0.35);
+  write(p, gst, x + headerPad, taxTop, legalTextW, 8.2, { leading: 11 });
+  write(p, contact, x + headerPad, contactTop, legalTextW, 8.2,
+    { leading: 11 });
 
   let rowY = y + headerH;
   const half = w / 2;
@@ -261,8 +277,8 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
   const supplierContactLines = supplierContact
     ? lineCount(p, supplierContact, half - 22, 8) : 0;
   const vendorHeight = 28 + supplierNameLines * 13 + 3 +
-    supplierAddrLines * 11 + 3 + supplierGstLines * 12 +
-    (supplierContactLines ? 4 + supplierContactLines * 10 : 0);
+    supplierAddrLines * 11 + 3 + supplierGstLines * 11.8 +
+    (supplierContactLines ? 5 + supplierContactLines * 10 : 0);
   const siteHeight = 26 + rightFields.reduce((total, value, index) =>
     total + lineCount(p, value, half - 22, index === 0 ? 10 : 8.5) *
       (index === 0 ? 12 : 10.2) + (index === 0 ? 2 : 0), 0);
@@ -274,9 +290,10 @@ function drawHeader(p: Paper, po: PoPdfOrder) {
     { bold: true, leading: 13 }) + 3;
   vY = write(p, addressLeft, x + headerPad, vY, half - 22, 8.4, { leading: 11 }) + 3;
   vY = write(p, "GSTIN: " + (supplier?.gstin || "Not recorded"),
-    x + headerPad, vY, half - 22, 8.3);
+    x + headerPad, vY, half - 22, 8.3, { leading: 11.8 });
   if (supplierContact) {
-    write(p, supplierContact, x + headerPad, vY + 4, half - 22, 8, { leading: 10 });
+    write(p, supplierContact, x + headerPad, vY + 5, half - 22, 8,
+      { leading: 10 });
   }
   write(p, "DELIVERY / PROJECT", x + half + headerPad,
     rowY + 10, half - 22, 8.2, { bold: true });
