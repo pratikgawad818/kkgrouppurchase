@@ -11,7 +11,7 @@ test("requested-by signatory is resolved from the originating PR, not the PO cre
   assert.match(sql, /JOIN public\.profiles profile ON profile\.id=pr\.requested_by/);
   assert.match(sql, /pr\.id=selected_po\.purchase_request_id/);
   assert.match(loader, /get_po_pr_requester_name/);
-  assert.match(loader, /pr_requested_by_name: typeof prRequester\.data === "string"/);
+  assert.match(loader, /pr_requested_by_name: typeof originalRequesterName === "string"/);
   assert.match(pdf, /"PR Requested By", "Prepared by", "Approved by", "Authorised signatory"/);
   assert.match(smoke, /pr_requested_by_name: "Tanuj Shah"/);
 });
