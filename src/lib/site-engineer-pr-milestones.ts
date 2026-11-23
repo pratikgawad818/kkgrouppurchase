@@ -28,7 +28,7 @@ const submittedPo = new Set(["pending_approval", ...approvedPo]);
 type Step = PipelineStep;
 const steps: Array<{ key: Step["key"]; label: string }> = [
   { key: "request", label: "PR requested" },
-  { key: "pr_received", label: "PR received" },
+  { key: "pr_received", label: "PR received for procurement" },
   { key: "director_approval", label: "PO sent for Director approval" },
   { key: "challan_entry", label: "Challan entry" },
   { key: "goods_received", label: "Goods received" },
@@ -111,7 +111,7 @@ export function sitePrMilestones(pr: SitePr, all: SitePrJourneySource): SitePrMi
   } else if (!pos.length) {
     stage = allPos.some((po) => po.status === "cancelled")
       ? "PO cancelled — procurement must arrange another order"
-      : "PR received — procurement is preparing a PO for Director approval";
+      : "PR received for procurement — preparing a PO for Director approval";
     action = "View PR"; href = prLink(pr.id);
   } else if (!posApproved) {
     const pending = pos.find((po) => po.status === "pending_approval");
