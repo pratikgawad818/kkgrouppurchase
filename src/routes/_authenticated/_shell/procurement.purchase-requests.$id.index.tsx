@@ -19,6 +19,8 @@ import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { PrMissingAttachment } from "@/components/erp/pr-missing-attachment";
 import { WorkflowTimeline } from "@/components/erp/workflow-timeline";
+import { SiteEngineerPrTracker } from "@/components/erp/site-engineer-pr-tracker";
+import { isSiteEngineerFieldPortal } from "@/lib/site-engineer-workflow";
 import { ProcurementRevisionHistory } from "@/components/erp/procurement-revision-history";
 import { errMsg, fmtDate, fmtDateTime, num } from "@/lib/format";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
@@ -486,6 +488,27 @@ function PrDetail() {
         </section>
       )}
 
+      {isSiteEngineerFieldPortal(me.data?.roles ?? []) ? (
+        <>
+          <SiteEngineerPrTracker pr={{
+            id: pr.id, number: pr.pr_number, purpose: pr.purpose,
+            status: pr.status, project: pr.projects?.name ?? "Project",
+            due: pr.required_by,
+          }} receivedBy={pr.approved_by ? name(pr.approved_by) : null} />
+          <section className="mt-4 rounded-xl border bg-card p-4" aria-label="Recorded purchase request decisions">
+            <h2 className="text-sm font-semibold">Recorded request activity</h2>
+            <ol className="mt-3 space-y-2">
+              {history.map((event) => (
+                <li key={event.id} className="rounded-lg border px-3 py-2 text-xs">
+                  <span className="font-semibold">{event.action.replaceAll("_", " ")}</span>
+                  <span className="ml-2 text-muted-foreground">by {name(event.acted_by)} · {fmtDateTime(event.acted_at)}</span>
+                  {event.comment && <p className="mt-1 break-words text-muted-foreground">{event.comment}</p>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        </>
+      ) : (
       <WorkflowTimeline
         kind="purchase_request"
         status={pr.status}
@@ -499,6 +522,7 @@ function PrDetail() {
           newStatus: event.new_status,
         }))}
       />
+      )}
 
       <ProcurementRevisionHistory kind="purchase_request" documentId={id} />
       <Dialog open={!!act} onOpenChange={(o) => !o && setAct(null)}>
