@@ -1,5 +1,6 @@
 import { fmtDate, inr, num } from "@/lib/format";
 import { poCommercialSummary } from "@/lib/po-commercial-summary";
+import { poBuyerIdentity, type PoBuyerSnapshot } from "@/lib/po-buyer-identity";
 
 type Company = {
   name: string; legal_name: string | null; registered_address: string | null;
@@ -13,7 +14,7 @@ type Vendor = {
   email: string | null; bank_account_name?: string | null;
   bank_name?: string | null; bank_account_number?: string | null; ifsc?: string | null;
 } | null;
-type Po = {
+type Po = PoBuyerSnapshot & {
   po_number: string; po_date: string; status: string;
   expected_delivery_date: string | null; payment_terms: string | null;
   delivery_terms: string | null; remarks: string | null;
@@ -52,7 +53,7 @@ type Hist = { action: string; profiles: { full_name: string | null } | null };
 export function PrintPo({
   po, items, history,
 }: { po: Po; items: Item[]; history: Hist[] }) {
-  const company = po.companies;
+  const company = poBuyerIdentity(po);
   const vendor = po.vendors;
   const quote = po.vendor_quotations;
   const amounts = poCommercialSummary(po, items);

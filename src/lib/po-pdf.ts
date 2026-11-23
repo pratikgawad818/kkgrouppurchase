@@ -1,4 +1,5 @@
 import { poCommercialSummary } from "@/lib/po-commercial-summary";
+import { poBuyerIdentity, type PoBuyerSnapshot } from "@/lib/po-buyer-identity";
 /**
  * Builds a real, multipage A4 PDF locally from the saved PO data.
  * No popups, external PDF APIs, public file storage or third-party dependency.
@@ -21,7 +22,7 @@ export type PoPdfLine = {
   units_of_measure?: { code: string } | null;
 };
 
-export type PoPdfOrder = {
+export type PoPdfOrder = PoBuyerSnapshot & {
   po_number: string;
   po_date: string;
   status: string;
@@ -186,7 +187,8 @@ function drawPage(order: PoPdfOrder, n: number): Paper {
   // Unlike a browser Print dialog, there is no timestamp or source URL in
   // the document margins. Actual PO date and reference stay in the header.
   drawLine(p, M, H - 32, W - M, H - 32, 0.45);
-  write(p, order.companies?.legal_name || order.companies?.name || "KK GROUP",
+  const buyer = poBuyerIdentity(order);
+  write(p, buyer?.legal_name || buyer?.name || "KK GROUP",
     M, H - 28, CW * 0.73, 7.5, { color: MUTED });
   write(p, "Page " + n, M + CW * 0.78, H - 28, CW * 0.22, 7.5,
     { color: MUTED, align: "right" });
@@ -202,7 +204,7 @@ function needNewPage(p: Paper, required: number, order: PoPdfOrder, pages: Paper
 /** Reference layout: framed company/PO header, side-by-side supplier and site,
  * and a compact document-source strip, exactly in that visual reading order. */
 function drawHeader(p: Paper, po: PoPdfOrder) {
-  const company = po.companies;
+  const company = poBuyerIdentity(po);
   const supplier = po.vendors;
   const site = po.warehouses;
   const x = M, y = p.y, w = CW;
@@ -473,7 +475,7 @@ function signatureRow(p: Paper, po: PoPdfOrder) {
     po.prepared_by_name || "—",
     po.approved_by_name || (po.status === "approved" || po.status === "sent"
       ? "Approval recorded" : "Pending approval"),
-    "For " + (po.companies?.legal_name || po.companies?.name || "KK GROUP"),
+    "For " + (poBuyerIdentity(po)?.legal_name || poBuyerIdentity(po)?.name || "KK GROUP"),
   ];
   for (let i = 0; i < 3; i++) {
     drawLine(p, M + i * w + 3, y, M + (i + 1) * w - 9, y, 0.95);

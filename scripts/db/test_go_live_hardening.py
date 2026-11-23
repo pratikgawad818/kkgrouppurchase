@@ -390,6 +390,88 @@ def seed_po(c, creator=PURCHASER, requester=PURCHASER):
 
 
 
+def test_multi_legal_entity_project_po_buyer_snapshot():
+    """Separate buyers in one tenant: explicit mapping, missing GST fail-closed,
+    immutable new PO buyer details and complete historical PO preservation.
+    """
+    with db() as c:
+        # Existing POs precede activation, and must not be rewritten.
+        historical=seed_po(c,creator=PURCHASER)
+        c.execute("RESET ROLE")
+        assert c.execute("SELECT buyer_legal_entity_id,buyer_gstin FROM purchase_orders WHERE id=%s",
+                         (historical,)).fetchone()==(None,None)
+        kk=str(c.execute("""
+            INSERT INTO legal_entities(company_id,code,display_name,legal_name,
+                gstin,pan,registered_address)
+            VALUES(%s,'KKCON','K.K. Construction','K.K.CONSTRUCTION',
+                '27AALFK3094R1ZG','AALFK3094R','QA registered address')
+            RETURNING id
+        """,(A,)).fetchone()[0])
+        kanesa=str(c.execute("""
+            INSERT INTO legal_entities(company_id,code,display_name)
+            VALUES(%s,'KANESA','Kanesa Edifice') RETURNING id
+        """,(A,)).fetchone()[0])
+        foreign=str(c.execute("""
+            INSERT INTO legal_entities(company_id,code,display_name,legal_name,
+                gstin,registered_address)
+            VALUES(%s,'FOREIGN','Other tenant buyer','Other tenant buyer',
+                '27AAAAA0000A1Z5','Other registered address')
+            RETURNING id
+        """,(B,)).fetchone()[0])
+        actor(c,PURCHASER)
+        # Project RLS may silently reject updates with zero affected rows;
+        # either way non-admin project mapping must remain unchanged.
+        changed=c.execute("UPDATE projects SET legal_entity_id=%s WHERE id=%s RETURNING id",
+                          (kk,PROJECT)).fetchone()
+        assert changed is None, "Purchase Manager must not assign a project's legal buyer"
+        denied(c,lambda:c.execute("""
+            INSERT INTO legal_entities(company_id,code,display_name)
+            VALUES(%s,'FORBIDDEN','Cannot create')
+        """,(A,)))
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("UPDATE projects SET legal_entity_id=%s WHERE id=%s",
+                                  (foreign,PROJECT)), "Legal entity must belong")
+        c.execute("UPDATE projects SET legal_entity_id=%s WHERE id=%s",(kk,PROJECT))
+        c.execute("RESET ROLE")
+        c.execute("UPDATE companies SET legal_entity_mode=true WHERE id=%s",(A,))
+
+        po=seed_po(c,creator=PURCHASER)
+        c.execute("RESET ROLE")
+        buyer=c.execute("""
+            SELECT buyer_legal_entity_id,buyer_legal_name,buyer_gstin,
+                buyer_pan,buyer_registered_address FROM purchase_orders WHERE id=%s
+        """,(po,)).fetchone()
+        assert str(buyer[0])==kk,buyer
+        assert buyer[1:] == ('K.K.CONSTRUCTION','27AALFK3094R1ZG','AALFK3094R',
+                             'QA registered address'),buyer
+        actor(c,PURCHASER)
+        denied(c,lambda:c.execute("UPDATE purchase_orders SET buyer_gstin='27AAAAA0000A1Z5' WHERE id=%s",
+                                  (po,)), "permission denied")
+        c.execute("RESET ROLE")
+        # Even the fixture's privileged DB owner cannot bypass the immutable
+        # buyer trigger by directly updating a purchase order's tax identity.
+        denied(c,lambda:c.execute("UPDATE purchase_orders SET buyer_gstin='27AAAAA0000A1Z5' WHERE id=%s",
+                                  (po,)), "PO buyer identity is immutable")
+        c.execute("""UPDATE legal_entities SET gstin='27AAAAA0000A1Z5',
+            legal_name='Updated registration',registered_address='Another address'
+            WHERE id=%s""",(kk,))
+        assert c.execute("SELECT buyer_gstin,buyer_legal_name FROM purchase_orders WHERE id=%s",
+                         (po,)).fetchone()==('27AALFK3094R1ZG','K.K.CONSTRUCTION')
+        assert c.execute("SELECT buyer_gstin FROM purchase_orders WHERE id=%s",
+                         (historical,)).fetchone()[0] is None
+
+        actor(c,ADMIN)
+        c.execute("UPDATE projects SET legal_entity_id=%s WHERE id=%s",(kanesa,PROJECT))
+        denied(c,lambda:seed_po(c,creator=PURCHASER),
+               "Complete legal name, GSTIN and registered address")
+        c.execute("RESET ROLE")
+        assert c.execute("SELECT count(*) FROM purchase_orders WHERE id=%s",(po,)).fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM purchase_orders WHERE id=%s",
+                         (historical,)).fetchone()[0]==1
+        c.rollback()
+    print("PASS multi-entity project mapping, purchaser RLS, missing GST guard, frozen buyer and historical PO safety")
+
+
 def test_engineer_assigned_project_pr_po_visibility():
     """Assigned project membership grants PR/PO read, independent of creator.
     Revoking it immediately blocks both tables and PO detail access.
@@ -2055,6 +2137,7 @@ if __name__ == "__main__":
     test_private_procurement_attachment_access()
     test_site_engineer_requires_project_assignment_for_pr()
     test_engineer_assigned_project_pr_po_visibility()
+    test_multi_legal_entity_project_po_buyer_snapshot()
     test_cancel_draft_grn_engineer_and_super_admin()
     test_super_admin_delete_unused_grn()
     from pr_0099_access_acceptance import exercise_pr_revocation
