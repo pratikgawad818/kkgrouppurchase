@@ -472,3 +472,33 @@ jobs:
       - run: python -m pip install "psycopg[binary]>=3.2,<4"
       - name: Compile migration 0076 and verify edits, audit, reapproval safety
         run: python scripts/db/test_procurement_revisions_0076.py
+
+  director-notification-allowlist:
+    name: Director PO/invoice-payment alerts only (PostgreSQL 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qa-only-password
+          POSTGRES_DB: director_notify_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d director_notify_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      DIRECTOR_NOTIFY_QA_DSN: postgresql://postgres:qa-only-password@localhost:5432/director_notify_qa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "psycopg[binary]>=3.2,<4"
+      - name: Enforce exact PO and invoice-payment notification gate
+        run: python scripts/db/test_director_notifications_0115.py
