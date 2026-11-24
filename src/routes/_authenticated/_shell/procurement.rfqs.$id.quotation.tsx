@@ -165,7 +165,7 @@ function QuoteEntry() {
 
   return (
     <>
-      <PageHeader crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{d.rfq.rfq_number}</Link>} title={`Quotation — ${rv.vendors?.company_name}`} subtitle="Enter the rates exactly as quoted by the vendor." />
+      <PageHeader backTo="/procurement/rfqs" crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{d.rfq.rfq_number}</Link>} title={`Quotation — ${rv.vendors?.company_name}`} subtitle="Enter the rates exactly as quoted by the vendor." />
       <section className="grid gap-3 rounded-md border bg-card p-4 sm:grid-cols-4">
         {hf("quotation_number", "Vendor quote ref *")}{hf("quotation_date", "Quote date", "date")}{hf("valid_until", "Valid until", "date")}{hf("delivery_days", "Delivery (days)", "number")}
         {hf("payment_terms", "Payment terms")}{hf("freight", "Freight (₹)", "number")}{hf("other_charges", "Other charges (₹)", "number")}{hf("remarks", "Remarks")}
