@@ -44,9 +44,9 @@ CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
   SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
  $$;
 CREATE OR REPLACE FUNCTION public.is_active_user(_user uuid)
- RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
   SELECT EXISTS(SELECT 1 FROM public.profiles WHERE id=_user AND is_active)
- $;
+ $$;
 CREATE OR REPLACE FUNCTION public.actor_in_company(_company uuid)
  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
   SELECT EXISTS(SELECT 1 FROM profiles WHERE id=auth.uid()
