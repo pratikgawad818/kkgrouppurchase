@@ -2,7 +2,49 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { TONE_CLASSES, UNIT_STATUS, type UnitStatus } from "@/lib/format";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
+import { useCanGoBack, useRouter } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+
+export type WorkspaceBackDestination =
+  | "/finance/vendor-invoices"
+  | "/finance/payments"
+  | "/inventory/delivery-challans"
+  | "/inventory/goods-received"
+  | "/inventory/material-issues"
+  | "/procurement/purchase-orders"
+  | "/procurement/purchase-requests"
+  | "/procurement/rfqs";
+
+/**
+ * Prefer real in-app history so users return to their prior filtered list,
+ * invoice review queue, or linked document. A directly opened/bookmarked
+ * detail page has no router history, so navigate to its safe module index.
+ */
+export function WorkspaceGoBack({ fallbackTo }: { fallbackTo: WorkspaceBackDestination }) {
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="min-h-9 gap-1.5"
+      aria-label="Go Back"
+      onClick={() => {
+        if (canGoBack) {
+          router.history.back();
+        } else {
+          void router.navigate({ to: fallbackTo });
+        }
+      }}
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      Go Back
+    </Button>
+  );
+}
 
 export function PageHeader({
   title,
@@ -10,9 +52,11 @@ export function PageHeader({
   actions,
   crumbs,
   deleteAction,
+  backTo,
 }: {
   title: string;
   deleteAction?: ReactNode;
+  backTo?: WorkspaceBackDestination;
   subtitle?: ReactNode;
   actions?: ReactNode;
   crumbs?: ReactNode;
@@ -21,6 +65,7 @@ export function PageHeader({
     <div className="workspace-page-header flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
         {crumbs && <div className="mb-1.5 text-xs font-medium text-muted-foreground">{crumbs}</div>}
+        {backTo && <div className="mb-2"><WorkspaceGoBack fallbackTo={backTo} /></div>}
         <div className="flex items-center gap-1"><h2 className="workspace-page-title text-foreground">{title}</h2>{deleteAction}</div>
         {subtitle && <div className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</div>}
       </div>
