@@ -6,6 +6,7 @@ import psycopg
 
 dsn = os.environ["BANK_QA_DSN"]
 migration = Path("drizzle/migrations/0116_account_and_vendor_bank_management.sql").read_text()
+delete_migration = Path("drizzle/migrations/0117_delete_unused_company_bank_accounts.sql").read_text()
 schema = """
 DO $$
 BEGIN
@@ -32,6 +33,8 @@ CREATE TABLE public.company_bank_accounts(
  account_name text NOT NULL,bank_name text NOT NULL,branch text,
  account_number text NOT NULL,ifsc text NOT NULL, account_type text DEFAULT 'current',
  purpose text,is_primary boolean DEFAULT false,status text DEFAULT 'active');
+CREATE TABLE public.vendor_payments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ bank_account_id uuid REFERENCES public.company_bank_accounts(id) ON DELETE RESTRICT);
 CREATE TABLE public.vendors(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  company_id uuid NOT NULL,company_name text,
  contact_person text,bank_account_name text,bank_name text,
@@ -39,6 +42,10 @@ CREATE TABLE public.vendors(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
  LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
+ $$;
+CREATE OR REPLACE FUNCTION public.is_active_user(_user uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT EXISTS(SELECT 1 FROM public.profiles WHERE id=_user AND is_active)
  $$;
 CREATE OR REPLACE FUNCTION public.actor_in_company(_company uuid)
  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
@@ -61,6 +68,7 @@ GRANT USAGE ON SCHEMA auth,public TO authenticated,anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth,public TO authenticated;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON public.company_bank_accounts TO authenticated,anon;
 GRANT SELECT,INSERT,UPDATE ON public.vendors TO authenticated;
+GRANT SELECT,INSERT ON public.vendor_payments TO authenticated;
 ALTER TABLE public.company_bank_accounts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Manage bank accounts" ON public.company_bank_accounts FOR ALL
  TO authenticated USING(public.actor_in_company(company_id) AND
@@ -87,6 +95,7 @@ with psycopg.connect(dsn,autocommit=True) as conn:
     with conn.cursor() as c:
         c.execute(schema)
         c.execute(migration)
+        c.execute(delete_migration)
         c.executemany("INSERT INTO public.profiles VALUES (%s,%s,true)",
                       [(sa,company),(am,company),(pm,company)])
         c.executemany("INSERT INTO public.user_roles VALUES (%s,%s::public.app_role)",
@@ -133,4 +142,40 @@ with psycopg.connect(dsn,autocommit=True) as conn:
         assert c.fetchone()[0]=='Correct Account Name'
         c.execute("SELECT count(*) FROM public.company_bank_accounts")
         assert c.fetchone()[0]==1
-print("PASS: scoped accounts manager + super admin rights, blocked vendor bank bypass, no deletes")
+
+        # The first account remains in use; historical payment references
+        # must not be orphaned by a privileged delete RPC.
+        c.execute("UPDATE public.company_bank_accounts SET is_primary=true WHERE id=%s",(bank_id,))
+        denied("SELECT public.delete_unused_company_bank_account(%s,%s)",(bank_id,"9012"))
+        c.execute("UPDATE public.company_bank_accounts SET is_primary=false WHERE id=%s",(bank_id,))
+        c.execute("INSERT INTO public.vendor_payments(bank_account_id) VALUES (%s)",(bank_id,))
+        denied("SELECT public.delete_unused_company_bank_account(%s,%s)",(bank_id,"9012"))
+        c.execute("SELECT count(*) FROM public.vendor_payments WHERE bank_account_id=%s",(bank_id,))
+        assert c.fetchone()[0]==1
+
+        # A second, unreferenced account may be removed only via authorised RPC.
+        c.execute("""INSERT INTO public.company_bank_accounts
+          (company_id,account_name,account_holder_name,bank_name,account_number,ifsc,legal_entity_id)
+          VALUES(%s,'Unused account','K.K. Construction','HDFC','987654321444','HDFC0001234',%s)
+          RETURNING id""",(company,entity))
+        unused_id=c.fetchone()[0]
+        denied("DELETE FROM public.company_bank_accounts WHERE id=%s",(unused_id,))
+        as_role(pm)
+        denied("SELECT public.delete_unused_company_bank_account(%s,%s)",(unused_id,"1444"))
+        as_role(am)
+        denied("SELECT public.delete_unused_company_bank_account(%s,%s)",(unused_id,"0000"))
+        c.execute("RESET ROLE")
+        c.execute("""INSERT INTO public.company_bank_accounts
+          (company_id,account_name,account_holder_name,bank_name,account_number,ifsc)
+          VALUES(%s,'Other company','Another company','HDFC','123456789777','HDFC0001234')
+          RETURNING id""",(another,))
+        other_bank_id=c.fetchone()[0]
+        as_role(am)
+        denied("SELECT public.delete_unused_company_bank_account(%s,%s)",(other_bank_id,"9777"))
+        c.execute("SELECT public.delete_unused_company_bank_account(%s,%s)",(unused_id,"1444"))
+        assert c.fetchone()[0]=="Bank account deleted"
+        c.execute("SELECT count(*) FROM public.company_bank_accounts WHERE id=%s",(unused_id,))
+        assert c.fetchone()[0]==0
+        c.execute("SELECT count(*) FROM public.company_bank_accounts WHERE id=%s",(bank_id,))
+        assert c.fetchone()[0]==1
+print("PASS: bank RLS and audited-delete safeguards for active roles, primary accounts, linked payments and company isolation")

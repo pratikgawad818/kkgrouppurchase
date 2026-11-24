@@ -820,6 +820,13 @@
       "when": 1795457100000,
       "tag": "0116_account_and_vendor_bank_management",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1795457160000,
+      "tag": "0117_delete_unused_company_bank_accounts",
+      "breakpoints": true
     }
   ]
 }
