@@ -206,7 +206,7 @@ function PrDetail() {
 
   return (
     <>
-      <PageHeader deleteAction={<PermanentDelete force kind="purchase_request" id={pr.id} name={pr.pr_number} onDeleted={()=>window.location.assign("/procurement/purchase-requests")}/>}
+      <PageHeader backTo="/procurement/purchase-requests" deleteAction={<PermanentDelete force kind="purchase_request" id={pr.id} name={pr.pr_number} onDeleted={()=>window.location.assign("/procurement/purchase-requests")}/>}
         crumbs={<Link to="/procurement/purchase-requests">Purchase Requests</Link>}
         title={pr.pr_number}
         subtitle={
