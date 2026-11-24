@@ -3,13 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { Loading, PageHeader, Stat } from "@/components/erp/common";
+import { Loading, PageHeader, Stat, SearchBox } from "@/components/erp/common";
+import { matchesRecordSearch } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { addDays, badge, INVOICE_STATUS, today } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const META = "Outstanding vendor bills, due dates and vendor-wise balances.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/payables")({
@@ -18,8 +20,9 @@ export const Route = createFileRoute("/_authenticated/_shell/finance/payables")(
 });
 
 function Payables() {
-  const [f, setF] = useState({ vendor: "", project: "", fy: "", due: "" });
+  const [f, setF] = useState({ vendor: "", project: "", fy: "", due: "open" });
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState("");
   const q = useQuery({
     queryKey: ["payables"],
     queryFn: async () => {
@@ -35,7 +38,7 @@ function Payables() {
   const { scoped, open, overdue, dueToday, due7, rows, byVendor } = useMemo(() => {
     const scoped = all.filter(x => (!f.vendor || x.vendor_id === f.vendor) &&
       (!f.project || x.project_id === f.project) &&
-      (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)));
+      (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)) && matchesRecordSearch([x.invoice_number,x.vendor_invoice_number,x.vendors?.company_name,x.projects?.name],search));
     const open = scoped.filter(x => x.status !== "paid");
     const overdue = open.filter(x => x.due_date && x.due_date < t);
     const dueToday = open.filter(x => x.due_date === t);
@@ -56,7 +59,7 @@ function Payables() {
     }), new Map<string, { name: string; amt: number; n: number }>()).entries()]
       .sort((a,b) => b[1].amt - a[1].amt);
     return { scoped, open, overdue, dueToday, due7, rows, byVendor };
-  }, [q.data, f, t, in7]);
+  }, [q.data, f, t, in7, search]);
   const sum = (a: typeof all) => a.reduce((s,x) => s + Number(x.balance_due), 0);
   const uniq = <T,>(arr: T[], key: (x: T) => string) => [...new Map(arr.map(x => [key(x),x])).values()];
   const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
@@ -64,11 +67,13 @@ function Payables() {
   return (
     <>
       <PageHeader title="Accounts Payable" subtitle="Only approved vendor invoices are payable. Purchase orders and goods receipts are not counted here." />
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
+        <div className="w-full sm:w-64"><SearchBox value={search} onChange={v=>{setSearch(v);setPage(0);}} placeholder="Find vendor, bill or project"/></div>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-48 sm:flex-none")} value={f.vendor} onChange={(e) => set("vendor", e.target.value)}><option value="">All vendors</option>{uniq(all, (x) => x.vendor_id).map((x) => <option key={x.vendor_id} value={x.vendor_id}>{x.vendors?.company_name}</option>)}</select>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={f.project} onChange={(e) => set("project", e.target.value)}><option value="">All projects</option>{uniq(all, (x) => x.project_id).map((x) => <option key={x.project_id} value={x.project_id}>{x.projects?.name}</option>)}</select>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={f.fy} onChange={(e) => set("fy", e.target.value)}><option value="">All years</option>{fyOptions(all.map((x) => x.vendor_invoice_date)).map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
-        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.due} onChange={(e) => set("due", e.target.value)}><option value="">All outstanding</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="7">Due in 7 days</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select>
+        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.due} onChange={(e) => set("due", e.target.value)}><option value="open">All outstanding</option><option value="">All statuses</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="7">Due in 7 days</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select>
+        <Button variant="ghost" size="sm" onClick={()=>{setSearch("");setF({vendor:"",project:"",fy:"",due:"open"});setPage(0);}}>Reset filters</Button>
       </div>
       {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Payable totals are unavailable because the complete invoice register could not be verified: {errMsg(q.error)} <button className="ml-2 font-semibold underline" onClick={() => q.refetch()}>Retry</button></div> : (<>
         <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -79,6 +84,7 @@ function Payables() {
           <Stat label="Partially paid" value={String(scoped.filter((x) => x.status === "partially_paid").length)} />
           <Stat label="Paid" value={String(scoped.filter((x) => x.status === "paid").length)} />
         </div>
+        <p className="mb-3 text-xs text-muted-foreground">Summary totals follow vendor, project, year and search; the due-status filter changes the bill list only.</p>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="doc-table rounded-xl border bg-card shadow-card lg:col-span-2">
             <div className="overflow-x-auto"><table className="w-full text-sm">
