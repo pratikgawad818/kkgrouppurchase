@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, Eye, EyeOff, Plus, Save, ShieldCheck } from "lucide-react";
+import { Building2, Eye, EyeOff, Plus, Save, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCan, useMe } from "@/lib/session";
@@ -10,6 +10,7 @@ import { PageHeader, Loading } from "@/components/erp/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/_shell/settings/bank-accounts")({
   head: () => ({ meta: [{ title: "Company Bank Accounts — KK GROUP ERP" }] }),
@@ -65,6 +66,8 @@ function BankAccounts() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [form, setForm] = useState<BankForm>(empty);
+  const [deleting, setDeleting] = useState<BankAccount | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const accounts = useQuery({
     queryKey: ["bank-accounts-master", companyId],
     enabled: allowed && !!companyId,
@@ -134,6 +137,33 @@ function BankAccounts() {
     onError: (error) => toast.error(errMsg(error)),
   });
 
+  const remove = useMutation({
+    mutationFn: async () => {
+      if (!allowed || !companyId || !deleting ||
+          deleting.company_id !== companyId || deleting.is_primary)
+        throw new Error("This bank account cannot be deleted.");
+      if (deleteConfirmation !== "DELETE")
+        throw new Error("Type DELETE to confirm bank account removal.");
+      // The database checks role, company, current primary status and every
+      // linked payment before deleting. Direct table DELETE remains blocked.
+      const { error } = await bankDb.rpc("delete_unused_company_bank_account", {
+        _account_id: deleting.id,
+        _last_four: deleting.account_number.slice(-4),
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["bank-accounts-master", companyId] }),
+        qc.invalidateQueries({ queryKey: ["payment-base"] }),
+      ]);
+      setDeleting(null);
+      setDeleteConfirmation("");
+      toast.success("Unused bank account deleted. Audit history retained.");
+    },
+    onError: (error) => toast.error(errMsg(error)),
+  });
+
   const addAccount = () => {
     setEditingId(null); setForm({ ...empty }); setReveal(false); setEditorOpen(true);
   };
@@ -168,7 +198,7 @@ function BankAccounts() {
         actions={<Button size="sm" onClick={addAccount}><Plus className="mr-2 h-4 w-4"/>Add bank account</Button>} />
       <p className="mb-4 rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
         <ShieldCheck className="mr-2 inline h-4 w-4" />
-        Editing a bank account does not rewrite completed payments. Keep old accounts inactive instead of deleting them. Verify legal-entity ownership before selecting the account for a payment.
+        Accounts linked to payments cannot be deleted: mark them inactive instead. Unused non-primary bank accounts may be deleted with confirmation. Verify legal-entity ownership before selecting an account for payment.
       </p>
       {accounts.error && <p role="alert" className="rounded-lg border border-destructive p-4 text-sm">
         Unable to load bank accounts: {errMsg(accounts.error)}
@@ -197,9 +227,19 @@ function BankAccounts() {
               <div className="col-span-2"><dt className="text-xs text-muted-foreground">Legal entity / GST owner</dt>
                 <dd>{entity?.legal_name || entity?.display_name || "Not assigned — verify before use"}</dd></div>
             </dl>
-            <Button className="mt-4" variant="outline" size="sm" onClick={() => editAccount(a)}>
-              Edit account details
-            </Button>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => editAccount(a)}>
+                Edit account details
+              </Button>
+              <Button variant="outline" size="sm" className="text-destructive"
+                disabled={a.is_primary}
+                title={a.is_primary ? "Assign a different primary bank account before deleting" : "Delete unused bank account"}
+                onClick={() => { setDeleting(a); setDeleteConfirmation(""); }}
+                aria-label={`Delete ${a.account_name}`}>
+                <Trash2 className="mr-1 h-4 w-4" />Delete
+              </Button>
+              {a.is_primary && <span className="text-xs text-muted-foreground">Primary account — change primary first</span>}
+            </div>
           </section>;
         })}
         {!accounts.error && accounts.data?.length === 0 && <p className="rounded-lg border p-5 text-sm text-muted-foreground">No company bank accounts. Add one to begin.</p>}
@@ -262,6 +302,46 @@ function BankAccounts() {
         <Button type="submit" disabled={save.isPending}><Save className="mr-2 h-4 w-4"/>
           {save.isPending ? "Saving…" : "Save bank account"}</Button>
       </form>}
+      <Dialog open={!!deleting} onOpenChange={open => {
+        if (!open && !remove.isPending) { setDeleting(null); setDeleteConfirmation(""); }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete bank account?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the unused bank account from the master list.
+              Financial records will not be deleted. Any account linked to a payment
+              or currently marked primary cannot be deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="rounded-lg border bg-muted/30 p-3">
+              <strong>{deleting?.account_name}</strong> · {deleting?.bank_name}
+              <span className="block font-mono text-muted-foreground">Account ending {deleting?.account_number.slice(-4)}</span>
+            </p>
+            <div>
+              <Label htmlFor="confirm-delete-bank">Type DELETE to confirm</Label>
+              <Input id="confirm-delete-bank" autoComplete="off" autoCapitalize="characters"
+                value={deleteConfirmation}
+                onChange={e => setDeleteConfirmation(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              If this account has been used in a payment, cancel this action and change
+              its status to Inactive through Edit Account Details instead.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" type="button" disabled={remove.isPending}
+              onClick={() => { setDeleting(null); setDeleteConfirmation(""); }}>Cancel</Button>
+            <Button variant="destructive" type="button"
+              disabled={remove.isPending || deleteConfirmation !== "DELETE"}
+              onClick={() => remove.mutate()}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              {remove.isPending ? "Deleting…" : "Delete bank account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
