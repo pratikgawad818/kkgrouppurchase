@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, Loading, PageHeader } from "@/components/erp/common";
+import { Field, Loading, PageHeader, SearchBox } from "@/components/erp/common";
+import { SearchableEntrySelect } from "@/components/erp/searchable-entry-select";
+import { matchesRecordSearch } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
@@ -35,6 +37,8 @@ function Payments() {
   const canViewDetails = (id: string) => !!me.data && canAccessPage(`/finance/payments/${id}`, me.data);
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState("");
   const [schedule, setSchedule] = useState<PaymentKind | null>(sp.vendor ? "invoice" : null);
   const [act, setAct] = useState<null | { id: string; action: "approve" | "record" | "cancel" }>(null);
   const [adjust, setAdjust] = useState<null | { id: string; vendor_id: string; left: number }>(null);
@@ -60,8 +64,8 @@ function Payments() {
   });
   const refresh = () => { ["vendor-payments", "payables", "vendor-invoices", "vi", "ledger"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
   const rows = useMemo(
-    () => (q.data?.rows ?? []).filter(x => !status || x.status === status),
-    [q.data, status],
+    () => (q.data?.rows ?? []).filter(x => (!status || x.status === status) && (!kindFilter || x.kind === kindFilter) && matchesRecordSearch([x.payment_number, x.vendors?.company_name, x.reference, x.company_bank_accounts?.account_name, ...x.vendor_payment_allocations.map(a=>a.vendor_invoices?.invoice_number)],search)),
+    [q.data, status, kindFilter, search],
   );
   const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
   const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
@@ -69,12 +73,12 @@ function Payments() {
     <>
       <PageHeader title="Vendor Payments" subtitle="Scheduled → Approved (Director) → Recorded with bank reference. Only recorded payments reduce payables."
         actions={can("payment.schedule") && <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => setSchedule("invoice")}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => setSchedule("advance")}>Vendor advance</Button></div>} />
-      <div className="mb-3"><select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="">All statuses</option>{Object.entries(PAYMENT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3"><div className="w-full sm:w-72"><SearchBox value={search} onChange={v=>{setSearch(v);setPage(0);}} placeholder="Payment, invoice, vendor or reference"/></div><select aria-label="Payment status" className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="">All statuses</option>{Object.entries(PAYMENT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select><select aria-label="Payment type" className={cn(selectCls,"min-w-0 flex-1 sm:flex-none")} value={kindFilter} onChange={e=>{setKindFilter(e.target.value);setPage(0);}}><option value="">All types</option><option value="invoice">Invoice payment</option><option value="advance">Vendor advance</option></select><Button variant="ghost" size="sm" onClick={()=>{setSearch("");setStatus("");setKindFilter("");setPage(0);}}>Clear filters</Button><span className="ml-auto text-xs text-muted-foreground">{q.isSuccess ? `${rows.length} payments` : ""}</span></div>
       {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Payment history or advance adjustments could not be verified: {errMsg(q.error)} <Button className="ml-2" variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : (<>
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap"><table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Number</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Against</th><th className="px-4 py-3">Mode / ref</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th></tr></thead>
           <tbody>
-            {pageRows.length === 0 && <tr><td colSpan={9} className="p-4 text-xs text-muted-foreground">No payments yet.</td></tr>}
+            {pageRows.length === 0 && <tr><td colSpan={9} className="p-4 text-xs text-muted-foreground">No payments match the current filters.</td></tr>}
             {pageRows.map((p) => {
               const mine = p.created_by === me.data?.profile.id;
               const left = remainingAdvanceAmount(Number(p.amount), q.data?.used.get(p.id) ?? 0) ?? 0;
@@ -175,10 +179,10 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
         <DialogHeader><DialogTitle>{kind === "advance" ? "Schedule vendor advance" : "Schedule invoice payment"}</DialogTitle><DialogDescription>A Director approves it before it can be recorded as paid.</DialogDescription></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Vendor"><select className={selectCls} value={vendor} onChange={(e) => setVendor(e.target.value)}><option value="">Select vendor</option>{base.data?.vendors.map((v) => <option key={v.id} value={v.id}>{v.company_name}</option>)}</select></Field>
+          <Field label="Vendor"><SearchableEntrySelect label="Vendor" value={vendor} onChange={setVendor} placeholder="Select vendor" options={(base.data?.vendors??[]).map(v=>({value:v.id,label:v.company_name}))}/></Field>
           <Field label="Planned payment date"><Input type="date" value={h.payment_date} onChange={(e) => setH({ ...h, payment_date: e.target.value })} /></Field>
           <Field label="Mode"><select className={selectCls} value={h.payment_mode} onChange={(e) => setH({ ...h, payment_mode: e.target.value })}>{PAYMENT_MODES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
           <Field label="Pay from bank account"><select className={selectCls} value={h.bank_account_id} onChange={(e) => setH({ ...h, bank_account_id: e.target.value })}><option value="">—</option>{base.data?.banks.map((b) => <option key={b.id} value={b.id}>{b.account_name} · {b.bank_name}</option>)}</select></Field>
