@@ -217,7 +217,7 @@ function OpeningBill() {
     (!editId || !existing.isFetching) && validation.length===0;
 
   return <div className="mx-auto max-w-7xl space-y-5 pb-20">
-    <PageHeader title={editId ? isApprovedCorrection ? "Correct approved old bill details" : "Edit old vendor bill" : "Old vendor bill entry"}
+    <PageHeader backTo="/finance/vendor-invoices" title={editId ? isApprovedCorrection ? "Correct approved old bill details" : "Edit old vendor bill" : "Old vendor bill entry"}
       subtitle="General construction invoices: materials, equipment, supply, subcontract and labour, with item-wise unit prices and actual historical payments."/>
     <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:bg-sky-950/20 dark:text-sky-100">
       <strong>Historical entry, not a new purchase or payment.</strong> No PO or GRN is required. Previously completed payments are recorded without director payment approval and never create a new bank/cash transaction. Any fresh payment against an outstanding balance still follows the standard approval workflow.
