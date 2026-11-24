@@ -150,6 +150,7 @@ export function DailyWorkspace({
   today,
   dateLabel,
   children,
+  quickActions,
 }: {
   projects: WorkspaceProject[];
   projectId: string;
@@ -171,6 +172,7 @@ export function DailyWorkspace({
   today: string;
   dateLabel: string;
   children?: ReactNode;
+  quickActions?: ReactNode;
 }) {
   const [filter, setFilter] = useState<TaskGroup | "all">("all");
   const [visibleCount, setVisibleCount] = useState(6);
@@ -271,6 +273,7 @@ export function DailyWorkspace({
           </Button>
         )}
       </div>
+      {quickActions}
       <section className="daily-metrics" aria-label="Workspace totals" aria-busy={loading}>
         {canOrders &&
           metric(
