@@ -25,7 +25,7 @@ import { availableAfterScheduled, checkedAdvanceUsage, inspectAdvanceAdjustment,
 const META = "Schedule, approve and record vendor payments and advances.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/payments/")({
   head: () => ({ meta: [{ title: "Vendor Payments — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "Vendor Payments — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  validateSearch: (s: Record<string, unknown>): { vendor?: string } => (typeof s["vendor"] === "string" ? { vendor: s["vendor"] as string } : {}),
+  validateSearch: (s: Record<string, unknown>): { vendor?: string; invoice?: string } => ({ ...(typeof s["vendor"] === "string" ? { vendor: s["vendor"] } : {}), ...(typeof s["invoice"] === "string" ? { invoice: s["invoice"] } : {}) }),
   component: Payments,
 });
 
@@ -40,6 +40,7 @@ function Payments() {
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState("");
   const [schedule, setSchedule] = useState<PaymentKind | null>(sp.vendor ? "invoice" : null);
+  const [targetInvoice, setTargetInvoice] = useState(sp.vendor ? sp.invoice : undefined);
   const [act, setAct] = useState<null | { id: string; action: "approve" | "record" | "cancel" }>(null);
   const [adjust, setAdjust] = useState<null | { id: string; vendor_id: string; left: number }>(null);
   const q = useQuery({
@@ -72,7 +73,7 @@ function Payments() {
   return (
     <>
       <PageHeader title="Vendor Payments" subtitle="Scheduled → Approved (Director) → Recorded with bank reference. Only recorded payments reduce payables."
-        actions={can("payment.schedule") && <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => setSchedule("invoice")}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => setSchedule("advance")}>Vendor advance</Button></div>} />
+        actions={can("payment.schedule") && <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => { setTargetInvoice(undefined); setSchedule("invoice"); }}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => { setTargetInvoice(undefined); setSchedule("advance"); }}>Vendor advance</Button></div>} />
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3"><div className="w-full sm:w-72"><SearchBox value={search} onChange={v=>{setSearch(v);setPage(0);}} placeholder="Payment, invoice, vendor or reference"/></div><select aria-label="Payment status" className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="">All statuses</option>{Object.entries(PAYMENT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select><select aria-label="Payment type" className={cn(selectCls,"min-w-0 flex-1 sm:flex-none")} value={kindFilter} onChange={e=>{setKindFilter(e.target.value);setPage(0);}}><option value="">All types</option><option value="invoice">Invoice payment</option><option value="advance">Vendor advance</option></select><Button variant="ghost" size="sm" onClick={()=>{setSearch("");setStatus("");setKindFilter("");setPage(0);}}>Clear filters</Button><span className="ml-auto text-xs text-muted-foreground">{q.isSuccess ? `${rows.length} payments` : ""}</span></div>
       {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Payment history or advance adjustments could not be verified: {errMsg(q.error)} <Button className="ml-2" variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : (<>
         <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap"><table className="w-full text-sm">
@@ -102,14 +103,14 @@ function Payments() {
         </table></div>
         <Pager page={visiblePage} total={rows.length} size={PAGE} onPage={setPage} />
       </>)}
-      {schedule && <ScheduleDialog kind={schedule} initialVendor={sp.vendor} onClose={() => setSchedule(null)} onDone={refresh} />}
+      {schedule && can("payment.schedule") && <ScheduleDialog kind={schedule} initialVendor={sp.vendor} initialInvoice={targetInvoice} onClose={() => {setSchedule(null);setTargetInvoice(undefined);}} onDone={refresh} />}
       {act && <ActDialog {...act} onClose={() => setAct(null)} onDone={refresh} />}
       {adjust && <AdjustDialog {...adjust} onClose={() => setAdjust(null)} onDone={refresh} />}
     </>
   );
 }
 
-function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: PaymentKind; initialVendor?: string | undefined; onClose: () => void; onDone: () => void }) {
+function ScheduleDialog({ kind, initialVendor, initialInvoice, onClose, onDone }: { kind: PaymentKind; initialVendor?: string | undefined; initialInvoice?: string | undefined; onClose: () => void; onDone: () => void }) {
   const [vendor, setVendor] = useState(initialVendor ?? "");
   const [h, setH] = useState({ payment_date: today(), payment_mode: "neft", bank_account_id: "", reference: "", remarks: "", amount: "", project_id: "" });
   const [alloc, setAlloc] = useState<Record<string, string>>({});
@@ -151,19 +152,22 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
     },
   });
   useEffect(() => { setAlloc({}); }, [vendor]);
-  const invoicePreflight = inspectPaymentSchedule(alloc, inv.data ?? [],
+  const invoiceRows = (inv.data ?? []).filter(x => !initialInvoice || x.id === initialInvoice);
+  const selectedInvoice = initialInvoice ? invoiceRows[0] : undefined;
+  const invoicePreflight = inspectPaymentSchedule(alloc, invoiceRows,
     kind === "invoice" && !!vendor && inv.isSuccess && !inv.isFetching && !inv.error);
   const advanceAmount = h.amount.trim();
   const validAdvance = /^\d+(?:\.\d{1,2})?$/.test(advanceAmount) &&
     Number(advanceAmount) > 0 && Number.isFinite(Number(advanceAmount)) &&
     !!h.remarks.trim();
   const total = kind === "advance" ? (validAdvance ? Number(advanceAmount) : 0) : invoicePreflight.total;
-  const canSchedule = !!vendor && !base.isLoading && !base.error &&
+  const canSchedule = !!vendor && !base.isLoading && !base.error && (!initialInvoice || !!selectedInvoice) &&
     (kind === "advance" ? validAdvance : invoicePreflight.errors.length === 0);
   const save = useMutation({
     mutationFn: async () => {
       if (!vendor || base.isLoading || base.error) throw new Error("Vendor information is not available. Refresh before scheduling.");
       if (kind === "advance" && !validAdvance) throw new Error("Enter a positive advance amount (up to two decimals) and a purpose.");
+      if (initialInvoice && !selectedInvoice) throw new Error("This invoice is no longer available for payment.");
       if (kind === "invoice" && invoicePreflight.errors.length) throw new Error(invoicePreflight.errors.join(" "));
       const { error } = await supabase.rpc("schedule_vendor_payment", {
         _header: { kind, vendor_id: vendor, ...h },
@@ -179,7 +183,7 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
       <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
         <DialogHeader><DialogTitle>{kind === "advance" ? "Schedule vendor advance" : "Schedule invoice payment"}</DialogTitle><DialogDescription>A Director approves it before it can be recorded as paid.</DialogDescription></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Vendor"><SearchableEntrySelect label="Vendor" value={vendor} onChange={setVendor} placeholder="Select vendor" options={(base.data?.vendors??[]).map(v=>({value:v.id,label:v.company_name}))}/></Field>
+          <Field label="Vendor"><SearchableEntrySelect label="Vendor" value={vendor} disabled={!!initialInvoice} onChange={setVendor} placeholder="Select vendor" options={(base.data?.vendors??[]).map(v=>({value:v.id,label:v.company_name}))}/></Field>
           <Field label="Planned payment date"><Input type="date" value={h.payment_date} onChange={(e) => setH({ ...h, payment_date: e.target.value })} /></Field>
           <Field label="Mode"><select className={selectCls} value={h.payment_mode} onChange={(e) => setH({ ...h, payment_mode: e.target.value })}>{PAYMENT_MODES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
           <Field label="Pay from bank account"><select className={selectCls} value={h.bank_account_id} onChange={(e) => setH({ ...h, bank_account_id: e.target.value })}><option value="">—</option>{base.data?.banks.map((b) => <option key={b.id} value={b.id}>{b.account_name} · {b.bank_name}</option>)}</select></Field>
@@ -188,6 +192,9 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
             <Field label="Project (optional)"><select className={selectCls} value={h.project_id} onChange={(e) => setH({ ...h, project_id: e.target.value })}><option value="">—</option>{base.data?.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           </>}
         </div>
+        {initialInvoice && inv.isSuccess && !inv.isFetching && !inv.error && <div className="rounded-xl border bg-muted/30 p-3 text-sm">
+          {selectedInvoice ? <><p className="font-semibold">{selectedInvoice.invoice_number} · Bill {selectedInvoice.vendor_invoice_number}</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xs text-muted-foreground">Outstanding</p><strong>{inr(selectedInvoice.balance_due)}</strong></div><div><p className="text-xs text-muted-foreground">Available to schedule</p><strong>{inr(selectedInvoice.payable)}</strong></div></div><p className="mt-2 text-xs text-muted-foreground">{selectedInvoice.payable > 0 ? "Enter a partial amount or select Full below. This only requests approval; it does not record a payment." : "No amount is available to schedule. Check existing pending payments."}</p></> : <p role="alert">This invoice is not available for payment. It may already be paid, awaiting approval, or outside your access.</p>}
+        </div>}
         {base.error && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">Vendor/bank details could not be loaded: {errMsg(base.error)}</p>}
         {kind === "invoice" && vendor && (inv.isLoading ? <Loading /> : inv.error ? (
           <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
@@ -198,9 +205,9 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
           <div className="doc-table max-h-64 overflow-auto rounded-md border max-sm:max-h-[55vh]"><table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Payable now</th><th className="px-4 py-3 text-right">Pay</th></tr></thead>
             <tbody>
-              {(inv.data ?? []).length === 0 && <tr><td colSpan={4} className="p-3 text-xs text-muted-foreground">No approved unpaid invoices for this vendor.</td></tr>}
-              {inv.data?.map((x) => <tr key={x.id} className="border-t"><td className="px-4 py-3 font-medium tabular-nums text-xs">{x.invoice_number}<div className="text-muted-foreground">{x.vendor_invoice_number}</div></td><td className="px-4 py-3">{fmtDate(x.due_date)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.payable)}</td>
-                <td className="px-4 py-3"><div className="flex items-center justify-end gap-1"><Input className="h-8 w-28 text-right" type="number" min={0} max={x.payable} value={alloc[x.id] ?? ""} onChange={(e) => setAlloc({ ...alloc, [x.id]: e.target.value })} /><Button size="sm" variant="ghost" onClick={() => setAlloc({ ...alloc, [x.id]: String(x.payable) })}>Full</Button></div></td></tr>)}
+              {invoiceRows.length === 0 && <tr><td colSpan={4} className="p-3 text-xs text-muted-foreground">No approved unpaid invoices for this vendor.</td></tr>}
+              {invoiceRows.map((x) => <tr key={x.id} className="border-t"><td className="px-4 py-3 font-medium tabular-nums text-xs">{x.invoice_number}<div className="text-muted-foreground">{x.vendor_invoice_number}</div></td><td className="px-4 py-3">{fmtDate(x.due_date)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.payable)}</td>
+                <td className="px-4 py-3"><div className="flex items-center justify-end gap-1"><Input aria-label={`Payment amount for ${x.invoice_number}`} className="h-8 w-28 text-right" inputMode="decimal" type="number" step="0.01" disabled={x.payable <= 0} min={0} max={x.payable} value={alloc[x.id] ?? ""} onChange={(e) => setAlloc({ ...alloc, [x.id]: e.target.value })} /><Button size="sm" variant="outline" disabled={x.payable <= 0} onClick={() => setAlloc({ ...alloc, [x.id]: String(x.payable) })}>Full</Button></div></td></tr>)}
             </tbody>
           </table></div>
         ))}
@@ -209,7 +216,7 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
             {invoicePreflight.errors.map((message, i) => <p key={i}>{message}</p>)}
           </div>}
         <Field label={kind === "advance" ? "Purpose (required)" : "Remarks"}><Textarea rows={2} value={h.remarks} onChange={(e) => setH({ ...h, remarks: e.target.value })} /></Field>
-        <DialogFooter><span className="mr-auto text-sm">Total <span className="font-mono font-semibold">{inr(total)}</span></span><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!canSchedule || total <= 0 || save.isPending} onClick={() => save.mutate()}>Schedule</Button></DialogFooter>
+        <DialogFooter><span className="mr-auto text-sm">Total <span className="font-mono font-semibold">{inr(total)}</span></span><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!canSchedule || total <= 0 || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Submitting…" : "Send for approval"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
