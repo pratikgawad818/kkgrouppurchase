@@ -45,7 +45,7 @@ function EditPr() {
   const { pr, items } = q.data!;
   return (
     <>
-      <PageHeader
+      <PageHeader backTo="/procurement/purchase-requests"
         title={`Edit ${pr.pr_number}`}
         crumbs={
           <Link to="/procurement/purchase-requests/$id" params={{ id }}>

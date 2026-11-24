@@ -77,7 +77,7 @@ function GrnDetail() {
   const poItems = g.purchase_orders?.purchase_order_items ?? [];
   return (
     <>
-      <PageHeader crumbs={<Link to="/inventory/goods-received" className="hover:underline">Goods Received</Link>} title={g.grn_number}
+      <PageHeader backTo="/inventory/goods-received" crumbs={<Link to="/inventory/goods-received" className="hover:underline">Goods Received</Link>} title={g.grn_number}
         subtitle={<span className="flex flex-wrap items-center gap-2"><span className={cn("whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>{st.label}</span>{g.vendors?.company_name} · {g.warehouses?.name}</span>}
         actions={<div className="flex flex-wrap gap-2">
           {g.status === "draft" && can("grn.post") && <Button size="sm" disabled={post.isPending} onClick={() => post.mutate()}>Post to stock</Button>}

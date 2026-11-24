@@ -124,7 +124,7 @@ function NewRfq() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader backTo="/procurement/rfqs"
         crumbs={<Link to="/procurement/rfqs">RFQs</Link>}
         title="New RFQ"
         subtitle="Items and project are taken from the approved purchase request."

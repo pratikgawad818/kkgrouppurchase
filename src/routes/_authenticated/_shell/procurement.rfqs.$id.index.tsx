@@ -58,7 +58,7 @@ function RfqDetail() {
 
   return (
     <>
-      <PageHeader deleteAction={<PermanentDelete force kind="rfq" id={rfq.id} name={rfq.rfq_number} onDeleted={()=>window.location.assign("/procurement/rfqs")}/>}
+      <PageHeader backTo="/procurement/rfqs" deleteAction={<PermanentDelete force kind="rfq" id={rfq.id} name={rfq.rfq_number} onDeleted={()=>window.location.assign("/procurement/rfqs")}/>}
         crumbs={<Link to="/procurement/rfqs">RFQs</Link>}
         title={rfq.rfq_number}
         subtitle={<span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium font-medium ${st.cls}`}>{st.label}</span>}

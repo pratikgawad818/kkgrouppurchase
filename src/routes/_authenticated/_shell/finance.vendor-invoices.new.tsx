@@ -159,7 +159,7 @@ function NewInvoice() {
   const canSave = !!po && !!grn.data && !grn.isFetching && !grn.error && preflight.errors.length === 0;
   return (
     <>
-      <PageHeader title={editId ? `Edit ${existing.data?.inv.invoice_number}` : "New vendor invoice"} subtitle="Select vendor → purchase order → goods receipts. Only accepted, not-yet-invoiced quantity can be billed." />
+      <PageHeader backTo="/finance/vendor-invoices" title={editId ? `Edit ${existing.data?.inv.invoice_number}` : "New vendor invoice"} subtitle="Select vendor → purchase order → goods receipts. Only accepted, not-yet-invoiced quantity can be billed." />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 rounded-md border bg-card p-4 lg:col-span-2">
           <div className="grid gap-3 sm:grid-cols-2">

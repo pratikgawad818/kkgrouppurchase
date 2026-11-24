@@ -136,7 +136,7 @@ function PaymentDetail() {
   const status = PAYMENT_STATUS[p.status];
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-16">
-      <PageHeader deleteAction={<PermanentDelete force kind="vendor_payment" id={p.id} name={p.payment_number} onDeleted={()=>window.location.assign("/finance/payments")}/>}
+      <PageHeader backTo="/finance/payments" deleteAction={<PermanentDelete force kind="vendor_payment" id={p.id} name={p.payment_number} onDeleted={()=>window.location.assign("/finance/payments")}/>}
         actions={
           p.status === "scheduled" ? (
             <div className="flex flex-wrap items-center gap-2">

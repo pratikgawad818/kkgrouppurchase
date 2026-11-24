@@ -81,7 +81,7 @@ function Compare() {
 
   return (
     <>
-      <PageHeader crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{rfq.rfq_number}</Link>} title="Quotation comparison" subtitle="Select which materials to purchase. Explicitly exclude items covered by stock or no longer needed; the original PR remains unchanged." />
+      <PageHeader backTo="/procurement/rfqs" crumbs={<Link to="/procurement/rfqs/$id" params={{ id }}>{rfq.rfq_number}</Link>} title="Quotation comparison" subtitle="Select which materials to purchase. Explicitly exclude items covered by stock or no longer needed; the original PR remains unchanged." />
       {cols.length === 0 ? <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">No quotations recorded yet.</div> : (
         <div><p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div role="region" aria-label="Quotation comparison" tabIndex={0} className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
           <table className="w-full text-sm">
