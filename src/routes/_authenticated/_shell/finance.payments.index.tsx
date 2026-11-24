@@ -117,14 +117,11 @@ function ScheduleDialog({ kind, initialVendor, onClose, onDone }: { kind: Paymen
     queryKey: ["pay-base"],
     queryFn: async () => {
       const [v, b, p] = await Promise.all([
-        supabase.from("vendors").select("id,company_name").eq("status", "active").order("company_name"),
-        supabase.from("company_bank_accounts").select("id,account_name,bank_name").eq("status", "active"),
-        supabase.from("projects").select("id,name").order("name"),
+        loadCompleteRows(async (start,end)=>await supabase.from("vendors").select("id,company_name",{count:"exact"}).eq("status","active").order("company_name").order("id").range(start,end)),
+        loadCompleteRows(async (start,end)=>await supabase.from("company_bank_accounts").select("id,account_name,bank_name",{count:"exact"}).eq("status","active").order("account_name").order("id").range(start,end)),
+        loadCompleteRows(async (start,end)=>await supabase.from("projects").select("id,name",{count:"exact"}).order("name").order("id").range(start,end)),
       ]);
-      if (v.error) throw v.error;
-      if (b.error) throw b.error;
-      if (p.error) throw p.error;
-      return { vendors: v.data ?? [], banks: b.data ?? [], projects: p.data ?? [] };
+      return { vendors:v, banks:b, projects:p };
     },
   });
   const inv = useQuery({
