@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
+import { SearchableEntrySelect } from "@/components/erp/searchable-entry-select";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { TAX_RATES } from "@/lib/rfq";
@@ -163,8 +164,8 @@ function NewInvoice() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 rounded-md border bg-card p-4 lg:col-span-2">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Vendor"><select className={selectCls} value={vendor} disabled={!!editId} onChange={(e) => { setVendor(e.target.value); setPo(""); setLines([]); setGrnFilter(""); }}><option value="">Select vendor</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.company_name}</option>)}</select></Field>
-            <Field label="Purchase order"><select className={selectCls} value={po} disabled={!!editId || !vendor} onChange={(e) => { setPo(e.target.value); setLines([]); setGrnFilter(""); }}><option value="">Select PO</option>{pos.filter((p) => p.vendor_id === vendor).map((p) => <option key={p.id} value={p.id}>{p.po_number} · {fmtDate(p.po_date)} · {inr(p.grand_total)}</option>)}</select></Field>
+            <Field label="Vendor"><SearchableEntrySelect label="Vendor" value={vendor} disabled={!!editId} placeholder="Select vendor" onChange={value => { setVendor(value); setPo(""); setLines([]); setGrnFilter(""); }} options={vendors.filter(Boolean).map(v=>({value:v.id,label:v.company_name,search:v.gstin??""}))}/></Field>
+            <Field label="Purchase order"><SearchableEntrySelect label="Purchase order" value={po} disabled={!!editId || !vendor} placeholder="Select PO" onChange={value=>{setPo(value);setLines([]);setGrnFilter("");}} options={pos.filter(p=>p.vendor_id===vendor).map(p=>({value:p.id,label:p.po_number+" · "+fmtDate(p.po_date)+" · "+inr(p.grand_total),search:p.projects?.name??""}))}/></Field>
             <Field label="Vendor bill number"><Input value={h.vendor_invoice_number} onChange={(e) => setH({ ...h, vendor_invoice_number: e.target.value })} placeholder="As printed on the bill" /></Field>
             <Field label="Bill date"><Input type="date" value={h.vendor_invoice_date} onChange={(e) => setH({ ...h, vendor_invoice_date: e.target.value })} /></Field>
             <Field label="Due date"><Input type="date" value={h.due_date} onChange={(e) => setH({ ...h, due_date: e.target.value })} /></Field>

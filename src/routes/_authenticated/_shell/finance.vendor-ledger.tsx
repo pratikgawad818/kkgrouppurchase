@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { Loading, PageHeader, Stat } from "@/components/erp/common";
+import { SearchableEntrySelect } from "@/components/erp/searchable-entry-select";
 import { errMsg, fmtDate, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { fyLabel, fyOf } from "@/lib/fy";
@@ -67,7 +68,7 @@ function Ledger() {
     <>
       <PageHeader title="Vendor Ledger" subtitle="Credit = approved bills (net of TDS). Debit = recorded payments and advances. Purchase orders are commitments and are shown separately." />
       <div className="mb-3 flex flex-wrap gap-2">
-        <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-64 sm:flex-none")} value={vendor} onChange={(e) => setVendor(e.target.value)}><option value="">Select vendor</option>{vendors.data?.map((x) => <option key={x.id} value={x.id}>{x.company_name}</option>)}</select>
+        <div className="w-full sm:w-72"><SearchableEntrySelect label="Vendor" value={vendor} onChange={setVendor} placeholder="Select vendor" options={(vendors.data??[]).map(x=>({value:x.id,label:x.company_name,search:x.gstin??""}))}/></div>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={fy} onChange={(e) => setFy(e.target.value)}>{years.map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
       </div>
       {vendors.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Cannot verify the complete supplier list: {errMsg(vendors.error)} <button className="font-semibold underline" onClick={() => vendors.refetch()}>Retry</button></div> :

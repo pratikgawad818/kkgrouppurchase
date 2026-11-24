@@ -41,6 +41,7 @@ function InvoiceList() {
   const deferredSearch = useDeferredValue(search);
   const [f, setF] = useState({ status: sp.status ?? "", vendor: "", project: "", fy: "" });
   const [page, setPage] = useState(0);
+  const [billKind,setBillKind] = useState("");
   const q = useQuery({
     queryKey: ["vendor-invoices"],
     queryFn: async () => {
@@ -69,6 +70,7 @@ function InvoiceList() {
   const rows = useMemo(() => {
     return (q.data ?? []).filter(
       (x) =>
+        (!billKind || (billKind === "opening" ? x.is_opening : !x.is_opening)) &&
         (!f.status || x.status === f.status) &&
         (!f.vendor || x.vendor_id === f.vendor) &&
         (!f.project || x.project_id === f.project) &&
@@ -78,7 +80,7 @@ function InvoiceList() {
           x.projects?.name, x.purchase_orders?.po_number,
         ], deferredSearch),
     );
-  }, [q.data, f, deferredSearch]);
+  }, [q.data, f, deferredSearch, billKind]);
   const totals = useMemo(() => summarizeInvoiceStatuses(rows), [rows]);
   const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
   const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
@@ -91,19 +93,21 @@ function InvoiceList() {
           can("vendor_invoice.create") && (
             <div className="flex flex-wrap gap-2">
             <Button asChild size="sm" variant="outline">
-              <Link to="/finance/vendor-invoices/opening">Old bill (no PO)</Link>
+              <Link to="/finance/vendor-invoices/opening">Enter old bill (no PO / GRN)</Link>
             </Button>
             <Button asChild size="sm">
               <Link to="/finance/vendor-invoices/new">
                 <Plus className="mr-1 h-4 w-4" />
-                New vendor invoice
+                Enter PO invoice
               </Link>
             </Button>
             </div>
           )
         }
       />
-      <RegisterFilters activeCount={Object.values(f).filter(Boolean).length}>
+      <RegisterFilters activeCount={Object.values(f).filter(Boolean).length + Number(!!billKind)}>
+        <select aria-label="Invoice source" className={selectCls} value={billKind} onChange={e=>{setBillKind(e.target.value);setPage(0);}}><option value="">All invoice types</option><option value="opening">Old / opening bill</option><option value="po">PO-linked invoice</option></select>
+        <Button variant="ghost" size="sm" onClick={()=>{setF({status:"",vendor:"",project:"",fy:""});setBillKind("");setSearch("");setPage(0);}}>Clear filters</Button>
         <div className="w-full sm:w-60">
           <SearchBox
             value={search}
@@ -230,7 +234,7 @@ function InvoiceList() {
                 {pageRows.length === 0 && (
                   <tr>
                     <td colSpan={11} className="p-4 text-xs text-muted-foreground">
-                      No vendor invoices yet.
+                      No invoices match the current filters.
                     </td>
                   </tr>
                 )}
