@@ -60,6 +60,7 @@ function InvoiceDetail() {
   const isOpeningBill = !inv.po_id || ms?.opening === true;
   const needsComment = dlg === "reject" || dlg === "cancel" || dlg === "approve_exception";
   const editable = inv.status === "draft" || inv.status === "exception";
+  const canAddPayment = ["approved", "partially_paid"].includes(inv.status) && Number(inv.balance_due) > 0 && can("payment.schedule");
   return (
     <>
       <PageHeader backTo="/finance/vendor-invoices" deleteAction={<PermanentDelete force kind="vendor_invoice" id={inv.id} name={inv.invoice_number} onDeleted={()=>window.location.assign("/finance/vendor-invoices")}/>} title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{isOpeningBill ? "Opening bill · no PO/GRN" : MATCH_STATUS[inv.match_status].label}</span></span>}
@@ -72,7 +73,7 @@ function InvoiceDetail() {
           {inv.status === "exception" && can("vendor_invoice.approve_exception") && !mine && <Button size="sm" onClick={() => setDlg("approve_exception")}>Approve exception</Button>}
           {(inv.status === "pending_review" || inv.status === "exception") && (can("vendor_invoice.approve") || can("vendor_invoice.approve_exception")) && <Button size="sm" variant="destructive" onClick={() => setDlg("reject")}>Reject</Button>}
           {["draft", "exception", "rejected"].includes(inv.status) && can("vendor_invoice.create") && <Button size="sm" variant="ghost" onClick={() => setDlg("cancel")}>Cancel</Button>}
-          {["approved", "partially_paid"].includes(inv.status) && Number(inv.balance_due)>0 && can("payment.schedule") && <Button size="sm" asChild><Link to="/finance/payments" search={{ vendor: inv.vendor_id }}>Schedule payment</Link></Button>}
+          {canAddPayment && <Button size="sm" asChild><Link to="/finance/payments" search={{ vendor: inv.vendor_id, invoice: inv.id }}>Add payment</Link></Button>}
         </div>} />
       {mine && (inv.status === "pending_review" || inv.status === "exception") && <p className="mb-3 text-xs text-muted-foreground">You entered this invoice, so another authorised user must approve it.</p>}
 
@@ -151,7 +152,8 @@ function InvoiceDetail() {
       </div>)}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border bg-card p-4">
-          <div className="mb-2 text-sm font-medium">Payments</div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-medium">Payments</h2>{canAddPayment && <Button asChild size="sm"><Link to="/finance/payments" search={{ vendor: inv.vendor_id, invoice: inv.id }}>Add payment</Link></Button>}</div>
+          {canAddPayment && <div className="mb-3 rounded-lg border bg-muted/30 p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><span>Outstanding balance</span><strong className="tabular-nums">{inr(inv.balance_due)}</strong></div><p className="mt-1 text-xs text-muted-foreground">Add a full or partial new payment for this invoice. Director approval is required before recording payment. Any amounts already reserved for pending payments are checked in the payment form.</p></div>}
           {isOpeningBill && <p className="mb-2 text-xs text-muted-foreground">Already paid before ERP: {inr(priorPayments.reduce((n,p)=>n+Number(p.amount),Number(inv.opening_legacy_paid??0)))}. No director payment approval is required for historical settlements.</p>}
           {isOpeningBill && priorPayments.length>0 && <ul className="mb-3 space-y-1 text-xs">{priorPayments.map(p=><li key={p.id} className="flex justify-between gap-2"><span>{fmtDate(p.payment_date)} · {p.payment_mode.toUpperCase()} · {p.reference??"Reference not supplied"}</span><strong>{inr(p.amount)}</strong></li>)}</ul>}
           {payments.length + adjustments.length === 0 && priorPayments.length===0 && Number(inv.opening_legacy_paid??0)===0 ? <p className="text-xs text-muted-foreground">No payments yet.</p> : (<ul className="space-y-1 text-sm">
