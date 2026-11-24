@@ -250,7 +250,7 @@ function PoDetail() {
     <>
       <div className="purchase-order-detail print:hidden">
         <div ref={orderHeading} tabIndex={-1} className="outline-none">
-          <PageHeader deleteAction={<PermanentDelete force kind="purchase_order" id={po.id} name={po.po_number} onDeleted={()=>window.location.assign("/procurement/purchase-orders")}/>}
+          <PageHeader backTo="/procurement/purchase-orders" deleteAction={<PermanentDelete force kind="purchase_order" id={po.id} name={po.po_number} onDeleted={()=>window.location.assign("/procurement/purchase-orders")}/>}
             crumbs={
               <Link to="/procurement/purchase-orders" className="hover:underline">
                 Purchase Orders
