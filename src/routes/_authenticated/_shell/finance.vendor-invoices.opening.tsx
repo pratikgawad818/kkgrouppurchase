@@ -68,14 +68,11 @@ function OpeningBill() {
     queryKey: ["opening-bill-base"],
     queryFn: async () => {
       const [v,p,b] = await Promise.all([
-        supabase.from("vendors").select("id,company_name,gstin").order("company_name"),
-        supabase.from("projects").select("id,name").order("name"),
-        supabase.from("buildings").select("id,name,project_id").order("name"),
+        loadCompleteRows(async (start,end)=>await supabase.from("vendors").select("id,company_name,gstin",{count:"exact"}).order("company_name").order("id").range(start,end)),
+        loadCompleteRows(async (start,end)=>await supabase.from("projects").select("id,name",{count:"exact"}).order("name").order("id").range(start,end)),
+        loadCompleteRows(async (start,end)=>await supabase.from("buildings").select("id,name,project_id",{count:"exact"}).order("name").order("id").range(start,end)),
       ]);
-      if(v.error)throw v.error;
-      if(p.error)throw p.error;
-      if(b.error)throw b.error;
-      return {vendors:v.data ?? [],projects:p.data ?? [],buildings:b.data ?? []};
+      return {vendors:v,projects:p,buildings:b};
     },
   });
   const materials = useQuery({
