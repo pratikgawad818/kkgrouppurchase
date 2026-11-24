@@ -170,7 +170,7 @@ function ScheduleDialog({ kind, initialVendor, initialInvoice, onClose, onDone }
       if (initialInvoice && !selectedInvoice) throw new Error("This invoice is no longer available for payment.");
       if (kind === "invoice" && invoicePreflight.errors.length) throw new Error(invoicePreflight.errors.join(" "));
       const { error } = await supabase.rpc("schedule_vendor_payment", {
-        _header: { kind, vendor_id: vendor, ...h },
+        _header: { kind, vendor_id: vendor, ...h, project_id: selectedInvoice?.project_id ?? h.project_id },
         _allocations: kind === "invoice" ? invoicePreflight.allocations : [],
       });
       if (error) throw error;
