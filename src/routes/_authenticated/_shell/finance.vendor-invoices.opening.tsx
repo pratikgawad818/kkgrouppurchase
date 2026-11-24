@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
+import { SearchableEntrySelect } from "@/components/erp/searchable-entry-select";
 import { errMsg, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { PAYMENT_MODES, today, uploadVendorDoc } from "@/lib/finance";
@@ -229,16 +230,21 @@ function OpeningBill() {
     {!canEdit && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
       Only authorized Accounts staff can correct approved invoice documentation.
     </p>}
+    <section aria-label="Live bill totals" className="grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-3 sm:p-4">
+      {[["Net payable",calc.net],["Already paid",calc.paid+calc.legacyPaid],["Balance due",calc.balance]].map(([label,value])=><div key={String(label)} className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold tabular-nums">{inr(Number(value))}</p></div>)}
+      <div className="flex flex-wrap items-center gap-2 text-xs sm:col-span-3">
+        <span className="text-muted-foreground">{lines.length} item(s) · {validation.length ? `${validation.length} field checks remaining` : "Ready for review"}</span>
+        <a className="ml-auto font-medium text-primary underline" href="#opening-bill-summary">Review totals and save ↓</a>
+      </div>
+    </section>
     <form className="space-y-5" onSubmit={e=>{e.preventDefault();if(canSave)save.mutate();}}>
       <section className={box}>
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><FileText className="h-4 w-4"/> Bill information</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Supplier / Vendor *"><select className={selectCls} value={h.vendor_id} disabled={!financialEditable || !!editId}
-            onChange={e=>set("vendor_id",e.target.value)}><option value="">Select vendor</option>
-            {data.vendors.map(v=><option key={v.id} value={v.id}>{v.company_name}</option>)}</select></Field>
-          <Field label="Project *"><select className={selectCls} value={h.project_id} disabled={!financialEditable || !!editId}
-            onChange={e=>setH(v=>({...v,project_id:e.target.value,building_id:""}))}><option value="">Select project</option>
-            {data.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Supplier / Vendor *"><SearchableEntrySelect label="Vendor" value={h.vendor_id} disabled={!financialEditable || !!editId} placeholder="Select vendor"
+            onChange={value=>set("vendor_id",value)} options={data.vendors.map(v=>({value:v.id,label:v.company_name,search:v.gstin??""}))}/></Field>
+          <Field label="Project *"><SearchableEntrySelect label="Project" value={h.project_id} disabled={!financialEditable || !!editId} placeholder="Select project"
+            onChange={value=>setH(v=>({...v,project_id:value,building_id:""}))} options={data.projects.map(p=>({value:p.id,label:p.name}))}/></Field>
           <Field label="Building"><select className={selectCls} disabled={!financialEditable} value={h.building_id}
             onChange={e=>set("building_id",e.target.value)}><option value="">No specific building</option>
             {buildingOptions.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
@@ -416,7 +422,7 @@ function OpeningBill() {
 
       {isApprovedCorrection && <section className={box}><Field label="Reason for correcting approved bill details *"><Textarea rows={2} minLength={10} maxLength={500} value={correctionReason} onChange={e=>setCorrectionReason(e.target.value)} placeholder="Explain which item details are being corrected and why, with reference to the original supplier bill."/></Field></section>}
 
-      <section className={cn(box,"space-y-3")}>
+      <section id="opening-bill-summary" className={cn(box,"space-y-3 scroll-mt-24")}>
         <h2 className="font-semibold">Bill and outstanding summary</h2>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           {[
