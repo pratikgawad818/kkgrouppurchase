@@ -12,7 +12,7 @@ function NewPr() {
   const can = useCan();
   return (
     <>
-      <PageHeader title="New purchase request" crumbs={<Link to="/procurement/purchase-requests">Purchase Requests</Link>} subtitle="PR number is assigned automatically when you save." />
+      <PageHeader backTo="/procurement/purchase-requests" title="New purchase request" crumbs={<Link to="/procurement/purchase-requests">Purchase Requests</Link>} subtitle="PR number is assigned automatically when you save." />
       {can("purchase_request.create") ? <PrForm /> : <div className="rounded-md border bg-card p-4 text-sm">You do not have permission to create purchase requests.</div>}
     </>
   );
