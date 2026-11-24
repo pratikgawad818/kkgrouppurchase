@@ -39,7 +39,7 @@ test("All document details and relevant forms expose a consistent Go Back contro
       code.includes(`<PageHeader backTo="${fallback}"`),
       `${filename}: expected backTo=${fallback}`,
     );
-    assert.match(common, new RegExp(`\\|${fallback.replaceAll("/", "\\/")}`));
+    assert.ok(common.includes(`| "${fallback}"`), `Missing shared fallback: ${fallback}`);
   }
 });
 
