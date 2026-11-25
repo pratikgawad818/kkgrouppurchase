@@ -827,6 +827,13 @@
       "when": 1795457160000,
       "tag": "0117_delete_unused_company_bank_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1795457220000,
+      "tag": "0118_reviewed_opening_payment_amendments",
+      "breakpoints": true
     }
   ]
 }
