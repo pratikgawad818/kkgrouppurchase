@@ -31,7 +31,7 @@ export function OpeningPaymentAmendments({invoice}:{invoice:Bill}) {
     await Promise.all([qc.invalidateQueries({queryKey:["opening-payment-amendments",invoice.id]}),
       qc.invalidateQueries({queryKey:["vi",invoice.id]}),qc.invalidateQueries({queryKey:["vendor-invoices"]}),
       qc.invalidateQueries({queryKey:["ledger",invoice.vendor_id]}),qc.invalidateQueries({queryKey:["accounts-task-queue"]}),
-      qc.invalidateQueries({queryKey:["payables"]}),qc.invalidateQueries({queryKey:["payment-invoices"]})]);
+      qc.invalidateQueries({queryKey:["payables"]}),qc.invalidateQueries({queryKey:["payment-invoices"]}),qc.invalidateQueries({queryKey:["pay-open"]}),qc.invalidateQueries({queryKey:["opening-payment-review-queue"]})]);
   };
   const request=useMutation({mutationFn:async()=>{
     if(!canRequest||!verified)throw new Error("Verify the original payment before requesting correction.");
