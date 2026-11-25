@@ -1,3 +1,4 @@
+import { invalidateFinanceKeys, FINANCE_REFERENCE_KEYS } from "@/lib/finance-cache";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -127,7 +128,7 @@ function BankAccounts() {
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["bank-accounts-master", companyId] }),
-        qc.invalidateQueries({ queryKey: ["payment-base"] }),
+        invalidateFinanceKeys(qc,FINANCE_REFERENCE_KEYS.bank),
         qc.invalidateQueries({ queryKey: ["bank-legal-entities", companyId] }),
       ]);
       setEditorOpen(false);
@@ -155,7 +156,7 @@ function BankAccounts() {
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["bank-accounts-master", companyId] }),
-        qc.invalidateQueries({ queryKey: ["payment-base"] }),
+        invalidateFinanceKeys(qc,FINANCE_REFERENCE_KEYS.bank),
       ]);
       setDeleting(null);
       setDeleteConfirmation("");
