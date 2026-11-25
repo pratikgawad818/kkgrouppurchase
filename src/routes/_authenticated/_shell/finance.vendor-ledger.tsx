@@ -9,6 +9,7 @@ import { errMsg, fmtDate, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { fyLabel, fyOf } from "@/lib/fy";
 import { cn } from "@/lib/utils";
+import { openingLedgerCredit } from "@/lib/opening-ledger-credit";
 
 const META = "Vendor account statement: bills, payments, advances and running balance.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-ledger")({
@@ -34,7 +35,7 @@ function Ledger() {
     queryFn: async () => {
       const [i, p, a, po] = await Promise.all([
         loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
-          .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,net_payable,tds_amount,status", { count: "exact" })
+          .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,net_payable,tds_amount,status,is_opening,opening_legacy_paid,opening_vendor_invoice_prior_payments(amount)", { count: "exact" })
           .eq("vendor_id", vendor).in("status", ["approved", "partially_paid", "paid"]).order("id").range(start, end)),
         loadCompleteRows(async (start, end) => await supabase.from("vendor_payments")
           .select("id,payment_number,payment_date,amount,kind,reference", { count: "exact" })
@@ -49,7 +50,10 @@ function Ledger() {
           .order("id").range(start, end)),
       ]);
       const rows: Row[] = [
-        ...i.map((x) => ({ date: x.vendor_invoice_date, doc: x.invoice_number, kind: "Invoice", link: { to: "/finance/vendor-invoices/$id" as const, id: x.id }, debit: 0, credit: Number(x.net_payable), note: `Bill ${x.vendor_invoice_number}${Number(x.tds_amount) ? ` · TDS ${inr(x.tds_amount)}` : ""}` })),
+        ...i.map((x) => {
+          const {credit,historicalPaid}=openingLedgerCredit(x);
+          return { date: x.vendor_invoice_date, doc: x.invoice_number, kind: x.is_opening ? "Opening payable" : "Invoice", link: { to: "/finance/vendor-invoices/$id" as const, id: x.id }, debit: 0, credit, note: `Bill ${x.vendor_invoice_number}${Number(x.tds_amount) ? ` · TDS ${inr(x.tds_amount)}` : ""}${x.is_opening ? ` · Pre-ERP paid ${inr(historicalPaid)}; net opening liability` : ""}` };
+        }),
         ...p.map((x) => ({ date: x.payment_date, doc: x.payment_number, kind: x.kind === "advance" ? "Advance paid" : "Payment", debit: Number(x.amount), credit: 0, note: x.reference ?? "" })),
         ...a.map((x) => ({ date: x.created_at.slice(0, 10), doc: x.vendor_payments.payment_number, kind: "Advance adjusted", debit: 0, credit: 0, note: `${inr(x.amount)} against ${x.vendor_invoices?.invoice_number}` })),
       ].sort((a, b) => a.date.localeCompare(b.date));
@@ -66,7 +70,7 @@ function Ledger() {
   const years = [...new Set([fyOf(new Date()), ...all.map((r) => fyOf(r.date))])].sort((a, b) => b - a);
   return (
     <>
-      <PageHeader title="Vendor Ledger" subtitle="Credit = approved bills (net of TDS). Debit = recorded payments and advances. Purchase orders are commitments and are shown separately." />
+      <PageHeader title="Vendor Ledger" subtitle="Credit = approved invoices net of TDS; opening bills include only the liability after pre-ERP payments. Debit = ERP-recorded payments and advances. Purchase orders are separate commitments." />
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="w-full sm:w-72"><SearchableEntrySelect label="Vendor" value={vendor} onChange={setVendor} placeholder="Select vendor" options={(vendors.data??[]).map(x=>({value:x.id,label:x.company_name,search:x.gstin??""}))}/></div>
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-36 sm:flex-none")} value={fy} onChange={(e) => setFy(e.target.value)}>{years.map((y) => <option key={y} value={y}>{fyLabel(y)}</option>)}</select>
