@@ -14,7 +14,7 @@ export function InvoiceEntryPreview({ file }: { file: File }) {
     return () => URL.revokeObjectURL(url);
   }, [file, isPdf, isImage]);
   const url = preview?.file === file ? preview.url : undefined;
-  return <aside aria-label="Selected invoice preview" className="min-w-0 self-start rounded-xl border bg-card p-3 xl:sticky xl:top-4">
+  return <aside aria-label="Selected invoice preview" className="order-first min-w-0 self-start rounded-xl border bg-card p-3 xl:order-none xl:sticky xl:top-4">
     <div className="mb-3 flex items-start gap-2">
       <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true"/>
       <div className="min-w-0"><h2 className="font-semibold">Original bill preview</h2>
