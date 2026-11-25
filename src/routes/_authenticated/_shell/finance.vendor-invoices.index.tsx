@@ -1,4 +1,5 @@
 import { RegisterFilters } from "@/components/erp/register-filters";
+import { OpeningPaymentReviewQueue } from "@/components/erp/opening-payment-review-queue";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
@@ -106,6 +107,7 @@ function InvoiceList() {
           )
         }
       />
+      <OpeningPaymentReviewQueue />
       <RegisterFilters activeCount={Object.values(f).filter(Boolean).length + Number(!!billKind)}>
         <select aria-label="Invoice source" className={selectCls} value={billKind} onChange={e=>{setBillKind(e.target.value);setPage(0);}}><option value="">All invoice types</option><option value="opening">Old / opening bill</option><option value="po">PO-linked invoice</option></select>
         <Button variant="ghost" size="sm" onClick={()=>{setF({status:"",vendor:"",project:"",fy:""});setBillKind("");setSearch("");setPage(0);}}>Clear filters</Button>

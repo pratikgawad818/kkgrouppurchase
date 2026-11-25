@@ -20,6 +20,7 @@ import { useCan, useMe } from "@/lib/session";
 import { badge, openVendorDoc, PAYMENT_MODES, PAYMENT_STATUS, today, uploadVendorDoc, type PaymentKind } from "@/lib/finance";
 import { canAccessPage } from "@/lib/page-access";
 import { cn } from "@/lib/utils";
+import { loadPendingOpeningAmendments } from "@/lib/opening-payment-amendments";
 import { availableAfterScheduled, checkedAdvanceUsage, inspectAdvanceAdjustment, inspectPaymentSchedule, remainingAdvanceAmount } from "@/lib/payment-preflight";
 
 const META = "Schedule, approve and record vendor payments and advances.";
@@ -129,7 +130,7 @@ function ScheduleDialog({ kind, initialVendor, initialInvoice, onClose, onDone }
   const inv = useQuery({
     queryKey: ["pay-open", vendor], enabled: kind === "invoice" && !!vendor,
     queryFn: async () => {
-      const [invoices, reservations] = await Promise.all([
+      const [invoices, reservations, corrections] = await Promise.all([
         loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
           .select("id,invoice_number,vendor_invoice_number,due_date,balance_due,project_id", { count: "exact" })
           .eq("vendor_id", vendor).in("status", ["approved", "partially_paid"])
@@ -138,7 +139,9 @@ function ScheduleDialog({ kind, initialVendor, initialInvoice, onClose, onDone }
           .select("id,invoice_id,amount,vendor_payments!inner(status,vendor_id)", { count: "exact" })
           .in("vendor_payments.status", ["scheduled", "approved"])
           .eq("vendor_payments.vendor_id", vendor).order("id").range(start, end)),
+        loadPendingOpeningAmendments(vendor),
       ]);
+      const correctionHolds=new Set(corrections.map(c=>c.invoice_id));
       const pending = new Map<string, number>();
       for (const entry of reservations) {
         const amt = Number(entry.amount);
@@ -148,7 +151,8 @@ function ScheduleDialog({ kind, initialVendor, initialInvoice, onClose, onDone }
       return invoices.map((x) => {
         const payable = availableAfterScheduled(Number(x.balance_due), pending.get(x.id) ?? 0);
         if (payable === null) throw new Error(`Cannot determine the available balance for invoice ${x.invoice_number}.`);
-        return { ...x, payable };
+        const correctionHeld=correctionHolds.has(x.id);
+        return { ...x, payable: correctionHeld?0:payable, correctionHeld };
       });
     },
   });
@@ -194,7 +198,7 @@ function ScheduleDialog({ kind, initialVendor, initialInvoice, onClose, onDone }
           </>}
         </div>
         {initialInvoice && inv.isSuccess && !inv.isFetching && !inv.error && <div className="rounded-xl border bg-muted/30 p-3 text-sm">
-          {selectedInvoice ? <><p className="font-semibold">{selectedInvoice.invoice_number} · Bill {selectedInvoice.vendor_invoice_number}</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xs text-muted-foreground">Outstanding</p><strong>{inr(selectedInvoice.balance_due)}</strong></div><div><p className="text-xs text-muted-foreground">Available to schedule</p><strong>{inr(selectedInvoice.payable)}</strong></div></div><p className="mt-2 text-xs text-muted-foreground">{selectedInvoice.payable > 0 ? "Enter a partial amount or select Full below. This only requests approval; it does not record a payment." : "No amount is available to schedule. Check existing pending payments."}</p></> : <p role="alert">This invoice is not available for payment. It may already be paid, awaiting approval, or outside your access.</p>}
+          {selectedInvoice ? <><p className="font-semibold">{selectedInvoice.invoice_number} · Bill {selectedInvoice.vendor_invoice_number}</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xs text-muted-foreground">Outstanding</p><strong>{inr(selectedInvoice.balance_due)}</strong></div><div><p className="text-xs text-muted-foreground">Available to schedule</p><strong>{inr(selectedInvoice.payable)}</strong></div></div><p className="mt-2 text-xs text-muted-foreground">{selectedInvoice.correctionHeld ? "Payment on hold: resolve the pending historical correction first." : selectedInvoice.payable > 0 ? "Enter a partial amount or select Full below. This only requests approval; it does not record a payment." : "No amount is available to schedule. Check existing pending payments."}</p></> : <p role="alert">This invoice is not available for payment. It may already be paid, awaiting approval, or outside your access.</p>}
         </div>}
         {base.error && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">Vendor/bank details could not be loaded: {errMsg(base.error)}</p>}
         {kind === "invoice" && vendor && (inv.isLoading ? <Loading /> : inv.error ? (
@@ -207,7 +211,7 @@ function ScheduleDialog({ kind, initialVendor, initialInvoice, onClose, onDone }
             <thead className="bg-muted/40 text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Payable now</th><th className="px-4 py-3 text-right">Pay</th></tr></thead>
             <tbody>
               {invoiceRows.length === 0 && <tr><td colSpan={4} className="p-3 text-xs text-muted-foreground">No approved unpaid invoices for this vendor.</td></tr>}
-              {invoiceRows.map((x) => <tr key={x.id} className="border-t"><td className="px-4 py-3 font-medium tabular-nums text-xs">{x.invoice_number}<div className="text-muted-foreground">{x.vendor_invoice_number}</div></td><td className="px-4 py-3">{fmtDate(x.due_date)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.payable)}</td>
+              {invoiceRows.map((x) => <tr key={x.id} className="border-t"><td className="px-4 py-3 font-medium tabular-nums text-xs">{x.invoice_number}<div className="text-muted-foreground">{x.vendor_invoice_number}</div>{x.correctionHeld&&<p className="mt-1 text-xs text-amber-700">Historical correction hold</p>}</td><td className="px-4 py-3">{fmtDate(x.due_date)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.payable)}</td>
                 <td className="px-4 py-3"><div className="flex items-center justify-end gap-1"><Input aria-label={`Payment amount for ${x.invoice_number}`} className="h-8 w-28 text-right" inputMode="decimal" type="number" step="0.01" disabled={x.payable <= 0} min={0} max={x.payable} value={alloc[x.id] ?? ""} onChange={(e) => setAlloc({ ...alloc, [x.id]: e.target.value })} /><Button size="sm" variant="outline" disabled={x.payable <= 0} onClick={() => setAlloc({ ...alloc, [x.id]: String(x.payable) })}>Full</Button></div></td></tr>)}
             </tbody>
           </table></div>

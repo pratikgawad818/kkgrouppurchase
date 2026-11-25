@@ -2251,6 +2251,21 @@ def test_reviewed_opening_payment_amendments():
         denied(c,lambda:request(1001),"exceeds outstanding")
         req=request(250)
         assert c.execute("SELECT balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]==1000
+        payment_header={"kind":"invoice","vendor_id":VENDOR,"project_id":PROJECT,
+                        "payment_date":str(bill_date),"payment_mode":"neft"}
+        allocations=[{"invoice_id":str(doc),"amount":"100"}]
+        def schedule_new_payment():
+            return c.execute("SELECT schedule_vendor_payment(%s::jsonb,%s::jsonb)",
+                (json.dumps(payment_header),json.dumps(allocations))).fetchone()[0]
+        denied(c,schedule_new_payment,"Resolve the pending historical payment correction")
+        assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
+        # Even an internal allocation insert must not bypass the hold.
+        c.execute("RESET ROLE")
+        denied(c,lambda:c.execute("""INSERT INTO vendor_advance_adjustments
+            (advance_payment_id,invoice_id,amount,created_by) VALUES(%s,%s,100,%s)""",
+            (str(uuid4()),doc,ACCOUNTS)),"Resolve the pending historical payment correction")
+        actor(c,ACCOUNTS)
+
         denied(c,lambda:request(100,"QA-OTHER"),"already has a pending")
         denied(c,lambda:c.execute("SELECT review_opening_payment_amendment(%s,'approve','Reviewed against bank statement')",(req,)),"own correction")
         denied(c,lambda:c.execute("UPDATE opening_payment_amendments SET amount=1 WHERE id=%s",(req,)),"permission denied")
@@ -2273,6 +2288,10 @@ def test_reviewed_opening_payment_amendments():
         c.execute("SELECT review_opening_payment_amendment(%s,'reject','Not supported by original payment proof')",(second,))
         assert c.execute("SELECT balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]==750
         assert c.execute("SELECT count(*) FROM journal_entries WHERE source_type='opening_payment_correction'").fetchone()[0]==1
+        actor(c,ACCOUNTS)
+        payment=schedule_new_payment()
+        assert c.execute("SELECT status,amount FROM vendor_payments WHERE id=%s",(payment,)).fetchone()==("scheduled",100)
+        assert c.execute("SELECT balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]==750
         c.rollback()
     print("PASS 0118 reviewed historical correction: independent approval, journal, no cash, duplicate and reject guards")
 

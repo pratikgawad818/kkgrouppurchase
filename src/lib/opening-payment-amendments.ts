@@ -44,3 +44,16 @@ export function loadLedgerInvoices(vendorId:string) {
     .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,net_payable,tds_amount,status,is_opening,opening_legacy_paid,opening_vendor_invoice_prior_payments(id,amount),opening_payment_amendments(id,amount,status,posting_date,prior_payment_id)",{count:"exact"})
     .eq("vendor_id",vendorId).in("status",["approved","partially_paid","paid"]).order("id").range(start,end));
 }
+
+export type PendingOpeningAmendment = Pick<OpeningPaymentAmendment,"id"|"invoice_id"|"vendor_id"|"amount"|"requested_by"|"requested_at"> & {
+  vendor_invoices: {invoice_number:string;vendor_invoice_number:string;vendors:{company_name:string}|null;projects:{name:string}|null}|null;
+};
+export function loadPendingOpeningAmendments(vendorId?:string) {
+  return loadCompleteRows<PendingOpeningAmendment>(async(start,end)=>{
+    let q=db.from("opening_payment_amendments")
+      .select("id,invoice_id,vendor_id,amount,requested_by,requested_at,vendor_invoices(invoice_number,vendor_invoice_number,vendors(company_name),projects(name))",{count:"exact"})
+      .eq("status","pending");
+    if(vendorId)q=q.eq("vendor_id",vendorId);
+    return await q.order("requested_at").order("id").range(start,end);
+  });
+}
