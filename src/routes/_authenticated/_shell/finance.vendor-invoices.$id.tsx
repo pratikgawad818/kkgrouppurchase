@@ -1,4 +1,5 @@
 import { PermanentDelete } from "@/components/erp/permanent-delete";
+import { OpeningPaymentAmendments } from "@/components/erp/opening-payment-amendments";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invo
 });
 
 type Act = "submit" | "approve" | "approve_exception" | "reject" | "cancel";
-const ACT_LABEL: Record<string, string> = { opening_entry: "Historical bill entered", opening_updated: "Historical bill revised", opening_details_corrected: "Approved bill details corrected", created: "Created", edited: "Edited", submit: "Matched / submitted", approve: "Approved", approve_exception: "Exception approved", reject: "Rejected", cancel: "Cancelled" };
+const ACT_LABEL: Record<string, string> = { opening_entry: "Historical bill entered", opening_updated: "Historical bill revised", opening_details_corrected: "Approved bill details corrected", opening_payment_corrected: "Historical payment correction approved", created: "Created", edited: "Edited", submit: "Matched / submitted", approve: "Approved", approve_exception: "Exception approved", reject: "Rejected", cancel: "Cancelled" };
 
 function InvoiceDetail() {
   const { id } = Route.useParams();
@@ -169,6 +170,7 @@ function InvoiceDetail() {
         </div>
       </div>
 
+      {inv.is_opening && <OpeningPaymentAmendments key={inv.id} invoice={inv} />}
       <Dialog open={!!dlg} onOpenChange={(o) => !o && setDlg(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{dlg ? ACT_LABEL[dlg] : ""}</DialogTitle><DialogDescription>{dlg === "approve" || dlg === "approve_exception" ? "Approving creates the payable for this vendor and posts it to the accounts." : "This is recorded in the invoice history."}</DialogDescription></DialogHeader>
