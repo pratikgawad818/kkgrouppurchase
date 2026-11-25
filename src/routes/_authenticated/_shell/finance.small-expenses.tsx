@@ -1,7 +1,8 @@
 import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { matchesRecordSearch } from "@/lib/erp-search";
 import { Plus, ReceiptText, Paperclip, X, SlidersHorizontal, Search, ChevronRight, CalendarDays, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,6 +66,7 @@ function SmallExpenses() {
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState<Form>(createForm);
   const [entryKey,setEntryKey]=useState(()=>crypto.randomUUID());
+  const [formBaseline,setFormBaseline]=useState(()=>JSON.stringify(createForm()));
   const [editingId,setEditingId]=useState<string|null>(null);
   const [correctionReason,setCorrectionReason]=useState("");
   const [editingVersion,setEditingVersion]=useState<string|null>(null);
@@ -75,6 +77,8 @@ function SmallExpenses() {
   const [buildingFilter,setBuildingFilter]=useState("");
   const [categoryFilter,setCategoryFilter]=useState("");
   const [vendorFilter,setVendorFilter]=useState("");
+  const [methodFilter,setMethodFilter]=useState("");
+  const [detailSearch,setDetailSearch]=useState("");
   const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
   const [page,setPage]=useState(0);
@@ -137,7 +141,8 @@ function SmallExpenses() {
 
   const startNew=()=>{
     setEditingId(null);setEditingVersion(null);setCorrectionReason("");
-    setEntryKey(crypto.randomUUID());setForm(createForm());
+    const fresh=createForm();
+    setEntryKey(crypto.randomUUID());setForm(fresh);setFormBaseline(JSON.stringify(fresh));
     setNewBills([]);setRemovedBillPaths([]);setOpen(true);
   };
   const addBillFiles=(selected: File[])=>{
@@ -151,7 +156,7 @@ function SmallExpenses() {
   };
 
   const save=useMutation({
-    mutationFn:async()=>{
+    mutationFn:async(continueEntry:boolean)=>{
       if(editingId ? !canEdit : !canCreate)
         throw new Error("This role cannot create or edit expenses.");
       const amount=parseSmallExpenseAmount(form.amount);
@@ -208,13 +213,15 @@ function SmallExpenses() {
           attached++;
         } catch(error){billFailures.push(file.name+": "+errMsg(error));}
       }
-      return {expenseId,corrected:!!editingId,attached,billFailures};
+      return {expenseId,corrected:!!editingId,attached,billFailures,continueEntry};
     },
     onSuccess:async(result)=>{
       await qc.invalidateQueries({queryKey:["small-expenses"]});
       await qc.invalidateQueries({queryKey:["small-expense-bills",result.expenseId]});
       await qc.invalidateQueries({queryKey:["small-expense-detail",result.expenseId]});
-      setOpen(false);setForm(createForm());setEntryKey(crypto.randomUUID());
+      const fresh=createForm();
+      const keepOpen=result.continueEntry&&!result.corrected&&!result.billFailures.length&&canEdit;
+      setOpen(keepOpen);setForm(fresh);setFormBaseline(JSON.stringify(fresh));setEntryKey(crypto.randomUUID());
       setEditingId(null);setEditingVersion(null);setCorrectionReason("");
       setNewBills([]);setRemovedBillPaths([]);
       if(result.billFailures.length)toast.warning("Expense saved, but some bills failed. Open the expense to check.",{
@@ -227,6 +234,14 @@ function SmallExpenses() {
     },
     onError:e=>toast.error(errMsg(e)),
   });
+  const hasUnsaved=open&&(JSON.stringify(form)!==formBaseline||!!correctionReason.trim()||newBills.length>0||removedBillPaths.length>0);
+  const closeEditor=()=>{if(save.isPending)return;if(hasUnsaved&&!window.confirm("Discard the unsaved expense changes?"))return;setOpen(false);};
+  useEffect(()=>{
+    if(!hasUnsaved)return;
+    const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+    window.addEventListener("beforeunload",warn);
+    return()=>window.removeEventListener("beforeunload",warn);
+  },[hasUnsaved]);
   if(me.isLoading)return <Loading />;
   if(!permitted)return <div role="alert" className="rounded-lg border p-6 text-sm">You do not have permission to view or record small expenses.</div>;
   const all=register.data??[];
@@ -236,15 +251,17 @@ function SmallExpenses() {
     (!buildingFilter||(buildingFilter==="general"?!x.building_id:x.building_id===buildingFilter))&&
     (!categoryFilter||x.category===categoryFilter)&&
     matchesSmallExpenseVendor(x.paid_to,vendorFilter)&&
+    (!methodFilter||x.payment_method===methodFilter)&&
+    matchesRecordSearch([x.description,x.receipt_reference,x.other_category_detail],detailSearch)&&
     (!dateFrom||x.spent_on>=dateFrom)&&(!dateTo||x.spent_on<=dateTo));
   const total=summarizeSmallExpenses(rows);
   const filteredPage=Math.min(page,Math.max(0,Math.ceil(rows.length/PAGE)-1));
   const pageRows=rows.slice(filteredPage*PAGE,(filteredPage+1)*PAGE);
-  const activeFilterCount=[projectFilter,buildingFilter,categoryFilter,dateFrom,dateTo]
+  const activeFilterCount=[projectFilter,buildingFilter,categoryFilter,dateFrom,dateTo,methodFilter,detailSearch,vendorFilter]
     .filter(Boolean).length;
   const clearFilters=()=>{
     setProjectFilter("");setBuildingFilter("");setCategoryFilter("");
-    setVendorFilter("");setDateFrom("");setDateTo("");setPage(0);
+    setVendorFilter("");setMethodFilter("");setDetailSearch("");setDateFrom("");setDateTo("");setPage(0);
   };
   const buildingOptions=[...new Map(all
     .filter(x=>!!x.building_id&&(!projectFilter||projectFilter==="office"||x.project_id===projectFilter))
@@ -257,16 +274,29 @@ function SmallExpenses() {
     setNewBills([]);setRemovedBillPaths([]);
     setEntryKey(crypto.randomUUID());
     setCorrectionReason("");
-    setForm({
+    const initialEdit:Form={
       spentOn:record.spent_on,category:record.category,amount:String(record.amount),
       method:record.payment_method,paidTo:record.paid_to,description:record.description,
       reference:record.receipt_reference??"",projectId:record.project_id??"",
       otherCategoryDetail:record.other_category_detail??"",
       buildingId:record.building_id??"",
-    });
+    };
+    setForm(initialEdit);setFormBaseline(JSON.stringify(initialEdit));
     setOpen(true);
   };
 
+  const entryAmount=parseSmallExpenseAmount(form.amount);
+  const formReady=entryAmount!==null&&form.paidTo.trim().length>=2&&form.description.trim().length>=3&&!!form.spentOn&&form.spentOn<=todayIst();
+  const duplicateCandidates=!editingId&&entryAmount!==null&&form.paidTo.trim().length>=2
+    ? all.filter(x=>x.spent_on===form.spentOn&&Number(x.amount)===entryAmount&&
+        x.paid_to?.trim().toLocaleLowerCase()===form.paidTo.trim().toLocaleLowerCase()&&
+        (x.project_id??"")===form.projectId)
+    : [];
+  const submitExpense=(continueEntry:boolean)=>{
+    if(save.isPending||!formReady)return;
+    if(duplicateCandidates.length&&!window.confirm("A recorded expense has the same date, payee, project and amount. Confirm this is a separate actual payment."))return;
+    save.mutate(continueEntry);
+  };
   return <div className="min-w-0 pb-20 sm:pb-16">
     <PageHeader title={isSiteEngineer?"My Small Expenses":"Small Expenses"}
       subtitle={isSiteEngineer
@@ -362,9 +392,11 @@ function SmallExpenses() {
           {isSiteEngineer&&<label htmlFor="small-expense-filter-to" className="mb-1 block text-xs font-medium md:sr-only">To date</label>}
           <Input id="small-expense-filter-to" aria-label="To date" className={isSiteEngineer?"min-h-11 w-full md:w-auto":undefined} type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setPage(0);}}/>
         </div>
-        {isSiteEngineer&&<Button type="button" variant="ghost" className="min-h-11 md:hidden" onClick={clearFilters}>
+        <select aria-label="Payment method filter" className={selectCls} value={methodFilter} onChange={e=>{setMethodFilter(e.target.value);setPage(0);}}><option value="">All payment methods</option>{Object.entries(SMALL_EXPENSE_PAYMENTS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select>
+        <Input aria-label="Search receipt reference or purpose" className="w-full sm:w-56" placeholder="Receipt reference / purpose" value={detailSearch} onChange={e=>{setDetailSearch(e.target.value);setPage(0);}}/>
+        <Button type="button" variant="ghost" className="min-h-11" onClick={clearFilters}>
           Clear filters
-        </Button>}
+        </Button>
       </div>
       {isSiteEngineer&&<details className="mb-4 rounded-xl border bg-card px-4 py-3 md:hidden">
         <summary className="cursor-pointer text-sm font-medium">Expense breakdown by category and project</summary>
@@ -487,7 +519,7 @@ function SmallExpenses() {
       <div className="mt-3 text-xs text-muted-foreground">Small-expense totals are paid outgoings, separate from warehouse stock and approved vendor bills. <Link to="/inventory/material-consumption" className="text-primary underline">View material consumption</Link>.</div>
     </>}
     <SmallExpenseDetail expense={viewing} onClose={()=>setViewing(null)}/>
-    <Dialog open={open} onOpenChange={value=>{if(!save.isPending)setOpen(value);}}>
+    <Dialog open={open} onOpenChange={value=>{if(!value)closeEditor();}}>
       <DialogContent className={isSiteEngineer
           ?"site-expense-mobile-dialog max-h-[90vh] overflow-y-auto sm:max-w-2xl"
           :"max-h-[90vh] overflow-y-auto sm:max-w-2xl"}>
@@ -506,9 +538,11 @@ function SmallExpenses() {
         {isSiteEngineer&&<p className="mb-3 rounded-xl bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
           Record one payment at a time. Choose your assigned project, then add the amount and bill if available.
         </p>}
+        {!isSiteEngineer&&<div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 p-3"><div><p className="text-xs text-muted-foreground">Amount being recorded</p><p className="text-xl font-semibold tabular-nums">{entryAmount===null?"—":inr(entryAmount)}</p></div><span className="text-xs text-muted-foreground">{hasUnsaved?"Unsaved changes":editingId?"Existing expense":"New expense"}</span></div>}
+        <fieldset disabled={save.isPending} className="min-w-0">
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label htmlFor="small-expense-date" className="text-sm font-medium">Date *</label><Input id="small-expense-date" type="date" max={todayIst()} value={form.spentOn} onChange={e=>setField("spentOn",e.target.value)}/></div>
-          <div><label htmlFor="small-expense-amount" className="text-sm font-medium">Amount (₹) *</label><Input id="small-expense-amount" type="text" inputMode="decimal" placeholder="e.g. 750.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
+          <div><label htmlFor="small-expense-amount" className="text-sm font-medium">Amount (₹) *</label><Input id="small-expense-amount" type="text" inputMode="decimal" placeholder="e.g. 750.00" value={form.amount} aria-invalid={!!form.amount.trim()&&entryAmount===null} onChange={e=>setField("amount",e.target.value)} />{!!form.amount.trim()&&entryAmount===null&&<p className="mt-1 text-xs text-destructive">Enter a positive amount with at most two decimal places.</p>}</div>
           <div>
             <label className="text-sm font-medium" htmlFor="small-expense-category">Category *</label>
             <select id="small-expense-category" className={selectCls} value={form.category}
@@ -540,10 +574,12 @@ function SmallExpenses() {
             <option value="">{isSiteEngineer?"Choose assigned project":"General office / no project"}</option>{context.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
           <div><label htmlFor="small-expense-building" className="text-sm font-medium">Building / wing</label><select id="small-expense-building" className={selectCls} disabled={!form.projectId} value={form.buildingId} onChange={e=>setField("buildingId",e.target.value)}>
             <option value="">General project expense</option>{context.data?.buildings.filter(x=>x.project_id===form.projectId).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
-          <div><label htmlFor="small-expense-paid-to" className="text-sm font-medium">Paid to *</label><Input id="small-expense-paid-to" maxLength={120} placeholder="Shop / worker / service provider" value={form.paidTo} onChange={e=>setField("paidTo",e.target.value)}/></div>
+          <div><label htmlFor="small-expense-paid-to" className="text-sm font-medium">Paid to *</label><Input id="small-expense-paid-to" maxLength={120} placeholder="Shop / worker / service provider" list="expense-entry-payees" value={form.paidTo} onChange={e=>setField("paidTo",e.target.value)}/><datalist id="expense-entry-payees">{vendorSuggestions.map(name=><option key={name} value={name}/>)}</datalist></div>
           <div><label htmlFor="small-expense-reference" className="text-sm font-medium">Receipt / bill reference</label><Input id="small-expense-reference" maxLength={120} placeholder="Optional receipt number" value={form.reference} onChange={e=>setField("reference",e.target.value)}/></div>
           <div className="sm:col-span-2"><label htmlFor="small-expense-description" className="text-sm font-medium">What was paid for? *</label><Textarea id="small-expense-description" rows={3} maxLength={500} placeholder="Purpose and site details" value={form.description} onChange={e=>setField("description",e.target.value)}/></div>
         </div>
+        {!formReady&&<p className="mt-3 text-xs text-muted-foreground">Required before saving: valid date and amount, paid-to name and purpose.</p>}
+        {!!duplicateCandidates.length&&<p role="alert" className="mt-3 rounded-lg border border-amber-500/40 p-3 text-sm">Possible duplicate: {duplicateCandidates.length} recorded expense(s) match this date, payee, project and amount. Verify the receipt before recording another payment.</p>}
         <section className="mt-4 min-w-0 rounded-xl border bg-muted/20 p-3">
           <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
             <Paperclip className="h-4 w-4"/>Bill images / invoice photos / PDFs
@@ -589,9 +625,11 @@ function SmallExpenses() {
             placeholder="What was changed? The previous values are saved automatically."
             value={correctionReason} onChange={e=>setCorrectionReason(e.target.value)}/>
         </div>}
+        </fieldset>
         </div>
-        <DialogFooter className={isSiteEngineer?"site-expense-form-actions":undefined}><Button variant="outline" onClick={()=>setOpen(false)} disabled={save.isPending}>Cancel</Button>
-          <Button onClick={()=>save.mutate()} disabled={save.isPending||context.isLoading||!!context.error||
+        <DialogFooter className={isSiteEngineer?"site-expense-form-actions":undefined}><Button variant="outline" onClick={closeEditor} disabled={save.isPending}>Cancel</Button>
+          {canEdit&&!editingId&&<Button variant="outline" onClick={()=>submitExpense(true)} disabled={!formReady||save.isPending||context.isLoading||!!context.error}>Save & add another</Button>}
+          <Button onClick={()=>submitExpense(false)} disabled={!formReady||save.isPending||context.isLoading||!!context.error||
             (isSiteEngineer&&(!form.projectId||!context.data?.projects.some(project=>project.id===form.projectId)))||
             (!!editingId&&(editBills.isLoading||!!editBills.error))}>
             <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":editingId?"Save changes":"Record paid expense"}</Button></DialogFooter>
