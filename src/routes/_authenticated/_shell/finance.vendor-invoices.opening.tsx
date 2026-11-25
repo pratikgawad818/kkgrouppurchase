@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Plus, Trash2, FileText, ReceiptText } from "lucide-react";
@@ -57,6 +57,9 @@ function OpeningBill() {
   const [correctionReason, setCorrectionReason] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const guard = useInvoiceEntryGuard();
+  const [batch, setBatch] = useState<File[]>([]);
+  const [batchSaved, setBatchSaved] = useState<{id:string; name:string}[]>([]);
+  const [batchVerified, setBatchVerified] = useState(false);
   const set = (field: keyof Header, value: string) => setH(current => ({ ...current, [field]: value }));
   const changeLine = (id: string, field: keyof OpeningLine, value: string) =>
     setLines(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
@@ -82,6 +85,18 @@ function OpeningBill() {
       return {vendors:v,projects:p,buildings:b};
     },
   });
+  const duplicateCheck = useQuery({
+    queryKey: ["opening-bill-duplicate-check",h.vendor_id],
+    enabled: !editId && can("vendor_invoice.create") && !!h.vendor_id && !!h.vendor_invoice_number.trim(),
+    staleTime: 0,
+    queryFn: () => loadCompleteRows(async (start,end) => await supabase.from("vendor_invoices")
+      .select("id,invoice_number,vendor_invoice_number,status",{count:"exact"})
+      .eq("vendor_id",h.vendor_id).not("status","in","(rejected,cancelled)").order("id").range(start,end)),
+  });
+  const normalizedBill = h.vendor_invoice_number.replace(/\s/g,"").toLowerCase();
+  const duplicate = !editId && normalizedBill ? duplicateCheck.data?.find(
+    row => row.vendor_invoice_number.replace(/\s/g,"").toLowerCase() === normalizedBill
+  ) : undefined;
   const materials = useQuery({
     queryKey: ["old-bill-materials"],
     enabled: can("materials.view"),
@@ -161,6 +176,9 @@ function OpeningBill() {
     ...(h.building_id && !base.data?.buildings.some(b=>b.id===h.building_id && b.project_id===h.project_id)
       ? ["Building does not belong to the selected project."] : []),
     ...(!h.vendor_invoice_number.trim() ? ["Enter the vendor's original bill number."] : []),
+    ...(duplicate ? ["This supplier bill already exists as "+duplicate.invoice_number+"."] : []),
+    ...(!editId && h.vendor_id && normalizedBill && duplicateCheck.error ? ["Duplicate check unavailable. Retry before saving."] : []),
+    ...(batch.length && !batchVerified ? ["Confirm this bill's actual prior-payment history before saving."] : []),
     ...(!isRealDate(h.vendor_invoice_date) || h.vendor_invoice_date>today() ? ["Enter a valid historical bill date."] : []),
     ...(h.due_date && (!isRealDate(h.due_date) || h.due_date<h.vendor_invoice_date)
       ? ["Due date must not be earlier than the bill date."] : []),
@@ -177,6 +195,7 @@ function OpeningBill() {
       if(base.error || base.isFetching || existing.error || (editId && (!existing.data || existing.isFetching)))
         throw new Error("Could not verify the vendor, project or existing invoice. Refresh the page.");
       if(validation.length)throw new Error(validation.join(" "));
+      if (!editId && h.vendor_id && normalizedBill && (!duplicateCheck.isSuccess || duplicateCheck.isFetching)) throw new Error("Wait for the duplicate check to finish.");
       const attachment_path=file ? await uploadVendorDoc("invoices",file) : "";
       const payload={
         _id:editId ?? null,
@@ -210,6 +229,19 @@ function OpeningBill() {
       toast.success(isApprovedCorrection?"Item details corrected; approved totals unchanged":editId?"Opening bill updated":"Old bill saved for verification");
       void qc.invalidateQueries({queryKey:["vendor-invoices"]});
       void qc.invalidateQueries({queryKey:["vi",id]});
+      void qc.invalidateQueries({queryKey:["opening-bill-duplicate-check"]});
+      if (!editId && batch.length) {
+        const remaining = batch.slice(1);
+        setBatchSaved(current => [...current,{id,name:batch[0]!.name}]);
+        setBatch(remaining);
+        // Never carry vendor, amounts, tax choices or past payments to a different bill.
+        setH({...initial,vendor_invoice_date:today()});
+        setLines([newOpeningLine(crypto.randomUUID())]);
+        setPayments([]); setLegacyPaid(0); setCorrectionReason("");
+        setBatchVerified(false); setFile(remaining[0] ?? null);
+        if (remaining.length) guard.markDirty();
+        return;
+      }
       nav({to:"/finance/vendor-invoices/$id",params:{id}});
     },
     onError:(e)=>toast.error(errMsg(e)),
@@ -222,7 +254,8 @@ function OpeningBill() {
   const data=base.data!;
   const buildingOptions=data.buildings.filter(b=>b.project_id===h.project_id);
   const canSave = canEdit && !save.isPending && !base.isFetching &&
-    (!editId || !existing.isFetching) && validation.length===0;
+    (!editId || !existing.isFetching) && validation.length===0 &&
+    (!!editId || (!!h.vendor_id && duplicateCheck.isSuccess && !duplicateCheck.isFetching));
 
   return <div className="mx-auto max-w-7xl space-y-5 pb-20">
     <PageHeader backTo="/finance/vendor-invoices" title={editId ? isApprovedCorrection ? "Correct approved old bill details" : "Edit old vendor bill" : "Old vendor bill entry"}
@@ -230,6 +263,31 @@ function OpeningBill() {
     <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:bg-sky-950/20 dark:text-sky-100">
       <strong>Historical entry, not a new purchase or payment.</strong> No PO or GRN is required. Previously completed payments are recorded without director payment approval and never create a new bank/cash transaction. Any fresh payment against an outstanding balance still follows the standard approval workflow.
     </div>
+    {!editId && can("vendor_invoice.create") && <section className={cn(box,"space-y-3")}>
+      <h2 className="font-semibold">Batch entry — multiple old bills</h2>
+      <p className="text-sm text-muted-foreground">Select up to 20 PDFs or bill photos. Enter, verify and save each bill individually. No automatic invoice approval or bank payment.</p>
+      <Input type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" disabled={save.isPending || batch.length>0}
+        aria-label="Select multiple supplier bills" onChange={event=>{
+          const files=Array.from(event.target.files ?? []); event.target.value="";
+          if (!files.length) return;
+          if(files.length>20 || files.some(f=>!["application/pdf","image/jpeg","image/png","image/webp"].includes(f.type))){
+            toast.error("Choose up to 20 PDF, JPEG, PNG or WebP bills."); return;
+          }
+          if(guard.dirty && !window.confirm("Replace the current unsaved entry with a new batch?"))return;
+          setH({...initial,vendor_invoice_date:today()}); setLines([newOpeningLine(crypto.randomUUID())]);
+          setPayments([]);setLegacyPaid(0);setCorrectionReason("");setBatchVerified(false);
+          setBatchSaved([]);setBatch(files);setFile(files[0]!);guard.markDirty();
+        }}/>
+      {batch.length>0 && <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+        <p className="font-medium">Bill {batchSaved.length+1} of {batchSaved.length+batch.length} · {batch[0]?.name}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{batch.length-1} remaining after this bill. Save each bill before continuing. Unsaved files are not stored after closing the page.</p>
+        <label className="mt-3 flex items-start gap-2"><input type="checkbox" checked={batchVerified} disabled={save.isPending} onChange={e=>setBatchVerified(e.target.checked)}/> I checked this bill's actual prior payments and entered them below if applicable.</label>
+      </div>}
+      {batchSaved.length>0 && <div className="text-sm"><p className="font-medium">{batchSaved.length} bill(s) saved for verification</p>
+        {batchSaved.map(row=><p key={row.id} className="break-all text-xs">{row.name} · <Link className="text-primary underline" to="/finance/vendor-invoices/$id" params={{id:row.id}}>View saved bill</Link></p>)}
+        {!batch.length && <p className="mt-2 text-muted-foreground">Batch complete. Every saved bill still requires normal invoice verification.</p>}
+      </div>}
+    </section>}
     {editId && existing.data?.lines.length===0 && <p className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950">
       This bill was entered using the old amount-only form. Enter the actual bill lines below to itemize it; verify the new total before saving. Previously recorded paid amounts remain preserved.
     </p>}
@@ -247,6 +305,7 @@ function OpeningBill() {
     {guard.dirty && <p role="status" className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">Unsaved changes — save this bill before leaving.</p>}
     <div className={cn("min-w-0",file && "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]")}>
     <form onChangeCapture={guard.markDirty} className="min-w-0 space-y-5" onSubmit={e=>{e.preventDefault();if(canSave)save.mutate();}}>
+      <fieldset disabled={save.isPending} className="min-w-0 space-y-5">
       <section className={box}>
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><FileText className="h-4 w-4"/> Bill information</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -259,6 +318,9 @@ function OpeningBill() {
             {buildingOptions.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
           <Field label="Supplier's bill number *"><Input disabled={!financialEditable} maxLength={100} value={h.vendor_invoice_number}
             onChange={e=>set("vendor_invoice_number",e.target.value)} placeholder="As printed on supplier invoice"/></Field>
+          {!editId && h.vendor_id && normalizedBill && <div className="text-xs sm:col-span-2 lg:col-span-3">
+            {duplicateCheck.isFetching ? <span role="status">Checking supplier bill number…</span> : duplicateCheck.error ? <span role="alert" className="text-destructive">Could not check duplicates. <button type="button" className="underline" onClick={()=>void duplicateCheck.refetch()}>Retry</button></span> : duplicate ? <span role="alert" className="text-destructive">Already registered: <Link className="underline" to="/finance/vendor-invoices/$id" params={{id:duplicate.id}}>{duplicate.invoice_number}</Link></span> : duplicateCheck.isSuccess ? <span className="text-muted-foreground">No matching bill in your accessible register. Final duplicate check runs on save.</span> : null}
+          </div>}
           <Field label="Original bill date *"><Input disabled={!financialEditable} type="date" max={today()} value={h.vendor_invoice_date}
             onChange={e=>set("vendor_invoice_date",e.target.value)}/></Field>
           <Field label="Due date"><Input disabled={!financialEditable} type="date" min={h.vendor_invoice_date} value={h.due_date}
@@ -268,7 +330,7 @@ function OpeningBill() {
               if(v==="none")setLines(prev=>prev.map(row=>({...row,tax_rate:"0"})));}}>
             <option value="cgst_sgst">CGST + SGST (intra-state)</option><option value="igst">IGST (inter-state)</option>
             <option value="none">No GST</option></select></Field>
-          <Field label="Invoice copy (PDF/image)"><Input disabled={!canEdit} type="file" accept="application/pdf,image/*"
+          <Field label="Invoice copy (PDF/image)"><Input disabled={!canEdit || batch.length>0 || save.isPending} type="file" accept="application/pdf,image/*"
             onChange={e=>setFile(e.target.files?.[0]??null)}/></Field>
         </div>
       </section>
@@ -453,9 +515,10 @@ function OpeningBill() {
           <p className="text-xs text-muted-foreground">
             Historical payments are archived immediately with the bill. Only its unpaid balance can enter the future payment-approval flow.
           </p>
-          <Button type="submit" disabled={!canSave}>{save.isPending?"Saving…":isApprovedCorrection?"Save audited item correction":editId?"Update opening bill":"Save bill for verification"}</Button>
+          <Button type="submit" disabled={!canSave}>{save.isPending?"Saving…":isApprovedCorrection?"Save audited item correction":editId?"Update opening bill":batch.length>1?"Save & enter next bill":batch.length===1?"Save final bill":"Save bill for verification"}</Button>
         </div>
       </section>
+      </fieldset>
     </form>
     {file && <InvoiceEntryPreview file={file} />}
     </div>
