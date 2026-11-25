@@ -1,3 +1,4 @@
+import { FinanceExport } from "@/components/erp/finance-export";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -93,6 +94,9 @@ function Ledger() {
           <Stat label="Unadjusted advances" value={inr(q.data?.advLeft)} />
           <Stat label="Active PO face value" value={inr((q.data?.pos ?? []).reduce((s, x) => s + Number(x.grand_total), 0))} hint={`${q.data?.pos.length ?? 0} active POs · original values, not remaining quantities`} />
         </div>
+        <div className="mb-3 flex justify-end"><FinanceExport name={"vendor-ledger-"+(v?.company_name??"vendor")+"-FY-"+fyLabel(fyN)} ready={q.isSuccess&&!q.isFetching&&vendors.isSuccess&&!vendors.isFetching&&!!v} count={inFy.length+2}
+          headers={["Vendor","Financial year","Date","Document","Type","Details","Debit (INR)","Credit (INR)","Running balance (INR)"]}
+          rows={()=>[[v?.company_name,fyLabel(fyN),"","","Opening balance","",null,null,opening],...inFy.map(r=>[v?.company_name,fyLabel(fyN),r.date,r.doc,r.kind,r.note,r.debit,r.credit,r.bal]),[v?.company_name,fyLabel(fyN),"","","Closing balance for selected FY","",null,null,inFy.at(-1)?.bal??opening]]}/></div>
         <p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap" role="region" aria-label="Vendor ledger" tabIndex={0}><table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Document</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Details</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
           <tbody>
