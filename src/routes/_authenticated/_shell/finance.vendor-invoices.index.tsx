@@ -1,3 +1,4 @@
+import { FinanceExport } from "@/components/erp/finance-export";
 import { RegisterFilters } from "@/components/erp/register-filters";
 import { OpeningPaymentReviewQueue } from "@/components/erp/opening-payment-review-queue";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -107,6 +108,9 @@ function InvoiceList() {
           )
         }
       />
+      <div className="mb-3 flex justify-end"><FinanceExport name="vendor-invoices" ready={q.isSuccess&&!q.isFetching&&search===deferredSearch} count={rows.length}
+        headers={["Invoice","Vendor bill","Bill date","Due date","Vendor","Project","PO","Invoice source","Gross invoice (INR)","Net payable (INR)","Balance due (INR)","Match status","Invoice status"]}
+        rows={()=>rows.map(x=>[x.invoice_number,x.vendor_invoice_number,x.vendor_invoice_date,x.due_date,x.vendors?.company_name,x.projects?.name,x.purchase_orders?.po_number,x.is_opening?"Opening bill":"PO-linked",Number(x.grand_total),Number(x.net_payable),Number(x.balance_due),x.is_opening?"Not applicable":MATCH_STATUS[x.match_status].label,INVOICE_STATUS[x.status].label])}/></div>
       <OpeningPaymentReviewQueue />
       <RegisterFilters activeCount={Object.values(f).filter(Boolean).length + Number(!!billKind)}>
         <select aria-label="Invoice source" className={selectCls} value={billKind} onChange={e=>{setBillKind(e.target.value);setPage(0);}}><option value="">All invoice types</option><option value="opening">Old / opening bill</option><option value="po">PO-linked invoice</option></select>
