@@ -841,6 +841,13 @@
       "when": 1795457280000,
       "tag": "0119_hold_pending_opening_payment_corrections",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1795457340000,
+      "tag": "0120_batch_grn_availability",
+      "breakpoints": true
     }
   ]
 }
