@@ -1,3 +1,4 @@
+import { invalidateFinanceKeys, FINANCE_SETTLEMENT_KEYS } from "@/lib/finance-cache";
 import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { OpeningPaymentAmendments } from "@/components/erp/opening-payment-amendments";
 import { loadOpeningAmendments } from "@/lib/opening-payment-amendments";
@@ -57,7 +58,7 @@ function InvoiceDetail() {
   });
   const act = useMutation({
     mutationFn: async (a: Act) => { const { error } = await supabase.rpc("invoice_transition", { _id: id, _action: a, _comment: comment }); if (error) throw error; },
-    onSuccess: () => { toast.success("Done"); setDlg(null); setComment(""); qc.invalidateQueries({ queryKey: ["vi", id] }); qc.invalidateQueries({ queryKey: ["vendor-invoices"] }); },
+    onSuccess: () => { toast.success("Done"); setDlg(null); setComment(""); qc.invalidateQueries({ queryKey: ["vi", id] }); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); },
     onError: (e) => toast.error(errMsg(e)),
   });
   if (q.isLoading) return <Loading />;
