@@ -1,3 +1,4 @@
+import { invalidateFinanceKeys, FINANCE_REFERENCE_KEYS } from "@/lib/finance-cache";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -45,7 +46,7 @@ function Buildings() {
       const r = editingId ? await supabase.from("buildings").update(payload).eq("id", editingId) : await supabase.from("buildings").insert(payload);
       if (r.error) throw r.error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["buildings"] }); setOpen(false); toast.success(editingId ? "Building updated" : "Building created"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["buildings"] }); void invalidateFinanceKeys(qc,FINANCE_REFERENCE_KEYS.building); setOpen(false); toast.success(editingId ? "Building updated" : "Building created"); },
     onError: (e) => toast.error(e.message.includes("buildings_project_id_code_key") ? "Could not save — please try again." : e.message),
   });
   const manage = can("buildings.manage");
