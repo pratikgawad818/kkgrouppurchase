@@ -542,7 +542,7 @@ function SmallExpenses() {
         <fieldset disabled={save.isPending} className="min-w-0">
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label htmlFor="small-expense-date" className="text-sm font-medium">Date *</label><Input id="small-expense-date" type="date" max={todayIst()} value={form.spentOn} onChange={e=>setField("spentOn",e.target.value)}/></div>
-          <div><label htmlFor="small-expense-amount" className="text-sm font-medium">Amount (₹) *</label><Input id="small-expense-amount" type="text" inputMode="decimal" placeholder="e.g. 750.00" value={form.amount} onChange={e=>setField("amount",e.target.value)} /></div>
+          <div><label htmlFor="small-expense-amount" className="text-sm font-medium">Amount (₹) *</label><Input id="small-expense-amount" type="text" inputMode="decimal" placeholder="e.g. 750.00" value={form.amount} aria-invalid={!!form.amount.trim()&&entryAmount===null} onChange={e=>setField("amount",e.target.value)} />{!!form.amount.trim()&&entryAmount===null&&<p className="mt-1 text-xs text-destructive">Enter a positive amount with at most two decimal places.</p>}</div>
           <div>
             <label className="text-sm font-medium" htmlFor="small-expense-category">Category *</label>
             <select id="small-expense-category" className={selectCls} value={form.category}
@@ -578,6 +578,7 @@ function SmallExpenses() {
           <div><label htmlFor="small-expense-reference" className="text-sm font-medium">Receipt / bill reference</label><Input id="small-expense-reference" maxLength={120} placeholder="Optional receipt number" value={form.reference} onChange={e=>setField("reference",e.target.value)}/></div>
           <div className="sm:col-span-2"><label htmlFor="small-expense-description" className="text-sm font-medium">What was paid for? *</label><Textarea id="small-expense-description" rows={3} maxLength={500} placeholder="Purpose and site details" value={form.description} onChange={e=>setField("description",e.target.value)}/></div>
         </div>
+        {!formReady&&<p className="mt-3 text-xs text-muted-foreground">Required before saving: valid date and amount, paid-to name and purpose.</p>}
         {!!duplicateCandidates.length&&<p role="alert" className="mt-3 rounded-lg border border-amber-500/40 p-3 text-sm">Possible duplicate: {duplicateCandidates.length} recorded expense(s) match this date, payee, project and amount. Verify the receipt before recording another payment.</p>}
         <section className="mt-4 min-w-0 rounded-xl border bg-muted/20 p-3">
           <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
