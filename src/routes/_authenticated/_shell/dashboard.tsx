@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { canAccessPage } from "@/lib/page-access";
 import { loadCompleteRows } from "@/lib/complete-register";
+import { workspaceOrderCounts, workspacePayableRows, workspacePayableTotal } from "@/lib/workspace-kpis";
 import { today } from "@/lib/finance";
 import { fmtDate } from "@/lib/format";
 import { Loading } from "@/components/erp/common";
@@ -75,6 +76,7 @@ function Dashboard() {
       canPr, canRfqs, canPo, canChallans, canGrns,
       canInvoices, canPayments, canPayables, isSiteEngineerPortal,
     ],
+    enabled: !!me.data?.profile.id,
     staleTime: 30_000,
     queryFn: async (): Promise<WorkspaceSnapshot> => {
       // Every accessible document family is read completely and with its
@@ -151,22 +153,10 @@ function Dashboard() {
             .order("id").range(start, end))
         : Promise.resolve([]);
 
-      const openQuery = supabase.from("purchase_orders")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
-      const dueQuery = supabase.from("purchase_orders")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["approved", "sent", "partially_received", "partially_accepted"])
-        .lte("expected_delivery_date", day);
-      const openOrders = canPo
-        ? (effectiveProject ? openQuery.eq("project_id", effectiveProject) : openQuery)
-        : Promise.resolve({ count: null, error: null });
-      const deliveriesDue = canPo
-        ? (effectiveProject ? dueQuery.eq("project_id", effectiveProject) : dueQuery)
-        : Promise.resolve({ count: null, error: null });
-      // Financial KPI is intentionally unchanged and is distinct from the
-      // purchase-chain tab counts.
-      const payableRows = canPayables
+      // The chain already loads the complete project-scoped PO and invoice
+      // rows. Derive KPIs from those same rows instead of redundant queries.
+      // Payables-only access must still work without loading invoice details.
+      const payableRows = canPayables && !canInvoices
         ? loadCompleteRows(async (start, end) => {
           let query = supabase.from("vendor_invoices")
             .select("id,balance_due", { count: "exact" })
@@ -177,14 +167,14 @@ function Dashboard() {
         })
         : Promise.resolve([]);
 
-      const [p, r, o, c, g, inv, pay, allocation, open, due, outstanding] =
+      const [p, r, o, c, g, inv, pay, allocation, outstanding] =
         await Promise.all([
-          prs, rfqs, pos, challans, grns, invoices, payments, allocations,
-          openOrders, deliveriesDue, payableRows,
+          prs, rfqs, pos, challans, grns, invoices, payments, allocations, payableRows,
         ]);
-      if ((canPo && (open.error || open.count === null || due.error || due.count === null))) {
-        throw new Error("Open purchase-order counts could not be verified.");
-      }
+      const orderCounts = workspaceOrderCounts(o, day);
+      const payable = canPayables
+        ? workspacePayableTotal(canInvoices ? workspacePayableRows(inv) : outstanding)
+        : null;
 
       const allocatedByPayment = new Map<string, string[]>();
       for (const link of allocation) {
@@ -247,11 +237,6 @@ function Dashboard() {
       const tasks = isSiteEngineerPortal
         ? siteEngineerAttentionTasks(allTasks, chainInput)
         : allTasks;
-      const payable = outstanding.reduce((sum, row) => {
-        const value = Number(row.balance_due);
-        if (!Number.isFinite(value)) throw new Error("Payable totals could not be verified.");
-        return sum + value;
-      }, 0);
       return {
         tasks,
         // Tabs count PURCHASES (not the number of linked documents).
@@ -259,9 +244,9 @@ function Dashboard() {
           purchasing: tasks.filter(t => t.group === "purchasing").length,
           payments: tasks.filter(t => t.group === "payments").length,
         },
-        openOrders: canPo ? open.count : null,
-        deliveries: canPo ? due.count : null,
-        payable: canPayables ? payable : null,
+        openOrders: canPo ? orderCounts.open : null,
+        deliveries: canPo ? orderCounts.due : null,
+        payable,
       };
     },
   });
