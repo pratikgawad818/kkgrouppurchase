@@ -81,7 +81,7 @@ export function DocumentViewer() {
         return;
       }
       revoke(previous);
-      const updated = { ...next, controller: previous.controller };
+      const updated = { ...next, ...(previous.controller ? { controller: previous.controller } : {}) };
       currentDoc.current = updated;
       setDoc(updated);
     };
