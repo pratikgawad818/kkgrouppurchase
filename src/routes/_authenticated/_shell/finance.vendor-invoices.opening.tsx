@@ -305,6 +305,7 @@ function OpeningBill() {
     {guard.dirty && <p role="status" className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">Unsaved changes — save this bill before leaving.</p>}
     <div className={cn("min-w-0",file && "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]")}>
     <form onChangeCapture={guard.markDirty} className="min-w-0 space-y-5" onSubmit={e=>{e.preventDefault();if(canSave)save.mutate();}}>
+      <fieldset disabled={save.isPending} className="min-w-0 space-y-5">
       <section className={box}>
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><FileText className="h-4 w-4"/> Bill information</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -517,6 +518,7 @@ function OpeningBill() {
           <Button type="submit" disabled={!canSave}>{save.isPending?"Saving…":isApprovedCorrection?"Save audited item correction":editId?"Update opening bill":batch.length>1?"Save & enter next bill":batch.length===1?"Save final bill":"Save bill for verification"}</Button>
         </div>
       </section>
+      </fieldset>
     </form>
     {file && <InvoiceEntryPreview file={file} />}
     </div>
