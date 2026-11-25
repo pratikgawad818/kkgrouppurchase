@@ -2308,8 +2308,42 @@ def test_reviewed_opening_payment_amendments():
     print("PASS 0118 reviewed historical correction: independent approval, journal, no cash, duplicate and reject guards")
 
 
+
+def test_finance_query_indexes():
+    expected = {
+        "vi_project_id_scan_idx": ("vendor_invoices", ["project_id", "id"]),
+        "vp_status_scan_idx": ("vendor_payments", ["status", "id"]),
+        "vpa_invoice_lookup_idx": ("vendor_payment_allocations", ["invoice_id"]),
+        "vaa_invoice_lookup_idx": ("vendor_advance_adjustments", ["invoice_id"]),
+        "vaa_payment_lookup_idx": ("vendor_advance_adjustments", ["advance_payment_id"]),
+        "opa_invoice_history_idx": ("opening_payment_amendments", ["invoice_id"]),
+        "opa_pending_vendor_idx": ("opening_payment_amendments", ["vendor_id", "requested_at", "id"]),
+        "je_source_lookup_idx": ("journal_entries", ["company_id", "source_type", "source_id"]),
+        "grn_project_scan_idx": ("goods_receipt_notes", ["project_id", "id"]),
+        "sse_creator_date_idx": ("site_small_expenses", ["created_by", "spent_on", "id"]),
+    }
+    with db() as c:
+        rows=c.execute("""SELECT i.relname,t.relname,x.indisvalid,x.indisready,x.indisunique,
+            ARRAY(SELECT a.attname::text FROM unnest(x.indkey) WITH ORDINALITY k(attnum,ord)
+              JOIN pg_attribute a ON a.attrelid=t.oid AND a.attnum=k.attnum ORDER BY k.ord),
+            pg_get_expr(x.indpred,t.oid)
+            FROM pg_index x JOIN pg_class i ON i.oid=x.indexrelid
+            JOIN pg_class t ON t.oid=x.indrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+            WHERE n.nspname='public' AND i.relname=ANY(%s)""",(list(expected),)).fetchall()
+        assert len(rows)==len(expected),rows
+        for name,table,valid,ready,unique,columns,predicate in rows:
+            assert (table,columns)==expected[name],(name,table,columns)
+            assert valid and ready and not unique,name
+            if name=="opa_pending_vendor_idx":
+                assert predicate and "pending" in predicate and "status" in predicate,predicate
+            else:
+                assert predicate is None,name
+    print("PASS 0121: targeted finance indexes installed with exact key order and no uniqueness changes")
+
+
 if __name__ == "__main__":
     setup()
+    test_finance_query_indexes()
     test_count_units_seed_is_idempotent()
     test_services_and_hours_master_seed()
     test_square_metre_unit_seed_is_idempotent()

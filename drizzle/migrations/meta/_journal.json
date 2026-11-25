@@ -848,6 +848,13 @@
       "when": 1795457340000,
       "tag": "0120_batch_grn_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1795457400000,
+      "tag": "0121_finance_query_indexes",
+      "breakpoints": true
     }
   ]
 }
