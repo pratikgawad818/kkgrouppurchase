@@ -11,6 +11,8 @@ export type ViewerDoc = {
   pages?: string[];
   /** Used to prevent an async preview from reopening after Back is pressed. */
   previewId?: string;
+  /** Cancels expensive work when the preview is dismissed or replaced. */
+  controller?: AbortController;
   message?: string;
 };
 const EVENT = "erp:view-document";
@@ -36,14 +38,18 @@ export function showDocument(doc: ViewerDoc) {
  */
 export function beginDocumentPreview(name: string) {
   const previewId = crypto.randomUUID();
-  showDocument({ url: "", type: LOADING, name, previewId });
+  const controller = new AbortController();
+  showDocument({ url: "", type: LOADING, name, previewId, controller });
   return {
-    show(file: Omit<ViewerDoc, "previewId">) {
+    signal: controller.signal,
+    show(file: Omit<ViewerDoc, "previewId" | "controller">) {
+      if (controller.signal.aborted) { revoke(file); return; }
       window.dispatchEvent(new CustomEvent<ViewerDoc>(UPDATE, {
         detail: { ...file, previewId },
       }));
     },
     fail(message: string) {
+      if (controller.signal.aborted) return;
       window.dispatchEvent(new CustomEvent<ViewerDoc>(UPDATE, {
         detail: { url: "", type: FAILED, name, message, previewId },
       }));
@@ -56,29 +62,37 @@ export function DocumentViewer() {
   const [doc, setDoc] = useState<ViewerDoc | null>(null);
   const [pdfZoom, setPdfZoom] = useState(100);
   const iframe = useRef<HTMLIFrameElement>(null);
+  const currentDoc = useRef<ViewerDoc | null>(null);
 
   useEffect(() => {
     const onOpen = (e: Event) => {
       setPdfZoom(100);
       const next = (e as CustomEvent<ViewerDoc>).detail;
-      setDoc(previous => { revoke(previous); return next; });
+      currentDoc.current?.controller?.abort();
+      revoke(currentDoc.current);
+      currentDoc.current = next;
+      setDoc(next);
     };
     const onUpdate = (e: Event) => {
       const next = (e as CustomEvent<ViewerDoc>).detail;
-      setDoc(previous => {
-        if (!previous || !previous.previewId || previous.previewId !== next.previewId) {
-          revoke(next); // Viewer was closed or a newer preview replaced it.
-          return previous;
-        }
-        revoke(previous);
-        return next;
-      });
+      const previous = currentDoc.current;
+      if (!previous || !previous.previewId || previous.previewId !== next.previewId) {
+        revoke(next);
+        return;
+      }
+      revoke(previous);
+      const updated = { ...next, controller: previous.controller };
+      currentDoc.current = updated;
+      setDoc(updated);
     };
     window.addEventListener(EVENT, onOpen);
     window.addEventListener(UPDATE, onUpdate);
     return () => {
       window.removeEventListener(EVENT, onOpen);
       window.removeEventListener(UPDATE, onUpdate);
+      currentDoc.current?.controller?.abort();
+      revoke(currentDoc.current);
+      currentDoc.current = null;
     };
   }, []);
 
@@ -93,7 +107,10 @@ export function DocumentViewer() {
   }, [doc]);
 
   function close() {
-    setDoc(previous => { revoke(previous); return null; });
+    currentDoc.current?.controller?.abort();
+    revoke(currentDoc.current);
+    currentDoc.current = null;
+    setDoc(null);
   }
 
   function printDocument() {
@@ -175,6 +192,7 @@ export function DocumentViewer() {
               style={{ width: pdfZoom + "%", maxWidth: (820 * pdfZoom / 100) + "px" }}>
               {doc.pages.map((url, index) => (
                 <img key={url} src={url} alt={doc.name + ", page " + (index + 1)}
+                  loading={index === 0 ? "eager" : "lazy"} decoding="async"
                   draggable={false}
                   className="h-auto w-full bg-white shadow-md ring-1 ring-black/10"
                   style={{ aspectRatio: "595.28 / 841.89" }} />
