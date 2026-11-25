@@ -150,7 +150,7 @@ function NewInvoice() {
       if (submit) { const r = await supabase.rpc("invoice_transition", { _id: data, _action: "submit", _comment: "" }); if (r.error) throw r.error; }
       return data as string;
     },
-    onSuccess: (id) => { guard.markSaved(); toast.success("Invoice saved"); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); qc.invalidateQueries({ queryKey: ["vi", id] }); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
+    onSuccess: (id) => { guard.markSaved(); toast.success("Invoice saved"); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
     onError: (e) => toast.error(errMsg(e)),
   });
 
