@@ -230,8 +230,6 @@ function OpeningBill() {
     onSuccess:(id)=>{
       guard.markSaved();
       toast.success(isApprovedCorrection?"Item details corrected; approved totals unchanged":editId?"Opening bill updated":"Old bill saved for verification");
-      void qc.invalidateQueries({queryKey:["vendor-invoices"]});
-      void qc.invalidateQueries({queryKey:["vi",id]});
       void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS);
       if (!editId && batch.length) {
         const remaining = batch.slice(1);
