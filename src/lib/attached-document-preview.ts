@@ -11,18 +11,23 @@ import {
  * A rendered page is displayed as an image so Android/Chrome PDF-plugin
  * support is not required for viewing/zooming.
  */
-async function renderPrivatePdfPages(blob: Blob): Promise<Blob[]> {
+async function renderPrivatePdfPages(blob: Blob, signal: AbortSignal): Promise<Blob[]> {
+  signal.throwIfAborted();
   const [pdfjs, worker] = await Promise.all([
     import("pdfjs-dist/legacy/build/pdf.mjs"),
     import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"),
   ]);
+  signal.throwIfAborted();
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  const data = new Uint8Array(await blob.arrayBuffer());
+  signal.throwIfAborted();
   const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(await blob.arrayBuffer()),
+    data,
   });
   const pages: Blob[] = [];
   try {
     const pdf = await loadingTask.promise;
+    signal.throwIfAborted();
     if (pdf.numPages < 1) throw new Error("The quotation PDF has no pages.");
     // Small, uploaded supplier quotations are normally 1–10 pages. Bound
     // resource use for untrusted PDFs before allocating large canvases.
@@ -30,27 +35,42 @@ async function renderPrivatePdfPages(blob: Blob): Promise<Blob[]> {
       throw new Error("This quotation has more than 60 pages. Use Download to read the original PDF.");
     }
     for (let number = 1; number <= pdf.numPages; number++) {
+      signal.throwIfAborted();
       const page = await pdf.getPage(number);
+      signal.throwIfAborted();
       const original = page.getViewport({ scale: 1 });
       const scale = Math.min(1.8, 1700 / original.height, 1600 / original.width);
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement("canvas");
       canvas.width = Math.max(1, Math.ceil(viewport.width));
       canvas.height = Math.max(1, Math.ceil(viewport.height));
-      const context = canvas.getContext("2d", { alpha: false });
-      if (!context) throw new Error("The browser cannot display this quotation PDF.");
-      context.fillStyle = "#fff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvas, canvasContext: context, viewport }).promise;
-      const rendered = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (value) => value ? resolve(value) : reject(new Error("Could not render quotation page " + number)),
-          "image/jpeg", 0.88,
-        ));
-      pages.push(rendered);
-      page.cleanup();
-      canvas.width = 0;
-      canvas.height = 0;
+      try {
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) throw new Error("The browser cannot display this quotation PDF.");
+        context.fillStyle = "#fff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        const task = page.render({ canvas, canvasContext: context, viewport });
+        const cancel = () => task.cancel();
+        signal.addEventListener("abort", cancel, { once: true });
+        try {
+          if (signal.aborted) cancel();
+          await task.promise;
+        } finally {
+          signal.removeEventListener("abort", cancel);
+        }
+        signal.throwIfAborted();
+        const rendered = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(
+            (value) => value ? resolve(value) : reject(new Error("Could not render quotation page " + number)),
+            "image/jpeg", 0.88,
+          ));
+        signal.throwIfAborted();
+        pages.push(rendered);
+      } finally {
+        page.cleanup();
+        canvas.width = 0;
+        canvas.height = 0;
+      }
     }
     return pages;
   } finally {
@@ -72,13 +92,15 @@ export function openPrivateProcurementAttachment(path: string, label: string): P
       const mime = procurementAttachmentContentType(path);
       if (!mime) throw new Error("Unsupported document type. Upload a PDF, JPG or PNG.");
       const { data, error } = await supabase.storage.from(PROCUREMENT_ATTACHMENT_BUCKET).download(path);
+      if (preview.signal.aborted) return;
       if (error) throw error;
       if (!data || !data.size) throw new Error("The attached quotation file is empty or unavailable.");
 
       const file = new Blob([data], { type: mime });
       fileUrl = URL.createObjectURL(file);
       if (mime === "application/pdf") {
-        const pages = await renderPrivatePdfPages(file);
+        const pages = await renderPrivatePdfPages(file, preview.signal);
+        preview.signal.throwIfAborted();
         pageUrls = pages.map(page => URL.createObjectURL(page));
       }
       preview.show({
@@ -92,6 +114,7 @@ export function openPrivateProcurementAttachment(path: string, label: string): P
     } catch (error) {
       if (fileUrl) URL.revokeObjectURL(fileUrl);
       for (const pageUrl of pageUrls) URL.revokeObjectURL(pageUrl);
+      if (preview.signal.aborted) return;
       const message = error instanceof Error ? error.message : "Quotation could not be opened.";
       preview.fail(message);
       throw error;
