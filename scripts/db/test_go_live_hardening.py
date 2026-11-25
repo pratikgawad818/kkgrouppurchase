@@ -2224,6 +2224,59 @@ def test_po_review_correction_handoff():
     print("PASS 0079 PO return and escalation: Director/Admin, manager, engineer, guard, audit and permissions")
 
 
+
+def test_reviewed_opening_payment_amendments():
+    """Full-schema replay: request does not post; independent review adjusts only AP."""
+    with db() as c:
+        c.execute("""INSERT INTO accounts(company_id,code,name,account_type)
+            VALUES(%s,'2100','QA Payables','liability') ON CONFLICT(company_id,code) DO NOTHING""",(A,))
+        c.execute("""INSERT INTO financial_periods(company_id,label,start_date,end_date,is_current,is_closed)
+            VALUES(%s,'QA correction period',current_date-interval '2 days',current_date+interval '2 days',true,false)""",(A,))
+        bill_date=c.execute("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date-1").fetchone()[0]
+        actor(c,ACCOUNTS)
+        header={"project_id":PROJECT,"vendor_id":VENDOR,"vendor_invoice_number":"QA-AMEND-01",
+                "vendor_invoice_date":str(bill_date),"gst_type":"cgst_sgst","freight":"0","other_charges":"0","tds_rate":"0"}
+        item=[{"description":"QA old bill","unit":"NOS","quantity":"1","rate":"1000","discount":"0","tax_rate":"0"}]
+        doc=c.execute("SELECT save_opening_vendor_invoice_v2(%s::jsonb,%s::jsonb,'[]'::jsonb,NULL)",
+            (json.dumps(header),json.dumps(item))).fetchone()[0]
+        actor(c,DIRECTOR)
+        c.execute("SELECT invoice_transition(%s,'approve','QA verification')",(doc,))
+        version=c.execute("SELECT updated_at FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]
+        def request(amount,ref="QA-OLD-REF"):
+            return c.execute("SELECT request_opening_payment_amendment(%s,%s,%s,%s,'upi',%s,'Original bank statement verified')",
+                (doc,version,amount,bill_date,ref)).fetchone()[0]
+        actor(c,PURCHASER)
+        denied(c,lambda:request(250),"Only Super Admin")
+        actor(c,ACCOUNTS)
+        denied(c,lambda:request(1001),"exceeds outstanding")
+        req=request(250)
+        assert c.execute("SELECT balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]==1000
+        denied(c,lambda:request(100,"QA-OTHER"),"already has a pending")
+        denied(c,lambda:c.execute("SELECT review_opening_payment_amendment(%s,'approve','Reviewed against bank statement')",(req,)),"own correction")
+        denied(c,lambda:c.execute("UPDATE opening_payment_amendments SET amount=1 WHERE id=%s",(req,)),"permission denied")
+        actor(c,OTHER_DIRECTOR)
+        denied(c,lambda:c.execute("SELECT review_opening_payment_amendment(%s,'approve','Reviewed against bank statement')",(req,)),"Only Super Admin")
+        actor(c,ADMIN)
+        c.execute("SELECT review_opening_payment_amendment(%s,'approve','Reviewed against original bank statement')",(req,))
+        assert c.execute("SELECT balance_due,amount_paid,status FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()==(750,250,"partially_paid")
+        assert c.execute("SELECT count(*) FROM vendor_payments").fetchone()[0]==0
+        rows=c.execute("""SELECT a.code,l.debit,l.credit FROM journal_entries j JOIN journal_lines l ON l.entry_id=j.id
+          JOIN accounts a ON a.id=l.account_id WHERE j.source_id=%s AND j.source_type='opening_payment_correction' ORDER BY a.code""",(req,)).fetchall()
+        assert rows==[("2100",250,0),("3000",0,250)],rows
+        assert c.execute("SELECT count(*) FROM opening_vendor_invoice_prior_payments WHERE invoice_id=%s",(doc,)).fetchone()[0]==1
+        denied(c,lambda:c.execute("SELECT review_opening_payment_amendment(%s,'approve','Duplicate attempt to review')",(req,)),"already reviewed")
+        version=c.execute("SELECT updated_at FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]
+        actor(c,ACCOUNTS)
+        denied(c,lambda:request(100," qa-old-ref "),"reference already exists")
+        second=request(100,"QA-SECOND")
+        actor(c,ADMIN)
+        c.execute("SELECT review_opening_payment_amendment(%s,'reject','Not supported by original payment proof')",(second,))
+        assert c.execute("SELECT balance_due FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]==750
+        assert c.execute("SELECT count(*) FROM journal_entries WHERE source_type='opening_payment_correction'").fetchone()[0]==1
+        c.rollback()
+    print("PASS 0118 reviewed historical correction: independent approval, journal, no cash, duplicate and reject guards")
+
+
 if __name__ == "__main__":
     setup()
     test_count_units_seed_is_idempotent()
@@ -2250,6 +2303,7 @@ if __name__ == "__main__":
     test_concurrent_save_retries()
     test_staff_audit_classifier()
     test_structured_opening_bills_and_prior_paid()
+    test_reviewed_opening_payment_amendments()
     test_accounts_staff_material_create_edit_only()
     test_optional_invoice_roundoff_accounting()
     test_vendor_invoice_po_pump_charge_gst()
