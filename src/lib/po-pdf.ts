@@ -525,7 +525,7 @@ function signatureRow(p: Paper, po: PoPdfOrder) {
   }
 }
 function bytes(data: string) { return new TextEncoder().encode(data); }
-async function assemblePdf(pages: HTMLCanvasElement[]): Promise<PoReviewDocument> {
+export async function assemblePdf(pages: HTMLCanvasElement[]): Promise<PoReviewDocument> {
   // One JPEG buffer is shared between the real PDF and the in-app mobile page
   // preview, so Android never has to rely on its native PDF iframe plugin.
   const previewPages = await Promise.all(pages.map(canvas =>

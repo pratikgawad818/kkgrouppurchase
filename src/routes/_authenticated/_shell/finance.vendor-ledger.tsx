@@ -1,4 +1,8 @@
 import { FinanceExport } from "@/components/erp/finance-export";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import { useMe } from "@/lib/session";
+import { beginDocumentPreview } from "@/components/erp/document-viewer";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -24,6 +28,8 @@ type Row = { date: string; doc: string; kind: string; link?: { to: "/finance/ven
 
 function Ledger() {
   const sp = Route.useSearch();
+  const me=useMe();
+  const canStatement=!!me.data?.profile.is_active&&me.data.roles.some(r=>r==="super_admin"||r==="accounts_manager"||r==="director");
   const [vendor, setVendor] = useState(sp.vendor ?? "");
   const [fy, setFy] = useState(String(fyOf(new Date())));
   const vendors = useQuery({
@@ -77,6 +83,17 @@ function Ledger() {
   let bal = opening;
   const inFy = all.filter((r) => fyOf(r.date) === fyN).map((r) => ({ ...r, bal: (bal += r.credit - r.debit) }));
   const closing = all.reduce((s, r) => s + r.credit - r.debit, 0);
+  const statementReady=canStatement&&q.isSuccess&&!q.isFetching&&vendors.isSuccess&&!vendors.isFetching&&!!v;
+  const viewStatement=async()=>{
+    if(!statementReady||!v)return;
+    const name=("Vendor-statement-"+v.company_name+"-"+fyN).replace(/[^a-zA-Z0-9_.-]/g,"_")+".pdf";
+    const preview=beginDocumentPreview(name);
+    try{
+      const {buildVendorStatement}=await import("@/lib/vendor-statement-pdf");
+      const result=await buildVendorStatement({vendor:v.company_name,gstin:v.gstin,year:fyN,opening,rows:inFy,generatedOn:new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())});
+      preview.show({name,type:"application/pdf",url:URL.createObjectURL(result.pdf),pages:result.previewPages.map(b=>URL.createObjectURL(b))});
+    }catch(e){preview.fail(errMsg(e));}
+  };
   const years = [...new Set([fyOf(new Date()), ...all.map((r) => fyOf(r.date))])].sort((a, b) => b - a);
   return (
     <>
@@ -90,11 +107,12 @@ function Ledger() {
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Stat label="Vendor" value={<span className="text-base">{v?.company_name}</span>} hint={`GSTIN ${v?.gstin ?? "—"}`} />
           <Stat label="Opening balance" value={inr(opening)} hint={fyLabel(fyN)} />
-          <Stat label="Outstanding (payable)" value={inr(closing)} hint={closing < 0 ? "Vendor owes us (advance)" : undefined} />
+          <Stat label="Selected FY closing" value={inr(inFy.at(-1)?.bal??opening)} hint={fyLabel(fyN)} />
+          <Stat label="All-year net balance" value={inr(closing)} hint={closing < 0 ? "Vendor owes us (advance)" : undefined} />
           <Stat label="Unadjusted advances" value={inr(q.data?.advLeft)} />
           <Stat label="Active PO face value" value={inr((q.data?.pos ?? []).reduce((s, x) => s + Number(x.grand_total), 0))} hint={`${q.data?.pos.length ?? 0} active POs · original values, not remaining quantities`} />
         </div>
-        <div className="mb-3 flex justify-end"><FinanceExport name={"vendor-ledger-"+(v?.company_name??"vendor")+"-FY-"+fyLabel(fyN)} ready={q.isSuccess&&!q.isFetching&&vendors.isSuccess&&!vendors.isFetching&&!!v} count={inFy.length+2}
+        <div className="mb-3 flex flex-wrap justify-end gap-2">{canStatement&&<Button type="button" variant="outline" size="sm" disabled={!statementReady} onClick={()=>void viewStatement()}><FileText className="mr-1.5 h-4 w-4"/>View statement PDF</Button>}<FinanceExport name={"vendor-ledger-"+(v?.company_name??"vendor")+"-FY-"+fyLabel(fyN)} ready={q.isSuccess&&!q.isFetching&&vendors.isSuccess&&!vendors.isFetching&&!!v} count={inFy.length+2}
           headers={["Vendor","Financial year","Date","Document","Type","Details","Debit (INR)","Credit (INR)","Running balance (INR)"]}
           rows={()=>[[v?.company_name,fyLabel(fyN),"","","Opening balance","",null,null,opening],...inFy.map(r=>[v?.company_name,fyLabel(fyN),r.date,r.doc,r.kind,r.note,r.debit,r.credit,r.bal]),[v?.company_name,fyLabel(fyN),"","","Closing balance for selected FY","",null,null,inFy.at(-1)?.bal??opening]]}/></div>
         <p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap" role="region" aria-label="Vendor ledger" tabIndex={0}><table className="w-full text-sm">
