@@ -1432,6 +1432,13 @@ def test_vendor_invoice_po_pump_charge_gst():
         invoice_lines=[{"grn_item_id":str(grn_line),"quantity":45,"rate":6500,
                         "tax_type":"cgst_sgst","tax_rate_percent":18}]
         actor(c,ACCOUNTS)
+        unknown=str(uuid4())
+        checked=dict(c.execute("SELECT grn_item_id::text,available FROM grn_items_available(%s::uuid[],NULL)",
+            ([str(grn_line),unknown],)).fetchall())
+        assert checked=={str(grn_line):45,unknown:None},checked
+        denied(c,lambda:c.execute("SELECT * FROM grn_items_available(%s::uuid[],NULL)",
+            ([str(grn_line)]*251,)),"up to 250")
+        denied(c,lambda:c.execute("SELECT * FROM grn_items_available(ARRAY[NULL::uuid],NULL)"),"non-null")
         denied(c,lambda:c.execute("SELECT save_vendor_invoice(NULL,%s::jsonb,%s::jsonb)",
              (json.dumps(dict(header,other_charges=-1)),json.dumps(invoice_lines))),
              "cannot be negative")
@@ -1445,6 +1452,11 @@ def test_vendor_invoice_po_pump_charge_gst():
             "292500.00","56250.00","28125.00","28125.00","0.00",
             "20000.00","368750.00","368750.00"),totals
         assert c.execute("SELECT sum(quantity) FROM vendor_invoice_items WHERE invoice_id=%s",(inv,)).fetchone()[0]==45
+        assert c.execute("SELECT available FROM grn_items_available(%s::uuid[],NULL)",([str(grn_line)],)).fetchone()[0]==0
+        assert c.execute("SELECT available FROM grn_items_available(%s::uuid[],%s)",([str(grn_line)],inv)).fetchone()[0]==45
+        actor(c,OTHER_DIRECTOR)
+        assert c.execute("SELECT available FROM grn_items_available(%s::uuid[],NULL)",([str(grn_line)],)).fetchone()[0] is None
+        actor(c,ACCOUNTS)
         assert c.execute("SELECT invoice_transition(%s,'submit','matched supplier pump charge')",
                          (inv,)).fetchone()[0]=="pending_review"
         summary=c.execute("SELECT match_summary FROM vendor_invoices WHERE id=%s",(inv,)).fetchone()[0]
