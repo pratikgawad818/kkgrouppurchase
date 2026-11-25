@@ -220,7 +220,7 @@ function InvoiceList() {
               )}
             </p>
           </section>
-                    <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+                    <div className="doc-table finance-doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
             <table className="w-full text-sm">
               <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -247,7 +247,7 @@ function InvoiceList() {
                 )}
                 {pageRows.map((x) => (
                   <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
-                    <td className="px-4 py-3 font-medium tabular-nums">
+                    <td data-label="Invoice" className="px-4 py-3 font-medium tabular-nums">
                       <Link
                         className="text-primary hover:underline"
                         to="/finance/vendor-invoices/$id"
@@ -257,13 +257,13 @@ function InvoiceList() {
                       </Link>
                       {x.is_opening && (x.status==="pending_review" || (["approved","partially_paid","paid"].includes(x.status) && can("vendor_invoice.approve"))) && can("vendor_invoice.create") && <Link className="mt-1 block text-xs font-medium text-primary hover:underline" to="/finance/vendor-invoices/opening" search={{id:x.id}}>{x.status==="pending_review"?"Edit bill & items":"Correct item details"}</Link>}
                     </td>
-                    <td className="px-4 py-3 font-medium tabular-nums text-xs">
+                    <td data-label="Vendor bill" className="px-4 py-3 font-medium tabular-nums text-xs">
                       {x.vendor_invoice_number}
                     </td>
-                    <td className="px-4 py-3">{fmtDate(x.vendor_invoice_date)}</td>
-                    <td className="px-4 py-3">{fmtDate(x.due_date)}</td>
-                    <td className="px-4 py-3">{x.vendors?.company_name}</td>
-                    <td className="px-4 py-3 font-medium tabular-nums text-xs">
+                    <td data-label="Bill date" className="px-4 py-3">{fmtDate(x.vendor_invoice_date)}</td>
+                    <td data-label="Due date" className="px-4 py-3">{fmtDate(x.due_date)}</td>
+                    <td data-label="Vendor" className="px-4 py-3">{x.vendors?.company_name}</td>
+                    <td data-label="PO" className="px-4 py-3 font-medium tabular-nums text-xs">
                       {x.po_id ? (
                         <Link className="hover:underline" to="/procurement/purchase-orders/$id" params={{ id: x.po_id }}>
                           {x.purchase_orders?.po_number}
@@ -272,19 +272,19 @@ function InvoiceList() {
                         <span className="text-muted-foreground">Old bill</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">{x.projects?.name}</td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">
+                    <td data-label="Project" className="px-4 py-3">{x.projects?.name}</td>
+                    <td data-label="Invoice total" className="px-4 py-3 text-right font-medium tabular-nums">
                       {inr(x.grand_total)}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">
+                    <td data-label="Balance due" className="px-4 py-3 text-right font-medium tabular-nums">
                       {inr(x.balance_due)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td data-label="Match" className="px-4 py-3">
                       <span className={cn(badge, x.is_opening ? "border-slate-300 bg-slate-50 text-slate-700" : MATCH_STATUS[x.match_status].cls)}>
                         {x.is_opening ? "Opening · no 3-way match" : MATCH_STATUS[x.match_status].label}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td data-label="Status" className="px-4 py-3">
                       <span className={cn(badge, INVOICE_STATUS[x.status].cls)}>
                         {INVOICE_STATUS[x.status].label}
                       </span>

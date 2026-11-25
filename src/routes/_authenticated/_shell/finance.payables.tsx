@@ -90,18 +90,18 @@ function Payables() {
         </div>
         <p className="mb-3 text-xs text-muted-foreground">Summary totals follow vendor, project, year and search; the due-status filter changes the bill list only.</p>
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="doc-table rounded-xl border bg-card shadow-card lg:col-span-2">
-            <div className="overflow-x-auto"><table className="w-full text-sm">
+          <div className="doc-table finance-doc-table min-w-0 rounded-xl border bg-card shadow-card lg:col-span-2">
+            <div className="finance-payable-table min-w-0 overflow-x-auto"><table className="w-full text-sm">
               <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Invoice</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Net payable</th><th className="px-4 py-3 text-right">Paid + adjusted</th><th className="px-4 py-3 text-right">Balance</th><th className="px-4 py-3">Status</th></tr></thead>
               <tbody>
                 {pageRows.length === 0 && <tr><td colSpan={7} className="p-4 text-xs text-muted-foreground">No records.</td></tr>}
                 {pageRows.map((x) => (
                   <tr key={x.id} className="border-b last:border-0 hover:bg-muted/40">
-                    <td className="px-4 py-3 font-medium tabular-nums"><Link className="text-primary hover:underline" to="/finance/vendor-invoices/$id" params={{ id: x.id }}>{x.invoice_number}</Link><div className="text-[11px] text-muted-foreground">{x.vendor_invoice_number}</div></td>
-                    <td className="px-4 py-3">{x.vendors?.company_name}</td>
-                    <td className={cn("p-2", x.status !== "paid" && x.due_date && x.due_date < t && "font-medium text-destructive")}>{fmtDate(x.due_date)}</td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.net_payable)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(Number(x.amount_paid) + Number(x.advance_adjusted))}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.balance_due)}</td>
-                    <td className="px-4 py-3"><span className={cn(badge, INVOICE_STATUS[x.status].cls)}>{INVOICE_STATUS[x.status].label}</span></td>
+                    <td data-label="Invoice" className="px-4 py-3 font-medium tabular-nums"><Link className="text-primary hover:underline" to="/finance/vendor-invoices/$id" params={{ id: x.id }}>{x.invoice_number}</Link><div className="text-[11px] text-muted-foreground">{x.vendor_invoice_number}</div></td>
+                    <td data-label="Vendor" className="px-4 py-3">{x.vendors?.company_name}</td>
+                    <td data-label="Due date" className={cn("p-2", x.status !== "paid" && x.due_date && x.due_date < t && "font-medium text-destructive")}>{fmtDate(x.due_date)}</td>
+                    <td data-label="Net payable" className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.net_payable)}</td><td data-label="Paid + adjusted" className="px-4 py-3 text-right font-medium tabular-nums">{inr(Number(x.amount_paid) + Number(x.advance_adjusted))}</td><td data-label="Balance due" className="px-4 py-3 text-right font-medium tabular-nums">{inr(x.balance_due)}</td>
+                    <td data-label="Status" className="px-4 py-3"><span className={cn(badge, INVOICE_STATUS[x.status].cls)}>{INVOICE_STATUS[x.status].label}</span></td>
                   </tr>))}
               </tbody>
             </table></div>
