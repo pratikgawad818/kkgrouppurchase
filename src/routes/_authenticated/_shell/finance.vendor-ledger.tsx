@@ -10,6 +10,7 @@ import { selectCls } from "@/lib/po";
 import { fyLabel, fyOf } from "@/lib/fy";
 import { cn } from "@/lib/utils";
 import { openingLedgerCredit } from "@/lib/opening-ledger-credit";
+import { loadLedgerInvoices } from "@/lib/opening-payment-amendments";
 
 const META = "Vendor account statement: bills, payments, advances and running balance.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-ledger")({
@@ -34,9 +35,7 @@ function Ledger() {
     queryKey: ["ledger", vendor], enabled: !!vendor,
     queryFn: async () => {
       const [i, p, a, po] = await Promise.all([
-        loadCompleteRows(async (start, end) => await supabase.from("vendor_invoices")
-          .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,net_payable,tds_amount,status,is_opening,opening_legacy_paid,opening_vendor_invoice_prior_payments(amount)", { count: "exact" })
-          .eq("vendor_id", vendor).in("status", ["approved", "partially_paid", "paid"]).order("id").range(start, end)),
+        loadLedgerInvoices(vendor),
         loadCompleteRows(async (start, end) => await supabase.from("vendor_payments")
           .select("id,payment_number,payment_date,amount,kind,reference", { count: "exact" })
           .eq("vendor_id", vendor).eq("status", "recorded").order("id").range(start, end)),
@@ -50,9 +49,19 @@ function Ledger() {
           .order("id").range(start, end)),
       ]);
       const rows: Row[] = [
-        ...i.map((x) => {
-          const {credit,historicalPaid}=openingLedgerCredit(x);
-          return { date: x.vendor_invoice_date, doc: x.invoice_number, kind: x.is_opening ? "Opening payable" : "Invoice", link: { to: "/finance/vendor-invoices/$id" as const, id: x.id }, debit: 0, credit, note: `Bill ${x.vendor_invoice_number}${Number(x.tds_amount) ? ` · TDS ${inr(x.tds_amount)}` : ""}${x.is_opening ? ` · Pre-ERP paid ${inr(historicalPaid)}; net opening liability` : ""}` };
+        ...i.flatMap((x): Row[] => {
+          const approved=x.opening_payment_amendments.filter(a=>a.status==="approved");
+          const ids=new Set<string>();
+          for(const amendment of approved){
+            const prior=x.opening_vendor_invoice_prior_payments.find(p=>p.id===amendment.prior_payment_id);
+            if(!x.is_opening||!amendment.posting_date||!prior||ids.has(prior.id)||Number(prior.amount)!==Number(amendment.amount))
+              throw new Error("Historical correction does not reconcile with payment history. Refresh before using the ledger.");
+            ids.add(prior.id);
+          }
+          const {credit,historicalPaid}=openingLedgerCredit({...x,opening_vendor_invoice_prior_payments:x.opening_vendor_invoice_prior_payments.filter(p=>!ids.has(p.id))});
+          const bill:Row={date:x.vendor_invoice_date,doc:x.invoice_number,kind:x.is_opening?"Opening payable":"Invoice",link:{to:"/finance/vendor-invoices/$id",id:x.id},debit:0,credit,note:`Bill ${x.vendor_invoice_number}${Number(x.tds_amount)?` · TDS ${inr(x.tds_amount)}`:""}${x.is_opening?` · Pre-ERP paid ${inr(historicalPaid)}; original opening liability`:""}`};
+          const corrections:Row[]=approved.map(a=>({date:a.posting_date!,doc:x.invoice_number,kind:"Historical correction",link:{to:"/finance/vendor-invoices/$id",id:x.id},debit:Number(a.amount),credit:0,note:"Reviewed opening liability adjustment — no bank payment"}));
+          return [bill,...corrections];
         }),
         ...p.map((x) => ({ date: x.payment_date, doc: x.payment_number, kind: x.kind === "advance" ? "Advance paid" : "Payment", debit: Number(x.amount), credit: 0, note: x.reference ?? "" })),
         ...a.map((x) => ({ date: x.created_at.slice(0, 10), doc: x.vendor_payments.payment_number, kind: "Advance adjusted", debit: 0, credit: 0, note: `${inr(x.amount)} against ${x.vendor_invoices?.invoice_number}` })),
