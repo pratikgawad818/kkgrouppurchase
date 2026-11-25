@@ -834,6 +834,13 @@
       "when": 1795457220000,
       "tag": "0118_reviewed_opening_payment_amendments",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1795457280000,
+      "tag": "0119_hold_pending_opening_payment_corrections",
+      "breakpoints": true
     }
   ]
 }
