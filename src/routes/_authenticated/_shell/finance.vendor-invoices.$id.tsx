@@ -58,7 +58,7 @@ function InvoiceDetail() {
   });
   const act = useMutation({
     mutationFn: async (a: Act) => { const { error } = await supabase.rpc("invoice_transition", { _id: id, _action: a, _comment: comment }); if (error) throw error; },
-    onSuccess: () => { toast.success("Done"); setDlg(null); setComment(""); qc.invalidateQueries({ queryKey: ["vi", id] }); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); },
+    onSuccess: () => { toast.success("Done"); setDlg(null); setComment(""); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); },
     onError: (e) => toast.error(errMsg(e)),
   });
   if (q.isLoading) return <Loading />;
