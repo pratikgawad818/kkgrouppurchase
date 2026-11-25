@@ -1,3 +1,4 @@
+import { FinanceExport } from "@/components/erp/finance-export";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -75,6 +76,9 @@ function Payables() {
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.due} onChange={(e) => set("due", e.target.value)}><option value="open">All outstanding</option><option value="">All statuses</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="7">Due in 7 days</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select>
         <Button variant="ghost" size="sm" onClick={()=>{setSearch("");setF({vendor:"",project:"",fy:"",due:"open"});setPage(0);}}>Reset filters</Button>
       </div>
+      <div className="mb-3 flex justify-end"><FinanceExport name="accounts-payable" ready={q.isSuccess&&!q.isFetching} count={rows.length}
+        headers={["Invoice","Vendor bill","Bill date","Due date","Vendor","Project","Net payable (INR)","Total paid (INR)","Advance adjusted (INR)","Balance due (INR)","Status"]}
+        rows={()=>rows.map(x=>[x.invoice_number,x.vendor_invoice_number,x.vendor_invoice_date,x.due_date,x.vendors?.company_name,x.projects?.name,Number(x.net_payable),Number(x.amount_paid),Number(x.advance_adjusted),Number(x.balance_due),INVOICE_STATUS[x.status].label])}/></div>
       {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Payable totals are unavailable because the complete invoice register could not be verified: {errMsg(q.error)} <button className="ml-2 font-semibold underline" onClick={() => q.refetch()}>Retry</button></div> : (<>
         <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Total outstanding" value={inr(sum(open))} hint={`${open.length} bills`} />
