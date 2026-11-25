@@ -1,11 +1,11 @@
 import { FinanceExport } from "@/components/erp/finance-export";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { Loading, PageHeader, Stat, SearchBox } from "@/components/erp/common";
-import { matchesRecordSearch } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
@@ -24,6 +24,7 @@ function Payables() {
   const [f, setF] = useState({ vendor: "", project: "", fy: "", due: "open" });
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const q = useQuery({
     queryKey: ["payables"],
     queryFn: async () => {
@@ -37,9 +38,10 @@ function Payables() {
   const t = today(); const in7 = addDays(t, 7);
   const set = (k: keyof typeof f, v: string) => { setF({ ...f, [k]: v }); setPage(0); };
   const { scoped, open, overdue, dueToday, due7, rows, byVendor } = useMemo(() => {
+    const preparedSearch = prepareRecordSearch(deferredSearch);
     const scoped = all.filter(x => (!f.vendor || x.vendor_id === f.vendor) &&
       (!f.project || x.project_id === f.project) &&
-      (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)) && matchesRecordSearch([x.invoice_number,x.vendor_invoice_number,x.vendors?.company_name,x.projects?.name],search));
+      (!f.fy || fyOf(x.vendor_invoice_date) === Number(f.fy)) && matchesRecordSearch([x.invoice_number,x.vendor_invoice_number,x.vendors?.company_name,x.projects?.name],preparedSearch));
     const open = scoped.filter(x => x.status !== "paid");
     const overdue = open.filter(x => x.due_date && x.due_date < t);
     const dueToday = open.filter(x => x.due_date === t);
@@ -60,7 +62,7 @@ function Payables() {
     }), new Map<string, { name: string; amt: number; n: number }>()).entries()]
       .sort((a,b) => b[1].amt - a[1].amt);
     return { scoped, open, overdue, dueToday, due7, rows, byVendor };
-  }, [q.data, f, t, in7, search]);
+  }, [q.data, f, t, in7, deferredSearch]);
   const sum = (a: typeof all) => a.reduce((s,x) => s + Number(x.balance_due), 0);
   const uniq = <T,>(arr: T[], key: (x: T) => string) => [...new Map(arr.map(x => [key(x),x])).values()];
   const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
@@ -76,7 +78,7 @@ function Payables() {
         <select className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-40 sm:flex-none")} value={f.due} onChange={(e) => set("due", e.target.value)}><option value="open">All outstanding</option><option value="">All statuses</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="7">Due in 7 days</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select>
         <Button variant="ghost" size="sm" onClick={()=>{setSearch("");setF({vendor:"",project:"",fy:"",due:"open"});setPage(0);}}>Reset filters</Button>
       </div>
-      <div className="mb-3 flex justify-end"><FinanceExport name="accounts-payable" ready={q.isSuccess&&!q.isFetching} count={rows.length}
+      <div className="mb-3 flex justify-end"><FinanceExport name="accounts-payable" ready={q.isSuccess&&!q.isFetching&&search===deferredSearch} count={rows.length}
         headers={["Invoice","Vendor bill","Bill date","Due date","Vendor","Project","Net payable (INR)","Total paid (INR)","Advance adjusted (INR)","Balance due (INR)","Status"]}
         rows={()=>rows.map(x=>[x.invoice_number,x.vendor_invoice_number,x.vendor_invoice_date,x.due_date,x.vendors?.company_name,x.projects?.name,Number(x.net_payable),Number(x.amount_paid),Number(x.advance_adjusted),Number(x.balance_due),INVOICE_STATUS[x.status].label])}/></div>
       {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Payable totals are unavailable because the complete invoice register could not be verified: {errMsg(q.error)} <button className="ml-2 font-semibold underline" onClick={() => q.refetch()}>Retry</button></div> : (<>

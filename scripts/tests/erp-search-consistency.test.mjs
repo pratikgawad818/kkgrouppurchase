@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { matchesRecordSearch, normalizedSearchText, visibleSearchPage }
+import { matchesRecordSearch, normalizedSearchText, visibleSearchPage, prepareRecordSearch }
   from "../../src/lib/erp-search.ts";
 
 test("one search matches mixed-case names, document numbers, punctuation and copy/pasted spaces",()=>{
@@ -96,4 +96,30 @@ test("flat inventory and historical usage are never silently restricted to 1,000
   assert.match(flat,/matchesRecordSearch/);
   assert.match(history,/loadCompleteRows/);
   assert.doesNotMatch(history,/\.limit\(2000\)/);
+});
+
+test("prepared search matches original semantics for mixed fields and compact references",()=>{
+  const old=(values,search)=>{
+    const terms=normalizedSearchText(search).slice(0,150).split(" ").filter(Boolean);
+    const normalized=values.map(normalizedSearchText);
+    const all=normalized.join(" "),compact=normalized.map(s=>s.replace(/\s/g,"")).join(" ");
+    return terms.every(term=>all.includes(term)||compact.includes(term));
+  };
+  const rows=[["PO-2026-0004","City Centre","Shree Cement"],["श्री कृष्ण","UPI-10001",null],["Ravi, Traders","00012"],[],["A","B"],["A B","C"]];
+  for(const query of ["","po20260004","city cement","upi10001 कृष्ण","RAVI TRADERS","00012","ab","a b","not found","po%2026","a".repeat(151)]){
+    const prepared=prepareRecordSearch(query);
+    for(const row of rows)assert.equal(matchesRecordSearch(row,prepared),old(row,query),query);
+  }
+});
+test("high-use registers reuse prepared terms and financial exports wait for current search",()=>{
+  for(const file of ["finance.vendor-invoices.index.tsx","finance.payments.index.tsx","finance.payables.tsx","procurement.purchase-orders.index.tsx","procurement.rfqs.index.tsx","procurement.purchase-requests.index.tsx","inventory.goods-received.index.tsx"]){
+    const source=readFileSync("src/routes/_authenticated/_shell/"+file,"utf8");
+    assert.match(source,/const preparedSearch = prepareRecordSearch\(/,file);
+    assert.match(source,/\],\s*preparedSearch\)/,file);
+    if(file.startsWith("finance."))assert.match(source,/search===deferredSearch/,file);
+  }
+  const grn=readFileSync("src/routes/_authenticated/_shell/inventory.goods-received.index.tsx","utf8");
+  assert.doesNotMatch(grn,/\.limit\(500\)/);
+  assert.match(grn,/scope\.assignedProjectIds/);
+  assert.match(grn,/loadCompleteRows/);
 });

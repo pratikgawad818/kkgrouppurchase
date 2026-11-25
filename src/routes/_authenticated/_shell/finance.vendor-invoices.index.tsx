@@ -17,7 +17,7 @@ import { useCan } from "@/lib/session";
 import { badge, INVOICE_STATUS, MATCH_STATUS, type InvoiceStatus } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { summarizeInvoiceStatuses } from "@/lib/invoice-status-summary";
-import { matchesRecordSearch } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch } from "@/lib/erp-search";
 
 const META = "Vendor invoices matched against purchase orders and goods receipts.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invoices/")({
@@ -71,6 +71,7 @@ function InvoiceList() {
     ...new Map(arr.map((x) => [key(x), x])).values(),
   ];
   const rows = useMemo(() => {
+    const preparedSearch = prepareRecordSearch(deferredSearch);
     return (q.data ?? []).filter(
       (x) =>
         (!billKind || (billKind === "opening" ? x.is_opening : !x.is_opening)) &&
@@ -81,7 +82,7 @@ function InvoiceList() {
         matchesRecordSearch([
           x.invoice_number, x.vendor_invoice_number, x.vendors?.company_name,
           x.projects?.name, x.purchase_orders?.po_number,
-        ], deferredSearch),
+        ], preparedSearch),
     );
   }, [q.data, f, deferredSearch, billKind]);
   const totals = useMemo(() => summarizeInvoiceStatuses(rows), [rows]);

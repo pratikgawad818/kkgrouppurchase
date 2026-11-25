@@ -11,7 +11,7 @@ import { errMsg, fmtDate } from "@/lib/format";
 import { RFQ_STATUS, type RfqStatus } from "@/lib/rfq";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 export const Route = createFileRoute("/_authenticated/_shell/procurement/rfqs/")({
   head: () => ({
@@ -46,12 +46,13 @@ function RfqList() {
       .order("id", { ascending: false })
       .range(start,end)),
   });
+  const preparedSearch = prepareRecordSearch(settledSearch);
   const rows = (q.data ?? []).filter(r =>
     (!status || r.status === status) &&
     matchesRecordSearch([
       r.rfq_number,r.purchase_requests?.pr_number,
       r.projects?.name,r.projects?.code,r.buildings?.name,
-    ], settledSearch)
+    ], preparedSearch)
   );
   const visiblePage=visibleSearchPage(page,rows.length,PAGE);
   const pageRows=rows.slice(visiblePage*PAGE,(visiblePage+1)*PAGE);

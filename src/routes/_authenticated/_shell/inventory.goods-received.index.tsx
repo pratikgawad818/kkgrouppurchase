@@ -15,7 +15,7 @@ import { GRN_STATUS, selectCls } from "@/lib/po";
 import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 import { CancelDraftGrnButton } from "@/components/erp/cancel-draft-grn";
 import { DeleteUnusedGrnButton } from "@/components/erp/delete-unused-grn";
 
@@ -75,18 +75,20 @@ function GrnList() {
       // from another project. Database RLS and create_goods_receipt enforce
       // this independently of the displayed choices.
       if (scope.isScopedEngineer && !scope.assignedProjectIds.length) return [];
-      let query = supabase.from("purchase_orders")
-        .select("id,po_number,status,project_id,vendors(company_name),projects(name),buildings(name)")
-        .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
-      if (scope.isScopedEngineer) query = query.in("project_id", scope.assignedProjectIds);
-      const { data, error } = await query.order("created_at", { ascending: false }).limit(500);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start,end)=>{
+        let query = supabase.from("purchase_orders")
+          .select("id,po_number,status,project_id,vendors(company_name),projects(name),buildings(name)",{count:"exact"})
+          .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
+        if (scope.isScopedEngineer) query = query.in("project_id", scope.assignedProjectIds);
+        return await query.order("created_at", { ascending: false }).order("id").range(start,end);
+      });
     },
   });
+  const preparedPoSearch = prepareRecordSearch(poSearch);
+  const preparedSearch = prepareRecordSearch(search);
   const matchingPos = (receivablePos.data ?? []).filter((po) =>
     scope.canAccess(po.project_id) &&
-    matchesRecordSearch([po.po_number, po.vendors?.company_name, po.projects?.name, po.buildings?.name], poSearch),
+    matchesRecordSearch([po.po_number, po.vendors?.company_name, po.projects?.name, po.buildings?.name], preparedPoSearch),
   );
   const all = q.data ?? [];
   const set = (k: keyof typeof f, v: string) => {
@@ -109,7 +111,7 @@ function GrnList() {
         x.grn_number, x.purchase_orders?.po_number, x.vendors?.company_name,
         x.projects?.name, x.buildings?.name, x.warehouses?.name,
         x.profiles?.full_name,
-      ], search),
+      ], preparedSearch),
   );
   const visiblePage = visibleSearchPage(page, rows.length, PAGE);
   const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);

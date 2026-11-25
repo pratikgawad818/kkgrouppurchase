@@ -1,7 +1,7 @@
 import { FinanceExport } from "@/components/erp/finance-export";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, Loading, PageHeader, SearchBox } from "@/components/erp/common";
 import { SearchableEntrySelect } from "@/components/erp/searchable-entry-select";
-import { matchesRecordSearch } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
 import { errMsg, fmtDate, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
@@ -41,6 +41,7 @@ function Payments() {
   const [status, setStatus] = useState(sp.status ?? "");
   useEffect(() => { setStatus(sp.status ?? ""); setPage(0); }, [sp.status]);
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [kindFilter, setKindFilter] = useState("");
   const [schedule, setSchedule] = useState<PaymentKind | null>(sp.vendor ? "invoice" : null);
   const [targetInvoice, setTargetInvoice] = useState(sp.vendor ? sp.invoice : undefined);
@@ -68,8 +69,8 @@ function Payments() {
   });
   const refresh = () => { ["vendor-payments", "payables", "vendor-invoices", "vi", "ledger"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
   const rows = useMemo(
-    () => (q.data?.rows ?? []).filter(x => (!status || x.status === status) && (!kindFilter || x.kind === kindFilter) && matchesRecordSearch([x.payment_number, x.vendors?.company_name, x.reference, x.company_bank_accounts?.account_name, ...x.vendor_payment_allocations.map(a=>a.vendor_invoices?.invoice_number)],search)),
-    [q.data, status, kindFilter, search],
+    () => { const preparedSearch = prepareRecordSearch(deferredSearch); return (q.data?.rows ?? []).filter(x => (!status || x.status === status) && (!kindFilter || x.kind === kindFilter) && matchesRecordSearch([x.payment_number, x.vendors?.company_name, x.reference, x.company_bank_accounts?.account_name, ...x.vendor_payment_allocations.map(a=>a.vendor_invoices?.invoice_number)],preparedSearch)); },
+    [q.data, status, kindFilter, deferredSearch],
   );
   const visiblePage = Math.min(page, Math.max(0, Math.ceil(rows.length / PAGE) - 1));
   const pageRows = rows.slice(visiblePage * PAGE, (visiblePage + 1) * PAGE);
@@ -78,7 +79,7 @@ function Payments() {
       <PageHeader title="Vendor Payments" subtitle="Scheduled → Approved (Director) → Recorded with bank reference. Only recorded payments reduce payables."
         actions={can("payment.schedule") && <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => { setTargetInvoice(undefined); setSchedule("invoice"); }}><Plus className="mr-1 h-4 w-4" />Pay invoices</Button><Button size="sm" variant="outline" onClick={() => { setTargetInvoice(undefined); setSchedule("advance"); }}>Vendor advance</Button></div>} />
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3"><div className="w-full sm:w-72"><SearchBox value={search} onChange={v=>{setSearch(v);setPage(0);}} placeholder="Payment, invoice, vendor or reference"/></div><select aria-label="Payment status" className={cn(selectCls, "h-11 min-w-0 flex-1 sm:h-9 sm:w-44 sm:flex-none")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}><option value="">All statuses</option>{Object.entries(PAYMENT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select><select aria-label="Payment type" className={cn(selectCls,"min-w-0 flex-1 sm:flex-none")} value={kindFilter} onChange={e=>{setKindFilter(e.target.value);setPage(0);}}><option value="">All types</option><option value="invoice">Invoice payment</option><option value="advance">Vendor advance</option></select><Button variant="ghost" size="sm" onClick={()=>{setSearch("");setStatus("");setKindFilter("");setPage(0);}}>Clear filters</Button><span className="ml-auto text-xs text-muted-foreground">{q.isSuccess ? `${rows.length} payments` : ""}</span></div>
-      <div className="mb-3 flex justify-end"><FinanceExport name="vendor-payments" ready={q.isSuccess&&!q.isFetching} count={rows.length}
+      <div className="mb-3 flex justify-end"><FinanceExport name="vendor-payments" ready={q.isSuccess&&!q.isFetching&&search===deferredSearch} count={rows.length}
         headers={["Payment number","Type","Payment date","Vendor","Invoice allocations","Payment method","Reference","Bank account name","Amount (INR)","Status","Unadjusted advance (INR)"]}
         rows={()=>rows.map(p=>[p.payment_number,p.kind==="advance"?"Advance":"Invoice",p.payment_date,p.vendors?.company_name,p.vendor_payment_allocations.map(a=>(a.vendor_invoices?.invoice_number??"Invoice")+" : "+Number(a.amount).toFixed(2)).join("; "),PAYMENT_MODES.find(m=>m[0]===p.payment_mode)?.[1]??p.payment_mode,p.reference,p.company_bank_accounts?.account_name,Number(p.amount),PAYMENT_STATUS[p.status].label,p.kind==="advance"&&p.status==="recorded"?remainingAdvanceAmount(Number(p.amount),q.data?.used.get(p.id)??0):null])}/></div>
       {q.isLoading ? <Loading /> : q.error ? <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">Payment history or advance adjustments could not be verified: {errMsg(q.error)} <Button className="ml-2" variant="outline" size="sm" onClick={() => q.refetch()}>Retry</Button></div> : (<>

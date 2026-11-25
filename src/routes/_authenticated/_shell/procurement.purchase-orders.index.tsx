@@ -13,7 +13,7 @@ import { purchaseOrderLineValues } from "@/lib/procurement-followup";
 import { fyLabel, fyOf, fyOptions, PAGE } from "@/lib/fy";
 import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 import { useSiteEngineerProjectScope } from "@/lib/site-engineer-receiving-scope";
 
 const META = "Purchase orders raised from awarded vendor quotations.";
@@ -86,6 +86,7 @@ function PoList() {
     (x) => x.building_id!,
   );
   const rows = useMemo(() => {
+    const preparedSearch = prepareRecordSearch(deferredSearch);
     return all.filter(
       (x) =>
         (!f.status || x.status === f.status) &&
@@ -99,7 +100,7 @@ function PoList() {
           x.po_number, x.vendors?.company_name, x.projects?.name,
           x.buildings?.name, x.rfqs?.rfq_number,
           ...x.purchase_order_items.map(i => i.items?.name),
-        ], deferredSearch),
+        ], preparedSearch),
     );
   }, [all, f, deferredSearch]);
   const val = (x: (typeof all)[number]) => purchaseOrderLineValues(x.purchase_order_items);
