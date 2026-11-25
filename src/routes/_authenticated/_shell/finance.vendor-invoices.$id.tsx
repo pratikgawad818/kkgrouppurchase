@@ -139,25 +139,25 @@ function InvoiceDetail() {
       {isOpeningBill && <div className="mt-4 rounded-xl border bg-card p-4 text-sm">
         <div className="mb-2 font-semibold">Historical bill items</div>
         {!openingLines.length ? <p className="text-muted-foreground">This bill was entered using the earlier amount-only form. No itemized lines are saved yet.</p> :
-          <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-sm">
+          <div className="doc-table finance-doc-table finance-invoice-lines overflow-x-auto"><table className="w-full md:min-w-[780px] text-sm">
             <thead className="border-b text-left text-xs text-muted-foreground"><tr><th className="p-2">#</th><th className="p-2">Item / service</th><th className="p-2">HSN/SAC</th><th className="p-2">Qty</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">Discount</th><th className="p-2 text-right">GST</th><th className="p-2 text-right">Total</th></tr></thead>
             <tbody>{openingLines.map(l=><tr key={l.id} className="border-b last:border-0">
-              <td className="p-2">{l.line_no}</td><td className="p-2">{l.description}</td><td className="p-2">{l.hsn_sac??"—"}</td><td className="p-2">{num(l.quantity)} {l.unit}</td>
-              <td className="p-2 text-right">{inr(l.rate)}</td><td className="p-2 text-right">{inr(l.discount)}</td><td className="p-2 text-right">{num(l.tax_rate)}%</td><td className="p-2 text-right font-medium">{inr(l.line_total)}</td>
+              <td data-label="Line" className="p-2">{l.line_no}</td><td data-label="Item / service" className="p-2">{l.description}</td><td data-label="HSN/SAC" className="p-2">{l.hsn_sac??"—"}</td><td data-label="Quantity" className="p-2">{num(l.quantity)} {l.unit}</td>
+              <td data-label="Rate" className="p-2 text-right">{inr(l.rate)}</td><td data-label="Discount" className="p-2 text-right">{inr(l.discount)}</td><td data-label="GST" className="p-2 text-right">{num(l.tax_rate)}%</td><td data-label="Total" className="p-2 text-right font-medium">{inr(l.line_total)}</td>
             </tr>)}</tbody></table></div>}
         <p className="mt-2 text-xs text-muted-foreground">Historical bill items do not create GRNs or change current stock. Unit rates and quantity are preserved per line. Approved/paid invoices require authorized, audited corrections with unchanged total taxable value and GST.</p>
       </div>}
-      {!isOpeningBill && (<div className="mt-4 doc-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
+      {!isOpeningBill && (<div className="mt-4 doc-table finance-doc-table finance-invoice-lines overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">GRN</th><th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Invoiced qty</th><th className="px-4 py-3 text-right">Available at GRN</th><th className="px-4 py-3 text-right">PO rate</th><th className="px-4 py-3 text-right">Bill rate</th><th className="px-4 py-3 text-right">PO GST</th><th className="px-4 py-3 text-right">Bill GST</th><th className="px-4 py-3 text-right">Line total</th><th className="px-4 py-3">Match</th></tr></thead>
           <tbody>{items.map((l) => (
             <tr key={l.id} className="border-b last:border-0 hover:bg-muted/40">
-              <td className="px-4 py-3">{l.line_no}</td><td className="px-4 py-3 font-medium tabular-nums text-xs">{l.goods_receipt_notes?.grn_number}</td><td className="px-4 py-3">{l.items?.name}</td>
-              <td className={cn("p-2 text-right font-mono", Number(l.quantity) > Number(l.available_quantity) && "text-amber-700")}>{num(l.quantity)}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{num(l.available_quantity)}</td>
-              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(l.po_rate)}</td><td className={cn("p-2 text-right font-mono", Number(l.rate) !== Number(l.po_rate) && "text-amber-700")}>{inr(l.rate)}</td>
-              <td className="px-4 py-3 text-right">{num(l.po_tax_rate)}%</td><td className={cn("p-2 text-right", Number(l.tax_rate_percent) !== Number(l.po_tax_rate) && "text-amber-700")}>{num(l.tax_rate_percent)}%</td>
-              <td className="px-4 py-3 text-right font-medium tabular-nums">{inr(l.line_total)}</td>
-              <td className="px-4 py-3 text-xs">{l.match_ok === null ? "—" : l.match_ok ? <span className="text-emerald-700">OK</span> : <span className="text-amber-700">Variance</span>}</td>
+              <td data-label="Line" className="px-4 py-3">{l.line_no}</td><td data-label="GRN" className="px-4 py-3 font-medium tabular-nums text-xs">{l.goods_receipt_notes?.grn_number}</td><td data-label="Material" className="px-4 py-3">{l.items?.name}</td>
+              <td data-label="Invoiced quantity" className={cn("p-2 text-right font-mono", Number(l.quantity) > Number(l.available_quantity) && "text-amber-700")}>{num(l.quantity)}</td><td data-label="Available at GRN" className="px-4 py-3 text-right font-medium tabular-nums">{num(l.available_quantity)}</td>
+              <td data-label="PO rate" className="px-4 py-3 text-right font-medium tabular-nums">{inr(l.po_rate)}</td><td data-label="Bill rate" className={cn("p-2 text-right font-mono", Number(l.rate) !== Number(l.po_rate) && "text-amber-700")}>{inr(l.rate)}</td>
+              <td data-label="PO GST" className="px-4 py-3 text-right">{num(l.po_tax_rate)}%</td><td data-label="Bill GST" className={cn("p-2 text-right", Number(l.tax_rate_percent) !== Number(l.po_tax_rate) && "text-amber-700")}>{num(l.tax_rate_percent)}%</td>
+              <td data-label="Line total" className="px-4 py-3 text-right font-medium tabular-nums">{inr(l.line_total)}</td>
+              <td data-label="Match" className="px-4 py-3 text-xs">{l.match_ok === null ? "—" : l.match_ok ? <span className="text-emerald-700">OK</span> : <span className="text-amber-700">Variance</span>}</td>
             </tr>))}</tbody>
         </table>
       </div>)}

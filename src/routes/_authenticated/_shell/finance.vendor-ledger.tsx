@@ -115,17 +115,17 @@ function Ledger() {
         <div className="mb-3 flex flex-wrap justify-end gap-2">{canStatement&&<Button type="button" variant="outline" size="sm" disabled={!statementReady} onClick={()=>void viewStatement()}><FileText className="mr-1.5 h-4 w-4"/>View statement PDF</Button>}<FinanceExport name={"vendor-ledger-"+(v?.company_name??"vendor")+"-FY-"+fyLabel(fyN)} ready={q.isSuccess&&!q.isFetching&&vendors.isSuccess&&!vendors.isFetching&&!!v} count={inFy.length+2}
           headers={["Vendor","Financial year","Date","Document","Type","Details","Debit (INR)","Credit (INR)","Running balance (INR)"]}
           rows={()=>[[v?.company_name,fyLabel(fyN),"","","Opening balance","",null,null,opening],...inFy.map(r=>[v?.company_name,fyLabel(fyN),r.date,r.doc,r.kind,r.note,r.debit,r.credit,r.bal]),[v?.company_name,fyLabel(fyN),"","","Closing balance for selected FY","",null,null,inFy.at(-1)?.bal??opening]]}/></div>
-        <p className="mb-2 text-xs text-muted-foreground sm:hidden">Swipe sideways to see every column →</p><div className="overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap" role="region" aria-label="Vendor ledger" tabIndex={0}><table className="w-full text-sm">
+        <div className="doc-table finance-doc-table finance-ledger-table overflow-x-auto rounded-xl border bg-card shadow-card [&_td]:whitespace-nowrap" role="region" aria-label="Vendor ledger" tabIndex={0}><table className="w-full text-sm">
           <thead className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Document</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Details</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
           <tbody>
-            <tr className="border-b bg-muted/20"><td className="px-4 py-3" colSpan={6}>Opening balance</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(opening)}</td></tr>
+            <tr className="finance-opening-row border-b bg-muted/20"><td className="px-4 py-3" colSpan={6}>Opening balance</td><td data-label="Opening amount" className="px-4 py-3 text-right font-medium tabular-nums">{inr(opening)}</td></tr>
             {inFy.length === 0 && <tr><td colSpan={7} className="p-3 text-xs text-muted-foreground">No records in this year.</td></tr>}
             {inFy.map((r, i) => (
               <tr key={i} className="border-b last:border-0 hover:bg-muted/40">
-                <td className="px-4 py-3">{fmtDate(r.date)}</td>
-                <td className="px-4 py-3 font-medium tabular-nums text-xs">{r.link ? <Link className="text-primary hover:underline" to={r.link.to} params={{ id: r.link.id }}>{r.doc}</Link> : r.doc}</td>
-                <td className="px-4 py-3">{r.kind}</td><td className="px-4 py-3 text-xs text-muted-foreground">{r.note}</td>
-                <td className="px-4 py-3 text-right font-medium tabular-nums">{r.debit ? inr(r.debit) : ""}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{r.credit ? inr(r.credit) : ""}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{inr(r.bal)}</td>
+                <td data-label="Date" className="px-4 py-3">{fmtDate(r.date)}</td>
+                <td data-label="Document" className="px-4 py-3 font-medium tabular-nums text-xs">{r.link ? <Link className="text-primary hover:underline" to={r.link.to} params={{ id: r.link.id }}>{r.doc}</Link> : r.doc}</td>
+                <td data-label="Type" className="px-4 py-3">{r.kind}</td><td data-label="Details" className="px-4 py-3 text-xs text-muted-foreground">{r.note}</td>
+                <td data-label="Debit" className="px-4 py-3 text-right font-medium tabular-nums">{r.debit ? inr(r.debit) : ""}</td><td data-label="Credit" className="px-4 py-3 text-right font-medium tabular-nums">{r.credit ? inr(r.credit) : ""}</td><td data-label="Running balance" className="px-4 py-3 text-right font-medium tabular-nums">{inr(r.bal)}</td>
               </tr>))}
           </tbody>
         </table></div>
