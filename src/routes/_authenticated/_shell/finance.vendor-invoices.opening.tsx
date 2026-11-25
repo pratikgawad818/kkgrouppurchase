@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { SearchableEntrySelect } from "@/components/erp/searchable-entry-select";
+import { InvoiceEntryPreview } from "@/components/erp/invoice-entry-preview";
+import { useInvoiceEntryGuard } from "@/lib/use-invoice-entry-guard";
 import { errMsg, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { PAYMENT_MODES, today, uploadVendorDoc } from "@/lib/finance";
@@ -54,13 +56,18 @@ function OpeningBill() {
   const [legacyPaid, setLegacyPaid] = useState(0);
   const [correctionReason, setCorrectionReason] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const guard = useInvoiceEntryGuard();
   const set = (field: keyof Header, value: string) => setH(current => ({ ...current, [field]: value }));
   const changeLine = (id: string, field: keyof OpeningLine, value: string) =>
     setLines(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
-  const typeMaterial = (id: string, description: string) =>
+  const typeMaterial = (id: string, description: string) => {
+    guard.markDirty();
     setLines(prev=>prev.map(row=>row.id===id?{...row,description,material_id:""}:row));
-  const chooseMaterial = (id: string, material: BillMaterialOption) =>
+  };
+  const chooseMaterial = (id: string, material: BillMaterialOption) => {
+    guard.markDirty();
     setLines(prev=>prev.map(row=>row.id===id?{...row,...materialLineDefaults(material)}:row));
+  };
   const changePayment = (id: string, field: keyof HistoricPayment, value: string) =>
     setPayments(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
 
@@ -98,6 +105,8 @@ function OpeningBill() {
   const existing = useQuery({
     queryKey: ["opening-bill-edit", editId],
     enabled: !!editId,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       const [inv, itemRows, paidRows] = await Promise.all([
         supabase.from("vendor_invoices").select("*").eq("id", editId!).single(),
@@ -197,6 +206,7 @@ function OpeningBill() {
       return data as string;
     },
     onSuccess:(id)=>{
+      guard.markSaved();
       toast.success(isApprovedCorrection?"Item details corrected; approved totals unchanged":editId?"Opening bill updated":"Old bill saved for verification");
       void qc.invalidateQueries({queryKey:["vendor-invoices"]});
       void qc.invalidateQueries({queryKey:["vi",id]});
@@ -234,7 +244,9 @@ function OpeningBill() {
         <a className="ml-auto font-medium text-primary underline" href="#opening-bill-summary">Review totals and save ↓</a>
       </div>
     </section>
-    <form className="space-y-5" onSubmit={e=>{e.preventDefault();if(canSave)save.mutate();}}>
+    {guard.dirty && <p role="status" className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">Unsaved changes — save this bill before leaving.</p>}
+    <div className={cn("min-w-0",file && "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]")}>
+    <form onChangeCapture={guard.markDirty} className="min-w-0 space-y-5" onSubmit={e=>{e.preventDefault();if(canSave)save.mutate();}}>
       <section className={box}>
         <h2 className="mb-3 flex items-center gap-2 font-semibold"><FileText className="h-4 w-4"/> Bill information</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -268,7 +280,7 @@ function OpeningBill() {
             <p className="text-xs text-muted-foreground">Enter every material, equipment charge, labour or service from the supplier's original bill. Unit prices are shown on each item.</p>
           </div>
           <Button type="button" disabled={!canEdit || lines.length>=100} size="sm" variant="outline"
-            onClick={()=>setLines(rows=>[...rows,newOpeningLine(crypto.randomUUID())])}>
+            onClick={()=>{guard.markDirty();setLines(rows=>[...rows,newOpeningLine(crypto.randomUUID())]);}}>
             <Plus className="mr-1 h-4 w-4"/>Add another item
           </Button>
         </div>
@@ -281,12 +293,12 @@ function OpeningBill() {
                 <div className="text-sm font-semibold">Item {index+1}{item.description.trim() ? " · "+item.description.trim().slice(0,48) : ""}</div>
                 <div className="flex items-center gap-1">
                   <Button type="button" size="sm" variant="ghost" disabled={!canEdit || lines.length>=100}
-                    onClick={()=>setLines(rows=>{
+                    onClick={()=>{guard.markDirty();setLines(rows=>{
                       const copy={...item,id:crypto.randomUUID()};
                       return [...rows.slice(0,index+1),copy,...rows.slice(index+1)];
-                    })}>Duplicate</Button>
+                    });}}>Duplicate</Button>
                   <Button type="button" size="sm" variant="ghost" disabled={!canEdit || lines.length===1}
-                    aria-label={"Remove item "+(index+1)} onClick={()=>setLines(rows=>rows.filter(x=>x.id!==item.id))}>
+                    aria-label={"Remove item "+(index+1)} onClick={()=>{guard.markDirty();setLines(rows=>rows.filter(x=>x.id!==item.id));}}>
                     <Trash2 className="h-4 w-4"/><span className="ml-1">Remove</span>
                   </Button>
                 </div>
@@ -351,7 +363,7 @@ function OpeningBill() {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
           <p className="text-xs text-muted-foreground">Each line has its own price and GST. Historical entries do not change today's stock.</p>
           <Button type="button" size="sm" variant="outline" disabled={!canEdit || lines.length>=100}
-            onClick={()=>setLines(rows=>[...rows,newOpeningLine(crypto.randomUUID())])}>
+            onClick={()=>{guard.markDirty();setLines(rows=>[...rows,newOpeningLine(crypto.randomUUID())]);}}>
             <Plus className="mr-1 h-4 w-4"/>Add item
           </Button>
         </div>
@@ -380,7 +392,7 @@ function OpeningBill() {
           <div><h2 className="flex items-center gap-2 font-semibold"><ReceiptText className="h-4 w-4"/>Payments already made before ERP</h2>
             <p className="text-xs text-muted-foreground">Historical payment record only. No director payment approval, no new bank debit and no vendor-payment scheduling.</p></div>
           <Button type="button" size="sm" variant="outline" disabled={!financialEditable || payments.length>=100}
-            onClick={()=>setPayments(prev=>[...prev,newHistoricPayment(crypto.randomUUID(),today())])}>
+            onClick={()=>{guard.markDirty();setPayments(prev=>[...prev,newHistoricPayment(crypto.randomUUID(),today())]);}}>
             <Plus className="mr-1 h-4 w-4"/>Add past payment
           </Button>
         </div>
@@ -404,7 +416,7 @@ function OpeningBill() {
             onChange={e=>changePayment(p.id,"remarks",e.target.value)}/></Field>
           <div className="flex items-end justify-end">
             <Button type="button" disabled={!financialEditable} size="sm" variant="ghost"
-              onClick={()=>setPayments(prev=>prev.filter(x=>x.id!==p.id))} aria-label={"Remove prior payment "+(i+1)}>
+              onClick={()=>{guard.markDirty();setPayments(prev=>prev.filter(x=>x.id!==p.id));}} aria-label={"Remove prior payment "+(i+1)}>
               <Trash2 className="mr-1 h-4 w-4"/>Remove
             </Button>
           </div>
@@ -445,5 +457,7 @@ function OpeningBill() {
         </div>
       </section>
     </form>
+    {file && <InvoiceEntryPreview file={file} />}
+    </div>
   </div>;
 }
