@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createNotificationRefresh, notificationPollInterval } from "@/lib/notification-refresh";
+import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
@@ -27,6 +29,7 @@ export function NotificationBell({
   const qc = useQueryClient();
   const navigate = useNavigate();
   const key = ["notifications", userId, isDirector ? "approvals-only" : "all"];
+  const [connected, setConnected] = useState(false);
   const q = useQuery({
     queryKey: key,
     queryFn: async () => {
@@ -49,12 +52,27 @@ export function NotificationBell({
             n.link?.startsWith("/approvals?kind=vendor_payment&id="))
         : data;
     },
-    refetchInterval: 30000,
+    refetchInterval: notificationPollInterval(connected),
+    refetchIntervalInBackground: false,
+    refetchOnReconnect: true,
   });
 
   useEffect(() => {
+    let active = true;
+    setConnected(false);
+    const inboxKey = ["notifications", userId, isDirector ? "approvals-only" : "all"];
+    const batch = createNotificationRefresh((approvals) => {
+      if (!active) return;
+      // Hidden tabs mark queries stale; focus refetches them instead of polling in the background.
+      const refetchType = document.visibilityState === "visible" ? "active" : "none";
+      void qc.invalidateQueries({ queryKey: inboxKey, refetchType });
+      if (isDirector && approvals) {
+        void qc.invalidateQueries({ queryKey: ["director-pending-count", userId], refetchType });
+        void qc.invalidateQueries({ queryKey: ["director-approvals", userId], refetchType });
+      }
+    });
     const ch = supabase
-      .channel(`notif-${userId}`)
+      .channel(`notif-${userId}-${isDirector ? "director" : "staff"}`)
       .on(
         "postgres_changes",
         {
@@ -63,17 +81,23 @@ export function NotificationBell({
           table: "notifications",
           filter: `user_id=eq.${userId}`,
         },
-        () => {
-          // The push worker is the only OS-notification path. Realtime updates the inbox only.
-          void qc.invalidateQueries({ queryKey: key });
+        (payload) => {
+          // Push delivery is independent. Read/unread updates do not refresh approval counts.
+          batch.schedule(payload.eventType === "INSERT");
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (!active) return;
+        setConnected(status === "SUBSCRIBED");
+        // Close the fetch/subscribe gap and reconcile missed events after reconnect.
+        if (status === "SUBSCRIBED") batch.schedule(true);
+      });
     return () => {
-      supabase.removeChannel(ch);
+      active = false;
+      batch.cancel();
+      void supabase.removeChannel(ch);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, isDirector, qc]);
 
   const items = q.data ?? [];
   const unread = items.filter((n) => !n.is_read).length;
@@ -87,17 +111,21 @@ export function NotificationBell({
   }, [unread]);
 
   async function open(n: (typeof items)[number]) {
-    if (!n.is_read) await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
-    qc.invalidateQueries({ queryKey: key });
+    if (!n.is_read) {
+      const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", n.id).eq("user_id", userId);
+      if (error) toast.error("Could not mark notification as read. Please try again.");
+      else void qc.invalidateQueries({ queryKey: key });
+    }
     if (n.link) navigate({ to: internalNotificationLink(n.link) });
   }
   async function readAll() {
-    await supabase
+    const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
       .eq("user_id", userId)
       .eq("is_read", false);
-    qc.invalidateQueries({ queryKey: key });
+    if (error) toast.error("Could not mark notifications as read. Please try again.");
+    else void qc.invalidateQueries({ queryKey: key });
   }
 
   return (
