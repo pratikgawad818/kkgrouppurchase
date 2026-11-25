@@ -2248,3 +2248,25 @@
     line-height: 1.25;
   }
 }
+
+
+/* Finance cards reuse the document table's single set of controls on mobile. */
+@media (max-width: 767px) {
+  .finance-doc-table { min-width: 0; max-width: 100%; }
+  .finance-doc-table td[data-label="Vendor"],
+  .finance-doc-table td[data-label="Against"],
+  .finance-doc-table td[data-label="Mode / reference"],
+  .finance-doc-table td[data-label="Payment amount"] { grid-column: 1 / -1; }
+  .finance-doc-table td[data-label="Invoice total"],
+  .finance-doc-table td[data-label="Balance due"],
+  .finance-doc-table td[data-label="Amount"],
+  .finance-doc-table td[data-label="Available to pay"] { font-size: 1rem; font-weight: 600; }
+  .finance-doc-table td:last-child a,
+  .finance-doc-table td:last-child button { min-height: 44px; white-space: normal; }
+  .finance-payable-table { overflow-x: visible; }
+  .finance-allocation-table td[data-label="Payment amount"] > div { flex-wrap: nowrap; }
+  .finance-payment-dialog { overflow-x: hidden; }
+  .finance-payment-dialog :is(input,select,textarea) { min-width: 0; max-width: 100%; }
+  .finance-payment-footer { position: sticky; bottom: 0; z-index: 1; flex-direction: column; border-top: 1px solid var(--color-border); background: var(--color-background); padding: 12px 0 max(8px,env(safe-area-inset-bottom)); }
+  .finance-payment-footer button { min-height: 44px; }
+}
