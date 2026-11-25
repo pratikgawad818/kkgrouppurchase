@@ -1,3 +1,4 @@
+import { FinanceExport } from "@/components/erp/finance-export";
 import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -425,6 +426,9 @@ function SmallExpenses() {
           </section>
         </div>
       </details>}
+      {!isSiteEngineer&&<div className="mb-3 flex justify-end"><FinanceExport name="small-expenses" ready={register.isSuccess&&!register.isFetching} count={rows.length}
+        headers={["Date","Project","Building","Category","Category details","Paid to","Purpose","Payment method","Receipt reference","Amount (INR)","Status"]}
+        rows={()=>rows.map(x=>[x.spent_on,x.projects?.name??"General office",x.buildings?.name,optionLabel(x.category,SMALL_EXPENSE_CATEGORIES),x.other_category_detail,x.paid_to,x.description,optionLabel(x.payment_method,SMALL_EXPENSE_PAYMENTS),x.receipt_reference,Number(x.amount),x.status])}/></div>}
       <div className={isSiteEngineer?"mb-3 hidden gap-3 md:grid md:grid-cols-2":"mb-3 grid gap-3 md:grid-cols-2"}>
         <div className="rounded-xl border bg-card p-4"><h3 className="text-sm font-semibold">Category totals</h3>
           <div className="mt-3 space-y-2 text-sm">{[...total.byCategory.entries()].sort((a,b)=>b[1]-a[1]).map(([category,amount])=>
