@@ -1,6 +1,6 @@
 import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { RegisterFilters } from "@/components/erp/register-filters";
-import { matchesRecordSearch } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch } from "@/lib/erp-search";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -153,6 +153,7 @@ function PrList() {
   });
 
   const peopleById = new Map((refs.data?.people ?? []).map(p => [p.id,p]));
+  const preparedSearch = prepareRecordSearch(settledText);
   const matched = searching
     ? (searchResults.data ?? []).filter(pr => {
         const person=peopleById.get(pr.requested_by);
@@ -160,7 +161,7 @@ function PrList() {
           pr.pr_number,pr.projects?.name,pr.projects?.code,
           pr.buildings?.name,person?.full_name,person?.email,
           ...(pr.purchase_request_items ?? []).flatMap(line => [line.items?.name,line.items?.code]),
-        ],settledText);
+        ],preparedSearch);
       })
     : [];
   const result = searching
