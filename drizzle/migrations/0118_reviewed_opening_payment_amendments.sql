@@ -127,6 +127,9 @@ BEGIN
   IF _payment_mode IS NULL OR _payment_mode NOT IN ('neft','rtgs','imps','cheque','upi','cash','card','other')
     OR length(btrim(coalesce(_reason,''))) NOT BETWEEN 10 AND 500
   THEN RAISE EXCEPTION 'Enter payment method and a reason of 10 to 500 characters'; END IF;
+  IF EXISTS(SELECT 1 FROM public.opening_payment_amendments WHERE invoice_id=inv.id AND status='pending') THEN
+    RAISE EXCEPTION 'This invoice already has a pending historical correction';
+  END IF;
   PERFORM public.check_opening_payment_amendment(inv,_amount,_payment_date,_reference);
   INSERT INTO public.opening_payment_amendments(invoice_id,company_id,vendor_id,amount,payment_date,payment_mode,reference,reason,expected_invoice_updated_at,requested_by)
     VALUES(inv.id,inv.company_id,inv.vendor_id,_amount,_payment_date,_payment_mode,btrim(_reference),btrim(_reason),inv.updated_at,auth.uid())
