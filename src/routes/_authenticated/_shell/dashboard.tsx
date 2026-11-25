@@ -10,6 +10,7 @@ import { today } from "@/lib/finance";
 import { fmtDate } from "@/lib/format";
 import { Loading } from "@/components/erp/common";
 import { AccountsQuickActions } from "@/components/erp/accounts-quick-actions";
+import { AccountsTaskQueue } from "@/components/erp/accounts-task-queue";
 import { DailyWorkspace, type WorkspaceSnapshot } from "@/components/erp/daily-workspace";
 import { buildPurchaseChains, type PipePayment } from "@/lib/purchase-pipeline";
 import { isSiteEngineerFieldPortal, siteEngineerAttentionTasks } from "@/lib/site-engineer-workflow";
@@ -275,7 +276,7 @@ function Dashboard() {
         void q.refetch();
         void projects.refetch();
       }}
-      quickActions={<AccountsQuickActions access={access} />}
+      quickActions={<><AccountsQuickActions access={access} /><AccountsTaskQueue access={access} userId={me.data?.profile.id ?? ""} /></>}
       canCreate={can("/procurement/purchase-requests/new")}
       canRequests={canPr}
       canOrders={canPo}
