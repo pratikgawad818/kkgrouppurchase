@@ -1,5 +1,6 @@
 import { PermanentDelete } from "@/components/erp/permanent-delete";
 import { OpeningPaymentAmendments } from "@/components/erp/opening-payment-amendments";
+import { loadOpeningAmendments } from "@/lib/opening-payment-amendments";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -43,10 +44,16 @@ function InvoiceDetail() {
         supabase.from("opening_vendor_invoice_prior_payments").select("*").eq("invoice_id",id).order("line_no"),
       ]);
       if (i.error) throw i.error;
+      for (const result of [it,ev,pay,adj]) if(result.error) throw result.error;
       if (openingLines.error) throw openingLines.error;
       if (priorPayments.error) throw priorPayments.error;
       return { inv: i.data, items: it.data ?? [], events: ev.data ?? [], payments: pay.data ?? [], adjustments: adj.data ?? [], openingLines:openingLines.data??[], priorPayments:priorPayments.data??[] };
     },
+  });
+  const hold = useQuery({
+    queryKey:["opening-payment-amendments",id,me.data?.profile.id??""],
+    enabled:!!q.data?.inv.is_opening&&!!me.data?.profile.id,
+    queryFn:()=>loadOpeningAmendments({invoiceId:id}),
   });
   const act = useMutation({
     mutationFn: async (a: Act) => { const { error } = await supabase.rpc("invoice_transition", { _id: id, _action: a, _comment: comment }); if (error) throw error; },
@@ -61,7 +68,8 @@ function InvoiceDetail() {
   const isOpeningBill = !inv.po_id || ms?.opening === true;
   const needsComment = dlg === "reject" || dlg === "cancel" || dlg === "approve_exception";
   const editable = inv.status === "draft" || inv.status === "exception";
-  const canAddPayment = ["approved", "partially_paid"].includes(inv.status) && Number(inv.balance_due) > 0 && can("payment.schedule");
+  const pendingCorrection=hold.data?.some(r=>r.status==="pending")??false;
+  const canAddPayment = ["approved", "partially_paid"].includes(inv.status) && Number(inv.balance_due) > 0 && can("payment.schedule") && (!inv.is_opening || (hold.isSuccess&&!hold.isFetching&&!pendingCorrection));
   return (
     <>
       <PageHeader backTo="/finance/vendor-invoices" deleteAction={<PermanentDelete force kind="vendor_invoice" id={inv.id} name={inv.invoice_number} onDeleted={()=>window.location.assign("/finance/vendor-invoices")}/>} title={inv.invoice_number} subtitle={<span className="flex flex-wrap items-center gap-2">Bill {inv.vendor_invoice_number} · {inv.vendors?.company_name}<span className={cn(badge, INVOICE_STATUS[inv.status].cls)}>{INVOICE_STATUS[inv.status].label}</span><span className={cn(badge, MATCH_STATUS[inv.match_status].cls)}>{isOpeningBill ? "Opening bill · no PO/GRN" : MATCH_STATUS[inv.match_status].label}</span></span>}
@@ -76,6 +84,8 @@ function InvoiceDetail() {
           {["draft", "exception", "rejected"].includes(inv.status) && can("vendor_invoice.create") && <Button size="sm" variant="ghost" onClick={() => setDlg("cancel")}>Cancel</Button>}
           {canAddPayment && <Button size="sm" asChild><Link to="/finance/payments" search={{ vendor: inv.vendor_id, invoice: inv.id }}>Add payment</Link></Button>}
         </div>} />
+      {inv.is_opening && pendingCorrection && <p role="alert" className="mb-3 rounded-lg border p-3 text-sm font-medium">Payment on hold — resolve the pending historical payment correction below before scheduling a payment or adjusting an advance.</p>}
+      {inv.is_opening && hold.isError && <p role="alert" className="mb-3 text-sm text-destructive">Historical payment status could not be verified. <button type="button" className="underline" onClick={()=>void hold.refetch()}>Retry</button></p>}
       {mine && (inv.status === "pending_review" || inv.status === "exception") && <p className="mb-3 text-xs text-muted-foreground">You entered this invoice, so another authorised user must approve it.</p>}
 
       <div className="grid gap-4 lg:grid-cols-3">
