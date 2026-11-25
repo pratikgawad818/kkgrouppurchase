@@ -20,8 +20,12 @@ test("paise arithmetic and invalid amounts fail closed",()=>{
 });
 test("ledger queries include historical details and only recorded ERP payments",()=>{
  const s=readFileSync("src/routes/_authenticated/_shell/finance.vendor-ledger.tsx","utf8");
- assert.ok(s.includes("opening_vendor_invoice_prior_payments(amount)"));
- assert.ok(s.includes("openingLedgerCredit(x)"));
+ assert.ok(s.includes("loadLedgerInvoices(vendor)"));
+ const api=readFileSync("src/lib/opening-payment-amendments.ts","utf8");
+ assert.ok(api.includes("opening_vendor_invoice_prior_payments(id,amount)"));
+ assert.ok(s.includes("!ids.has(p.id)"));
+ assert.ok(s.includes("date:a.posting_date!"));
+ assert.ok(s.includes("openingLedgerCredit({...x"));
  assert.ok(s.includes('eq("status", "recorded")'));
  assert.ok(s.includes("Pre-ERP paid"));
  assert.doesNotMatch(s,/\.insert\(|\.update\(|\.delete\(/);
