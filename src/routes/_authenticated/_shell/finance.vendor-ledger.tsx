@@ -1,3 +1,4 @@
+import { FINANCE_REFERENCE_STALE_MS } from "@/lib/finance-cache";
 import { FinanceExport } from "@/components/erp/finance-export";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
@@ -34,6 +35,7 @@ function Ledger() {
   const [fy, setFy] = useState(String(fyOf(new Date())));
   const vendors = useQuery({
     queryKey: ["ledger-vendors"],
+    staleTime: FINANCE_REFERENCE_STALE_MS,
     queryFn: () => loadCompleteRows(async (start, end) => await supabase.from("vendors")
       .select("id,company_name,gstin,mobile,email,payment_terms_days", { count: "exact" })
       .order("company_name").order("id").range(start, end)),

@@ -1,3 +1,4 @@
+import { invalidateFinanceKeys, FINANCE_SETTLEMENT_KEYS } from "@/lib/finance-cache";
 import { FinanceExport } from "@/components/erp/finance-export";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -67,7 +68,7 @@ function Payments() {
       return { rows: payments, used };
     },
   });
-  const refresh = () => { ["vendor-payments", "payables", "vendor-invoices", "vi", "ledger"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
+  const refresh = () => { void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); };
   const rows = useMemo(
     () => { const preparedSearch = prepareRecordSearch(deferredSearch); return (q.data?.rows ?? []).filter(x => (!status || x.status === status) && (!kindFilter || x.kind === kindFilter) && matchesRecordSearch([x.payment_number, x.vendors?.company_name, x.reference, x.company_bank_accounts?.account_name, ...x.vendor_payment_allocations.map(a=>a.vendor_invoices?.invoice_number)],preparedSearch)); },
     [q.data, status, kindFilter, deferredSearch],

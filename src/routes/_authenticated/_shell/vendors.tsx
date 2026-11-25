@@ -1,3 +1,4 @@
+import { invalidateFinanceKeys, FINANCE_REFERENCE_KEYS } from "@/lib/finance-cache";
 import { autoCode } from "@/lib/format";
 import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 import { loadCompleteRows } from "@/lib/complete-register";
@@ -33,7 +34,7 @@ function Vendors() {
   ],search));
   const visiblePage=visibleSearchPage(page,filtered.length,10);
   const pageRows=filtered.slice(visiblePage*10,(visiblePage+1)*10);
-  const save = useMutation({ mutationFn: async () => { const{data:companies,error:companyError}=await supabase.from("companies").select("id").limit(2);if(companyError)throw companyError;const companyId=requireSingleCompanyId(companies);const payload = { ...form, payment_terms_days: Number(form.payment_terms_days), gstin: form.gstin || null }; const r = editing ? await supabase.from("vendors").update(payload).eq("id", editing.id) : await supabase.from("vendors").insert({...payload,company_id:companyId}); if (r.error) throw r.error; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); setOpen(false); toast.success(editing ? "Vendor updated" : "Vendor created"); }, onError: (e) => toast.error(e.message) });
+  const save = useMutation({ mutationFn: async () => { const{data:companies,error:companyError}=await supabase.from("companies").select("id").limit(2);if(companyError)throw companyError;const companyId=requireSingleCompanyId(companies);const payload = { ...form, payment_terms_days: Number(form.payment_terms_days), gstin: form.gstin || null }; const r = editing ? await supabase.from("vendors").update(payload).eq("id", editing.id) : await supabase.from("vendors").insert({...payload,company_id:companyId}); if (r.error) throw r.error; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); void invalidateFinanceKeys(qc,FINANCE_REFERENCE_KEYS.vendor); setOpen(false); toast.success(editing ? "Vendor updated" : "Vendor created"); }, onError: (e) => toast.error(e.message) });
   function show(v?: Vendor) { setEditing(v ?? null); setForm(v ? { code: v.code, company_name: v.company_name, contact_person: v.contact_person ?? "", mobile: v.mobile ?? "", email: v.email ?? "", gstin: v.gstin ?? "", payment_terms_days: String(v.payment_terms_days), status: v.status } : { ...blank, code: autoCode() }); setOpen(true); }
   if (q.isLoading) return <Loading />;
   if (q.error) return <p role="alert" className="p-4 text-destructive">Unable to load vendors: {q.error.message}</p>;
