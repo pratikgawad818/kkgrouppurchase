@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { loadCompleteRows } from "@/lib/complete-register";
+import { loadBatchedGrnAvailability } from "@/lib/grn-availability-batch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,12 +68,12 @@ function NewInvoice() {
     queryKey: ["vi-form-base"],
     queryFn: async () => {
       const [p, c] = await Promise.all([
-        supabase.from("purchase_orders").select("id,po_number,po_date,vendor_id,status,grand_total,payment_terms,freight,other_charges,freight_tax_type,freight_tax_rate_percent,other_charges_tax_type,other_charges_tax_rate_percent,projects(name),buildings(name),vendors(id,company_name,gstin,address,city,state,contact_person,mobile,email,payment_terms_days)")
-          .in("status", ["partially_received", "partially_accepted", "fully_received", "short_closed", "closed"]).order("po_date", { ascending: false }),
+        loadCompleteRows(async (start,end)=>await supabase.from("purchase_orders").select("id,po_number,po_date,vendor_id,status,grand_total,payment_terms,freight,other_charges,freight_tax_type,freight_tax_rate_percent,other_charges_tax_type,other_charges_tax_rate_percent,projects(name),buildings(name),vendors(id,company_name,gstin,address,city,state,contact_person,mobile,email,payment_terms_days)",{count:"exact"})
+          .in("status", ["partially_received", "partially_accepted", "fully_received", "short_closed", "closed"]).order("po_date", { ascending: false }).order("id").range(start,end)),
         supabase.from("companies").select("finance_settings").limit(1).maybeSingle(),
       ]);
-      if (p.error) throw p.error;
-      return { pos: p.data ?? [], settings: (c.data?.finance_settings ?? null) as FinanceSettings | null };
+      if (c.error) throw c.error;
+      return { pos: p, settings: (c.data?.finance_settings ?? null) as FinanceSettings | null };
     },
   });
   const pos = base.data?.pos ?? [];
@@ -89,20 +91,11 @@ function NewInvoice() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const { data, error } = await supabase.from("goods_receipt_items")
-        .select("id,accepted_quantity,unit_cost,goods_receipt_notes!inner(id,grn_number,received_date,status,po_id),items(code,name),units_of_measure(code),purchase_order_items(rate,tax_type,tax_rate_percent)")
-        .eq("goods_receipt_notes.po_id", po).eq("goods_receipt_notes.status", "posted");
-      if (error) throw error;
-      const avail = await Promise.all((data ?? []).map((g) => supabase.rpc("grn_item_available", { _grn_item: g.id, _exclude_invoice: (editId ?? null) as string })));
-      return (data ?? []).map((g, i) => {
-        const check = avail[i];
-        if (!check) throw new Error(`GRN quantity check did not return a result for ${g.goods_receipt_notes.grn_number}.`);
-        if (check.error) throw new Error(`Could not check uninvoiced accepted quantity for ${g.goods_receipt_notes.grn_number}: ${errMsg(check.error)}`);
-        if (check.data == null || !Number.isFinite(Number(check.data))) {
-          throw new Error(`Available accepted quantity is missing for ${g.goods_receipt_notes.grn_number}. Refresh the GRN check before saving.`);
-        }
-        return { ...g, available: Number(check.data) };
-      });
+      const data = await loadCompleteRows(async (start,end)=>await supabase.from("goods_receipt_items")
+        .select("id,accepted_quantity,unit_cost,goods_receipt_notes!inner(id,grn_number,received_date,status,po_id),items(code,name),units_of_measure(code),purchase_order_items(rate,tax_type,tax_rate_percent)",{count:"exact"})
+        .eq("goods_receipt_notes.po_id", po).eq("goods_receipt_notes.status", "posted").order("id").range(start,end));
+      const availability = await loadBatchedGrnAvailability(data.map(g=>g.id),editId??null);
+      return data.map(g=>({...g,available:availability.get(g.id)!}));
     },
   });
   useEffect(() => {
