@@ -1,3 +1,4 @@
+import { invalidateFinanceKeys, FINANCE_REFERENCE_STALE_MS, FINANCE_SETTLEMENT_KEYS } from "@/lib/finance-cache";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -76,6 +77,7 @@ function OpeningBill() {
 
   const base = useQuery({
     queryKey: ["opening-bill-base"],
+    staleTime: FINANCE_REFERENCE_STALE_MS,
     queryFn: async () => {
       const [v,p,b] = await Promise.all([
         loadCompleteRows(async (start,end)=>await supabase.from("vendors").select("id,company_name,gstin",{count:"exact"}).order("company_name").order("id").range(start,end)),
@@ -99,6 +101,7 @@ function OpeningBill() {
   ) : undefined;
   const materials = useQuery({
     queryKey: ["old-bill-materials"],
+    staleTime: FINANCE_REFERENCE_STALE_MS,
     enabled: can("materials.view"),
     queryFn: async () => loadCompleteRows(async (start,end) => await supabase.from("items")
       .select("id,code,name,hsn_sac,category_id,unit_id,units_of_measure(code,name)",{count:"exact"})
@@ -229,7 +232,7 @@ function OpeningBill() {
       toast.success(isApprovedCorrection?"Item details corrected; approved totals unchanged":editId?"Opening bill updated":"Old bill saved for verification");
       void qc.invalidateQueries({queryKey:["vendor-invoices"]});
       void qc.invalidateQueries({queryKey:["vi",id]});
-      void qc.invalidateQueries({queryKey:["opening-bill-duplicate-check"]});
+      void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS);
       if (!editId && batch.length) {
         const remaining = batch.slice(1);
         setBatchSaved(current => [...current,{id,name:batch[0]!.name}]);
