@@ -1,3 +1,4 @@
+import { invalidateFinanceKeys, FINANCE_SETTLEMENT_KEYS } from "@/lib/finance-cache";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -149,7 +150,7 @@ function NewInvoice() {
       if (submit) { const r = await supabase.rpc("invoice_transition", { _id: data, _action: "submit", _comment: "" }); if (r.error) throw r.error; }
       return data as string;
     },
-    onSuccess: (id) => { guard.markSaved(); toast.success("Invoice saved"); qc.invalidateQueries({ queryKey: ["vendor-invoices"] }); qc.invalidateQueries({ queryKey: ["vi", id] }); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
+    onSuccess: (id) => { guard.markSaved(); toast.success("Invoice saved"); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); qc.invalidateQueries({ queryKey: ["vi", id] }); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
     onError: (e) => toast.error(errMsg(e)),
   });
 
