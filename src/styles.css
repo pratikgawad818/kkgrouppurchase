@@ -2270,3 +2270,60 @@
   .finance-payment-footer { position: sticky; bottom: 0; z-index: 1; flex-direction: column; border-top: 1px solid var(--color-border); background: var(--color-background); padding: 12px 0 max(8px,env(safe-area-inset-bottom)); }
   .finance-payment-footer button { min-height: 44px; }
 }
+
+
+/* Finance invoice line editors and ledger: keep one set of financial fields. */
+@media (max-width: 767px) {
+  .finance-entry-table td[data-label="Include line"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid var(--color-border) !important;
+  }
+  .finance-entry-table td[data-label="Include line"]::before {
+    display: block;
+    margin: 0;
+  }
+  .finance-entry-table input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    min-height: 24px;
+    accent-color: var(--color-primary);
+  }
+  .finance-entry-table td[data-label="Material"],
+  .finance-invoice-lines td[data-label="Material"],
+  .finance-invoice-lines td[data-label="Item / service"],
+  .finance-ledger-table td[data-label="Details"] {
+    grid-column: 1 / -1;
+  }
+  .finance-entry-table td :is(input:not([type="checkbox"]),select) {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+  .finance-entry-table td[data-label="Amount"],
+  .finance-invoice-lines td[data-label="Total"],
+  .finance-invoice-lines td[data-label="Line total"],
+  .finance-ledger-table td[data-label="Running balance"],
+  .finance-ledger-table td[data-label="Opening amount"] {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .finance-ledger-table .finance-opening-row {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    align-items: center;
+  }
+  .finance-ledger-table .finance-opening-row td[colspan] {
+    grid-column: auto;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+  .finance-ledger-table .finance-opening-row td[data-label="Opening amount"]::before {
+    display: none;
+  }
+  .finance-ledger-table .finance-opening-row td[data-label="Opening amount"] {
+    text-align: right !important;
+  }
+}
