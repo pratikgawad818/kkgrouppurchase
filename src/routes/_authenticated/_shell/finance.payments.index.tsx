@@ -25,7 +25,7 @@ import { availableAfterScheduled, checkedAdvanceUsage, inspectAdvanceAdjustment,
 const META = "Schedule, approve and record vendor payments and advances.";
 export const Route = createFileRoute("/_authenticated/_shell/finance/payments/")({
   head: () => ({ meta: [{ title: "Vendor Payments — KK GROUP ERP" }, { name: "description", content: META }, { property: "og:title", content: "Vendor Payments — KK GROUP ERP" }, { property: "og:description", content: META }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  validateSearch: (s: Record<string, unknown>): { vendor?: string; invoice?: string } => ({ ...(typeof s["vendor"] === "string" ? { vendor: s["vendor"] } : {}), ...(typeof s["invoice"] === "string" ? { invoice: s["invoice"] } : {}) }),
+  validateSearch: (s: Record<string, unknown>): { vendor?: string; invoice?: string; status?: string } => ({ ...(typeof s["status"] === "string" && Object.prototype.hasOwnProperty.call(PAYMENT_STATUS, s["status"]) ? { status: s["status"] } : {}), ...(typeof s["vendor"] === "string" ? { vendor: s["vendor"] } : {}), ...(typeof s["invoice"] === "string" ? { invoice: s["invoice"] } : {}) }),
   component: Payments,
 });
 
@@ -36,7 +36,8 @@ function Payments() {
   const qc = useQueryClient();
   const canViewDetails = (id: string) => !!me.data && canAccessPage(`/finance/payments/${id}`, me.data);
   const [page, setPage] = useState(0);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(sp.status ?? "");
+  useEffect(() => { setStatus(sp.status ?? ""); setPage(0); }, [sp.status]);
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState("");
   const [schedule, setSchedule] = useState<PaymentKind | null>(sp.vendor ? "invoice" : null);

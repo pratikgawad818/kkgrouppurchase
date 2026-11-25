@@ -1,7 +1,7 @@
 import { RegisterFilters } from "@/components/erp/register-filters";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadCompleteRows } from "@/lib/complete-register";
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/_shell/finance/vendor-invo
     ],
   }),
   validateSearch: (s: Record<string, unknown>): { status?: string } =>
-    typeof s["status"] === "string" ? { status: s["status"] as string } : {},
+    typeof s["status"] === "string" && Object.prototype.hasOwnProperty.call(INVOICE_STATUS, s["status"]) ? { status: s["status"] } : {},
   component: InvoiceList,
 });
 
@@ -41,6 +41,7 @@ function InvoiceList() {
   const deferredSearch = useDeferredValue(search);
   const [f, setF] = useState({ status: sp.status ?? "", vendor: "", project: "", fy: "" });
   const [page, setPage] = useState(0);
+  useEffect(() => { setF(current => ({ ...current, status: sp.status ?? "" })); setPage(0); }, [sp.status]);
   const [billKind,setBillKind] = useState("");
   const q = useQuery({
     queryKey: ["vendor-invoices"],
