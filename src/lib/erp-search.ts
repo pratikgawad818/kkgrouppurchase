@@ -12,15 +12,21 @@ export function normalizedSearchText(value: unknown): string {
     .replace(/\s+/g, " ");
 }
 
-export function matchesRecordSearch(values: readonly unknown[], search: string): boolean {
-  const terms = normalizedSearchText(search).slice(0, 150).split(" ").filter(Boolean);
+/** Prepare once per filter pass; no shared cache of sensitive record data. */
+export type PreparedRecordSearch = { readonly terms: readonly string[] };
+export function prepareRecordSearch(search:string):PreparedRecordSearch {
+  return {terms:normalizedSearchText(search).slice(0,150).split(" ").filter(Boolean)};
+}
+export function matchesRecordSearch(values: readonly unknown[], search: string | PreparedRecordSearch): boolean {
+  const terms = typeof search === "string" ? prepareRecordSearch(search).terms : search.terms;
   if (!terms.length) return true;
   const normalizedValues = values.map(normalizedSearchText);
   const allFields = normalizedValues.join(" ");
-  // Allow either the readable punctuated reference "PO-2026-0004"
-  // or an unpunctuated pasted reference "PO20260004".
+  const missing = terms.filter(term => !allFields.includes(term));
+  if (!missing.length) return true;
+  // Only construct compact references when the normal text did not match.
   const compact = normalizedValues.map(s => s.replace(/\s/g, "")).join(" ");
-  return terms.every(term => allFields.includes(term) || compact.includes(term));
+  return missing.every(term => compact.includes(term));
 }
 
 /** Keep list paging within filtered results when async register data changes. */
