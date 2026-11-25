@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { SearchableEntrySelect } from "@/components/erp/searchable-entry-select";
+import { InvoiceEntryPreview } from "@/components/erp/invoice-entry-preview";
+import { useInvoiceEntryGuard } from "@/lib/use-invoice-entry-guard";
 import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { TAX_RATES } from "@/lib/rfq";
@@ -36,10 +38,13 @@ function NewInvoice() {
   const [h, setH] = useState({ vendor_invoice_number: "", vendor_invoice_date: today(), due_date: "", freight: "0", other_charges: "0", tds_section: "", tds_rate: "0", remarks: "", round_off_mode: "none" as InvoiceRoundOffMode });
   const [lines, setLines] = useState<Line[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const guard = useInvoiceEntryGuard();
   const [grnFilter, setGrnFilter] = useState<string>("");
 
   const existing = useQuery({
     queryKey: ["vi-edit", editId], enabled: !!editId,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       const [i, it] = await Promise.all([
         supabase.from("vendor_invoices").select("*").eq("id", editId!).single(),
@@ -81,6 +86,8 @@ function NewInvoice() {
 
   const grn = useQuery({
     queryKey: ["vi-form-grn", po, editId], enabled: !!po,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       const { data, error } = await supabase.from("goods_receipt_items")
         .select("id,accepted_quantity,unit_cost,goods_receipt_notes!inner(id,grn_number,received_date,status,po_id),items(code,name),units_of_measure(code),purchase_order_items(rate,tax_type,tax_rate_percent)")
@@ -149,7 +156,7 @@ function NewInvoice() {
       if (submit) { const r = await supabase.rpc("invoice_transition", { _id: data, _action: "submit", _comment: "" }); if (r.error) throw r.error; }
       return data as string;
     },
-    onSuccess: (id) => { toast.success("Invoice saved"); qc.invalidateQueries({ queryKey: ["vendor-invoices"] }); qc.invalidateQueries({ queryKey: ["vi", id] }); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
+    onSuccess: (id) => { guard.markSaved(); toast.success("Invoice saved"); qc.invalidateQueries({ queryKey: ["vendor-invoices"] }); qc.invalidateQueries({ queryKey: ["vi", id] }); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
     onError: (e) => toast.error(errMsg(e)),
   });
 
@@ -161,6 +168,9 @@ function NewInvoice() {
   return (
     <>
       <PageHeader backTo="/finance/vendor-invoices" title={editId ? `Edit ${existing.data?.inv.invoice_number}` : "New vendor invoice"} subtitle="Select vendor → purchase order → goods receipts. Only accepted, not-yet-invoiced quantity can be billed." />
+      {guard.dirty && <p role="status" className="mb-3 rounded-lg border px-3 py-2 text-sm text-muted-foreground">Unsaved changes — save this bill before leaving.</p>}
+      <div className={cn("min-w-0",file && "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]")}>
+      <div className="min-w-0" onChangeCapture={guard.markDirty}>
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 rounded-md border bg-card p-4 lg:col-span-2">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -273,6 +283,9 @@ function NewInvoice() {
             <Button disabled={!canSave || save.isPending} onClick={() => save.mutate(true)}>Save & run match</Button>
           </div>
         </div>
+      </div>
+      </div>
+      {file && <InvoiceEntryPreview file={file} />}
       </div>
     </>
   );
