@@ -187,7 +187,7 @@ export function WorkspaceFrame({
       aria-label={drawer ? "All modules" : "Main navigation"}
       className={cn("workspace-sidebar-inner", drawer && "workspace-drawer-nav")}
     >
-      <Link
+      <Link preload="intent"
         to={home}
         className="workspace-brand-link"
         aria-label="KK ERP home"
@@ -216,7 +216,7 @@ export function WorkspaceFrame({
               )}
             >
               {single ? (
-                <Link
+                <Link preload="intent"
                   to={group.items[0]!.to}
                   onClick={() => setMenuOpen(false)}
                   className={cn("workspace-nav-heading", active && "is-active")}
@@ -257,7 +257,7 @@ export function WorkspaceFrame({
                     hidden={!open}
                   >
                     {group.items.map((item) => (
-                      <Link
+                      <Link preload="intent"
                         key={item.to}
                         to={item.to}
                         onClick={() => setMenuOpen(false)}
@@ -278,7 +278,7 @@ export function WorkspaceFrame({
         })}
       </div>
       <div className="workspace-sidebar-profile">
-        <Link
+        <Link preload="intent"
           to="/profile"
           onClick={() => setMenuOpen(false)}
           className="workspace-profile-link"
@@ -328,7 +328,7 @@ export function WorkspaceFrame({
               </div>
               <div className="workspace-more-grid" aria-label="Workspace modules">
                 {moreQuickLinks.map((item) => (
-                  <Link
+                  <Link preload="intent"
                     key={item.to}
                     to={item.to}
                     onClick={() => {
@@ -366,7 +366,7 @@ export function WorkspaceFrame({
                   <nav className="workspace-more-links" key={group.key} aria-label={group.label}>
                     <h3>{group.label}</h3>
                     {group.items.map((item) => (
-                      <Link
+                      <Link preload="intent"
                         to={item.to}
                         key={item.to}
                         onClick={() => setMenuOpen(false)}
@@ -379,7 +379,7 @@ export function WorkspaceFrame({
                   </nav>
                 ))}
               <div className="workspace-more-account">
-                <Link to="/profile" onClick={() => setMenuOpen(false)}>
+                <Link preload="intent" to="/profile" onClick={() => setMenuOpen(false)}>
                   {person}
                   <span>
                     <strong>{name}</strong>
@@ -426,7 +426,7 @@ export function WorkspaceFrame({
           >
             <Menu />
           </Button>
-          <Link to={home} className="workspace-mobile-brand">
+          <Link preload="intent" to={home} className="workspace-mobile-brand">
             <Brand />
           </Link>
           <div className="workspace-breadcrumb">
@@ -490,7 +490,7 @@ export function WorkspaceFrame({
           const Icon = icons[group.key as keyof typeof icons] ?? Home;
           const active = isBottomActive(group);
           return (
-            <Link
+            <Link preload="intent"
               key={group.key}
               to={group.to}
               aria-label={
