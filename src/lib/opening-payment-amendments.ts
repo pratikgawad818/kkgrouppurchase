@@ -30,3 +30,17 @@ export async function reviewOpeningAmendment(id:string,decision:"approve"|"rejec
   const {error}=await db.rpc("review_opening_payment_amendment",{_id:id,_decision:decision,_note:note});
   if(error)throw error;
 }
+
+export type LedgerOpeningInvoice = {
+  id:string; invoice_number:string; vendor_invoice_number:string; vendor_invoice_date:string;
+  net_payable:number; tds_amount:number; status:string; is_opening:boolean; opening_legacy_paid:number;
+  opening_vendor_invoice_prior_payments:{id:string;amount:number}[];
+  opening_payment_amendments:{id:string;amount:number;status:string;posting_date:string|null;prior_payment_id:string|null}[];
+};
+/** Both historical rows and amendment links are read in one nested invoice query,
+ * so the ledger does not combine different versions of the same invoice. */
+export function loadLedgerInvoices(vendorId:string) {
+  return loadCompleteRows<LedgerOpeningInvoice>(async(start,end)=>await db.from("vendor_invoices")
+    .select("id,invoice_number,vendor_invoice_number,vendor_invoice_date,net_payable,tds_amount,status,is_opening,opening_legacy_paid,opening_vendor_invoice_prior_payments(id,amount),opening_payment_amendments(id,amount,status,posting_date,prior_payment_id)",{count:"exact"})
+    .eq("vendor_id",vendorId).in("status",["approved","partially_paid","paid"]).order("id").range(start,end));
+}
