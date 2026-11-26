@@ -218,6 +218,7 @@ export type Database = {
           id: string
           invoice_prefix: string
           invoice_terms: string | null
+          legal_entity_mode: boolean
           legal_name: string | null
           logo_url: string | null
           name: string
@@ -246,6 +247,7 @@ export type Database = {
           id?: string
           invoice_prefix?: string
           invoice_terms?: string | null
+          legal_entity_mode?: boolean
           legal_name?: string | null
           logo_url?: string | null
           name: string
@@ -274,6 +276,7 @@ export type Database = {
           id?: string
           invoice_prefix?: string
           invoice_terms?: string | null
+          legal_entity_mode?: boolean
           legal_name?: string | null
           logo_url?: string | null
           name?: string
@@ -293,6 +296,7 @@ export type Database = {
       }
       company_bank_accounts: {
         Row: {
+          account_holder_name: string | null
           account_name: string
           account_number: string
           account_type: string
@@ -303,11 +307,13 @@ export type Database = {
           id: string
           ifsc: string
           is_primary: boolean
+          legal_entity_id: string | null
           purpose: string | null
           status: Database["public"]["Enums"]["record_status"]
           updated_at: string
         }
         Insert: {
+          account_holder_name?: string | null
           account_name: string
           account_number: string
           account_type?: string
@@ -318,11 +324,13 @@ export type Database = {
           id?: string
           ifsc: string
           is_primary?: boolean
+          legal_entity_id?: string | null
           purpose?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string
         }
         Update: {
+          account_holder_name?: string | null
           account_name?: string
           account_number?: string
           account_type?: string
@@ -333,6 +341,7 @@ export type Database = {
           id?: string
           ifsc?: string
           is_primary?: boolean
+          legal_entity_id?: string | null
           purpose?: string | null
           status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string
@@ -343,6 +352,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_bank_accounts_legal_entity_id_fkey"
+            columns: ["legal_entity_id"]
+            isOneToOne: false
+            referencedRelation: "legal_entities"
             referencedColumns: ["id"]
           },
         ]
@@ -1558,6 +1574,68 @@ export type Database = {
           },
         ]
       }
+      legal_entities: {
+        Row: {
+          billing_address: string | null
+          code: string
+          company_id: string
+          created_at: string
+          display_name: string
+          email: string | null
+          gstin: string | null
+          id: string
+          is_active: boolean
+          legal_name: string | null
+          office_address: string | null
+          pan: string | null
+          phone: string | null
+          registered_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_address?: string | null
+          code: string
+          company_id: string
+          created_at?: string
+          display_name: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          legal_name?: string | null
+          office_address?: string | null
+          pan?: string | null
+          phone?: string | null
+          registered_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_address?: string | null
+          code?: string
+          company_id?: string
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          legal_name?: string | null
+          office_address?: string | null
+          pan?: string | null
+          phone?: string | null
+          registered_address?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_entities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_issue_items: {
         Row: {
           id: string
@@ -1861,6 +1939,122 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      opening_payment_amendments: {
+        Row: {
+          amount: number
+          company_id: string
+          expected_invoice_updated_at: string
+          id: string
+          invoice_id: string
+          journal_entry_id: string | null
+          payment_date: string
+          payment_mode: string
+          posting_date: string | null
+          prior_payment_id: string | null
+          reason: string
+          reference: string
+          requested_at: string
+          requested_by: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          vendor_id: string
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          expected_invoice_updated_at: string
+          id?: string
+          invoice_id: string
+          journal_entry_id?: string | null
+          payment_date: string
+          payment_mode: string
+          posting_date?: string | null
+          prior_payment_id?: string | null
+          reason: string
+          reference: string
+          requested_at?: string
+          requested_by: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          expected_invoice_updated_at?: string
+          id?: string
+          invoice_id?: string
+          journal_entry_id?: string | null
+          payment_date?: string
+          payment_mode?: string
+          posting_date?: string | null
+          prior_payment_id?: string | null
+          reason?: string
+          reference?: string
+          requested_at?: string
+          requested_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opening_payment_amendments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_payment_amendments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_payment_amendments_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: true
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_payment_amendments_prior_payment_id_fkey"
+            columns: ["prior_payment_id"]
+            isOneToOne: true
+            referencedRelation: "opening_vendor_invoice_prior_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_payment_amendments_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_payment_amendments_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_payment_amendments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       opening_vendor_invoice_lines: {
         Row: {
@@ -2380,6 +2574,7 @@ export type Database = {
           id: string
           is_demo: boolean
           land_area_sqm: number | null
+          legal_entity_id: string | null
           location: string | null
           name: string
           notes: string | null
@@ -2415,6 +2610,7 @@ export type Database = {
           id?: string
           is_demo?: boolean
           land_area_sqm?: number | null
+          legal_entity_id?: string | null
           location?: string | null
           name: string
           notes?: string | null
@@ -2450,6 +2646,7 @@ export type Database = {
           id?: string
           is_demo?: boolean
           land_area_sqm?: number | null
+          legal_entity_id?: string | null
           location?: string | null
           name?: string
           notes?: string | null
@@ -2483,6 +2680,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "projects_legal_entity_id_fkey"
+            columns: ["legal_entity_id"]
+            isOneToOne: false
+            referencedRelation: "legal_entities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "projects_project_manager_id_fkey"
             columns: ["project_manager_id"]
             isOneToOne: false
@@ -2494,6 +2698,652 @@ export type Database = {
             columns: ["site_engineer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_buyer_details: {
+        Row: {
+          address: string | null
+          alternate_mobile: string | null
+          city: string | null
+          identification_last4: string | null
+          identification_type: string | null
+          notes: string | null
+          pincode: string | null
+          sale_id: string
+          state: string | null
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          address?: string | null
+          alternate_mobile?: string | null
+          city?: string | null
+          identification_last4?: string | null
+          identification_type?: string | null
+          notes?: string | null
+          pincode?: string | null
+          sale_id: string
+          state?: string | null
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          address?: string | null
+          alternate_mobile?: string | null
+          city?: string | null
+          identification_last4?: string | null
+          identification_type?: string | null
+          notes?: string | null
+          pincode?: string | null
+          sale_id?: string
+          state?: string | null
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_buyer_details_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_buyer_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_cancel_requests: {
+        Row: {
+          id: string
+          reason: string
+          requested_at: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_note: string | null
+          sale_id: string
+          status: string
+        }
+        Insert: {
+          id?: string
+          reason: string
+          requested_at?: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          sale_id: string
+          status?: string
+        }
+        Update: {
+          id?: string
+          reason?: string
+          requested_at?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          sale_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_cancel_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_cancel_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_cancel_requests_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_cancellations: {
+        Row: {
+          cancellation_fee: number
+          cancelled_at: string
+          cancelled_by: string
+          id: string
+          reason: string
+          refund_due: number
+          sale_id: string
+          verified_received: number
+        }
+        Insert: {
+          cancellation_fee: number
+          cancelled_at?: string
+          cancelled_by: string
+          id?: string
+          reason: string
+          refund_due: number
+          sale_id: string
+          verified_received: number
+        }
+        Update: {
+          cancellation_fee?: number
+          cancelled_at?: string
+          cancelled_by?: string
+          id?: string
+          reason?: string
+          refund_due?: number
+          sale_id?: string
+          verified_received?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_cancellations_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_cancellations_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_documents: {
+        Row: {
+          filename: string
+          id: string
+          kind: string
+          sale_id: string
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          filename: string
+          id?: string
+          kind: string
+          sale_id: string
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          filename?: string
+          id?: string
+          kind?: string
+          sale_id?: string
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_documents_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_events: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          details: Json
+          id: string
+          sale_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+          sale_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_events_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_legal_details: {
+        Row: {
+          agreement_date: string | null
+          agreement_number: string | null
+          notes: string | null
+          registration_date: string | null
+          registration_number: string | null
+          registration_office: string | null
+          sale_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          agreement_date?: string | null
+          agreement_number?: string | null
+          notes?: string | null
+          registration_date?: string | null
+          registration_number?: string | null
+          registration_office?: string | null
+          sale_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          agreement_date?: string | null
+          agreement_number?: string | null
+          notes?: string | null
+          registration_date?: string | null
+          registration_number?: string | null
+          registration_office?: string | null
+          sale_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_legal_details_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_legal_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_payment_milestones: {
+        Row: {
+          due_on: string
+          expected_amount: number
+          id: string
+          label: string
+          plan_id: string
+          sequence: number
+        }
+        Insert: {
+          due_on: string
+          expected_amount: number
+          id?: string
+          label: string
+          plan_id: string
+          sequence: number
+        }
+        Update: {
+          due_on?: string
+          expected_amount?: number
+          id?: string
+          label?: string
+          plan_id?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_payment_milestones_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "property_sale_payment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_payment_plans: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          reason: string
+          sale_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          reason: string
+          sale_id: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          reason?: string
+          sale_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_payment_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_payment_plans_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_receipts: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          id: string
+          method: string
+          notes: string | null
+          paid_on: string
+          payer_name: string | null
+          reference: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_note: string | null
+          sale_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          id?: string
+          method: string
+          notes?: string | null
+          paid_on: string
+          payer_name?: string | null
+          reference?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          sale_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_on?: string
+          payer_name?: string | null
+          reference?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          sale_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_receipts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_receipts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_receipts_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "property_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sale_refunds: {
+        Row: {
+          amount: number
+          cancellation_id: string
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          recorded_by: string
+          reference: string | null
+          refunded_on: string
+        }
+        Insert: {
+          amount: number
+          cancellation_id: string
+          created_at?: string
+          id?: string
+          method: string
+          notes?: string | null
+          recorded_by: string
+          reference?: string | null
+          refunded_on: string
+        }
+        Update: {
+          amount?: number
+          cancellation_id?: string
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          recorded_by?: string
+          reference?: string | null
+          refunded_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sale_refunds_cancellation_id_fkey"
+            columns: ["cancellation_id"]
+            isOneToOne: false
+            referencedRelation: "property_sale_cancellations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sale_refunds_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sales: {
+        Row: {
+          booked_on: string
+          buyer_email: string | null
+          buyer_mobile: string
+          buyer_name: string
+          co_buyer_name: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          final_sale_price: number
+          id: string
+          list_price_at_booking: number
+          notes: string | null
+          project_id: string
+          sale_number: string
+          status: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          booked_on?: string
+          buyer_email?: string | null
+          buyer_mobile: string
+          buyer_name: string
+          co_buyer_name?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          final_sale_price: number
+          id?: string
+          list_price_at_booking: number
+          notes?: string | null
+          project_id: string
+          sale_number?: string
+          status?: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          booked_on?: string
+          buyer_email?: string | null
+          buyer_mobile?: string
+          buyer_name?: string
+          co_buyer_name?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          final_sale_price?: number
+          id?: string
+          list_price_at_booking?: number
+          notes?: string | null
+          project_id?: string
+          sale_number?: string
+          status?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sales_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sales_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_sales_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_unit_price_revisions: {
+        Row: {
+          company_id: string
+          id: string
+          new_values: Json
+          old_values: Json
+          reason: string
+          revised_at: string
+          revised_by: string
+          unit_id: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          new_values: Json
+          old_values: Json
+          reason: string
+          revised_at?: string
+          revised_by: string
+          unit_id: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          reason?: string
+          revised_at?: string
+          revised_by?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_unit_price_revisions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_unit_price_revisions_revised_by_fkey"
+            columns: ["revised_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_unit_price_revisions_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]
@@ -2666,6 +3516,14 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           building_id: string | null
+          buyer_billing_address: string | null
+          buyer_email: string | null
+          buyer_gstin: string | null
+          buyer_legal_entity_id: string | null
+          buyer_legal_name: string | null
+          buyer_pan: string | null
+          buyer_phone: string | null
+          buyer_registered_address: string | null
           company_id: string
           created_at: string
           created_by: string
@@ -2702,6 +3560,14 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           building_id?: string | null
+          buyer_billing_address?: string | null
+          buyer_email?: string | null
+          buyer_gstin?: string | null
+          buyer_legal_entity_id?: string | null
+          buyer_legal_name?: string | null
+          buyer_pan?: string | null
+          buyer_phone?: string | null
+          buyer_registered_address?: string | null
           company_id: string
           created_at?: string
           created_by: string
@@ -2738,6 +3604,14 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           building_id?: string | null
+          buyer_billing_address?: string | null
+          buyer_email?: string | null
+          buyer_gstin?: string | null
+          buyer_legal_entity_id?: string | null
+          buyer_legal_name?: string | null
+          buyer_pan?: string | null
+          buyer_phone?: string | null
+          buyer_registered_address?: string | null
           company_id?: string
           created_at?: string
           created_by?: string
@@ -2791,6 +3665,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_building_stats"
             referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_buyer_legal_entity_id_fkey"
+            columns: ["buyer_legal_entity_id"]
+            isOneToOne: false
+            referencedRelation: "legal_entities"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "purchase_orders_company_id_fkey"
@@ -5530,6 +6411,11 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      can_read_company_avatar: { Args: { _path: string }; Returns: boolean }
+      can_read_delivery_challan_photo: {
+        Args: { _path: string }
+        Returns: boolean
+      }
       can_read_procurement_attachment: {
         Args: { _path: string }
         Returns: boolean
@@ -5539,12 +6425,25 @@ export type Database = {
         Args: { _path: string }
         Returns: boolean
       }
+      cancel_draft_goods_receipt: {
+        Args: { _grn_id: string; _reason: string }
+        Returns: undefined
+      }
       cancel_goods_receipt: {
         Args: { _grn_id: string; _reason: string }
         Returns: undefined
       }
       cancel_vendor_delivery_challan: {
         Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
+      check_opening_payment_amendment: {
+        Args: {
+          _amount: number
+          _date: string
+          _inv: Database["public"]["Tables"]["vendor_invoices"]["Row"]
+          _reference: string
+        }
         Returns: undefined
       }
       check_staff_deletion_history: {
@@ -5629,6 +6528,10 @@ export type Database = {
         }
         Returns: string
       }
+      delete_unused_company_bank_account: {
+        Args: { _account_id: string; _last_four: string }
+        Returns: string
+      }
       document_actor_names: {
         Args: { _ids: string[]; _kind: string }
         Returns: {
@@ -5701,10 +6604,53 @@ export type Database = {
         }
         Returns: number
       }
+      get_po_pr_requester_name: { Args: { _po_id: string }; Returns: string }
+      get_po_selected_supplier_quotation: {
+        Args: { _po_id: string }
+        Returns: {
+          attachment_path: string
+          payment_terms: string
+          quotation_date: string
+          quotation_id: string
+          quotation_number: string
+          remarks: string
+        }[]
+      }
+      get_po_supplier_for_document: {
+        Args: { _po_id: string }
+        Returns: {
+          address: string
+          city: string
+          company_name: string
+          contact_person: string
+          email: string
+          gstin: string
+          mobile: string
+          pincode: string
+          state: string
+        }[]
+      }
+      get_pr_selected_supplier_quotes: {
+        Args: { _pr_id: string }
+        Returns: {
+          attachment_path: string
+          po_id: string
+          po_number: string
+          quotation_number: string
+          vendor_name: string
+        }[]
+      }
       grn_apply: { Args: { _grn_id: string }; Returns: undefined }
       grn_item_available: {
         Args: { _exclude_invoice: string; _grn_item: string }
         Returns: number
+      }
+      grn_items_available: {
+        Args: { _exclude_invoice: string; _grn_items: string[] }
+        Returns: {
+          available: number
+          grn_item_id: string
+        }[]
       }
       has_permission: {
         Args: { _code: string; _user_id: string }
@@ -5780,11 +6726,30 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_pr_original_site_engineer: {
+        Args: {
+          _body: string
+          _company: string
+          _link: string
+          _pr_id: string
+          _project: string
+          _title: string
+        }
+        Returns: undefined
+      }
       payment_transition: {
         Args: { _action: string; _comment: string; _details: Json; _id: string }
         Returns: Database["public"]["Enums"]["payment_status"]
       }
       po_can_view: { Args: { _po_id: string }; Returns: boolean }
+      po_notification_context: {
+        Args: { _po_id: string }
+        Returns: {
+          attribution: string
+          person_name: string
+          project_name: string
+        }[]
+      }
       po_refresh_status: {
         Args: { _po: string }
         Returns: Database["public"]["Enums"]["po_status"]
@@ -5968,7 +6933,23 @@ export type Database = {
         Args: { _header: Json; _items: Json; _po_id: string }
         Returns: string
       }
+      remind_payment_approvers: {
+        Args: { _payment_id: string }
+        Returns: undefined
+      }
       remind_po_approvers: { Args: { _po_id: string }; Returns: undefined }
+      request_opening_payment_amendment: {
+        Args: {
+          _amount: number
+          _expected_updated_at: string
+          _invoice_id: string
+          _payment_date: string
+          _payment_mode: string
+          _reason: string
+          _reference: string
+        }
+        Returns: string
+      }
       resolve_po_site_correction: {
         Args: { _correction_id: string; _resolution: string }
         Returns: string
@@ -5979,6 +6960,10 @@ export type Database = {
       }
       return_po_for_correction: {
         Args: { _po_id: string; _reason: string }
+        Returns: string
+      }
+      review_opening_payment_amendment: {
+        Args: { _decision: string; _id: string; _note: string }
         Returns: string
       }
       revise_po_draft: {
@@ -6016,6 +7001,206 @@ export type Database = {
       run_invoice_match: {
         Args: { _id: string }
         Returns: Database["public"]["Enums"]["match_status"]
+      }
+      sales_add_flat: {
+        Args: {
+          _built_up: number
+          _carpet: number
+          _floor_id: string
+          _gst?: number
+          _number: string
+          _other?: number
+          _parking?: number
+          _rate: number
+          _saleable: number
+          _type: Database["public"]["Enums"]["unit_type"]
+        }
+        Returns: string
+      }
+      sales_allowed: { Args: never; Returns: boolean }
+      sales_book_flat: {
+        Args: {
+          _booked_on?: string
+          _co_buyer?: string
+          _email?: string
+          _mobile: string
+          _name: string
+          _notes?: string
+          _price: number
+          _unit_id: string
+        }
+        Returns: string
+      }
+      sales_booking_finances: {
+        Args: { _sale_ids: string[] }
+        Returns: {
+          cancellation_reason: string
+          pending_cancel_reason: string
+          pending_cancel_request_id: string
+          refund_due: number
+          refund_paid: number
+          reported_pending: number
+          sale_id: string
+          verified_paid: number
+        }[]
+      }
+      sales_bulk_add_flats: {
+        Args: {
+          _building_id: string
+          _built_up: number
+          _carpet: number
+          _digits: number
+          _floor_ids: string[]
+          _gst?: number
+          _other?: number
+          _parking?: number
+          _per_floor: number
+          _rate: number
+          _saleable: number
+          _separator: string
+          _start_at: number
+          _type: Database["public"]["Enums"]["unit_type"]
+        }
+        Returns: number
+      }
+      sales_cancel_booking: {
+        Args: { _fee?: number; _reason: string; _sale_id: string }
+        Returns: string
+      }
+      sales_correct_erroneous_stage: {
+        Args: { _confirmation: string; _reason: string; _sale_id: string }
+        Returns: undefined
+      }
+      sales_current_milestones: {
+        Args: { _sale_id: string }
+        Returns: {
+          credited: number
+          due_on: string
+          expected: number
+          label: string
+          outstanding: number
+          sequence: number
+        }[]
+      }
+      sales_decline_cancellation: {
+        Args: { _reason: string; _request_id: string }
+        Returns: undefined
+      }
+      sales_doc_access: {
+        Args: { _path: string; _upload?: boolean }
+        Returns: boolean
+      }
+      sales_import_flat_rows: {
+        Args: { _building_id: string; _dry_run?: boolean; _rows: Json }
+        Returns: Json
+      }
+      sales_link_document: {
+        Args: {
+          _filename: string
+          _kind: string
+          _path: string
+          _sale_id: string
+        }
+        Returns: string
+      }
+      sales_manager: { Args: never; Returns: boolean }
+      sales_overview: {
+        Args: { _building?: string; _project?: string }
+        Returns: Json
+      }
+      sales_project_allowed: { Args: { _project: string }; Returns: boolean }
+      sales_project_report: {
+        Args: { _project?: string }
+        Returns: {
+          active_bookings: number
+          available: number
+          building_id: string
+          building_name: string
+          buyer_outstanding: number
+          contracted_value: number
+          flats: number
+          project_id: string
+          project_name: string
+          refund_pending: number
+          verified_collections: number
+        }[]
+      }
+      sales_record_refund: {
+        Args: {
+          _amount: number
+          _method: string
+          _notes?: string
+          _reference?: string
+          _refunded_on: string
+          _sale_id: string
+        }
+        Returns: string
+      }
+      sales_report_receipt: {
+        Args: {
+          _amount: number
+          _method: string
+          _notes?: string
+          _paid_on: string
+          _payer?: string
+          _reference?: string
+          _sale_id: string
+        }
+        Returns: string
+      }
+      sales_reprice_flat: {
+        Args: {
+          _base_rate: number
+          _floor_rise: number
+          _gst: number
+          _other: number
+          _parking: number
+          _reason: string
+          _unit_id: string
+        }
+        Returns: number
+      }
+      sales_request_cancellation: {
+        Args: { _reason: string; _sale_id: string }
+        Returns: string
+      }
+      sales_review_receipt: {
+        Args: { _approve: boolean; _note?: string; _receipt_id: string }
+        Returns: undefined
+      }
+      sales_save_buyer_details: {
+        Args: {
+          _address: string
+          _alternate: string
+          _city: string
+          _id_type: string
+          _last4: string
+          _notes: string
+          _pincode: string
+          _sale_id: string
+          _state: string
+        }
+        Returns: undefined
+      }
+      sales_save_legal_details: {
+        Args: {
+          _agreement_date: string
+          _agreement_number: string
+          _notes: string
+          _registration_date: string
+          _registration_number: string
+          _registration_office: string
+          _sale_id: string
+        }
+        Returns: undefined
+      }
+      sales_set_payment_plan: {
+        Args: { _reason: string; _rows: Json; _sale_id: string }
+        Returns: number
+      }
+      sales_set_stage: {
+        Args: { _reason?: string; _sale_id: string; _status: string }
+        Returns: undefined
       }
       save_opening_vendor_invoice: { Args: { _header: Json }; Returns: string }
       save_opening_vendor_invoice_v2: {
@@ -6095,6 +7280,10 @@ export type Database = {
         Args: { _check_only?: boolean; _id: string; _kind: string }
         Returns: undefined
       }
+      super_admin_delete_unused_grn: {
+        Args: { _grn_id: string; _reason: string }
+        Returns: undefined
+      }
       super_admin_force_delete: {
         Args: { _id: string; _kind: string }
         Returns: undefined
@@ -6155,7 +7344,6 @@ export type Database = {
         | "director"
         | "sales_manager"
         | "sales_executive"
-        | "senior_sales_executive"
         | "accounts_manager"
         | "purchase_manager"
         | "site_engineer"
@@ -6163,6 +7351,7 @@ export type Database = {
         | "accountant"
         | "store_manager"
         | "auditor"
+        | "senior_sales_executive"
       grn_disposition:
         | "pending_decision"
         | "replacement_expected"
@@ -6392,7 +7581,6 @@ export const Constants = {
         "director",
         "sales_manager",
         "sales_executive",
-        "senior_sales_executive",
         "accounts_manager",
         "purchase_manager",
         "site_engineer",
@@ -6400,6 +7588,7 @@ export const Constants = {
         "accountant",
         "store_manager",
         "auditor",
+        "senior_sales_executive",
       ],
       grn_disposition: [
         "pending_decision",
