@@ -49,8 +49,13 @@ export async function openVendorDoc(path: string, download = false) {
   if (download) {
     const a = document.createElement("a");
     const u = URL.createObjectURL(blob);
-    a.href = u; a.download = path.split("/").pop()?.replace(/^[0-9a-f-]{36}-/, "") ?? "document"; a.click();
-    setTimeout(() => URL.revokeObjectURL(u), 60_000);
+    a.href = u;
+    a.download = path.split("/").pop()?.replace(/^[0-9a-f-]{36}-/, "") ?? "document";
+    document.body.appendChild(a);
+    try { a.click(); } finally {
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(u), 1000);
+    }
     return;
   }
   const name = path.split("/").pop()?.replace(/^[0-9a-f-]{36}-/, "") ?? "document";

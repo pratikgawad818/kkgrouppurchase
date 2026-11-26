@@ -855,6 +855,13 @@
       "when": 1795457400000,
       "tag": "0121_finance_query_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1795457460000,
+      "tag": "0122_reconcile_lovable_security",
+      "breakpoints": true
     }
   ]
 }
