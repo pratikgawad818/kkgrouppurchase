@@ -1,3 +1,4 @@
+import { createDraftUpload } from "@/lib/draft-upload";
 import { invalidateFinanceKeys, FINANCE_SETTLEMENT_KEYS } from "@/lib/finance-cache";
 import { FinanceExport } from "@/components/erp/finance-export";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -237,27 +238,31 @@ function ActDialog({ id, action, onClose, onDone }: { id: string; action: "appro
   const [comment, setComment] = useState("");
   const [d, setD] = useState({ payment_date: today(), reference: "" });
   const [file, setFile] = useState<File | null>(null);
+  const me = useMe();
+  const [draftUpload] = useState(() => createDraftUpload<File>());
   const m = useMutation({
     mutationFn: async () => {
-      const proof_path = file ? await uploadVendorDoc("payments", file) : "";
+      if (file && !me.data?.profile.id) throw new Error("Sign in before attaching payment proof.");
+      const uploadScope = JSON.stringify([me.data?.profile.id, id, action]);
+      const proof_path = action === "record" && file ? await draftUpload.get(file, uploadScope, selected => uploadVendorDoc("payments", selected)) : "";
       const { error } = await supabase.rpc("payment_transition", { _id: id, _action: action, _comment: comment, _details: { ...d, proof_path } });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Done"); onDone(); onClose(); },
+    onSuccess: () => { draftUpload.clear(); toast.success("Done"); onDone(); onClose(); },
     onError: (e) => toast.error(errMsg(e)),
   });
   const title = action === "approve" ? "Approve payment" : action === "record" ? "Record payment" : "Cancel payment";
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && !m.isPending && onClose()}>
       <DialogContent>
         <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{action === "record" ? "Recording reduces the vendor's outstanding and the bank balance." : "Recorded in the payment history."}</DialogDescription></DialogHeader>
         {action === "record" && <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Actual payment date"><Input type="date" value={d.payment_date} onChange={(e) => setD({ ...d, payment_date: e.target.value })} /></Field>
           <Field label="UTR / cheque / reference"><Input value={d.reference} onChange={(e) => setD({ ...d, reference: e.target.value })} /></Field>
-          <Field label="Payment proof (optional)" className="sm:col-span-2"><Input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
+          <Field label="Payment proof (optional)" className="sm:col-span-2"><Input type="file" disabled={m.isPending} accept="application/pdf,image/*" onChange={(e) => { draftUpload.clear(); setFile(e.target.files?.[0] ?? null); }} /></Field>
         </div>}
         <Textarea rows={2} placeholder={action === "cancel" ? "Reason (required)" : "Comment (optional)"} value={comment} onChange={(e) => setComment(e.target.value)} />
-        <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={m.isPending || (action === "cancel" && !comment.trim()) || (action === "record" && !d.reference.trim())} onClick={() => m.mutate()}>Confirm</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" disabled={m.isPending} onClick={onClose}>Close</Button><Button disabled={m.isPending || (action === "cancel" && !comment.trim()) || (action === "record" && !d.reference.trim())} onClick={() => m.mutate()}>{m.isPending ? "Saving payment…" : "Confirm"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
