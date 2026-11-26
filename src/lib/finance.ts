@@ -43,15 +43,23 @@ export async function uploadVendorDoc(folder: "invoices" | "payments", file: Fil
   return path;
 }
 export async function openVendorDoc(path: string, download = false) {
-  // Short-lived link: it is opened immediately, so revoked staff can't reuse it later.
-  const { data, error } = await supabase.storage.from("vendor-documents").createSignedUrl(path, 30, download ? { download: true } : undefined);
+  // Authorize each retrieval against storage RLS; do not issue a reusable bearer URL.
+  const { data: blob, error } = await supabase.storage.from("vendor-documents").download(path);
   if (error) throw error;
-  if (download) { window.open(data.signedUrl, "_blank", "noopener"); return; }
-  // Fetch into memory right away so the short-lived link can expire while the viewer stays open.
-  const res = await fetch(data.signedUrl);
-  if (!res.ok) throw new Error("Could not load the file");
-  const blob = await res.blob();
+  if (!blob) throw new Error("Could not load the file");
   const name = path.split("/").pop()?.replace(/^[0-9a-f-]{36}-/, "") ?? "document";
+  if (download) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    try { link.click(); } finally {
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    return;
+  }
   let type = blob.type;
   if (!type || type === "application/octet-stream") {
     const ext = name.split(".").pop()?.toLowerCase();
