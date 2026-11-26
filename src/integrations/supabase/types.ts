@@ -3861,22 +3861,22 @@ export type Database = {
           company_id: string
           created_at: string
           estimated_total: number
+          first_notice_days: number | null
+          first_notice_reason: string | null
+          first_notice_required_by: string | null
+          first_notice_submitted_on: string | null
           floor_id: string | null
           id: string
           pr_number: string
           priority: Database["public"]["Enums"]["pr_priority"]
           project_id: string
           purpose: string | null
-          first_notice_days: number | null
-          first_notice_required_by: string | null
-          first_notice_submitted_on: string | null
-          first_notice_reason: string | null
-          short_notice_reason: string | null
           remarks: string | null
           request_date: string
           request_type: Database["public"]["Enums"]["pr_request_type"]
           requested_by: string
           required_by: string
+          short_notice_reason: string | null
           status: Database["public"]["Enums"]["pr_status"]
           submitted_at: string | null
           submitted_by: string | null
@@ -3890,22 +3890,22 @@ export type Database = {
           company_id: string
           created_at?: string
           estimated_total?: number
+          first_notice_days?: number | null
+          first_notice_reason?: string | null
+          first_notice_required_by?: string | null
+          first_notice_submitted_on?: string | null
           floor_id?: string | null
           id?: string
           pr_number: string
           priority?: Database["public"]["Enums"]["pr_priority"]
           project_id: string
           purpose?: string | null
-          first_notice_days?: number | null
-          first_notice_required_by?: string | null
-          first_notice_submitted_on?: string | null
-          first_notice_reason?: string | null
-          short_notice_reason?: string | null
           remarks?: string | null
           request_date?: string
           request_type?: Database["public"]["Enums"]["pr_request_type"]
           requested_by: string
           required_by: string
+          short_notice_reason?: string | null
           status?: Database["public"]["Enums"]["pr_status"]
           submitted_at?: string | null
           submitted_by?: string | null
@@ -3919,22 +3919,22 @@ export type Database = {
           company_id?: string
           created_at?: string
           estimated_total?: number
+          first_notice_days?: number | null
+          first_notice_reason?: string | null
+          first_notice_required_by?: string | null
+          first_notice_submitted_on?: string | null
           floor_id?: string | null
           id?: string
           pr_number?: string
           priority?: Database["public"]["Enums"]["pr_priority"]
           project_id?: string
           purpose?: string | null
-          first_notice_days?: number | null
-          first_notice_required_by?: string | null
-          first_notice_submitted_on?: string | null
-          first_notice_reason?: string | null
-          short_notice_reason?: string | null
           remarks?: string | null
           request_date?: string
           request_type?: Database["public"]["Enums"]["pr_request_type"]
           requested_by?: string
           required_by?: string
+          short_notice_reason?: string | null
           status?: Database["public"]["Enums"]["pr_status"]
           submitted_at?: string | null
           submitted_by?: string | null
