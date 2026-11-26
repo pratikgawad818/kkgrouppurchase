@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ArrowRight, Boxes, ChartColumnIncreasing, IndianRupee, RefreshCcw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
@@ -13,9 +13,11 @@ import { Pager } from "@/components/erp/pager";
 import { Button } from "@/components/ui/button";
 import { selectCls } from "@/lib/po";
 import { cn } from "@/lib/utils";
+import { canAccessPage } from "@/lib/page-access";
+const BudgetPanel = lazy(() => import("@/components/erp/project-cost-control-panel").then(m => ({default:m.ProjectCostControl})));
 
 export const Route = createFileRoute("/_authenticated/_shell/management")({
-  head: () => ({ meta: [{ title: "Management Overview — KK GROUP ERP" }, { name: "description", content: "Read-only material locations and financial overview." }] }),
+  head: () => ({ meta: [{ title: "Project Overview — KK GROUP ERP" }, { name: "description", content: "Read-only material locations and financial overview." }] }),
   component: ManagementOverview,
 });
 
@@ -27,13 +29,18 @@ function ManagementOverview() {
   const permissions = me.data?.permissions;
   const allowed = !!permissions?.has("inventory.view") && !!permissions?.has("payable.view") && !!permissions?.has("payment.view");
   const historicalAllowed = !!permissions?.has("vendor_invoice.view") && !!permissions?.has("materials.view");
+  const access = {roles: me.data?.roles ?? [], permissions: permissions ?? new Set<string>()};
+  const canBudget = canAccessPage("/reports/project-cost-control", access);
+  const [tab, setTab] = useState<"overview"|"stock"|"budget">("overview");
+  const activeTab = tab === "budget" && !canBudget ? "overview" : tab;
+  const [projectSearch, setProjectSearch] = useState("");
   const [search, setSearch] = useState("");
   const [warehouse, setWarehouse] = useState("");
   const [page, setPage] = useState(0);
 
   const q = useQuery({
     queryKey: ["management-overview", companyId, me.data?.profile.id, historicalAllowed],
-    enabled: !!companyId && allowed,
+    enabled: !!companyId && allowed && activeTab !== "budget",
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId) throw new Error("Choose a company before viewing its management report.");
@@ -105,17 +112,22 @@ function ManagementOverview() {
   })).map(p=>({...p,total:p.consumed+p.historical.approved+p.historical.pending})).sort((a,b)=>b.total-a.total);
 
   return <div className="pb-16">
-    <PageHeader title="Management Overview"
-      subtitle="Your construction materials, their current locations and separately tracked financial figures."
-      actions={<Button size="sm" variant="outline" disabled={q.isFetching} onClick={() => q.refetch()}>
+    <PageHeader title="Project Overview"
+      subtitle="One reporting workspace for project costs, inventory and budget commitments."
+      actions={activeTab !== "budget" && <Button size="sm" variant="outline" disabled={q.isFetching} onClick={() => q.refetch()}>
         <RefreshCcw className="mr-2 h-4 w-4" />Refresh</Button>} />
 
-    {q.isLoading ? <Loading /> : q.error ? (
+    <div className="mb-5 flex flex-wrap gap-2 border-b pb-3" role="group" aria-label="Project report views">
+      {([{key:"overview",label:"Project summary"},{key:"stock",label:"Stock locations"},...(canBudget?[{key:"budget",label:"Budget & commitments"}]:[])] as const).map(item=><Button key={item.key} type="button" variant={activeTab===item.key?"default":"outline"} aria-pressed={activeTab===item.key} onClick={()=>setTab(item.key as "overview"|"stock"|"budget")}>{item.label}</Button>)}
+      {canAccessPage("/projects",access)&&<Link to="/projects" className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Project setup <ArrowRight className="h-4 w-4"/></Link>}
+    </div>
+    {activeTab==="budget" && canBudget ? <Suspense fallback={<Loading/>}><BudgetPanel embedded/></Suspense> : q.isLoading ? <Loading /> : q.error ? (
       <div role="alert" className="rounded-xl border border-destructive/40 p-5 text-sm text-destructive">
         Management totals cannot be verified. Partial results are not displayed. {errMsg(q.error)}
         <Button size="sm" variant="outline" className="ml-3" onClick={() => q.refetch()}>Retry</Button>
       </div>
     ) : data ? <>
+      {activeTab==="overview" ? <>
       <p className="mb-4 text-xs text-muted-foreground">Read-only report · Figures reflect posted records at last refresh; they are not a single accounting snapshot.</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -141,6 +153,36 @@ function ManagementOverview() {
         <div><p className="text-xs text-muted-foreground">Historical materials pending review</p><strong>{inr(data.summary.historicalUsage.pending)}</strong></div>
         <div><p className="text-xs text-muted-foreground">Other old bill costs (excluded)</p><strong>{inr(data.summary.historicalUsage.services+data.summary.historicalUsage.unclassified)}</strong></div>
       </div> : <p className="mt-3 text-xs text-muted-foreground">Historical invoice detail is not included because your role lacks invoice or material viewing permission.</p>}
+      <section className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Project-wise material usage</h2>
+          {canBudget&&<Button size="sm" variant="ghost" onClick={()=>setTab("budget")}>Budget & commitments <ArrowRight className="h-4 w-4"/></Button>}
+        </div>
+        <div className="mb-3 max-w-md"><SearchBox value={projectSearch} onChange={setProjectSearch} placeholder="Search project name or code"/></div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {projectRows.filter(p=>matchesRecordSearch([p.name,p.code],projectSearch)).length === 0 && <p className="text-sm text-muted-foreground">No matching projects.</p>}
+          {projectRows.filter(p=>matchesRecordSearch([p.name,p.code],projectSearch)).map(project => <div key={project.id} className="rounded-xl border bg-card p-4 shadow-card">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0"><div className="truncate font-semibold">{project.name}</div><div className="text-xs text-muted-foreground">{project.code}</div></div>
+              <div className="text-right"><div className="text-[11px] text-muted-foreground">{historicalAllowed?"Recorded material cost":"Material consumed"}</div><div className="font-semibold tabular-nums">{inr(project.total)}</div></div>
+            </div>
+            {historicalAllowed && <div className="mt-3 space-y-1 border-t pt-3 text-xs">
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Stock issues net of returns</span><span className="tabular-nums">{inr(project.consumed)}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Approved old material bills</span><span className="tabular-nums">{inr(project.historical.approved)}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Old material bills pending review</span><span className="tabular-nums">{inr(project.historical.pending)}</span></div>
+              {(project.historical.services!==0||project.historical.unclassified!==0)&&<div className="flex justify-between gap-2 text-muted-foreground"><span>Services / unclassified (excluded)</span><span className="tabular-nums">{inr(project.historical.services+project.historical.unclassified)}</span></div>}
+            </div>}
+            <div className="mt-2 text-xs text-muted-foreground">Project budget: {Number(project.budget) > 0 ? inr(project.budget) : "Not set"}</div>
+          </div>)}
+        </div>
+      </section>
+      <div className="mt-6 rounded-lg border p-4 text-sm text-muted-foreground">
+        Approved supplier bills (lifetime): <strong className="text-foreground">{inr(data.summary.approvedSupplierBills)}</strong>.
+        View <Link to="/finance/payables" className="font-semibold text-primary underline">Payables</Link> and
+        <Link to="/finance/payments" className="ml-1 font-semibold text-primary underline">Payments</Link> for document details.
+      </div>
+      </> : <>
+      <div className="mb-3 rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Stock on hand value</p><p className="text-xl font-semibold tabular-nums">{inr(data.summary.stockValue)}</p></div>
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Where is each material?</h2>
@@ -174,34 +216,7 @@ function ManagementOverview() {
         <Pager page={filteredPage} total={filtered.length} size={PAGE_SIZE} onPage={setPage} />
       </section>
 
-      <section className="mt-8">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Project-wise material usage</h2>
-          <Link to="/reports/project-cost-control" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-            Cost control <ArrowRight className="h-4 w-4" /></Link>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          {projectRows.length === 0 && <p className="text-sm text-muted-foreground">No projects have been entered.</p>}
-          {projectRows.map(project => <div key={project.id} className="rounded-xl border bg-card p-4 shadow-card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0"><div className="truncate font-semibold">{project.name}</div><div className="text-xs text-muted-foreground">{project.code}</div></div>
-              <div className="text-right"><div className="text-[11px] text-muted-foreground">{historicalAllowed?"Recorded material cost":"Material consumed"}</div><div className="font-semibold tabular-nums">{inr(project.total)}</div></div>
-            </div>
-            {historicalAllowed && <div className="mt-3 space-y-1 border-t pt-3 text-xs">
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Stock issues net of returns</span><span className="tabular-nums">{inr(project.consumed)}</span></div>
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Approved old material bills</span><span className="tabular-nums">{inr(project.historical.approved)}</span></div>
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Old material bills pending review</span><span className="tabular-nums">{inr(project.historical.pending)}</span></div>
-              {(project.historical.services!==0||project.historical.unclassified!==0)&&<div className="flex justify-between gap-2 text-muted-foreground"><span>Services / unclassified (excluded)</span><span className="tabular-nums">{inr(project.historical.services+project.historical.unclassified)}</span></div>}
-            </div>}
-            <div className="mt-2 text-xs text-muted-foreground">Project budget: {Number(project.budget) > 0 ? inr(project.budget) : "Not set"}</div>
-          </div>)}
-        </div>
-      </section>
-      <div className="mt-6 rounded-lg border p-4 text-sm text-muted-foreground">
-        Approved supplier bills (lifetime): <strong className="text-foreground">{inr(data.summary.approvedSupplierBills)}</strong>.
-        View <Link to="/finance/payables" className="font-semibold text-primary underline">Payables</Link> and
-        <Link to="/finance/payments" className="ml-1 font-semibold text-primary underline">Payments</Link> for document details.
-      </div>
+      </>}
     </> : null}
   </div>;
 }
