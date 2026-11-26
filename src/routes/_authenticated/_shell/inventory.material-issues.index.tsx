@@ -113,7 +113,7 @@ function MaterialIssues() {
     onSuccess: id => {
       toast.success("Material issue posted to the stock ledger");
       ["material-issues","material-issue","project-material-consumption","stock","stock-ledger","material-issue-stock"].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
-      setShow(false); setAmounts({}); setIssuedTo(""); setPurpose(""); setWarehouseId("");
+      setShow(false); setAmounts({}); setIssuedTo(""); setPurpose(""); setWarehouseId(""); setMaterialPage(0); setFindMaterial("");
       navigate({ to: "/inventory/material-issues/$id", params: { id } });
     },
     onError: error => toast.error(errMsg(error)),
@@ -150,24 +150,24 @@ function MaterialIssues() {
         <DialogHeader><DialogTitle>Issue materials to site</DialogTitle>
           <DialogDescription>This is an immediate audited stock deduction, not a draft. An incorrect issue must be corrected by an authorised return, not by editing the ledger.</DialogDescription>
         </DialogHeader>
-        {context.isLoading ? <Loading /> : context.error ? <p className="text-sm text-destructive">{errMsg(context.error)}</p> : <>
+        {context.isLoading ? <Loading /> : context.error ? <p role="alert" className="text-sm text-destructive">{errMsg(context.error)} <button type="button" className="underline" onClick={()=>void context.refetch()}>Retry</button></p> : <>
           <div className="grid gap-3 sm:grid-cols-2">
             <div><label htmlFor="mi-project" className="text-sm font-medium">Project *</label>
-              <select id="mi-project" className={selectCls} value={projectId} onChange={e => {setProjectId(e.target.value);setBuildingId("");setWarehouseId("");setAmounts({});setMaterialPage(0);setFindMaterial("");}}>
+              <select disabled={create.isPending} id="mi-project" className={selectCls} value={projectId} onChange={e => {setProjectId(e.target.value);setBuildingId("");setWarehouseId("");setAmounts({});setMaterialPage(0);setFindMaterial("");}}>
                 <option value="">Choose project</option>{context.data?.projects.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select></div>
             <div><label htmlFor="mi-building" className="text-sm font-medium">Building / wing</label>
-              <select id="mi-building" className={selectCls} value={buildingId} onChange={e => setBuildingId(e.target.value)}>
+              <select disabled={create.isPending} id="mi-building" className={selectCls} value={buildingId} onChange={e => setBuildingId(e.target.value)}>
                 <option value="">General project work</option>{context.data?.buildings.filter(x=>x.project_id===projectId).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
               </select></div>
             <div className="sm:col-span-2"><label htmlFor="mi-store" className="text-sm font-medium">Source store *</label>
-              <select id="mi-store" className={selectCls} value={warehouseId} onChange={e => {setWarehouseId(e.target.value);setAmounts({});setMaterialPage(0);setFindMaterial("");}}>
+              <select disabled={create.isPending} id="mi-store" className={selectCls} value={warehouseId} onChange={e => {setWarehouseId(e.target.value);setAmounts({});setMaterialPage(0);setFindMaterial("");}}>
                 <option value="">Choose store</option>{warehouses.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select></div>
             <div><label htmlFor="mi-to" className="text-sm font-medium">Materials handed to *</label>
-              <Input id="mi-to" maxLength={120} placeholder="Site engineer / contractor name" value={issuedTo} onChange={e=>setIssuedTo(e.target.value)} /></div>
+              <Input disabled={create.isPending} id="mi-to" maxLength={120} placeholder="Site engineer / contractor name" value={issuedTo} onChange={e=>setIssuedTo(e.target.value)} /></div>
             <div><label htmlFor="mi-purpose" className="text-sm font-medium">Work / usage purpose *</label>
-              <Input id="mi-purpose" maxLength={500} placeholder="e.g. Tower A, slab casting" value={purpose} onChange={e=>setPurpose(e.target.value)} /></div>
+              <Input disabled={create.isPending} id="mi-purpose" maxLength={500} placeholder="e.g. Tower A, slab casting" value={purpose} onChange={e=>setPurpose(e.target.value)} /></div>
           </div>
           {warehouseId && <div className="mt-3">
             <Input aria-label="Filter store materials" className="mb-2" placeholder="Search materials in selected store" value={findMaterial} onChange={e=>{setFindMaterial(e.target.value);setMaterialPage(0);}} />
@@ -175,14 +175,14 @@ function MaterialIssues() {
             {warehouseStock.error && <p role="alert" className="mb-2 text-sm text-destructive">{errMsg(warehouseStock.error)} <button type="button" className="underline" onClick={()=>void warehouseStock.refetch()}>Retry</button></p>}
             <p className="mb-2 text-xs text-muted-foreground">{selectedCount} material quantities entered across all pages.</p>
             <div className="doc-table max-h-72 overflow-y-auto rounded-md border max-sm:max-h-[60vh]">
-              {warehouseStock.isLoading ? <Loading /> : warehouseStock.error ? null : !materials.length ? <p className="p-4 text-sm text-muted-foreground">No available stock found in this store.</p> :
+              {warehouseStock.isLoading ? <Loading /> : warehouseStock.error ? null : !materials.length ? <p className="p-4 text-sm text-muted-foreground">{findMaterial.trim() ? "No matching materials found." : "No available stock found in this store."}</p> :
               <table className="w-full text-sm">
                 <thead className="sticky top-0 border-b bg-muted/90 text-xs"><tr><th className="p-2 text-left">Material</th><th className="p-2 text-right">Available</th><th className="p-2 text-right">Avg. cost</th><th className="p-2 text-right">Issue qty</th></tr></thead>
                 <tbody>{materials.slice(visibleMaterialPage * PAGE,(visibleMaterialPage+1)*PAGE).map(x=><tr key={x.material_id} className="border-b last:border-0">
                   <td className="p-2">{x.items?.name}</td>
                   <td className="p-2 text-right tabular-nums">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
                   <td className="p-2 text-right tabular-nums">{inr(x.weighted_avg_cost)}</td>
-                  <td className="p-2"><Input inputMode="decimal" type="number" min={0} step="0.001" max={x.quantity_on_hand}
+                  <td className="p-2"><Input disabled={create.isPending || warehouseStock.isFetching} inputMode="decimal" type="number" min={0} step="0.001" max={x.quantity_on_hand}
                     className="ml-auto h-9 w-28 text-right" aria-label={`Issue quantity for ${x.items?.name}`}
                     value={amounts[x.material_id] ?? ""} onChange={e=>setAmounts({...amounts,[x.material_id]:e.target.value})} placeholder="0" /></td>
                 </tr>)}</tbody></table>}
