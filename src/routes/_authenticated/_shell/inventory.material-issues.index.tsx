@@ -14,7 +14,7 @@ import { errMsg, fmtDate, inr, num } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { PAGE } from "@/lib/fy";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
+import { prepareRecordSearch, matchesRecordSearch, visibleSearchPage } from "@/lib/erp-search";
 
 export const Route = createFileRoute("/_authenticated/_shell/inventory/material-issues/")({
   component: MaterialIssues,
@@ -35,6 +35,7 @@ function MaterialIssues() {
   const [filter, setFilter] = useState("");
   const [findMaterial, setFindMaterial] = useState("");
   const [page, setPage] = useState(0);
+  const [materialPage, setMaterialPage] = useState(0);
 
   const register = useQuery({
     queryKey: ["material-issues"],
@@ -50,24 +51,36 @@ function MaterialIssues() {
     queryKey: ["material-issue-form-context"],
     enabled: show,
     queryFn: async () => {
-      const [projects, buildings, warehouses, stock] = await Promise.all([
-        supabase.from("projects").select("id,name,company_id").eq("record_status", "active").order("name"),
-        supabase.from("buildings").select("id,name,project_id").order("name").limit(3000),
-        supabase.from("warehouses").select("id,name,company_id,project_id").eq("status", "active").order("name").limit(1000),
-        supabase.from("warehouse_stock").select("warehouse_id,material_id,quantity_on_hand,weighted_avg_cost,items(name,code,units_of_measure(code))").gt("quantity_on_hand", 0).limit(3000),
+      const [projects, buildings, warehouses] = await Promise.all([
+        loadCompleteRows(async (start,end) => await supabase.from("projects").select("id,name,company_id",{count:"exact"}).eq("record_status", "active").order("name").order("id").range(start,end)),
+        loadCompleteRows(async (start,end) => await supabase.from("buildings").select("id,name,project_id",{count:"exact"}).order("name").order("id").range(start,end)),
+        loadCompleteRows(async (start,end) => await supabase.from("warehouses").select("id,name,company_id,project_id",{count:"exact"}).eq("status", "active").order("name").order("id").range(start,end)),
       ]);
-      for (const result of [projects,buildings,warehouses,stock]) if (result.error) throw result.error;
-      return { projects: projects.data ?? [], buildings: buildings.data ?? [], warehouses: warehouses.data ?? [], stock: stock.data ?? [] };
+      return { projects, buildings, warehouses };
     },
   });
   const project = context.data?.projects.find(x => x.id === projectId);
   const warehouses = (context.data?.warehouses ?? []).filter(x =>
     project && x.company_id === project.company_id && (!x.project_id || x.project_id === projectId));
-  const stock = (context.data?.stock ?? []).filter(x => x.warehouse_id === warehouseId);
-  const materials = stock.filter(x => {
-    const f = findMaterial.toLowerCase().trim();
-    return !f || x.items?.name.toLowerCase().includes(f) || x.items?.code.toLowerCase().includes(f);
-  }).slice(0, 100);
+  const eligibleWarehouse = warehouses.some(x => x.id === warehouseId);
+  const warehouseStock = useQuery({
+    queryKey: ["material-issue-stock", warehouseId],
+    enabled: show && eligibleWarehouse && context.isSuccess && !context.isFetching,
+    queryFn: async () => loadCompleteRows(async (start, end) => {
+      // warehouse_stock has a composite key; material_id is unique within this warehouse.
+      const result = await supabase.from("warehouse_stock")
+        .select("warehouse_id,material_id,quantity_on_hand,weighted_avg_cost,items(name,code,units_of_measure(code))", { count: "exact" })
+        .eq("warehouse_id", warehouseId).gt("quantity_on_hand", 0)
+        .order("material_id").range(start,end);
+      return { ...result, data: result.data?.map(row => ({...row,id:row.material_id})) ?? null };
+    }),
+    staleTime: 0,
+  });
+  const stock = warehouseStock.data ?? [];
+  const prepared = prepareRecordSearch(findMaterial);
+  const materials = stock.filter(x => matchesRecordSearch([x.items?.name,x.items?.code], prepared));
+  const visibleMaterialPage = visibleSearchPage(materialPage, materials.length, PAGE);
+  const selectedCount = Object.values(amounts).filter(value => value.trim() !== "").length;
   const matched = (register.data ?? []).filter(x => matchesRecordSearch(
     [x.issue_number,x.issued_to,x.purpose,x.projects?.name,x.buildings?.name,x.warehouses?.name],filter
   ));
@@ -75,6 +88,9 @@ function MaterialIssues() {
   const create = useMutation({
     mutationFn: async () => {
       if (!projectId || !warehouseId) throw new Error("Choose a project and source store");
+      if (!context.isSuccess || context.isFetching || !eligibleWarehouse || !warehouseStock.isSuccess || warehouseStock.isFetching) throw new Error("Verify the selected store and its available stock before posting.");
+      if (buildingId && !context.data.buildings.some(x => x.id === buildingId && x.project_id === projectId)) throw new Error("Choose a building belonging to the selected project.");
+      if (Object.entries(amounts).some(([id,value]) => value.trim() && !stock.some(x => x.material_id === id))) throw new Error("Selected material is no longer available. Review the quantities before posting.");
       const lines = stock.flatMap(x => {
         const raw = amounts[x.material_id];
         if (!raw || raw.trim() === "") return [];
@@ -96,7 +112,7 @@ function MaterialIssues() {
     },
     onSuccess: id => {
       toast.success("Material issue posted to the stock ledger");
-      ["material-issues","material-issue","project-material-consumption","stock","stock-ledger"].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
+      ["material-issues","material-issue","project-material-consumption","stock","stock-ledger","material-issue-stock"].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
       setShow(false); setAmounts({}); setIssuedTo(""); setPurpose(""); setWarehouseId("");
       navigate({ to: "/inventory/material-issues/$id", params: { id } });
     },
@@ -137,7 +153,7 @@ function MaterialIssues() {
         {context.isLoading ? <Loading /> : context.error ? <p className="text-sm text-destructive">{errMsg(context.error)}</p> : <>
           <div className="grid gap-3 sm:grid-cols-2">
             <div><label htmlFor="mi-project" className="text-sm font-medium">Project *</label>
-              <select id="mi-project" className={selectCls} value={projectId} onChange={e => {setProjectId(e.target.value);setBuildingId("");setWarehouseId("");setAmounts({});}}>
+              <select id="mi-project" className={selectCls} value={projectId} onChange={e => {setProjectId(e.target.value);setBuildingId("");setWarehouseId("");setAmounts({});setMaterialPage(0);setFindMaterial("");}}>
                 <option value="">Choose project</option>{context.data?.projects.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select></div>
             <div><label htmlFor="mi-building" className="text-sm font-medium">Building / wing</label>
@@ -145,7 +161,7 @@ function MaterialIssues() {
                 <option value="">General project work</option>{context.data?.buildings.filter(x=>x.project_id===projectId).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
               </select></div>
             <div className="sm:col-span-2"><label htmlFor="mi-store" className="text-sm font-medium">Source store *</label>
-              <select id="mi-store" className={selectCls} value={warehouseId} onChange={e => {setWarehouseId(e.target.value);setAmounts({});}}>
+              <select id="mi-store" className={selectCls} value={warehouseId} onChange={e => {setWarehouseId(e.target.value);setAmounts({});setMaterialPage(0);setFindMaterial("");}}>
                 <option value="">Choose store</option>{warehouses.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select></div>
             <div><label htmlFor="mi-to" className="text-sm font-medium">Materials handed to *</label>
@@ -154,12 +170,15 @@ function MaterialIssues() {
               <Input id="mi-purpose" maxLength={500} placeholder="e.g. Tower A, slab casting" value={purpose} onChange={e=>setPurpose(e.target.value)} /></div>
           </div>
           {warehouseId && <div className="mt-3">
-            <Input aria-label="Filter store materials" className="mb-2" placeholder="Search materials in selected store" value={findMaterial} onChange={e=>setFindMaterial(e.target.value)} />
+            <Input aria-label="Filter store materials" className="mb-2" placeholder="Search materials in selected store" value={findMaterial} onChange={e=>{setFindMaterial(e.target.value);setMaterialPage(0);}} />
+            {warehouseStock.isFetching && <p role="status" className="mb-2 text-xs text-muted-foreground">Verifying available stock…</p>}
+            {warehouseStock.error && <p role="alert" className="mb-2 text-sm text-destructive">{errMsg(warehouseStock.error)} <button type="button" className="underline" onClick={()=>void warehouseStock.refetch()}>Retry</button></p>}
+            <p className="mb-2 text-xs text-muted-foreground">{selectedCount} material quantities entered across all pages.</p>
             <div className="doc-table max-h-72 overflow-y-auto rounded-md border max-sm:max-h-[60vh]">
-              {!materials.length ? <p className="p-4 text-sm text-muted-foreground">No available stock found in this store.</p> :
+              {warehouseStock.isLoading ? <Loading /> : warehouseStock.error ? null : !materials.length ? <p className="p-4 text-sm text-muted-foreground">No available stock found in this store.</p> :
               <table className="w-full text-sm">
                 <thead className="sticky top-0 border-b bg-muted/90 text-xs"><tr><th className="p-2 text-left">Material</th><th className="p-2 text-right">Available</th><th className="p-2 text-right">Avg. cost</th><th className="p-2 text-right">Issue qty</th></tr></thead>
-                <tbody>{materials.map(x=><tr key={x.material_id} className="border-b last:border-0">
+                <tbody>{materials.slice(visibleMaterialPage * PAGE,(visibleMaterialPage+1)*PAGE).map(x=><tr key={x.material_id} className="border-b last:border-0">
                   <td className="p-2">{x.items?.name}</td>
                   <td className="p-2 text-right tabular-nums">{num(x.quantity_on_hand)} {x.items?.units_of_measure?.code}</td>
                   <td className="p-2 text-right tabular-nums">{inr(x.weighted_avg_cost)}</td>
@@ -168,11 +187,12 @@ function MaterialIssues() {
                     value={amounts[x.material_id] ?? ""} onChange={e=>setAmounts({...amounts,[x.material_id]:e.target.value})} placeholder="0" /></td>
                 </tr>)}</tbody></table>}
             </div>
+            {warehouseStock.isSuccess && <Pager page={visibleMaterialPage} total={materials.length} size={PAGE} onPage={setMaterialPage} />}
           </div>}
           <p className="mt-2 text-xs text-muted-foreground">Unit costs use the store's weighted average at posting time. Source store, project and building are validated again by the database.</p>
         </>}
         <DialogFooter><Button variant="outline" disabled={create.isPending} onClick={()=>setShow(false)}>Cancel</Button>
-          <Button disabled={create.isPending || context.isLoading || !warehouseId} onClick={()=> {
+          <Button disabled={create.isPending || !context.isSuccess || context.isFetching || !eligibleWarehouse || !warehouseStock.isSuccess || warehouseStock.isFetching || !warehouseId} onClick={()=> {
             if (window.confirm("Post this material issue and reduce warehouse stock? This cannot be edited afterwards.")) create.mutate();
           }}>Post material issue</Button>
         </DialogFooter>
