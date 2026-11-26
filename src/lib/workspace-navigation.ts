@@ -42,7 +42,7 @@ export const WORKSPACE_NAV: WorkspaceNavGroup[] = [
       { to: "/finance/payables", label: "Accounts payable" },
       { to: "/finance/vendor-ledger", label: "Vendor ledger" },
       { to: "/finance/small-expenses", label: "Small expenses" },
-      { to: "/reports/project-cost-control", label: "Project cost control" },
+      { to: "/reports/project-cost-control", label: "Budget & commitments" },
     ],
   },
   {
@@ -62,9 +62,9 @@ export const WORKSPACE_NAV: WorkspaceNavGroup[] = [
     key: "projects",
     label: "Projects",
     items: [
-      { to: "/projects", label: "Projects" },
-      { to: "/buildings", label: "Buildings" },
-      { to: "/management", label: "Management overview" },
+      { to: "/management", label: "Project overview" },
+      { to: "/projects", label: "Project setup" },
+      { to: "/buildings", label: "Building setup" },
     ],
   },
   {
@@ -87,14 +87,15 @@ export function workspaceNavigation(access: PageAccess): WorkspaceNavGroup[] {
     access.roles.length === 1 && access.roles[0] === "auditor"
       ? WORKSPACE_NAV.map((group) =>
           group.key === "home"
-            ? { ...group, items: [{ to: "/management", label: "Management overview" }] }
+            ? { ...group, items: [{ to: "/management", label: "Project overview" }] }
             : { ...group, items: group.items.filter((item) => item.to !== "/management") },
         )
       : WORKSPACE_NAV;
+  const unified = canAccessPage("/management", access) && canAccessPage("/reports/project-cost-control", access);
   return nav
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => canAccessPage(item.to, access)),
+      items: group.items.filter((item) => canAccessPage(item.to, access) && (!unified || item.to !== "/reports/project-cost-control")),
     }))
     .filter((group) => group.items.length > 0);
 }
