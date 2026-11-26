@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Building2, CreditCard, Home, Plus, Wallet, ListFilter, Layers3, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,11 +104,16 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
     if (filter.status) query=query.eq("status",filter.status);
     if (filter.search.trim()) {
       const term=filter.search.trim().replace(/[,().%*\\:"']/g," ").replace(/\s+/g," ").slice(0,80);
-      const units=await db.from("units").select("id",{count:"exact"})
-        .eq("record_status","active").ilike("unit_number","%"+term+"%")
-        .order("id").limit(500);
+      if (!term.trim()) throw new Error("Enter a buyer, booking or flat number to search.");
+      let candidates=db.from("units").select("id",{count:"exact"})
+        .eq("record_status","active").ilike("unit_number","%"+term+"%");
+      if(filter.project)candidates=candidates.eq("project_id",filter.project);
+      if(filter.building)candidates=candidates.eq("building_id",filter.building);
+      if(filter.floor)candidates=candidates.eq("floor_id",filter.floor);
+      const units=await candidates.order("id").limit(500);
       if (units.error) throw units.error;
-      if ((units.count??0)>500) throw new Error("Too many matching flats. Search a longer flat number.");
+      if (units.count>500) throw new Error("Too many matching flats. Select a project/building or search a longer flat number.");
+      if (!Number.isSafeInteger(units.count) || units.count<0 || !Array.isArray(units.data) || units.data.length!==units.count) throw new Error("Flat search could not be verified. Retry.");
       const ids=(units.data??[]).map((u:{id:string})=>u.id);
       query=query.or([
         "buyer_name.ilike.%"+term+"%",
@@ -128,11 +133,16 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
     if (filter.status) query=query.eq("status",filter.status);
     if (filter.search.trim()) {
       const term=filter.search.trim().replace(/[,().%*\\:"']/g," ").replace(/\s+/g," ").slice(0,80);
-      const sales=await db.from("property_sales").select("id",{count:"exact"})
-        .or("buyer_name.ilike.%"+term+"%,buyer_mobile.ilike.%"+term+"%,sale_number.ilike.%"+term+"%")
-        .order("id").limit(500);
+      if (!term.trim()) throw new Error("Enter a buyer, booking or reference to search.");
+      let candidates=db.from("property_sales").select("id,units!inner(building_id,floor_id)",{count:"exact"})
+        .or("buyer_name.ilike.%"+term+"%,buyer_mobile.ilike.%"+term+"%,sale_number.ilike.%"+term+"%");
+      if(filter.project)candidates=candidates.eq("project_id",filter.project);
+      if(filter.building)candidates=candidates.eq("units.building_id",filter.building);
+      if(filter.floor)candidates=candidates.eq("units.floor_id",filter.floor);
+      const sales=await candidates.order("id").limit(500);
       if (sales.error) throw sales.error;
-      if ((sales.count??0)>500) throw new Error("Too many matching buyers. Search a longer name or booking number.");
+      if (sales.count>500) throw new Error("Too many matching buyers. Select a project/building or search a longer name or booking number.");
+      if (!Number.isSafeInteger(sales.count) || sales.count<0 || !Array.isArray(sales.data) || sales.data.length!==sales.count) throw new Error("Buyer search could not be verified. Retry.");
       const ids=(sales.data??[]).map((u:{id:string})=>u.id);
       query=query.or([
         "reference.ilike.%"+term+"%",
@@ -143,7 +153,8 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
   }
   const result=await query.range(filter.page*PAGE_SIZE,filter.page*PAGE_SIZE+PAGE_SIZE-1);
   if (result.error) throw result.error;
-  return {rows:(result.data ?? []) as T[],count:result.count ?? 0};
+  if (!Number.isSafeInteger(result.count) || result.count<0 || !Array.isArray(result.data) || result.data.length!==Math.min(PAGE_SIZE,Math.max(0,result.count-filter.page*PAGE_SIZE))) throw new Error("Sales page could not be verified. Retry.");
+  return {rows:result.data as T[],count:result.count as number};
 }
 async function call(name:string,args:Record<string,unknown>) {
   const result=await db.rpc(name,args);
@@ -187,6 +198,10 @@ export function SalesPage() {
   const [floor,setFloor]=useState("");
   const [status,setStatus]=useState("");
   const [search,setSearch]=useState("");
+  const [settledSearch,setSettledSearch]=useState("");
+  useEffect(()=>{const timer=setTimeout(()=>setSettledSearch(search),250);return()=>clearTimeout(timer);},[search]);
+  const searchReady=search===settledSearch;
+  const [historyPage,setHistoryPage]=useState(0);
   const [page,setPage]=useState(0);
   const [modal,setModal]=useState<Modal|null>(null);
   const [commercial,setCommercial]=useState<{mode:"import"|"price"|"buyer";flat?:Unit;booking?:Booking}|null>(null);
@@ -197,7 +212,7 @@ export function SalesPage() {
   const [busy,setBusy]=useState(false);
   const value=(key:string)=>form[key]??"";
   const put=(key:string,v:string)=>setForm(x=>({...x,[key]:v}));
-  const filter={project,building,floor,status,search,page};
+  const filter={project,building,floor,status,search:settledSearch,page};
   const meta=useQuery({queryKey:["sales-catalog",me.data?.profile.id],queryFn:catalog,enabled:!!me.data?.profile.id});
   const summary=useQuery({
     queryKey:["sales-overview",project,building,me.data?.profile.id],
@@ -206,29 +221,39 @@ export function SalesPage() {
   });
   const listing=useQuery({
     queryKey:["sales-register",tab,filter,me.data?.profile.id],
-    enabled:!!me.data?.profile.id&&tab!=="reports",
+    enabled:!!me.data?.profile.id&&tab!=="reports"&&searchReady,
     queryFn:()=>listPage<Unit|Booking|Receipt>(tab,filter),
   });
-  const bookings=tab==="bookings" ? (listing.data?.rows ?? []) as Booking[] : [];
+  const lastPage=listing.data?Math.max(0,Math.ceil(listing.data.count/PAGE_SIZE)-1):page;
+  useEffect(()=>{if(searchReady&&page>lastPage)setPage(lastPage);},[searchReady,page,lastPage]);
+  const bookings=tab==="bookings" && searchReady ? (listing.data?.rows ?? []) as Booking[] : [];
   const salesIds=bookings.map(x=>x.id);
   const financeQuery=useQuery({
     queryKey:["sales-booking-finances",salesIds],
     enabled:tab==="bookings"&&salesIds.length>0,
-    queryFn:async()=>await call("sales_booking_finances",{_sale_ids:salesIds}) as Finance[],
+    queryFn:async()=>{
+      const rows=await call("sales_booking_finances",{_sale_ids:salesIds}) as Finance[];
+      if(!Array.isArray(rows)||rows.length!==salesIds.length||new Set(rows.map(row=>row.sale_id)).size!==salesIds.length||salesIds.some(id=>!rows.some(row=>row.sale_id===id)))throw new Error("Booking balances could not be verified. Retry before taking action.");
+      return rows;
+    },
   });
   const finances=useMemo(()=>new Map((financeQuery.data??[]).map(x=>[x.sale_id,x])),[financeQuery.data]);
   const chosenFinance=sale?finances.get(sale.id):undefined;
   const events=useQuery({
-    queryKey:["sales-events",sale?.id],
+    queryKey:["sales-events",sale?.id,historyPage,me.data?.profile.id],
     enabled:modal==="history"&&!!sale?.id,
     queryFn:async()=>{
+      const start=historyPage*PAGE_SIZE;
       const result=await db.from("property_sale_events")
-        .select("id,action,details,created_at,actor_id")
-        .eq("sale_id",sale!.id).order("created_at",{ascending:false}).limit(150);
+        .select("id,action,details,created_at,actor_id",{count:"exact"})
+        .eq("sale_id",sale!.id).order("created_at",{ascending:false}).order("id",{ascending:false}).range(start,start+PAGE_SIZE-1);
       if(result.error) throw result.error;
-      return (result.data??[]) as {id:string;action:string;details:Record<string,unknown>;created_at:string;actor_id:string}[];
+      if(!Number.isSafeInteger(result.count)||result.count<0||!Array.isArray(result.data)||result.data.length!==Math.min(PAGE_SIZE,Math.max(0,result.count-start)))throw new Error("Booking history could not be verified.");
+      return {rows:result.data as {id:string;action:string;details:Record<string,unknown>;created_at:string;actor_id:string}[],count:result.count as number};
     },
   });
+  const lastHistoryPage=events.data?Math.max(0,Math.ceil(events.data.count/PAGE_SIZE)-1):historyPage;
+  useEffect(()=>{if(historyPage>lastHistoryPage)setHistoryPage(lastHistoryPage);},[historyPage,lastHistoryPage]);
   const summaryData=summary.data??emptySummary;
   const projectNames=useMemo(()=>new Map(meta.data?.projects.map(x=>[x.id,x.name])),[meta.data]);
   const buildingNames=useMemo(()=>new Map(meta.data?.buildings.map(x=>[x.id,x.name])),[meta.data]);
@@ -273,6 +298,7 @@ export function SalesPage() {
   function openBook(unit:Unit){setFlat(unit);setForm({price:String(unit.total_agreement_value),booked_on:today()});setModal("book");}
   function openSale(item:Booking,type:Modal){
     setSale(item);
+    setHistoryPage(0);
     setForm(type==="receipt"?{method:"upi",paid_on:today()}:
       type==="refund"?{method:"upi",refunded_on:today()}:
       type==="cancel"?{reason:finances.get(item.id)?.pending_cancel_reason??"",fee:"0"}:{});
@@ -281,7 +307,7 @@ export function SalesPage() {
   const filteredStatus=tab==="inventory"?["available","hold","booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"]:
     tab==="bookings"?[...stages,"cancelled"]:tab==="receipts"?["reported","verified","rejected"]:[];
   const financeReady=tab!=="bookings"||salesIds.length===0||financeQuery.isSuccess;
-  const ready=tab!=="reports"&&meta.isSuccess&&listing.isSuccess&&financeReady;
+  const ready=tab!=="reports"&&searchReady&&page<=lastPage&&meta.isSuccess&&listing.isSuccess&&financeReady;
   const candidateCount=selectedFloors.length*Math.max(0,Number(value("per_floor"))||0);
   const firstSelected=creationFloors.find(x=>selectedFloors.includes(x.id));
   const firstExample=firstSelected?`${firstSelected.floor_number}${value("separator")}${String(Number(value("start_at"))||0).padStart(Number(value("digits"))||2,"0")}`:"—";
@@ -346,7 +372,7 @@ export function SalesPage() {
           className={"min-h-10 shrink-0 rounded-lg px-4 text-sm font-medium "+(tab===key?"bg-card shadow-sm":"text-muted-foreground")}>
           {title}</button>)}
     </div>
-    {(meta.isLoading||listing.isLoading||(!financeReady&&!financeQuery.isError))&&<Loading/>}
+    {(meta.isLoading||listing.isLoading||(!searchReady&&tab!=="reports")||(!financeReady&&!financeQuery.isError))&&<Loading/>}
     {(meta.isError||listing.isError||summary.isError||financeQuery.isError)&&
       <section role="alert" className="rounded-xl border border-destructive/40 p-4 text-sm text-destructive">
         Unable to load sales: {String(meta.error?.message??listing.error?.message??summary.error?.message??financeQuery.error?.message)}
@@ -708,14 +734,15 @@ export function SalesPage() {
         {modal==="history"&&sale&&<div className="space-y-3">
           <p className="rounded-lg bg-muted p-3 text-sm">{sale.sale_number} · {sale.buyer_name}</p>
           {events.isLoading&&<Loading/>}
-          {events.isError&&<p className="text-sm text-destructive">{events.error.message}</p>}
-          {events.data?.map(event=><div key={event.id} className="rounded-lg border p-3 text-xs">
+          {events.isError&&<p role="alert" className="text-sm text-destructive">{events.error.message} <button type="button" className="underline" onClick={()=>void events.refetch()}>Retry</button></p>}
+          {events.data?.rows.map(event=><div key={event.id} className="rounded-lg border p-3 text-xs">
             <p className="font-semibold">{event.action.replaceAll("_"," ")}
               <span className="ml-2 font-normal text-muted-foreground">{new Date(event.created_at).toLocaleString("en-IN")}</span></p>
             <p className="mt-1 break-words text-muted-foreground">{Object.entries(event.details??{})
               .filter(([key])=>!key.endsWith("_id")).map(([key,val])=>key.replaceAll("_"," ")+": "+String(val)).join(" · ")}</p>
           </div>)}
-          {!events.isLoading&&!events.data?.length&&<p className="text-sm text-muted-foreground">No activity recorded.</p>}
+          {events.isSuccess&&!events.data?.rows.length&&<p className="text-sm text-muted-foreground">No activity recorded.</p>}
+          {events.isSuccess&&historyPage<=lastHistoryPage&&<Pager count={events.data.count} page={historyPage} onChange={setHistoryPage}/>}
         </div>}
       </DialogContent>
     </Dialog>
