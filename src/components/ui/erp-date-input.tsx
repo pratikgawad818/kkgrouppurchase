@@ -1,17 +1,15 @@
 import * as React from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { displayDateToIso, formatDateEntryInput, isoDateToDisplay } from "@/lib/date-format";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { calendarDays, calendarDateAllowed, calendarMonthAllowed, initialCalendarMonth, monthOffset } from "@/lib/date-calendar";
+import { displayDateToIso, formatDateEntryInput, isoDateToDisplay, formatErpDate } from "@/lib/date-format";
 
-/**
- * Display DD/MM/YYYY in every shared ERP date field while keeping the API
- * value ISO YYYY-MM-DD. iPhone Safari must receive a real touch on the
- * native date input; programmatically clicking a 1-pixel hidden picker can fail.
- * The native control covers the calendar icon on touch screens and leaves the
- * canonical DD/MM/YYYY text field editable for manual numeric entry.
- *
- * The onChange adapter provides the ISO value expected by existing forms.
- */
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+/** DD/MM/YYYY display, ISO API values, and an in-app calendar that does not
+ * rely on browser-native date picker support or cross-origin permissions. */
 export const ErpDateInput = React.forwardRef<
   HTMLInputElement, React.ComponentProps<"input">
 >(function ErpDateInput({
@@ -22,7 +20,12 @@ export const ErpDateInput = React.forwardRef<
   const [display, setDisplay] = React.useState(() => isoDateToDisplay(incoming));
   const [touched, setTouched] = React.useState(false);
   const lastEmitted = React.useRef<string | null>(null);
-  const picker = React.useRef<HTMLInputElement>(null);
+  const [calendarOpen, setCalendarOpen] = React.useState(false);
+  const today = displayDateToIso(formatErpDate(new Date().toISOString()))!;
+  const lower = min ? String(min) : undefined;
+  const upper = max ? String(max) : undefined;
+  const [month, setMonth] = React.useState(() => initialCalendarMonth(displayDateToIso(isoDateToDisplay(incoming)), today, lower, upper));
+  React.useEffect(() => { if (disabled || readOnly) setCalendarOpen(false); }, [disabled, readOnly]);
   const textRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useImperativeHandle(ref, () => textRef.current!, []);
@@ -80,27 +83,24 @@ export const ErpDateInput = React.forwardRef<
     forwardIso(valid ? iso : "", event);
   }
 
-  function onPicked(event: React.ChangeEvent<HTMLInputElement>) {
-    const iso = event.target.value;
-    const valid = !!iso && displayDateToIso(isoDateToDisplay(iso)) === iso &&
-      (!min || iso >= String(min)) && (!max || iso <= String(max));
-    setDisplay(valid ? isoDateToDisplay(iso) : "");
+  function onPicked(iso: string) {
+    if (disabled || readOnly || !calendarDateAllowed(iso, lower, upper)) return;
+    setDisplay(isoDateToDisplay(iso));
     setTouched(false);
-    forwardIso(valid ? iso : "", event);
+    forwardIso(iso);
+    setCalendarOpen(false);
   }
 
-  function openPicker() {
-    if (disabled || readOnly) return;
-    const element = picker.current;
-    if (!element) return;
-    try {
-      if (typeof element.showPicker === "function") element.showPicker();
-      else element.click();
-    } catch {
-      element.focus();
-      element.click();
-    }
+  function onCalendarOpen(open: boolean) {
+    if (open && (disabled || readOnly)) return;
+    if (open) setMonth(initialCalendarMonth(parsed, today, lower, upper));
+    setCalendarOpen(open);
   }
+
+  const previous = monthOffset(month, -1);
+  const next = monthOffset(month, 1);
+  const canPrevious = previous.year !== month.year || previous.month !== month.month;
+  const canNext = next.year !== month.year || next.month !== month.month;
 
   return (
     <div className="relative min-w-0">
@@ -127,29 +127,47 @@ export const ErpDateInput = React.forwardRef<
           onBlur?.(event);
         }}
       />
-      <button
-        type="button"
-        onClick={openPicker}
-        disabled={disabled || readOnly}
-        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-        aria-label="Open date picker"
-      >
-        <CalendarDays className="h-4 w-4" aria-hidden="true" />
-      </button>
-      {/* Direct touch targets bypass iOS Safari's restriction on synthetic
-          clicks to a tiny hidden date input. Desktop keeps showPicker(). */}
-      <input
-        ref={picker}
-        type="date"
-        value={withinBounds ? parsed! : ""}
-        min={min}
-        max={max}
-        disabled={disabled || readOnly}
-        onChange={onPicked}
-        tabIndex={-1}
-        aria-label={`Choose date for ${props["aria-label"] ?? "Date"}`}
-        className="pointer-events-none absolute inset-y-0 right-0 z-10 h-full w-11 min-w-11 cursor-pointer opacity-0 [@media(hover:none)_and_(pointer:coarse)]:pointer-events-auto"
-      />
+      <Popover open={calendarOpen} onOpenChange={onCalendarOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled || readOnly}
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Open date picker"
+          >
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="z-[110] w-[min(20rem,calc(100vw-1.5rem))] p-3" aria-label="Choose date">
+          <div className="mb-2 flex items-center justify-between gap-1">
+            <button type="button" aria-label="Previous month" disabled={!canPrevious || !calendarMonthAllowed(previous, lower, upper)}
+              className="grid h-9 w-9 place-items-center rounded hover:bg-muted disabled:opacity-30" onClick={() => setMonth(previous)}>
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-semibold" aria-live="polite">{MONTHS[month.month - 1]} {month.year}</span>
+            <button type="button" aria-label="Next month" disabled={!canNext || !calendarMonthAllowed(next, lower, upper)}
+              className="grid h-9 w-9 place-items-center rounded hover:bg-muted disabled:opacity-30" onClick={() => setMonth(next)}>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-0.5 text-center text-sm">
+            {WEEKDAYS.map(day => <span key={day} className="py-1 text-xs text-muted-foreground">{day}</span>)}
+            {calendarDays(month).map((iso, index) => iso ? (
+              <button key={iso} type="button" aria-label={isoDateToDisplay(iso)} aria-pressed={iso === parsed}
+                aria-current={iso === today ? "date" : undefined}
+                disabled={!calendarDateAllowed(iso, lower, upper)}
+                className={cn("aspect-square min-h-9 rounded-md tabular-nums hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-30 disabled:cursor-not-allowed",
+                  iso === parsed && "bg-primary text-primary-foreground hover:bg-primary/90",
+                  iso === today && iso !== parsed && "ring-1 ring-primary")}
+                onClick={() => onPicked(iso)}>{Number(iso.slice(8))}</button>
+            ) : <span key={"blank-" + index} />)}
+          </div>
+          <div className="mt-2 flex justify-end border-t pt-2">
+            <button type="button" className="min-h-9 rounded px-3 text-sm font-medium text-primary disabled:opacity-40"
+              disabled={!calendarDateAllowed(today, lower, upper)} onClick={() => onPicked(today)}>Today</button>
+          </div>
+        </PopoverContent>
+      </Popover>
       {touched && invalid && (
         <p role="alert" className="mt-1 text-xs text-destructive">
           Enter a valid date as DD/MM/YYYY{min || max ? " within the allowed range" : ""}.
