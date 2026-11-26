@@ -1,3 +1,5 @@
+import { createDraftUpload } from "@/lib/draft-upload";
+import { useMe } from "@/lib/session";
 import { invalidateFinanceKeys, FINANCE_SETTLEMENT_KEYS } from "@/lib/finance-cache";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +43,8 @@ function NewInvoice() {
   const [h, setH] = useState({ vendor_invoice_number: "", vendor_invoice_date: today(), due_date: "", freight: "0", other_charges: "0", tds_section: "", tds_rate: "0", remarks: "", round_off_mode: "none" as InvoiceRoundOffMode });
   const [lines, setLines] = useState<Line[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const me = useMe();
+  const [draftUpload] = useState(() => createDraftUpload<File>());
   const guard = useInvoiceEntryGuard();
   const [grnFilter, setGrnFilter] = useState<string>("");
 
@@ -140,17 +144,24 @@ function NewInvoice() {
       }
       const checked = inspectVendorInvoice(active, h);
       if (checked.errors.length) throw new Error(checked.errors.join(" "));
-      const attachment_path = file ? await uploadVendorDoc("invoices", file) : "";
+      if (file && !me.data?.profile.id) throw new Error("Sign in before attaching an invoice.");
+      const uploadScope = JSON.stringify([me.data?.profile.id, editId, vendor, po, h.vendor_invoice_number, h.vendor_invoice_date]);
+      const attachment_path = file ? await draftUpload.get(file, uploadScope, selected => uploadVendorDoc("invoices", selected)) : "";
       const { data, error } = await supabase.rpc("save_vendor_invoice", {
         _id: (editId ?? null) as string,
         _header: { po_id: po, ...h, attachment_path },
         _items: active.map((l) => ({ grn_item_id: l.grn_item_id, quantity: Number(l.quantity), rate: Number(l.rate), tax_rate_percent: Number(l.tax_rate_percent), tax_type: l.tax_type })),
       });
       if (error) throw error;
-      if (submit) { const r = await supabase.rpc("invoice_transition", { _id: data, _action: "submit", _comment: "" }); if (r.error) throw r.error; }
-      return data as string;
+      draftUpload.clear();
+      if (submit) {
+        // Saving succeeded. Never retry the creation as though no invoice exists.
+        const r = await supabase.rpc("invoice_transition", { _id: data, _action: "submit", _comment: "" });
+        if (r.error) return { id: data as string, submissionError: errMsg(r.error) };
+      }
+      return { id: data as string, submissionError: null };
     },
-    onSuccess: (id) => { guard.markSaved(); toast.success("Invoice saved"); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
+    onSuccess: ({ id, submissionError }) => { guard.markSaved(); if (submissionError) toast.warning("Invoice saved; submission could not be confirmed. Check its status before retrying.", { description: submissionError }); else toast.success("Invoice saved"); void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS); nav({ to: "/finance/vendor-invoices/$id", params: { id } }); },
     onError: (e) => toast.error(errMsg(e)),
   });
 
@@ -173,7 +184,7 @@ function NewInvoice() {
             <Field label="Vendor bill number"><Input value={h.vendor_invoice_number} onChange={(e) => setH({ ...h, vendor_invoice_number: e.target.value })} placeholder="As printed on the bill" /></Field>
             <Field label="Bill date"><Input type="date" value={h.vendor_invoice_date} onChange={(e) => setH({ ...h, vendor_invoice_date: e.target.value })} /></Field>
             <Field label="Due date"><Input type="date" value={h.due_date} onChange={(e) => setH({ ...h, due_date: e.target.value })} /></Field>
-            <Field label="Invoice document (PDF / image)"><Input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
+            <Field label="Invoice document (PDF / image)"><Input type="file" disabled={save.isPending} accept="application/pdf,image/*" onChange={(e) => { draftUpload.clear(); setFile(e.target.files?.[0] ?? null); }} /></Field>
           </div>
           {vendors.length === 0 && <p className="text-xs text-muted-foreground">No purchase orders with received goods yet. Post a goods receipt first.</p>}
         </div>
