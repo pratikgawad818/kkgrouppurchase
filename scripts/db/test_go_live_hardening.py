@@ -74,7 +74,7 @@ def setup():
           CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('role',true) $$;
           CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb $$;
           CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);
-          CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text,owner uuid,metadata jsonb);
+          CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text,owner uuid,owner_id text,metadata jsonb);
           CREATE TABLE storage.buckets(id text PRIMARY KEY,name text NOT NULL,public boolean NOT NULL DEFAULT false,file_size_limit bigint,allowed_mime_types text[]);
           ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
           GRANT USAGE ON SCHEMA public,auth,storage TO authenticated,anon,service_role;
@@ -2345,6 +2345,34 @@ def test_finance_query_indexes():
     print("PASS 0121: targeted finance indexes installed with exact key order and no uniqueness changes")
 
 
+def test_lovable_security_reconciliation():
+    with db() as c:
+        actor(c, SITE)
+        assert str(c.execute("SELECT (ensure_profile()).id").fetchone()[0]) == SITE
+        actor(c, INACTIVE)
+        denied(c,lambda:c.execute("SELECT ensure_profile()"),"Staff access has not been enabled")
+        unknown=str(uuid4())
+        actor(c, unknown)
+        denied(c,lambda:c.execute("SELECT ensure_profile()"),"Staff access has not been enabled")
+        c.execute("RESET ROLE")
+        assert not c.execute("SELECT 1 FROM profiles WHERE id=%s",(unknown,)).fetchone()
+        owned=f"invoices/{uuid4()}-owned.pdf"
+        foreign=f"invoices/{uuid4()}-foreign.pdf"
+        c.execute("INSERT INTO storage.objects(bucket_id,name,owner,owner_id) VALUES('vendor-documents',%s,%s,%s),('vendor-documents',%s,%s,%s)",(owned,ACCOUNTS,ACCOUNTS,foreign,OTHER_DIRECTOR,OTHER_DIRECTOR))
+        actor(c, ACCOUNTS)
+        header={"project_id":PROJECT,"vendor_id":VENDOR,"vendor_invoice_number":"QA-ATTACH-01","vendor_invoice_date":"2026-11-01","gst_type":"cgst_sgst","attachment_path":owned}
+        lines=[{"description":"QA material","unit":"Bag","quantity":"1","rate":"100","discount":"0","tax_rate":"0"}]
+        def save(h):
+            return c.execute("SELECT save_opening_vendor_invoice_v2(%s::jsonb,%s::jsonb,'[]'::jsonb,NULL)",(json.dumps(h),json.dumps(lines))).fetchone()[0]
+        denied(c,lambda:save(dict(header,attachment_path=foreign)),"file you uploaded")
+        denied(c,lambda:save(dict(header,attachment_path=f"invoices/{uuid4()}-missing.pdf")),"file you uploaded")
+        doc=save(header)
+        assert c.execute("SELECT attachment_path FROM vendor_invoices WHERE id=%s",(doc,)).fetchone()[0]==owned
+        denied(c,lambda:save(dict(header,vendor_invoice_number="QA-ATTACH-02")),"already attached")
+        c.rollback()
+    print("PASS invite-only staff access and invoice attachment ownership, existence and reuse guards")
+
+
 def test_pr_seven_day_notice():
     with db() as c:
         actor(c,SITE)
@@ -2375,6 +2403,7 @@ def test_pr_seven_day_notice():
 if __name__ == "__main__":
     setup()
     test_pr_seven_day_notice()
+    test_lovable_security_reconciliation()
     test_finance_query_indexes()
     test_count_units_seed_is_idempotent()
     test_services_and_hours_master_seed()

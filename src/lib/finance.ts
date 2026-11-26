@@ -43,14 +43,21 @@ export async function uploadVendorDoc(folder: "invoices" | "payments", file: Fil
   return path;
 }
 export async function openVendorDoc(path: string, download = false) {
-  // Short-lived link: it is opened immediately, so revoked staff can't reuse it later.
-  const { data, error } = await supabase.storage.from("vendor-documents").createSignedUrl(path, 30, download ? { download: true } : undefined);
-  if (error) throw error;
-  if (download) { window.open(data.signedUrl, "_blank", "noopener"); return; }
-  // Fetch into memory right away so the short-lived link can expire while the viewer stays open.
-  const res = await fetch(data.signedUrl);
-  if (!res.ok) throw new Error("Could not load the file");
-  const blob = await res.blob();
+  // Download through the signed-in session (checked against access rules every time); no shareable link is issued.
+  const { data: blob, error } = await supabase.storage.from("vendor-documents").download(path);
+  if (error || !blob) throw error ?? new Error("Could not load the file");
+  if (download) {
+    const a = document.createElement("a");
+    const u = URL.createObjectURL(blob);
+    a.href = u;
+    a.download = path.split("/").pop()?.replace(/^[0-9a-f-]{36}-/, "") ?? "document";
+    document.body.appendChild(a);
+    try { a.click(); } finally {
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(u), 1000);
+    }
+    return;
+  }
   const name = path.split("/").pop()?.replace(/^[0-9a-f-]{36}-/, "") ?? "document";
   let type = blob.type;
   if (!type || type === "application/octet-stream") {
