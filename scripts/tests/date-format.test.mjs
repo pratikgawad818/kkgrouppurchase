@@ -51,17 +51,16 @@ test("iPhone number keypad accepts eight digits without needing a slash key", ()
   assert.equal(displayDateToIso(formatDateEntryInput("2211")), null);
 });
 
-test("iPhone PR dates have a directly tappable native calendar and an explicit numeric fallback", async () => {
+test("ERP date fields have an in-app calendar and explicit numeric fallback", async () => {
   const { readFileSync } = await import("node:fs");
   const input = readFileSync("src/components/ui/erp-date-input.tsx", "utf8");
   const pr = readFileSync("src/components/erp/pr-form.tsx", "utf8");
   assert.match(input, /formatDateEntryInput\(event\.target\.value\)/);
-  assert.match(input, /type="date"/);
-  assert.match(input, /onChange=\{onPicked\}/);
-  assert.match(input, /pointer:coarse/);
-  assert.match(input, /pointer-events-auto/);
-  assert.match(input, /h-full w-11 min-w-11/);
-  assert.doesNotMatch(input, /h-px w-px/);
+  assert.match(input, /<PopoverTrigger asChild>/);
+  assert.match(input, /aria-label="Open date picker"/);
+  assert.match(input, /onClick=\{\(\) => onPicked\(iso\)\}/);
+  assert.match(input, /disabled=\{!calendarDateAllowed\(iso, lower, upper\)\}/);
+  assert.doesNotMatch(input, /showPicker\(|type="date"|pointer-events-auto/);
   assert.match(pr, /Type DDMMYYYY \(slashes added automatically\) or tap the calendar/);
   assert.match(pr, /value=\{h\.required_by\}/);
   assert.match(pr, /value=\{l\.required_by\}/);
