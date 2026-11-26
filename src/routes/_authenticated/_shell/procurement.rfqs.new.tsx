@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loading, PageHeader } from "@/components/erp/common";
 import { errMsg, num } from "@/lib/format";
+import { loadCompleteRows } from "@/lib/complete-register";
 import { saveAttempt } from "@/lib/save-attempt";
 import { useCan } from "@/lib/session";
 
@@ -48,24 +49,23 @@ function NewRfq() {
   const refs = useQuery({
     queryKey: ["rfq-refs"],
     queryFn: async () => {
-      const [p, v] = await Promise.all([
-        supabase
+      const [prs, vendors] = await Promise.all([
+        loadCompleteRows(async (start, end) => await supabase
           .from("purchase_requests")
-          .select("id,pr_number,required_by,projects(code,name)")
+          .select("id,pr_number,required_by,projects(code,name)", { count: "exact" })
           .eq("status", "approved")
           .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
+          .order("id", { ascending: false }).range(start, end)),
+        loadCompleteRows(async (start, end) => await supabase
           .from("vendors")
           .select(
             "id,code,company_name,contact_person,mobile,city,vendor_category_links(vendor_categories(name))",
+            { count: "exact" },
           )
           .eq("status", "active")
-          .order("company_name"),
+          .order("company_name").order("id").range(start, end)),
       ]);
-      if (p.error) throw p.error;
-      if (v.error) throw v.error;
-      return { prs: p.data ?? [], vendors: v.data ?? [] };
+      return { prs, vendors };
     },
   });
   const items = useQuery({
@@ -84,7 +84,8 @@ function NewRfq() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const pr = refs.data!.prs.find((p) => p.id === prId);
+      if (!refs.isSuccess || refs.isFetching || !items.isSuccess || items.isFetching) throw new Error("Wait for the eligible purchase requests and items to be verified.");
+      const pr = refs.data.prs.find((p) => p.id === prId);
       if (!pr) throw new Error("Choose an approved purchase request");
       if (!vendors.length) throw new Error("Invite at least one vendor");
       const payload = {
@@ -115,7 +116,7 @@ function NewRfq() {
       </div>
     );
   if (refs.isLoading) return <Loading />;
-  if (refs.error) return <div className="text-sm text-destructive">{errMsg(refs.error)}</div>;
+  if (refs.error) return <div role="alert" className="text-sm text-destructive">{errMsg(refs.error)} <button className="underline" onClick={() => void refs.refetch()}>Retry</button></div>;
   const vs = refs.data!.vendors.filter(
     (v) =>
       !vsearch ||
@@ -236,7 +237,7 @@ function NewRfq() {
       </section>
       <div className="mt-4 flex justify-end">
         <Button
-          disabled={save.isPending || !prId || !vendors.length || !items.data?.length}
+          disabled={save.isPending || refs.isFetching || !prId || !vendors.length || !items.isSuccess || items.isFetching || !items.data?.length}
           onClick={() => save.mutate()}
         >
           Create RFQ draft

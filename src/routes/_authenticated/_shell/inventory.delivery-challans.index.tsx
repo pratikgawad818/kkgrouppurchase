@@ -68,13 +68,13 @@ function DeliveryChallanRegister() {
       // Engineer B can register against Engineer A's PO when they are both
       // assigned to its project. Never filter by purchase requester/creator.
       if (scope.isScopedEngineer && !scope.assignedProjectIds.length) return [];
-      let query = supabase.from("purchase_orders")
-        .select("id,po_number,status,project_id,vendors(company_name),projects(name)")
-        .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
-      if (scope.isScopedEngineer) query = query.in("project_id", scope.assignedProjectIds);
-      const { data, error } = await query.order("created_at", { ascending: false }).limit(500);
-      if (error) throw error;
-      return data ?? [];
+      return loadCompleteRows(async (start, end) => {
+        let query = supabase.from("purchase_orders")
+          .select("id,po_number,status,project_id,vendors(company_name),projects(name)", { count: "exact" })
+          .in("status", ["approved", "sent", "partially_received", "partially_accepted"]);
+        if (scope.isScopedEngineer) query = query.in("project_id", scope.assignedProjectIds);
+        return await query.order("created_at", { ascending: false }).order("id", { ascending: false }).range(start, end);
+      });
     },
   });
   const items = useQuery({
@@ -93,6 +93,7 @@ function DeliveryChallanRegister() {
     mutationFn: async () => {
       const challan_number = h.challan_number.trim();
       if (!poId) throw new Error("Select an approved purchase order.");
+      if (!pos.isSuccess || pos.isFetching || !pos.data.some(po => po.id === poId)) throw new Error("Verify and select an eligible purchase order before registering.");
       // The registration RPC performs an independent project-access check.
       // Keep a helpful front-end error if a project assignment changed.
       if (scope.isScopedEngineer && !pos.data?.some((po) => po.id === poId && scope.canAccess(po.project_id))) {
@@ -185,6 +186,7 @@ function DeliveryChallanRegister() {
         {scope.isScopedEngineer && !scope.isLoading && !scope.error && !scope.assignedProjectIds.length && (
           <p role="alert" className="rounded-md border p-3 text-sm text-muted-foreground">No project assigned. Ask your administrator to assign your site before registering a challan.</p>
         )}
+        {pos.error && <p role="alert" className="text-sm text-destructive">Could not load eligible purchase orders: {errMsg(pos.error)} <button type="button" className="underline" onClick={() => void pos.refetch()}>Retry</button></p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Purchase order *"><select className={selectCls} value={poId} onChange={e => { setPoId(e.target.value); setQuantities({}); }}>
             <option value="">Choose approved PO</option>
@@ -215,7 +217,7 @@ function DeliveryChallanRegister() {
           }}
         />
         <p className="text-xs text-muted-foreground">Registering a vendor challan records dispatch evidence only. It does not increase physical stock or create a payable.</p>
-        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button><Button disabled={create.isPending || items.isLoading || scope.isLoading || !!scope.error || !photoFile} onClick={() => create.mutate()}>{create.isPending ? "Uploading & registering…" : "Register delivery challan"}</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button><Button disabled={create.isPending || items.isLoading || scope.isLoading || !!scope.error || !pos.isSuccess || pos.isFetching || !photoFile} onClick={() => create.mutate()}>{create.isPending ? "Uploading & registering…" : "Register delivery challan"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>}
   </>;
