@@ -14,7 +14,7 @@ export const FINANCE_REFERENCE_KEYS = {
 export const FINANCE_SETTLEMENT_KEYS = [
   "vendor-payments","payables","vendor-invoices","vi","ledger",
   "accounts-task-queue","daily-workspace","director-pending-count","pay-open","adj-open",
-  "opening-bill-duplicate-check",
+  "opening-bill-duplicate-check","management-overview",
 ] as const;
 
 export function invalidateFinanceKeys(client:QueryClient,keys:readonly string[]){
