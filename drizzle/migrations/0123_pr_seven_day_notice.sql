@@ -21,7 +21,7 @@ BEGIN
  NEW.first_notice_submitted_on:=OLD.first_notice_submitted_on;
  NEW.first_notice_reason:=OLD.first_notice_reason;
  IF coalesce(current_setting('app.pr_source',true),'')='rpc'
-    AND NEW.submitted_at IS DISTINCT FROM OLD.submitted_at
+    AND (NEW.submitted_at IS DISTINCT FROM OLD.submitted_at OR OLD.status='draft')
     AND NEW.status IN ('pending_approval','approved') THEN
    submitted_on := (statement_timestamp() AT TIME ZONE 'Asia/Kolkata')::date;
    SELECT least(NEW.required_by,coalesce(min(i.required_by),NEW.required_by))
