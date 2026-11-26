@@ -229,7 +229,7 @@ export function SalesPage() {
   const bookings=tab==="bookings" && searchReady ? (listing.data?.rows ?? []) as Booking[] : [];
   const salesIds=bookings.map(x=>x.id);
   const financeQuery=useQuery({
-    queryKey:["sales-booking-finances",salesIds],
+    queryKey:["sales-booking-finances",salesIds,me.data?.profile.id],
     enabled:tab==="bookings"&&salesIds.length>0,
     queryFn:async()=>{
       const rows=await call("sales_booking_finances",{_sale_ids:salesIds}) as Finance[];
@@ -241,7 +241,7 @@ export function SalesPage() {
   const chosenFinance=sale?finances.get(sale.id):undefined;
   const events=useQuery({
     queryKey:["sales-events",sale?.id,historyPage,me.data?.profile.id],
-    enabled:modal==="history"&&!!sale?.id,
+    enabled:modal==="history"&&!!sale?.id&&!!me.data?.profile.id,
     queryFn:async()=>{
       const start=historyPage*PAGE_SIZE;
       const result=await db.from("property_sale_events")
@@ -326,7 +326,7 @@ export function SalesPage() {
       ] as const).map(([label,value,Icon])=>
         <section key={label} className="rounded-xl border bg-card p-3.5">
           <Icon className="mb-1 h-4 w-4 text-primary"/>
-          <p className="break-words text-lg font-bold tabular-nums">{value}</p>
+          <p className="break-words text-lg font-bold tabular-nums">{summary.isSuccess ? value : "—"}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </section>)}
     </div>
@@ -735,13 +735,13 @@ export function SalesPage() {
           <p className="rounded-lg bg-muted p-3 text-sm">{sale.sale_number} · {sale.buyer_name}</p>
           {events.isLoading&&<Loading/>}
           {events.isError&&<p role="alert" className="text-sm text-destructive">{events.error.message} <button type="button" className="underline" onClick={()=>void events.refetch()}>Retry</button></p>}
-          {events.data?.rows.map(event=><div key={event.id} className="rounded-lg border p-3 text-xs">
+          {events.isSuccess&&historyPage<=lastHistoryPage&&events.data.rows.map(event=><div key={event.id} className="rounded-lg border p-3 text-xs">
             <p className="font-semibold">{event.action.replaceAll("_"," ")}
               <span className="ml-2 font-normal text-muted-foreground">{new Date(event.created_at).toLocaleString("en-IN")}</span></p>
             <p className="mt-1 break-words text-muted-foreground">{Object.entries(event.details??{})
               .filter(([key])=>!key.endsWith("_id")).map(([key,val])=>key.replaceAll("_"," ")+": "+String(val)).join(" · ")}</p>
           </div>)}
-          {events.isSuccess&&!events.data?.rows.length&&<p className="text-sm text-muted-foreground">No activity recorded.</p>}
+          {events.isSuccess&&historyPage<=lastHistoryPage&&!events.data?.rows.length&&<p className="text-sm text-muted-foreground">No activity recorded.</p>}
           {events.isSuccess&&historyPage<=lastHistoryPage&&<Pager count={events.data.count} page={historyPage} onChange={setHistoryPage}/>}
         </div>}
       </DialogContent>
