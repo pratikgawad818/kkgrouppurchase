@@ -121,8 +121,12 @@ def setup():
         c.execute("INSERT INTO accounts(company_id,code,name,account_type) VALUES(%s,'1100','QA Bank','asset'),(%s,'1500','QA advance','asset')",(A,A))
 
 
-def save_pr(c, token=None, doc=None, version=None, lines=None, submit=False, purpose="QA purpose"):
-    header = {"project_id": PROJECT,"required_by":"2026-12-01","purpose":purpose}
+def save_pr(c, token=None, doc=None, version=None, lines=None, submit=False, purpose="QA purpose", required_by=None, short_notice_reason=None):
+    if required_by is None:
+        required_by=c.execute("SELECT ((statement_timestamp() AT TIME ZONE 'Asia/Kolkata')::date + 14)::text").fetchone()[0]
+    header = {"project_id": PROJECT,"required_by":required_by,"purpose":purpose}
+    if short_notice_reason is not None:
+        header["short_notice_reason"]=short_notice_reason
     if lines is None:
         lines = [{"material_id":MATERIAL,"unit_id":UNIT,"quantity":2}]
     return str(c.execute("SELECT save_purchase_request(%s,%s,%s::jsonb,%s::jsonb,%s,%s)",
@@ -2341,8 +2345,36 @@ def test_finance_query_indexes():
     print("PASS 0121: targeted finance indexes installed with exact key order and no uniqueness changes")
 
 
+def test_pr_seven_day_notice():
+    with db() as c:
+        actor(c,SITE)
+        today, tomorrow, week, fortnight=c.execute("""SELECT d::text,(d+1)::text,(d+7)::text,(d+14)::text
+            FROM (SELECT (statement_timestamp() AT TIME ZONE 'Asia/Kolkata')::date d) t""").fetchone()
+        denied(c,lambda:save_pr(c,submit=True,required_by=tomorrow),"less than 7 days")
+        draft=save_pr(c,required_by=tomorrow)
+        denied(c,lambda:c.execute("SELECT pr_transition(%s,'submitted',NULL)",(draft,)),"less than 7 days")
+        reason="Unexpected site requirement with short notice"
+        c.execute("SELECT pr_transition(%s,'submitted',%s)",(draft,reason))
+        assert c.execute("SELECT first_notice_days,first_notice_submitted_on::text,first_notice_required_by::text,first_notice_reason FROM purchase_requests WHERE id=%s",(draft,)).fetchone()==(1,today,tomorrow,reason)
+        planned=save_pr(c,submit=True,required_by=week)
+        assert c.execute("SELECT first_notice_days,first_notice_reason FROM purchase_requests WHERE id=%s",(planned,)).fetchone()==(7,None)
+        lines=[{"material_id":MATERIAL,"unit_id":UNIT,"quantity":2,"required_by":tomorrow}]
+        denied(c,lambda:save_pr(c,submit=True,required_by=fortnight,lines=lines),"less than 7 days")
+        late=save_pr(c,submit=True,required_by=fortnight,lines=lines,short_notice_reason=reason)
+        assert c.execute("SELECT first_notice_days,first_notice_reason FROM purchase_requests WHERE id=%s",(late,)).fetchone()==(1,reason)
+        actor(c,PURCHASER)
+        c.execute("SELECT pr_transition(%s,'returned','Update required date')",(late,))
+        actor(c,SITE)
+        version=c.execute("SELECT updated_at FROM purchase_requests WHERE id=%s",(late,)).fetchone()[0]
+        save_pr(c,doc=late,version=version,submit=True,required_by=fortnight)
+        assert c.execute("SELECT first_notice_days,first_notice_reason FROM purchase_requests WHERE id=%s",(late,)).fetchone()==(1,reason)
+        c.rollback()
+    print("PASS seven-day PR notice: planned, late, direct submission, line dates, immutable first notice")
+
+
 if __name__ == "__main__":
     setup()
+    test_pr_seven_day_notice()
     test_finance_query_indexes()
     test_count_units_seed_is_idempotent()
     test_services_and_hours_master_seed()
