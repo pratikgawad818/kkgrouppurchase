@@ -15,7 +15,8 @@ import { useInvoiceEntryGuard } from "@/lib/use-invoice-entry-guard";
 import { errMsg, inr } from "@/lib/format";
 import { selectCls } from "@/lib/po";
 import { PAYMENT_MODES, today, uploadVendorDoc } from "@/lib/finance";
-import { useCan } from "@/lib/session";
+import { useCan, useMe } from "@/lib/session";
+import { createDraftUpload } from "@/lib/draft-upload";
 import { cn } from "@/lib/utils";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { InlineBillMaterialPicker } from "@/components/erp/inline-bill-material-picker";
@@ -51,6 +52,8 @@ function OpeningBill() {
   const { id: editId } = Route.useSearch();
   const nav = useNavigate(), qc = useQueryClient();
   const can = useCan();
+  const me = useMe();
+  const [draftUpload] = useState(() => createDraftUpload<File>());
   const [h, setH] = useState<Header>(initial);
   const [lines, setLines] = useState<OpeningLine[]>([newOpeningLine("initial")]);
   const [payments, setPayments] = useState<HistoricPayment[]>([]);
@@ -199,7 +202,9 @@ function OpeningBill() {
         throw new Error("Could not verify the vendor, project or existing invoice. Refresh the page.");
       if(validation.length)throw new Error(validation.join(" "));
       if (!editId && h.vendor_id && normalizedBill && (!duplicateCheck.isSuccess || duplicateCheck.isFetching)) throw new Error("Wait for the duplicate check to finish.");
-      const attachment_path=file ? await uploadVendorDoc("invoices",file) : "";
+      if (file && !me.data?.profile.id) throw new Error("Sign in before attaching a bill.");
+      const uploadScope = JSON.stringify([me.data?.profile.id, editId, h.vendor_id, h.vendor_invoice_number, h.vendor_invoice_date]);
+      const attachment_path=file ? await draftUpload.get(file, uploadScope, selected => uploadVendorDoc("invoices", selected)) : "";
       const payload={
         _id:editId ?? null,
         _header:{...h,attachment_path},
@@ -228,6 +233,7 @@ function OpeningBill() {
       return data as string;
     },
     onSuccess:(id)=>{
+      draftUpload.clear();
       guard.markSaved();
       toast.success(isApprovedCorrection?"Item details corrected; approved totals unchanged":editId?"Opening bill updated":"Old bill saved for verification");
       void invalidateFinanceKeys(qc,FINANCE_SETTLEMENT_KEYS);
