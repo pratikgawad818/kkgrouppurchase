@@ -7,9 +7,10 @@ export function useAvatarUrl(path: string | null | undefined) {
     enabled: !!path,
     staleTime: 50 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.storage.from("avatars").createSignedUrl(path!, 3600);
-      if (error) throw error;
-      return data.signedUrl;
+      // Fetched with the signed-in session, so access is re-checked and no reusable link exists.
+      const { data, error } = await supabase.storage.from("avatars").download(path!);
+      if (error || !data) throw error ?? new Error("Could not load photo");
+      return URL.createObjectURL(data);
     },
   });
 }
