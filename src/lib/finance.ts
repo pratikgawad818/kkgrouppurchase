@@ -35,7 +35,7 @@ export const OPEN_INVOICE: InvoiceStatus[] = ["approved", "partially_paid"];
 export type FinanceSettings = { qty_tolerance_pct: number; rate_tolerance_pct: number; value_tolerance: number; tds_sections: { code: string; label: string; rate: number }[] };
 
 export async function uploadVendorDoc(folder: "invoices" | "payments", file: File) {
-  if (file.size > 20 * 1024 * 1024) throw new Error("File must be under 20 MB");
+  if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 20 * 1024 * 1024) throw new Error("Select a non-empty file of 20 MB or less.");
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${folder}/${crypto.randomUUID()}-${safe}`;
   const { error } = await supabase.storage.from("vendor-documents").upload(path, file, file.type ? { contentType: file.type } : {});
