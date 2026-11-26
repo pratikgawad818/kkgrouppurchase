@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/session";
 import { inr, num, errMsg } from "@/lib/format";
 import { loadCompleteRows } from "@/lib/complete-register";
-import { summarizeManagement } from "@/lib/management-overview";
+import { summarizeManagement, emptyHistoricalUsage } from "@/lib/management-overview";
 import { PageHeader, Loading, SearchBox } from "@/components/erp/common";
 import { matchesRecordSearch } from "@/lib/erp-search";
 import { Pager } from "@/components/erp/pager";
@@ -26,17 +26,18 @@ function ManagementOverview() {
   const companyId = me.data?.profile.company_id;
   const permissions = me.data?.permissions;
   const allowed = !!permissions?.has("inventory.view") && !!permissions?.has("payable.view") && !!permissions?.has("payment.view");
+  const historicalAllowed = !!permissions?.has("vendor_invoice.view") && !!permissions?.has("materials.view");
   const [search, setSearch] = useState("");
   const [warehouse, setWarehouse] = useState("");
   const [page, setPage] = useState(0);
 
   const q = useQuery({
-    queryKey: ["management-overview", companyId],
+    queryKey: ["management-overview", companyId, me.data?.profile.id, historicalAllowed],
     enabled: !!companyId && allowed,
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId) throw new Error("Choose a company before viewing its management report.");
-      const [stock, projects, consumed, invoices, payments] = await Promise.all([
+      const [stock, projects, consumed, invoices, payments, historical] = await Promise.all([
         loadCompleteRows(async (start, end) => {
           const { data, count, error } = await supabase.from("warehouse_stock")
             .select("warehouse_id,material_id,quantity_on_hand,total_value,warehouses!inner(name,code,project_id,company_id),items(code,name,units_of_measure(code))", { count: "exact" })
@@ -62,8 +63,18 @@ function ManagementOverview() {
           .select("id,amount", { count: "exact" })
           .eq("company_id", companyId).eq("status", "recorded")
           .order("id").range(start, end)),
+        historicalAllowed ? loadCompleteRows(async (start,end) => await supabase.from("opening_vendor_invoice_lines")
+          .select("id,taxable,material_id,items(item_categories(name)),vendor_invoices!inner(project_id,company_id,status,is_opening,po_id)", {count:"exact"})
+          .eq("vendor_invoices.company_id",companyId).eq("vendor_invoices.is_opening",true).is("vendor_invoices.po_id",null)
+          .in("vendor_invoices.status",["approved","partially_paid","paid","pending_review","exception"])
+          .order("id").range(start,end)) : Promise.resolve([]),
       ]);
-      const summary = summarizeManagement(stock, consumed, invoices, payments);
+      const summary = summarizeManagement(stock, consumed, invoices, payments, historical.map(row => {
+        const invoice = row.vendor_invoices;
+        if (!invoice) throw new Error("Historical invoice project could not be verified.");
+        return { id: row.id, project_id: invoice.project_id, status: invoice.status, is_opening: invoice.is_opening,
+          po_id: invoice.po_id, taxable: row.taxable, material_id: row.material_id, category: row.items?.item_categories?.name ?? null };
+      }));
       return { stock, projects, consumed, invoices, payments, summary };
     },
   });
@@ -90,7 +101,8 @@ function ManagementOverview() {
   const projectRows = (data?.projects ?? []).map(project => ({
     ...project,
     consumed: data?.summary.projectUsage.get(project.id) ?? 0,
-  })).sort((a, b) => b.consumed - a.consumed);
+    historical: data?.summary.historicalByProject.get(project.id) ?? emptyHistoricalUsage(),
+  })).map(p=>({...p,total:p.consumed+p.historical.approved+p.historical.pending})).sort((a,b)=>b.total-a.total);
 
   return <div className="pb-16">
     <PageHeader title="Management Overview"
@@ -108,7 +120,7 @@ function ManagementOverview() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { label: "Stock on hand", value: data.summary.stockValue, hint: "Value of material currently in stores", icon: Boxes },
-          { label: "Material used on projects", value: data.summary.materialUsageCost, hint: "Issued materials minus returns at issue cost", icon: ChartColumnIncreasing },
+          { label: historicalAllowed ? "Recorded material cost" : "Material used on projects", value: data.summary.recordedMaterialCost, hint: historicalAllowed ? "Stock issues net of returns + historical materials (including pending bills)" : "Issued materials minus returns at issue cost", icon: ChartColumnIncreasing },
           { label: "Supplier bills outstanding", value: data.summary.unpaidSupplierBills, hint: "Approved invoices remaining unpaid", icon: Wallet },
           { label: "Payments recorded", value: data.summary.cashPaid, hint: "Cash outflow, including any advances", icon: IndianRupee },
         ].map(metric => <div className="rounded-xl border bg-card p-5 shadow-card" key={metric.label}>
@@ -119,10 +131,16 @@ function ManagementOverview() {
         </div>)}
       </div>
       <p className="mt-3 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-        These four amounts must <strong>not</strong> be added together. “Material used” is recorded material cost, not total company expense.
-        Bills and payments can relate to the same purchases. Labour, contractor bills and overheads are not included unless separately recorded.
+        These four amounts must <strong>not</strong> be added together. Recorded material cost includes stock issues and eligible old bills without a PO, valued before GST. Historical bills are treated as consumed based on the reporting policy; pending bills are provisional, not approved costs.
+        Bills and payments can relate to the same purchases. Services and unclassified old bill lines are shown separately, not added to the material total. No stock balances are changed.
       </p>
 
+      {historicalAllowed ? <div className="mt-3 grid gap-2 rounded-lg border bg-card p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div><p className="text-xs text-muted-foreground">Stock issues net of returns</p><strong>{inr(data.summary.materialUsageCost)}</strong></div>
+        <div><p className="text-xs text-muted-foreground">Approved historical materials</p><strong>{inr(data.summary.historicalUsage.approved)}</strong></div>
+        <div><p className="text-xs text-muted-foreground">Historical materials pending review</p><strong>{inr(data.summary.historicalUsage.pending)}</strong></div>
+        <div><p className="text-xs text-muted-foreground">Other old bill costs (excluded)</p><strong>{inr(data.summary.historicalUsage.services+data.summary.historicalUsage.unclassified)}</strong></div>
+      </div> : <p className="mt-3 text-xs text-muted-foreground">Historical invoice detail is not included because your role lacks invoice or material viewing permission.</p>}
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Where is each material?</h2>
@@ -167,8 +185,14 @@ function ManagementOverview() {
           {projectRows.map(project => <div key={project.id} className="rounded-xl border bg-card p-4 shadow-card">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0"><div className="truncate font-semibold">{project.name}</div><div className="text-xs text-muted-foreground">{project.code}</div></div>
-              <div className="text-right"><div className="text-[11px] text-muted-foreground">Material consumed</div><div className="font-semibold tabular-nums">{inr(project.consumed)}</div></div>
+              <div className="text-right"><div className="text-[11px] text-muted-foreground">{historicalAllowed?"Recorded material cost":"Material consumed"}</div><div className="font-semibold tabular-nums">{inr(project.total)}</div></div>
             </div>
+            {historicalAllowed && <div className="mt-3 space-y-1 border-t pt-3 text-xs">
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Stock issues net of returns</span><span className="tabular-nums">{inr(project.consumed)}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Approved old material bills</span><span className="tabular-nums">{inr(project.historical.approved)}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Old material bills pending review</span><span className="tabular-nums">{inr(project.historical.pending)}</span></div>
+              {(project.historical.services!==0||project.historical.unclassified!==0)&&<div className="flex justify-between gap-2 text-muted-foreground"><span>Services / unclassified (excluded)</span><span className="tabular-nums">{inr(project.historical.services+project.historical.unclassified)}</span></div>}
+            </div>}
             <div className="mt-2 text-xs text-muted-foreground">Project budget: {Number(project.budget) > 0 ? inr(project.budget) : "Not set"}</div>
           </div>)}
         </div>
