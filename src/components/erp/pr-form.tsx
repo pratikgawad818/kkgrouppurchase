@@ -15,6 +15,8 @@ import { Loading } from "@/components/erp/common";
 import { errMsg, num } from "@/lib/format";
 import { useMe } from "@/lib/session";
 import { directorCanFinalizeOwnPurchasing } from "@/lib/purchasing-authority";
+import { PrNoticeCard } from "@/components/erp/pr-notice-card";
+import { prNotice, noticeReasonValid } from "@/lib/pr-notice";
 import { saveAttempt } from "@/lib/save-attempt";
 import { PR_PRIORITY, PR_TYPE, type PrPriority, type PrType } from "@/lib/pr";
 
@@ -37,6 +39,7 @@ export type PrHeader = {
   request_type: PrType;
   purpose: string;
   remarks: string;
+  short_notice_reason?: string;
 };
 
 const blankLine: PrLine = {
@@ -87,6 +90,7 @@ export function PrForm({
     initialLines?.length ? initialLines : [{ ...blankLine }],
   );
 
+  const notice = prNotice(h.required_by, lines.filter(l=>l.material_id).map(l=>l.required_by));
   const refs = useQuery({
     queryKey: ["pr-refs", staffId],
     enabled: !!staffId,
@@ -139,6 +143,7 @@ export function PrForm({
       if (submit) {
         if (!valid.length) throw new Error("Add at least one item.");
         if (!h.purpose.trim()) throw new Error("Purpose is required to submit.");
+        if (notice?.late && !noticeReasonValid(h.short_notice_reason ?? "")) throw new Error("Enter a reason of 10–1000 characters for less than seven days notice.");
       }
       for (const l of valid) {
         if (!(Number(l.quantity) > 0))
@@ -155,6 +160,7 @@ export function PrForm({
         request_type: h.request_type,
         purpose: h.purpose.trim() || null,
         remarks: h.remarks.trim() || null,
+        short_notice_reason: h.short_notice_reason?.trim() || null,
       };
       const payload = {
         _id: (id ?? null) as string,
@@ -512,6 +518,8 @@ export function PrForm({
         </div>
       </section>
 
+      {notice && <PrNoticeCard preview days={notice.days} submittedOn={notice.submittedOn} requiredBy={notice.due} />}
+      {notice?.late && <section className="rounded-lg border bg-card p-4"><Label htmlFor="pr-short-notice">Reason for short notice *</Label><Textarea id="pr-short-notice" maxLength={1000} rows={3} value={h.short_notice_reason ?? ""} onChange={e=>setH({...h,short_notice_reason:e.target.value})} placeholder="Explain why this request could not be raised seven days in advance." className="mt-2"/><p className="mt-1 text-xs text-muted-foreground">Required for submission, not for saving a draft. The reason is recorded with the PR.</p></section>}
       {finalizeOwn && (
         <p className="text-sm text-muted-foreground">
           Your request will be ready for RFQ immediately. No additional approval is needed.
@@ -531,7 +539,7 @@ export function PrForm({
         <Button type="submit" variant="outline" disabled={save.isPending}>
           Save draft
         </Button>
-        <Button type="button" disabled={save.isPending} onClick={() => save.mutate(true)}>
+        <Button type="button" disabled={save.isPending || !!(notice?.late && !noticeReasonValid(h.short_notice_reason ?? ""))} onClick={() => save.mutate(true)}>
           {finalizeOwn ? "Finalize request" : "Submit for approval"}
         </Button>
       </div>

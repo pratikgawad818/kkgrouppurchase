@@ -15,6 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PrNoticeCard } from "@/components/erp/pr-notice-card";
+import { prNotice, noticeReasonValid } from "@/lib/pr-notice";
 import { Field, Loading, PageHeader } from "@/components/erp/common";
 import { ProcurementAttachmentLink } from "@/components/erp/procurement-attachment";
 import { PrMissingAttachment } from "@/components/erp/pr-missing-attachment";
@@ -199,6 +201,8 @@ function PrDetail() {
   const { pr, items, history, name } = q.data!;
   if (scope.isScopedEngineer && !scope.canAccess(pr.project_id))
     return <div role="alert" className="rounded-lg border p-5 text-sm">This purchase request is not in your assigned projects.</div>;
+  const notice = prNotice(pr.required_by, items.map(x=>x.required_by ?? ""));
+  const needsNoticeReason = act === "submitted" && !!notice?.late;
   const mine = pr.requested_by === me.data?.profile.id;
   const st = PR_STATUS[pr.status];
   const pending = pr.status === "pending_approval";
@@ -524,6 +528,7 @@ function PrDetail() {
       />
       )}
 
+      {pr.first_notice_days !== null && pr.first_notice_submitted_on && pr.first_notice_required_by ? <PrNoticeCard days={pr.first_notice_days} submittedOn={pr.first_notice_submitted_on} requiredBy={pr.first_notice_required_by} reason={pr.first_notice_reason} /> : pr.status === "draft" && notice ? <PrNoticeCard preview days={notice.days} submittedOn={notice.submittedOn} requiredBy={notice.due} /> : <p className="text-sm text-muted-foreground">Planning notice not recorded for this historical request.</p>}
       <ProcurementRevisionHistory kind="purchase_request" documentId={id} />
       <Dialog open={!!act} onOpenChange={(o) => !o && setAct(null)}>
         <DialogContent>
@@ -532,7 +537,7 @@ function PrDetail() {
             <DialogDescription>
               {act === "approved"
                 ? "This marks the request as received for procurement and allows RFQ processing. It does not approve the final Purchase Order; that needs a separate Director decision."
-                : act && ACTION_COPY[act]?.needs ? "A comment is required." : "Comment is optional."}{" "}
+                : needsNoticeReason ? "Less than seven days notice: enter a reason (10–1000 characters)." : act && ACTION_COPY[act]?.needs ? "A comment is required." : "Comment is optional."}{" "}
               Your action is recorded permanently in the audit history.
             </DialogDescription>
           </DialogHeader>
@@ -540,15 +545,17 @@ function PrDetail() {
             rows={3}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Comment"
+            maxLength={1000}
+            placeholder={needsNoticeReason ? "Reason for short notice (required)" : "Comment"}
           />
           <DialogFooter>
+            {needsNoticeReason && pr.short_notice_reason && !comment.trim() && <p className="text-xs text-muted-foreground">Saved reason: {pr.short_notice_reason}</p>}
             <Button variant="outline" onClick={() => setAct(null)}>
               Close
             </Button>
             <Button
               variant={act ? ACTION_COPY[act]?.variant : undefined}
-              disabled={run.isPending || (!!act && !!ACTION_COPY[act]?.needs && !comment.trim())}
+              disabled={run.isPending || (needsNoticeReason && !noticeReasonValid(comment.trim() || pr.short_notice_reason || "")) || (!!act && !!ACTION_COPY[act]?.needs && !comment.trim())}
               onClick={() => act && run.mutate(act)}
             >
               Confirm

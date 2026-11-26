@@ -71,6 +71,7 @@ function EditPr() {
             request_type: pr.request_type,
             purpose: pr.purpose ?? "",
             remarks: pr.remarks ?? "",
+            short_notice_reason: pr.short_notice_reason ?? "",
           }}
           initialLines={items.map((x) => ({
             material_id: x.material_id,
