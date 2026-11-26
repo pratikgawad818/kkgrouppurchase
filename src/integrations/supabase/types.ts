@@ -2986,6 +2986,11 @@ export type Database = {
           priority: Database["public"]["Enums"]["pr_priority"]
           project_id: string
           purpose: string | null
+          short_notice_reason: string | null
+          first_notice_days: number | null
+          first_notice_required_by: string | null
+          first_notice_submitted_on: string | null
+          first_notice_reason: string | null
           remarks: string | null
           request_date: string
           request_type: Database["public"]["Enums"]["pr_request_type"]
@@ -3010,6 +3015,11 @@ export type Database = {
           priority?: Database["public"]["Enums"]["pr_priority"]
           project_id: string
           purpose?: string | null
+          short_notice_reason?: string | null
+          first_notice_days?: number | null
+          first_notice_required_by?: string | null
+          first_notice_submitted_on?: string | null
+          first_notice_reason?: string | null
           remarks?: string | null
           request_date?: string
           request_type?: Database["public"]["Enums"]["pr_request_type"]
@@ -3034,6 +3044,11 @@ export type Database = {
           priority?: Database["public"]["Enums"]["pr_priority"]
           project_id?: string
           purpose?: string | null
+          short_notice_reason?: string | null
+          first_notice_days?: number | null
+          first_notice_required_by?: string | null
+          first_notice_submitted_on?: string | null
+          first_notice_reason?: string | null
           remarks?: string | null
           request_date?: string
           request_type?: Database["public"]["Enums"]["pr_request_type"]
