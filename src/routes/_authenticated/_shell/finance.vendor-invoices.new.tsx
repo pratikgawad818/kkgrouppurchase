@@ -156,8 +156,12 @@ function NewInvoice() {
       draftUpload.clear();
       if (submit) {
         // Saving succeeded. Never retry the creation as though no invoice exists.
-        const r = await supabase.rpc("invoice_transition", { _id: data, _action: "submit", _comment: "" });
-        if (r.error) return { id: data as string, submissionError: errMsg(r.error) };
+        try {
+          const r = await supabase.rpc("invoice_transition", { _id: data, _action: "submit", _comment: "" });
+          if (r.error) return { id: data as string, submissionError: errMsg(r.error) };
+        } catch (error) {
+          return { id: data as string, submissionError: errMsg(error) };
+        }
       }
       return { id: data as string, submissionError: null };
     },
