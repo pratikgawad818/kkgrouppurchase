@@ -48,6 +48,7 @@ function PrList() {
   const [projectId, setProjectId] = useState("");
   const [buildingId, setBuildingId] = useState("");
   const [priority, setPriority] = useState("");
+  const [planning, setPlanning] = useState("");
   const [requester, setRequester] = useState("");
   const [fy, setFy] = useState("");
   const [from, setFrom] = useState("");
@@ -74,7 +75,7 @@ function PrList() {
   const q = useQuery({
     queryKey: [
       "prs", scope.userId, scope.assignedProjectIds, status, projectId, buildingId, priority, requester, fy,
-      from, to, page, sp.due,
+      from, to, page, sp.due, planning,
     ],
     enabled: !searching && !scope.isLoading && !scope.error,
     queryFn: async () => {
@@ -83,7 +84,7 @@ function PrList() {
       let r = supabase
         .from("purchase_requests")
         .select(
-          "id,pr_number,request_date,required_by,priority,status,requested_by,projects(code,name),buildings(name)",
+          "id,pr_number,request_date,required_by,priority,status,requested_by,first_notice_days,projects(code,name),buildings(name)",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -94,6 +95,9 @@ function PrList() {
       if (projectId) r = r.eq("project_id", projectId);
       if (buildingId) r = r.eq("building_id", buildingId);
       if (priority) r = r.eq("priority", priority as PrPriority);
+      if (planning === "late") r = r.lt("first_notice_days", 7);
+      if (planning === "planned") r = r.gte("first_notice_days", 7);
+      if (planning === "unrecorded") r = r.is("first_notice_days", null);
       if (requester) r = r.eq("requested_by", requester);
       if (fy) r = r.gte("request_date", `${fy}-04-01`).lte("request_date", `${Number(fy) + 1}-03-31`);
       if (from) r = r.gte("request_date", from);
@@ -117,7 +121,7 @@ function PrList() {
   const searchResults = useQuery({
     queryKey: [
       "pr-search-catalog", scope.userId, scope.assignedProjectIds, status, projectId, buildingId, priority,
-      requester, fy, from, to, sp.due,
+      requester, fy, from, to, sp.due, planning,
     ],
     enabled: searching && refs.isSuccess && !scope.isLoading && !scope.error,
     queryFn: async () => {
@@ -126,7 +130,7 @@ function PrList() {
       let r = supabase
         .from("purchase_requests")
         .select(
-          "id,pr_number,request_date,required_by,priority,status,requested_by,projects(code,name),buildings(name),purchase_request_items(items(name,code))",
+          "id,pr_number,request_date,required_by,priority,status,requested_by,first_notice_days,projects(code,name),buildings(name),purchase_request_items(items(name,code))",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -137,6 +141,9 @@ function PrList() {
       if (projectId) r = r.eq("project_id", projectId);
       if (buildingId) r = r.eq("building_id", buildingId);
       if (priority) r = r.eq("priority", priority as PrPriority);
+      if (planning === "late") r = r.lt("first_notice_days", 7);
+      if (planning === "planned") r = r.gte("first_notice_days", 7);
+      if (planning === "unrecorded") r = r.is("first_notice_days", null);
       if (requester) r = r.eq("requested_by", requester);
       if (fy) r = r.gte("request_date", `${fy}-04-01`).lte("request_date", `${Number(fy) + 1}-03-31`);
       if (from) r = r.gte("request_date", from);
@@ -196,7 +203,7 @@ function PrList() {
       />
       <RegisterFilters
         activeCount={
-          [status, projectId, buildingId, priority, requester, fy, from, to].filter(Boolean).length
+          [status, projectId, buildingId, priority, requester, fy, from, to, planning].filter(Boolean).length
         }
       >
         <SearchBox
@@ -307,6 +314,9 @@ function PrList() {
             </option>
           ))}
         </select>
+        <select className={sel} value={planning} onChange={e=>{setPlanning(e.target.value);reset();}} aria-label="Purchase planning">
+          <option value="">All planning statuses</option><option value="late">Late (under 7 days)</option><option value="planned">Planned (7+ days)</option><option value="unrecorded">Not recorded / draft</option>
+        </select>
         <Input
           type="date"
           className="h-9 w-auto"
@@ -345,6 +355,9 @@ function PrList() {
                 <th className="px-4 py-3">Building</th>
                 <th className="px-4 py-3">Requested by</th>
                 <th className="px-4 py-3">Required by</th>
+                <th className="px-4 py-3">PR notice</th>
+                <th className="px-4 py-3">Required notice</th>
+                <th className="px-4 py-3">Classification</th>
                 <th className="px-4 py-3">Priority</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3" />
@@ -367,6 +380,9 @@ function PrList() {
                   <td className="px-4 py-3">{r.buildings?.name ?? "—"}</td>
                   <td className="px-4 py-3">{who(r.requested_by)}</td>
                   <td className="px-4 py-3">{fmtDate(r.required_by)}</td>
+                  <td className="px-4 py-3 tabular-nums">{r.first_notice_days == null ? "—" : `${r.first_notice_days} d`}</td>
+                  <td className="px-4 py-3">7 days</td>
+                  <td className="px-4 py-3">{r.first_notice_days == null ? <span className="text-muted-foreground">{r.status==="draft"?"Draft":"Not recorded"}</span> : <span className={"rounded-full px-2 py-1 text-xs font-semibold "+(r.first_notice_days<7?"bg-red-500/10 text-red-700 dark:text-red-400":"bg-emerald-500/10 text-emerald-700 dark:text-emerald-400")}>{r.first_notice_days<7?"Late":"Planned"}</span>}</td>
                   <td className="px-4 py-3">{PR_PRIORITY[r.priority]}</td>
                   <td className="px-4 py-3">
                     <span
