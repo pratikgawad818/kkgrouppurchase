@@ -37,6 +37,7 @@ const rules: readonly Rule[] = [
       "units.view",
     ],
   },
+  { pattern: /^\/sales-dashboard\/?$/, roles: ["ceo","senior_sales_executive"], all: ["sales.bookings","small_expense.create"] },
   { pattern: /^\/sales\/?$/, roles: ["director", "super_admin", "ceo", "senior_sales_executive"] },
   { pattern: /^\/units\/?$/, roles: ["director", "super_admin", "ceo", "senior_sales_executive"], any: ["units.view"] },
   {
@@ -109,7 +110,7 @@ export function canAccessPage(path: string, user: PageAccess): boolean {
     !VIEWER_NAV.has(path.replace(/\/$/, ""))
   )
     return false;
-  if (isScopedSalesRole(user.roles) && !["/sales","/units","/finance/small-expenses","/profile"].includes(path.replace(/\/$/,""))) return false;
+  if (isScopedSalesRole(user.roles) && !["/sales-dashboard","/sales","/units","/finance/small-expenses","/profile"].includes(path.replace(/\/$/,""))) return false;
   const rule = rules.find((entry) => entry.pattern.test(path));
   if (!rule) return false; // New routes fail closed until deliberately classified.
   if (rule.roles && !rule.roles.some((role) => user.roles.includes(role))) return false;
