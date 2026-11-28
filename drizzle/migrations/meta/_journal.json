@@ -869,6 +869,20 @@
       "when": 1795457520000,
       "tag": "0123_pr_seven_day_notice",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1795850000124,
+      "tag": "0124_ceo_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1795850000125,
+      "tag": "0125_scoped_sales_portal",
+      "breakpoints": true
     }
   ]
 }
