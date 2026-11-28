@@ -1,4 +1,4 @@
--- Source: New City Centre (Flats All record ) (1).xlsx; updated sold/unsold list (59 explicitly SOLD, 102 blank). Four formerly sold/booked blanks conservatively retain historical restriction pending confirmation.
+-- Source: New City Centre (Flats All record ) (1).xlsx; updated sold/unsold list (59 explicitly SOLD, 102 blank). Four formerly sold/booked blanks confirmed available by management.
 -- Execute once after reviewed migration. No fabricated sales or receipts.
 BEGIN;
 SET LOCAL lock_timeout='5s';
@@ -84,7 +84,7 @@ INSERT INTO cc_source VALUES
 ('A704','A',7,'S','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
 ('A705','A',7,'S','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
 ('A804','A',8,'S','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
-('A805','A',8,'S','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
+('A805','A',8,'A','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
 ('A1004','A',10,'A','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
 ('A1304','A',13,'S','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
 ('A1305','A',13,'A','2-BHK (6)',514.73,25.19,95.15,635.07,1100,0,1100,6050000,363000,302500,350000,7095500),
@@ -133,7 +133,7 @@ INSERT INTO cc_source VALUES
 ('A1102','A',11,'L','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
 ('A1201','A',12,'L','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
 ('A1202','A',12,'L','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
-('B104','B',1,'S','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
+('B104','B',1,'A','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
 ('B204','B',2,'A','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
 ('B304','B',3,'S','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
 ('B704','B',7,'S','2-BHK (4)',508.71,0,30.46,539.17,925.89,0,925.89,5092395,305543.7,254619.75,350000,6032558.45),
@@ -216,7 +216,7 @@ INSERT INTO cc_source VALUES
 ('C307','C',3,'S','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
 ('C704','C',7,'A','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
 ('C707','C',7,'A','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
-('C804','C',8,'B','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
+('C804','C',8,'A','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
 ('C807','C',8,'A','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
 ('C904','C',9,'A','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
 ('C907','C',9,'A','1-BHK (3)',321.52,29.6,30.46,381.58,650,0,650,3575000,214500,35750,150000,4005250),
@@ -246,7 +246,7 @@ INSERT INTO cc_source VALUES
 ('C306','C',3,'S','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
 ('C705','C',7,'A','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
 ('C706','C',7,'A','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
-('C805','C',8,'B','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
+('C805','C',8,'A','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
 ('C806','C',8,'A','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
 ('C905','C',9,'A','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
 ('C906','C',9,'A','1-BHK (1)',297.09,52.74,30.46,380.29,650,0,650,3575000,214500,35750,150000,4005250),
@@ -274,10 +274,10 @@ DECLARE p uuid; actual integer;
 BEGIN
  SELECT id INTO STRICT p FROM public.projects WHERE code='CC' AND name='City Centre' FOR UPDATE;
  IF EXISTS(SELECT 1 FROM public.units WHERE project_id=p) THEN RAISE EXCEPTION 'Existing City Centre inventory: reconcile before importing'; END IF;
- IF (SELECT count(*) FROM cc_source)<>265 OR (SELECT count(*) FROM cc_source WHERE flag='A')<>98 OR (SELECT count(*) FROM cc_source WHERE flag='L')<>104 OR (SELECT count(*) FROM cc_source WHERE flag='S')<>61 OR (SELECT count(*) FROM cc_source WHERE flag='B')<>2 THEN RAISE EXCEPTION 'Source counts mismatch'; END IF;
+ IF (SELECT count(*) FROM cc_source)<>265 OR (SELECT count(*) FROM cc_source WHERE flag='A')<>102 OR (SELECT count(*) FROM cc_source WHERE flag='L')<>104 OR (SELECT count(*) FROM cc_source WHERE flag='S')<>59 OR (SELECT count(*) FROM cc_source WHERE flag='B')<>0 THEN RAISE EXCEPTION 'Source counts mismatch'; END IF;
  IF EXISTS(SELECT 1 FROM cc_source WHERE base<>area*5500 OR stamp<>round(base*.06,2) OR gst<>round(base*(CASE WHEN layout LIKE '2-BHK%' THEN .05 ELSE .01 END),2) OR cost<>base+stamp+gst+other+30000) THEN RAISE EXCEPTION 'Workbook price mismatch'; END IF;
  INSERT INTO public.units(project_id,building_id,floor_id,unit_number,unit_type,source_layout,carpet_area,built_up_area,saleable_area,balcony_area,terrace_area,source_area_details,base_rate,other_charges,gst_rate,stamp_duty_rate,registration_fee,pricing_model,ownership_type,legacy_sale_status,status,hold_reason,notes)
- SELECT p,b.id,f.id,s.flat,(CASE WHEN layout LIKE '2-BHK%' THEN '2bhk' WHEN layout LIKE '1-BHK%' THEN '1bhk' ELSE 'other' END)::public.unit_type,layout,carpet,built,area,balcony,terrace,jsonb_build_object('enclosed_balcony',enclosed,'combined_area_as_recorded',source_total,'total_built_up_as_recorded',area),5500,other,CASE WHEN layout LIKE '2-BHK%' THEN 5 ELSE 1 END,6,30000,'city_centre_workbook',CASE WHEN flag='L' THEN 'landowner' ELSE 'builder' END,CASE flag WHEN 'S' THEN 'sold' WHEN 'B' THEN 'booked' ELSE NULL END,(CASE WHEN flag='A' THEN 'available' ELSE 'hold' END)::public.unit_status,CASE flag WHEN 'L' THEN 'Landowner allocation - not for builder sale' WHEN 'S' THEN 'Historically sold - buyer details pending' WHEN 'B' THEN 'Historically booked - buyer details pending' ELSE NULL END,CASE WHEN s.flat IN ('A805','B104','C804','C805') THEN 'Source conflict: old workbook sold/booked; updated status blank. Restricted pending management confirmation.' ELSE 'Source: original City Centre pricing workbook; updated sold/unsold status list' END
+ SELECT p,b.id,f.id,s.flat,(CASE WHEN layout LIKE '2-BHK%' THEN '2bhk' WHEN layout LIKE '1-BHK%' THEN '1bhk' ELSE 'other' END)::public.unit_type,layout,carpet,built,area,balcony,terrace,jsonb_build_object('enclosed_balcony',enclosed,'combined_area_as_recorded',source_total,'total_built_up_as_recorded',area),5500,other,CASE WHEN layout LIKE '2-BHK%' THEN 5 ELSE 1 END,6,30000,'city_centre_workbook',CASE WHEN flag='L' THEN 'landowner' ELSE 'builder' END,CASE flag WHEN 'S' THEN 'sold' WHEN 'B' THEN 'booked' ELSE NULL END,(CASE WHEN flag='A' THEN 'available' ELSE 'hold' END)::public.unit_status,CASE flag WHEN 'L' THEN 'Landowner allocation - not for builder sale' WHEN 'S' THEN 'Historically sold - buyer details pending' WHEN 'B' THEN 'Historically booked - buyer details pending' ELSE NULL END,CASE WHEN s.flat IN ('A805','B104','C804','C805') THEN 'Updated workbook blank; confirmed available by management.' ELSE 'Source: original City Centre pricing workbook; updated sold/unsold status list' END
  FROM cc_source s JOIN public.buildings b ON b.project_id=p AND b.wing=s.wing JOIN public.floors f ON f.building_id=b.id AND f.floor_number=s.floor_number;
  GET DIAGNOSTICS actual=ROW_COUNT;
  IF actual<>265 OR EXISTS(SELECT 1 FROM cc_source s LEFT JOIN public.units u ON u.project_id=p AND u.unit_number=s.flat WHERE u.id IS NULL OR u.total_agreement_value<>s.cost) THEN RAISE EXCEPTION 'Imported inventory verification failed'; END IF;
