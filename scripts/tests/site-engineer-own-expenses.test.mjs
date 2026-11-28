@@ -88,8 +88,8 @@ test("expense form requires explicit current-user project assignments and fails 
   assert.match(ui,/if\(!assignedIds\.length\)return \{projects:\[\],buildings:\[\]\};/);
   assert.match(ui,/projectQuery=projectQuery\.in\("id",assignedIds\)/);
   assert.match(ui,/buildingQuery=buildingQuery\.in\("project_id",assignedIds\)/);
-  assert.match(ui,/scopeSmallExpenseProjectOptions\(projects\.data\?\?\[\],buildings\.data\?\?\[\],assignedIds,isSiteEngineer\)/);
-  assert.match(ui,/if\(isSiteEngineer && !context\.data\?\.projects\.some/);
+  assert.match(ui,/scopeSmallExpenseProjectOptions\(projects\.data\?\?\[\],buildings\.data\?\?\[\],assignedIds,assignedOnly\)/);
+  assert.match(ui,/if\(assignedOnly && !context\.data\?\.projects\.some/);
   assert.match(ui,/if\(form\.buildingId && !context\.data\?\.buildings\.some/);
   assert.match(ui,/No projects are assigned to your account/);
 });
