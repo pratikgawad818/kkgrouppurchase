@@ -37,16 +37,16 @@ export function summarizeSalesPeriod(projectIds:readonly string[],range:DateRang
  return {total,projects,months,categories};
 }
 
-export type FlatInventoryRow={id:string;project_id:string;status:string};
-export type InventoryTotals={available:number;hold:number;inProgress:number;sold:number;cancelled:number;total:number;unsold:number};
+export type FlatInventoryRow={id:string;project_id:string;status:string;ownership_type?:string;legacy_sale_status?:string|null};
+export type InventoryTotals={available:number;hold:number;inProgress:number;sold:number;cancelled:number;total:number;unsold:number;thirdParty?:number};
 const inventoryBlank=():InventoryTotals=>({available:0,hold:0,inProgress:0,sold:0,cancelled:0,total:0,unsold:0});
 export function summarizeFlatInventory(ids:readonly string[],rows:readonly FlatInventoryRow[]){
  const total=inventoryBlank(),projects=new Map(ids.map(id=>[id,inventoryBlank()]));
  for(const row of rows){
   const p=projects.get(row.project_id);if(!p)throw Error("Inventory returned an unassigned project");
-  const key=row.status==="available"?"available":row.status==="hold"?"hold":row.status==="cancelled"?"cancelled":["booked","agreement_pending","agreement_done"].includes(row.status)?"inProgress":["registered","possession_pending","possession_completed"].includes(row.status)?"sold":null;
+  const key=row.ownership_type&&row.ownership_type!=="builder"?"thirdParty":row.legacy_sale_status==="sold"?"sold":row.legacy_sale_status==="booked"?"inProgress":row.status==="available"?"available":row.status==="hold"?"hold":row.status==="cancelled"?"cancelled":["booked","agreement_pending","agreement_done"].includes(row.status)?"inProgress":["registered","possession_pending","possession_completed"].includes(row.status)?"sold":null;
   if(!key)throw Error("Unknown flat status");
-  for(const t of [p,total]){t[key]++;t.total++;if(key==="available"||key==="hold")t.unsold++;}
+  for(const t of [p,total]){if(key==="thirdParty")t.thirdParty=(t.thirdParty??0)+1;else t[key]++;t.total++;if(key==="available"||key==="hold")t.unsold++;}
  }
  return {total,projects};
 }
