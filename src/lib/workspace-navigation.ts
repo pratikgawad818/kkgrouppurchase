@@ -140,6 +140,8 @@ export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirecto
       groups.some((group) => group.items.some((item) => item.to === shortcut.to)),
     );
   }
+  const salesPortal=groups.find(g=>g.key==="home"&&g.items.some(i=>i.to==="/sales"));
+  if(salesPortal) return [{key:"home",to:"/sales",label:"Sales"},{key:"sales",to:"/units",label:"Flats"},{key:"finance",to:"/finance/small-expenses",label:"Expenses"}].filter(x=>groups.some(g=>g.items.some(i=>i.to===x.to)));
   const hasSales = groups.some((group) => group.key === "sales");
   const keys = isDirector
     ? ["home", "approvals", "purchasing", "finance"]
