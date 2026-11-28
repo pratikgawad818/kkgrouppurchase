@@ -31,7 +31,7 @@ import { uploadSmallExpenseBill, removeSmallExpenseBill, validateSmallExpenseBil
 
 export const Route = createFileRoute("/_authenticated/_shell/finance/small-expenses")({
   head: () => ({meta:[{title:"Small Expenses — KK GROUP ERP"},{name:"description",content:"Audited site and office petty expenses by project and building."}]}),
-  validateSearch: (search:Record<string,unknown>):{action?:"new"}=>search.action==="new"?{action:"new"}:{},
+  validateSearch: (search:Record<string,unknown>):{action?:"new"}=>search["action"]==="new"?{action:"new"}:{},
   component: SmallExpenses,
 });
 
