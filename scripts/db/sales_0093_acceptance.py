@@ -4,6 +4,7 @@ The caller provides CI-guarded QA connection and actor/denial fixtures.
 Every synthetic booking, receipt, refund and bulk-flat operation rolls back.
 """
 from decimal import Decimal
+from uuid import uuid4
 
 
 def exercise_sales(db, actor, denied, company_project, admin, sales_staff, foreign_director):
@@ -35,8 +36,13 @@ def exercise_sales(db, actor, denied, company_project, admin, sales_staff, forei
         sale=c.execute("SELECT sales_book_flat(%s,'Buyer One','9876543210',1600000)",
                        (unit,)).fetchone()[0]
         denied(c,lambda:c.execute("SELECT sales_book_flat(%s,'Duplicate Buyer','9876543211',1600000)",(unit,)))
-        receipt=c.execute("SELECT sales_report_receipt(%s,10000,current_date,'upi','QA-PAID-001')",
-                          (sale,)).fetchone()[0]
+        denied(c,lambda:c.execute("SELECT sales_report_receipt(%s,10000,current_date,'upi','QA-PAID-001')",(sale,)),"proof is required")
+        proof_company=c.execute("SELECT company_id FROM property_sales WHERE id=%s",(sale,)).fetchone()[0]
+        proof_path=f"{proof_company}/{sale}/{sales_staff}/{uuid4()}.pdf"
+        c.execute("INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('sales-documents',%s,%s)",(proof_path,sales_staff))
+        receipt_args=(sale,"QA-PAID-001",proof_path)
+        receipt=c.execute("SELECT sales_report_receipt_with_proof(%s,10000,current_date,'upi',%s,NULL,NULL,%s,'proof.pdf')",receipt_args).fetchone()[0]
+        assert c.execute("SELECT sales_report_receipt_with_proof(%s,10000,current_date,'upi',%s,NULL,NULL,%s,'proof.pdf')",receipt_args).fetchone()[0]==receipt
         denied(c,lambda:c.execute("SELECT sales_cancel_booking(%s,'Customer requested cancellation',0)",(sale,)))
         actor(c,admin)
         denied(c,lambda:c.execute("SELECT sales_cancel_booking(%s,'Customer requested cancellation',0)",(sale,)))
