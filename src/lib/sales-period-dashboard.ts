@@ -37,16 +37,19 @@ export function summarizeSalesPeriod(projectIds:readonly string[],range:DateRang
  return {total,projects,months,categories};
 }
 
-export type FlatInventoryRow={id:string;project_id:string;status:string;ownership_type?:string;legacy_sale_status?:string|null};
+export type FlatInventoryRow={id:string;project_id:string;status:string;ownership_type?:string;legacy_sale_status?:string|null;building_id?:string;buildings?:{name:string}|null};
 export type InventoryTotals={available:number;hold:number;inProgress:number;sold:number;cancelled:number;total:number;unsold:number;thirdParty?:number};
 const inventoryBlank=():InventoryTotals=>({available:0,hold:0,inProgress:0,sold:0,cancelled:0,total:0,unsold:0});
 export function summarizeFlatInventory(ids:readonly string[],rows:readonly FlatInventoryRow[]){
  const total=inventoryBlank(),projects=new Map(ids.map(id=>[id,inventoryBlank()]));
+ const wings=new Map<string,{id:string;projectId:string;name:string;stock:InventoryTotals}>();
  for(const row of rows){
   const p=projects.get(row.project_id);if(!p)throw Error("Inventory returned an unassigned project");
   const key=row.ownership_type&&row.ownership_type!=="builder"?"thirdParty":row.legacy_sale_status==="sold"?"sold":row.legacy_sale_status==="booked"?"inProgress":row.status==="available"?"available":row.status==="hold"?"hold":row.status==="cancelled"?"cancelled":["booked","agreement_pending","agreement_done"].includes(row.status)?"inProgress":["registered","possession_pending","possession_completed"].includes(row.status)?"sold":null;
   if(!key)throw Error("Unknown flat status");
-  for(const t of [p,total]){if(key==="thirdParty")t.thirdParty=(t.thirdParty??0)+1;else t[key]++;t.total++;if(key==="available"||key==="hold")t.unsold++;}
+  let wing=row.building_id?wings.get(row.building_id):undefined;
+  if(row.building_id&&!wing){wing={id:row.building_id,projectId:row.project_id,name:row.buildings?.name??"Building",stock:inventoryBlank()};wings.set(row.building_id,wing);}
+  for(const t of [p,total,...(wing?[wing.stock]:[])]){if(key==="thirdParty")t.thirdParty=(t.thirdParty??0)+1;else t[key]++;t.total++;if(key==="available"||key==="hold")t.unsold++;}
  }
- return {total,projects};
+ return {total,projects,wings:[...wings.values()].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}))};
 }

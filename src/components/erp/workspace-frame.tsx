@@ -80,6 +80,8 @@ const icons = {
   approvals: ShieldCheck,
   projects: Building2,
   sales: HandCoins,
+  collections: Wallet,
+  bookings: HandCoins,
   flats: Building2,
   settings: Settings,
 };
@@ -495,6 +497,7 @@ export function WorkspaceFrame({
             <Link preload="intent"
               key={group.key}
               to={group.to}
+              {...(group.key==="collections"?{search:{tab:"receipts" as const}}:group.key==="bookings"?{search:{tab:"bookings" as const}}:{})}
               aria-label={
                 group.key === "approvals" && pendingApprovals > 0
                   ? `Approvals, ${pendingApprovals} pending`

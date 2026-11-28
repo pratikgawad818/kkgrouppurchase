@@ -142,7 +142,15 @@ export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirecto
     );
   }
   const salesPortal=groups.find(g=>g.key==="home"&&g.items.some(i=>i.to==="/sales-dashboard"));
-  if(salesPortal) return [{key:"home",to:"/sales-dashboard",label:"Dashboard"},{key:"projects",to:"/sales-projects",label:"Projects"},{key:"sales",to:"/sales",label:"Sales"},{key:"finance",to:"/finance/small-expenses",label:"Expenses"}].filter(x=>groups.some(g=>g.items.some(i=>i.to===x.to)));
+  if(salesPortal) {
+    const common=[{key:"home",to:"/sales-dashboard",label:"Dashboard"}];
+    const shortcuts=salesPortal.label==="CEO Portal"?[
+      ...common,{key:"projects",to:"/sales-projects",label:"Projects"},{key:"stock",to:"/units",label:"Inventory"},{key:"collections",to:"/sales",label:"Collections"}
+    ]:[
+      ...common,{key:"stock",to:"/units",label:"Availability"},{key:"bookings",to:"/sales",label:"Bookings"},{key:"finance",to:"/finance/small-expenses",label:"Expenses"}
+    ];
+    return shortcuts.filter(x=>groups.some(g=>g.items.some(i=>i.to===x.to)));
+  }
   const hasSales = groups.some((group) => group.key === "sales");
   const keys = isDirector
     ? ["home", "approvals", "purchasing", "finance"]
