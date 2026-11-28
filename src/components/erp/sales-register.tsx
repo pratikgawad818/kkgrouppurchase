@@ -313,8 +313,8 @@ export function SalesPage() {
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
       {([
         ["Total flats",String(summaryData.total_flats),Layers3],
-        ["Available",String(summaryData.available_flats),Home],
-        ["Active bookings",String(summaryData.active_sales),Building2],
+        ["Available / unsold",String(summaryData.available_flats),Home],
+        ["Booked / sales in progress",String(summaryData.active_sales),Building2],
         ["Verified collections",money(summaryData.verified_collections),CreditCard],
         ["Buyer outstanding",money(summaryData.outstanding),Wallet],
         ["Refunds pending",money(summaryData.refund_pending),RotateCcw],
@@ -491,7 +491,7 @@ export function SalesPage() {
     </section>}
     {commercial&&<SalesCommercialDialog key={commercial.mode+(commercial.booking?.id??commercial.flat?.id??"")}
       mode={commercial.mode} project={project} buildings={meta.data?.buildings??[]}
-      flat={commercial.flat} booking={commercial.booking} manager={manager}
+      flat={commercial.flat} booking={commercial.booking} manager={manager} canImport={manager||scopedSales}
       companyId={me.data?.profile.company_id??""} actorId={me.data?.profile.id??""}
       onClose={()=>setCommercial(null)} onSaved={()=>{
         for(const key of ["sales-register","sales-overview","sales-project-commercial-report",
