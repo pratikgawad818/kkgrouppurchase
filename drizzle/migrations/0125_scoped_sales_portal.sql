@@ -502,3 +502,8 @@ BEGIN
         'amount',round(_amount,2)),auth.uid());
  RETURN v_id;
 END $function$;
+
+DROP POLICY IF EXISTS "Assigned sales staff read expense events" ON public.site_small_expense_events;
+CREATE POLICY "Assigned sales staff read expense events" ON public.site_small_expense_events FOR SELECT TO authenticated
+USING(public.is_project_sales_staff(auth.uid()) AND public.has_permission(auth.uid(),'small_expense.create') AND public.actor_in_company(company_id)
+ AND EXISTS(SELECT 1 FROM public.site_small_expenses e WHERE e.id=expense_id AND e.company_id=site_small_expense_events.company_id AND e.project_id IS NOT NULL AND public.can_access_project(auth.uid(),e.project_id)));
