@@ -179,14 +179,14 @@ const emptySummary:Summary={
   total_flats:0,available_flats:0,booked_flats:0,active_sales:0,cancelled_sales:0,
   verified_collections:0,outstanding:0,refund_pending:0,
 };
-export function SalesPage() {
+export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab?:Tab;initialProject?:string}={}) {
   const me=useMe(),qc=useQueryClient();
   const manager=!!me.data?.roles.some(r=>r==="super_admin"||r==="director");
   const scopedSales=!!me.data?.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
   const canCreateFlats=manager&&!scopedSales;
   const superAdmin=!!me.data?.roles.includes("super_admin");
-  const [tab,setTab]=useState<Tab>("inventory");
-  const [project,setProject]=useState("");
+  const [tab,setTab]=useState<Tab>(initialTab);
+  const [project,setProject]=useState(initialProject);
   const [building,setBuilding]=useState("");
   const [floor,setFloor]=useState("");
   const [status,setStatus]=useState("");

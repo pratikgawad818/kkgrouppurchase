@@ -402,6 +402,16 @@ jobs:
           path: artifacts/expense-mobile-viewport/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Render CEO sales dashboard on 360, 390 and 430px phone viewports
+        run: node scripts/tests/mobile-sales-dashboard-smoke.mjs
+      - name: Save sales dashboard mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sales-dashboard-mobile-view
+          path: artifacts/sales-dashboard-mobile/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Render reference PO as real A4 PDF in headless Chromium
         run: node scripts/tests/po-layout-browser-smoke.mjs
       - name: Save actual rendered PDF and preview for review

@@ -1,6 +1,6 @@
 import { FinanceExport } from "@/components/erp/finance-export";
 import { PermanentDelete } from "@/components/erp/permanent-delete";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { matchesRecordSearch } from "@/lib/erp-search";
@@ -31,6 +31,7 @@ import { uploadSmallExpenseBill, removeSmallExpenseBill, validateSmallExpenseBil
 
 export const Route = createFileRoute("/_authenticated/_shell/finance/small-expenses")({
   head: () => ({meta:[{title:"Small Expenses — KK GROUP ERP"},{name:"description",content:"Audited site and office petty expenses by project and building."}]}),
+  validateSearch: (search:Record<string,unknown>):{action?:"new"}=>search["action"]==="new"?{action:"new"}:{},
   component: SmallExpenses,
 });
 
@@ -48,6 +49,8 @@ const createForm = (): Form => ({
 const optionLabel = (value: string, options: Record<string, string>) => options[value] ?? value.replace(/_/g," ");
 function SmallExpenses() {
   const me=useMe(), qc=useQueryClient();
+  const quickAction=Route.useSearch().action;
+  const navigate=useNavigate();
   const companyId=me.data?.profile.company_id;
   const isSuperAdmin=!!me.data?.roles.includes("super_admin");
   const isDirector=!!me.data?.roles.includes("director");
@@ -148,6 +151,7 @@ function SmallExpenses() {
     setEntryKey(crypto.randomUUID());setForm(fresh);setFormBaseline(JSON.stringify(fresh));
     setNewBills([]);setRemovedBillPaths([]);setOpen(true);
   };
+  useEffect(()=>{if(quickAction==="new"&&canCreate&&!open){startNew();void navigate({to:"/finance/small-expenses",search:{},replace:true});}},[quickAction,canCreate,open,navigate]);
   const addBillFiles=(selected: File[])=>{
     try {
       selected.forEach(validateSmallExpenseBill);

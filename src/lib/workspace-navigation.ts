@@ -93,6 +93,7 @@ export function workspaceNavigation(access: PageAccess): WorkspaceNavGroup[] {
       : WORKSPACE_NAV;
   if(isScopedSalesRole(access.roles)) return [
     {key:"home",label:access.roles.includes("ceo")?"CEO Portal":"Sales Portal",items:[{to:"/sales-dashboard",label:"Dashboard"}]},
+    {key:"projects",label:"Projects",items:[{to:"/sales-projects",label:"Projects performance"}]},
     {key:"sales",label:"Sales & properties",items:[{to:"/sales",label:"Sales & bookings"},{to:"/units",label:"Flat inventory"}]},
     {key:"finance",label:"Expenses",items:[{to:"/finance/small-expenses",label:"Project expenses"}]},
     {key:"settings",label:"Account",items:[{to:"/profile",label:"My profile"}]},
@@ -141,7 +142,7 @@ export function mobileWorkspaceNavigation(groups: WorkspaceNavGroup[], isDirecto
     );
   }
   const salesPortal=groups.find(g=>g.key==="home"&&g.items.some(i=>i.to==="/sales-dashboard"));
-  if(salesPortal) return [{key:"home",to:"/sales-dashboard",label:"Home"},{key:"sales",to:"/sales",label:"Sales"},{key:"flats",to:"/units",label:"Flats"},{key:"finance",to:"/finance/small-expenses",label:"Expenses"}].filter(x=>groups.some(g=>g.items.some(i=>i.to===x.to)));
+  if(salesPortal) return [{key:"home",to:"/sales-dashboard",label:"Dashboard"},{key:"projects",to:"/sales-projects",label:"Projects"},{key:"sales",to:"/sales",label:"Sales"},{key:"finance",to:"/finance/small-expenses",label:"Expenses"}].filter(x=>groups.some(g=>g.items.some(i=>i.to===x.to)));
   const hasSales = groups.some((group) => group.key === "sales");
   const keys = isDirector
     ? ["home", "approvals", "purchasing", "finance"]

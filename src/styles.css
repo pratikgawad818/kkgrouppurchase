@@ -2327,3 +2327,18 @@
     text-align: right !important;
   }
 }
+
+/* Approved navy header and compact mobile chrome for sales-only workspaces. */
+@media (max-width: 767px) {
+  .workspace-sales-portal .workspace-topbar { background:#172f51; color:#fff; border-color:#263e60; height:60px; padding-inline:12px; }
+  .workspace-sales-portal .workspace-topbar .workspace-brand-text strong,
+  .workspace-sales-portal .workspace-topbar .workspace-brand-text > span,
+  .workspace-sales-portal .workspace-topbar button,
+  .workspace-sales-portal .workspace-topbar .workspace-account { color:#fff; }
+  .workspace-sales-portal .workspace-topbar button:hover { background:#ffffff16; }
+  .workspace-sales-portal .workspace-topbar .workspace-avatar { background:#31569c; color:#fff; }
+  .workspace-sales-portal .workspace-main { padding:12px 12px calc(88px + env(safe-area-inset-bottom)); }
+  .workspace-sales-portal .workspace-bottom-nav .is-active { background:#163b76; color:#fff; border-radius:10px; }
+  .workspace-sales-portal .workspace-bottom-nav > a,
+  .workspace-sales-portal .workspace-bottom-nav > button { min-width:0; font-size:10px; padding-inline:2px; }
+}

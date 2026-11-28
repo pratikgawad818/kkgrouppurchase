@@ -8,8 +8,8 @@ test("CEO and senior sales navigate only to sales, flat inventory, scoped expens
  for(const role of ["ceo","senior_sales_executive"]){
   const user={roles:[role],permissions:new Set(["units.view","sales.bookings","sales.collections","small_expense.create"])};
   const groups=workspaceNavigation(user);
-  assert.deepEqual(groups.flatMap(g=>g.items.map(i=>i.to)),["/sales-dashboard","/sales","/units","/finance/small-expenses","/profile"]);
-  assert.deepEqual(mobileWorkspaceNavigation(groups).map(i=>i.to),["/sales-dashboard","/sales","/units","/finance/small-expenses"]);
+  assert.deepEqual(groups.flatMap(g=>g.items.map(i=>i.to)),["/sales-dashboard","/sales-projects","/sales","/units","/finance/small-expenses","/profile"]);
+  assert.deepEqual(mobileWorkspaceNavigation(groups).map(i=>i.to),["/sales-dashboard","/sales-projects","/sales","/finance/small-expenses"]);
   for(const path of ["/dashboard","/finance/payments","/finance/vendor-invoices","/approvals","/settings/users","/procurement/purchase-orders","/management"])assert.equal(canAccessPage(path,user),false,path);
  }
 });
