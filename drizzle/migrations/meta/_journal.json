@@ -883,6 +883,13 @@
       "when": 1795850000125,
       "tag": "0125_scoped_sales_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1795884480000,
+      "tag": "0126_restrict_flat_master_creation",
+      "breakpoints": true
     }
   ]
 }
