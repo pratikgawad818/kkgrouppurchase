@@ -7367,6 +7367,7 @@ export type Database = {
         | "store_manager"
         | "auditor"
         | "senior_sales_executive"
+        | "ceo"
       grn_disposition:
         | "pending_decision"
         | "replacement_expected"
@@ -7604,6 +7605,7 @@ export const Constants = {
         "store_manager",
         "auditor",
         "senior_sales_executive",
+        "ceo",
       ],
       grn_disposition: [
         "pending_decision",
