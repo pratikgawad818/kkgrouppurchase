@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { fmtDate } from "@/lib/format";
-import { SalesDashboardSummary } from "@/components/erp/sales-dashboard-summary";
-import { RefreshCw, Building2 } from "lucide-react";
+import { SalesDashboardSummary, type DashboardView } from "@/components/erp/sales-dashboard-summary";
+import { RefreshCw, Building2, Handshake, IndianRupee, Wallet } from "lucide-react";
 import { summarizeFlatInventory, type FlatInventoryRow, salesToday, salesPeriodRange, validSalesRange, summarizeSalesPeriod, type SalesPeriod, type DateRange, type SalePeriodRow, type ExpensePeriodRow, type ReceiptPeriodRow } from "@/lib/sales-period-dashboard";
-export const Route=createFileRoute("/_authenticated/_shell/sales-dashboard")({head:()=>({meta:[{title:"Sales Dashboard — KK GROUP ERP"}]}),component:SalesDashboard});
+export const Route=createFileRoute("/_authenticated/_shell/sales-dashboard")({head:()=>({meta:[{title:"Sales Dashboard — KK GROUP ERP"}]}),component:()=> <SalesDashboard/>});
 type Project={id:string;name:string};
 const periods:[SalesPeriod,string][]=[["month","This month"],["3m","Last 3 months"],["6m","Last 6 months"],["1y","Last 1 year"],["custom","Custom dates"]];
-function SalesDashboard(){
+export function SalesDashboard({initialView="overview"}:{initialView?:DashboardView}){
  const me=useMe(),actor=me.data?.profile.id,company=me.data?.profile.company_id;
+ const [view,setView]=useState<DashboardView>(initialView);
  const [period,setPeriod]=useState<SalesPeriod>("month");
  const [custom,setCustom]=useState<DateRange>(()=>salesPeriodRange("month"));
  const [project,setProject]=useState("");
@@ -53,9 +54,14 @@ function SalesDashboard(){
   ]);
   return summarizeSalesPeriod(ids,range,sales,expenses,receipts);
  }});
- const ready=allowed&&scope.isSuccess&&valid&&projectValid&&report.isSuccess&&inventory.isSuccess&&!scope.isFetching&&!report.isFetching&&!inventory.isFetching;
+ const outstanding=useQuery({queryKey:["sales-dashboard-outstanding",actor,company,ids],enabled:allowed&&scope.isSuccess&&projectValid,staleTime:0,queryFn:async()=>{
+  const amounts=await Promise.all(ids.map(async id=>{const r=await supabase.rpc("sales_overview",{_project:id,_building:null});if(r.error)throw r.error;const n=Number((r.data as {outstanding?:number|string}|null)?.outstanding);if(!Number.isFinite(n)||n<0||!Number.isSafeInteger(Math.round(n*100)))throw Error("Invalid outstanding balance");return Math.round(n*100);}));
+  const total=amounts.reduce((a,b)=>a+b,0);if(!Number.isSafeInteger(total))throw Error("Outstanding exceeds safe precision");return total;
+ }});
+ const ready=allowed&&scope.isSuccess&&valid&&projectValid&&report.isSuccess&&inventory.isSuccess&&outstanding.isSuccess&&!outstanding.isFetching&&!scope.isFetching&&!report.isFetching&&!inventory.isFetching;
  return <div className="min-w-0 max-w-full space-y-4 pb-6 sm:space-y-5">
-  <PageHeader title={me.data?.roles.includes("ceo")?"CEO Dashboard":"Senior Sales Dashboard"} subtitle="Assigned project sales, collections and expenses." actions={<Button size="sm" variant="outline" className="gap-2" aria-label="Refresh dashboard" onClick={()=>{void scope.refetch();if(scope.isSuccess&&projectValid){void report.refetch();void inventory.refetch();}}} disabled={!allowed||scope.isFetching||report.isFetching||inventory.isFetching||!valid||!projectValid}><RefreshCw className="h-4 w-4"/>Refresh</Button>}/>
+  <PageHeader title={view==="trends"?"Sales & expense trends":view==="projects"?"Projects performance":me.data?.roles.includes("ceo")?"CEO Dashboard":"Senior Sales Dashboard"} subtitle={scope.isSuccess?`${projects.length} assigned project${projects.length===1?"":"s"}`:"Assigned project sales, collections and expenses."} actions={<Button size="sm" variant="outline" className="gap-2" aria-label="Refresh dashboard" onClick={()=>{void scope.refetch();if(scope.isSuccess&&projectValid){void report.refetch();void inventory.refetch();void outstanding.refetch();}}} disabled={!allowed||scope.isFetching||report.isFetching||inventory.isFetching||outstanding.isFetching||!valid||!projectValid}><RefreshCw className="h-4 w-4"/>Refresh</Button>}/>
+  <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1" role="group" aria-label="Dashboard sections">{([["overview","Overview"],["trends","Trends"],["projects","Projects"]] as const).map(([key,label])=><button key={key} type="button" aria-pressed={view===key} onClick={()=>setView(key)} className={"min-h-10 rounded-lg px-1 text-xs font-semibold sm:text-sm "+(view===key?"bg-[#163b76] text-white shadow-sm":"text-muted-foreground")}>{label}</button>)}</div>
   <section className="min-w-0 rounded-2xl border bg-card p-3 sm:p-4 space-y-3">
    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
     <label className="min-w-0 text-xs font-medium">Project<select className="mt-1 h-11 w-full min-w-0 rounded-lg border bg-background px-3 text-base sm:text-sm" value={project} onChange={e=>setProject(e.target.value)}><option value="">All assigned projects</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
@@ -66,9 +72,9 @@ function SalesDashboard(){
    {valid?<p className="text-xs tabular-nums text-muted-foreground">{fmtDate(range.from)} – {fmtDate(range.to)} · IST</p>:<p role="alert" className="text-xs text-destructive">Choose valid dates in order, not later than today.</p>}
    {!projectValid&&<p role="alert" className="text-sm text-destructive">This project is no longer assigned. Select another project.</p>}
   </section>
-  {!allowed?<p role="alert">Sales and expense access is required.</p>:scope.error||report.error||inventory.error?<p role="alert" className="rounded-xl border p-4 text-destructive">Could not load a complete report. Refresh to retry. No partial totals are shown.</p>:!valid||!projectValid?null:scope.isSuccess&&!projects.length?<section className="rounded-2xl border bg-card p-5 text-center"><Building2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground"/><h2 className="font-semibold">No assigned projects</h2><p className="mt-2 text-sm text-muted-foreground">Your administrator needs to assign a project before sales, inventory and expenses appear here.</p></section>:!ready?<Loading/>:<>
-   <SalesDashboardSummary report={report.data!} inventory={inventory.data!} selected={selected}/>
-   <div className="grid grid-cols-1 gap-2 sm:flex"><Button asChild className="min-h-11"><Link to="/sales">Sales & bookings</Link></Button><Button asChild variant="outline" className="min-h-11"><Link to="/finance/small-expenses">Project expenses</Link></Button></div>
+  {!allowed?<p role="alert">Sales and expense access is required.</p>:scope.error||report.error||inventory.error||outstanding.error?<p role="alert" className="rounded-xl border p-4 text-destructive">Could not load a complete report. Refresh to retry. No partial totals are shown.</p>:!valid||!projectValid?null:scope.isSuccess&&!projects.length?<section className="rounded-2xl border bg-card p-5 text-center"><Building2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground"/><h2 className="font-semibold">No assigned projects</h2><p className="mt-2 text-sm text-muted-foreground">Your administrator needs to assign a project before sales, inventory and expenses appear here.</p></section>:!ready?<Loading/>:<>
+   <SalesDashboardSummary report={report.data!} inventory={inventory.data!} selected={selected} outstanding={outstanding.data!} view={view} onView={setView} onProject={id=>{setProject(id);setView("overview");window.scrollTo({top:0,behavior:"smooth"});}} quickActions={<section className="space-y-2"><h2 className="text-sm font-semibold">Quick actions</h2><div className="grid grid-cols-4 gap-1.5">{[{to:"/sales",search:{tab:"inventory"},label:"New booking",Icon:Handshake,tone:"bg-blue-50 text-blue-700"},{to:"/sales",search:{tab:"bookings"},label:"Add collection",Icon:IndianRupee,tone:"bg-amber-50 text-amber-700"},{to:"/finance/small-expenses",search:{action:"new"},label:"Add expense",Icon:Wallet,tone:"bg-rose-50 text-rose-700"},{to:"/units",search:{},label:"View flats",Icon:Building2,tone:"bg-sky-50 text-sky-700"}].map(({to,search,label,Icon,tone})=><Link key={label} to={to} search={search} className="flex min-w-0 flex-col items-center gap-1 rounded-xl border bg-card p-2 text-center text-[10px] font-medium leading-tight sm:text-xs"><span className={"grid size-10 place-items-center rounded-lg "+tone}><Icon className="size-5"/></span>{label}</Link>)}</div></section>}/>
+
   </>}
  </div>;
 }
