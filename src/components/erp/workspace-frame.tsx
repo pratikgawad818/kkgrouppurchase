@@ -308,7 +308,7 @@ export function WorkspaceFrame({
     return location?.group.key === item.key;
   };
   return (
-    <div className="workspace-frame">
+    <div className={cn("workspace-frame",home==="/sales-dashboard"&&"workspace-sales-portal")}>
       <a href="#workspace-main" className="workspace-skip-link">
         Skip to content
       </a>
