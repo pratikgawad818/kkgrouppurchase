@@ -191,6 +191,7 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
   const canCreateFlats=manager&&!scopedSales;
   const superAdmin=!!me.data?.roles.includes("super_admin");
   const [tab,setTab]=useState<Tab>(initialTab);
+  const [filtersOpen,setFiltersOpen]=useState(false);
   const [project,setProject]=useState(initialProject);
   const [building,setBuilding]=useState("");
   const [floor,setFloor]=useState("");
@@ -250,6 +251,8 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
   const creationFloors=floors.filter(x=>x.building_id===value("building_id"))
     .sort((a,b)=>a.floor_number-b.floor_number);
   const total=listing.data?.count??0;
+  const filterCount=[project,building,floor,status].filter(Boolean).length;
+  const compactFilter="h-10 w-full min-w-0 rounded-md border bg-background px-2 text-base lg:h-9 lg:w-auto lg:max-w-[165px] lg:text-xs";
   const changeTab=(next:Tab)=>{setTab(next);setStatus("");setSearch("");setPage(0);};
   const update=async(name:string,args:Record<string,unknown>,message:string)=>{
     if(busy)return;
@@ -331,42 +334,25 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
           <p className="text-xs text-muted-foreground">{label}</p>
         </section>)}
     </div>
-    <div className="rounded-xl border bg-card p-3 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-2 text-sm font-semibold"><ListFilter className="h-4 w-4"/> Project and property filters</p>
-        {canCreateFlats&&<div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={()=>setCommercial({mode:"import"})}>Import Excel / CSV</Button>
-          <Button size="sm" variant="outline" onClick={openBulk}><Layers3 className="mr-1 h-4 w-4"/>Bulk add flats</Button>
-          <Button size="sm" onClick={openUnit}><Plus className="mr-1 h-4 w-4"/>Add one flat</Button>
-        </div>}
+    <div className="min-w-0 space-y-2" data-sales-filter-toolbar>
+      {canCreateFlats&&<div className="flex flex-wrap gap-1.5">
+        <Button size="sm" variant="outline" onClick={()=>setCommercial({mode:"import"})}>Import</Button>
+        <Button size="sm" variant="outline" onClick={openBulk}>Bulk add</Button>
+        <Button size="sm" onClick={openUnit}><Plus className="mr-1 h-4 w-4"/>Add flat</Button>
+      </div>}
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <input aria-label="Search records" className="h-10 min-w-[120px] flex-1 rounded-md border bg-background px-2 text-base lg:h-9 lg:max-w-[210px] lg:text-xs" value={search}
+          placeholder={tab==="inventory"?"Search flat no.":tab==="bookings"?"Buyer / booking":"Search collection"} onChange={e=>{setSearch(e.target.value);setPage(0);}}/>
+        <Button size="sm" variant="outline" className="h-10 shrink-0 lg:hidden" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(v=>!v)}><ListFilter className="mr-1 h-4 w-4"/>Filters{filterCount?` (${filterCount})`:""}</Button>
+        <div className={"w-full grid-cols-2 gap-1.5 lg:flex lg:w-auto lg:flex-wrap lg:items-center "+(filtersOpen?"grid":"hidden")}>
+          <select aria-label="Select project" className={compactFilter} value={project} onChange={e=>{setProject(e.target.value);setBuilding("");setFloor("");setPage(0);}}><option value="">All projects</option>{meta.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select>
+          <select aria-label="Select wing or building" className={compactFilter} value={building} onChange={e=>{setBuilding(e.target.value);setFloor("");setPage(0);}}><option value="">All wings</option>{buildings.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select>
+          <select aria-label="Select floor" className={compactFilter} value={floor} disabled={!building} onChange={e=>{setFloor(e.target.value);setPage(0);}}><option value="">{building?"All floors":"Select wing"}</option>{floorOptions.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select>
+          <select aria-label="Filter by status" className={compactFilter} value={status} onChange={e=>{setStatus(e.target.value);setPage(0);}}><option value="">All statuses</option>{filteredStatus.map(x=><option key={x} value={x}>{labels[x]}</option>)}</select>
+        </div>
+        {(filterCount>0||search)&&<Button size="sm" variant="ghost" className="shrink-0 px-2" aria-label="Clear filters" onClick={()=>{setProject("");setBuilding("");setFloor("");setStatus("");setSearch("");setPage(0);}}>Clear</Button>}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <select aria-label="Select project" className={input} value={project}
-          onChange={e=>{setProject(e.target.value);setBuilding("");setFloor("");setPage(0);}}>
-          <option value="">All accessible projects</option>
-          {meta.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <select aria-label="Select wing or building" className={input} value={building}
-          onChange={e=>{setBuilding(e.target.value);setFloor("");setPage(0);}}>
-          <option value="">All wings / buildings</option>
-          {buildings.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <select aria-label="Select floor" className={input} value={floor} disabled={!building}
-          onChange={e=>{setFloor(e.target.value);setPage(0);}}>
-          <option value="">{building?"All floors":"Select wing first"}</option>
-          {floorOptions.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <select aria-label="Filter by status" className={input} value={status}
-          onChange={e=>{setStatus(e.target.value);setPage(0);}}>
-          <option value="">All statuses</option>
-          {filteredStatus.map(x=><option key={x} value={x}>{labels[x]}</option>)}
-        </select>
-        <input aria-label="Search records" className={input} value={search}
-          placeholder={tab==="inventory"?"Search flat number":tab==="bookings"?"Buyer, mobile, booking or flat #":"Reference, buyer or booking #"}
-          onChange={e=>{setSearch(e.target.value);setPage(0);}}/>
-      </div>
-      {(project||building||floor||status||search)&&<Button size="sm" variant="outline" onClick={()=>{setProject("");setBuilding("");setFloor("");setStatus("");setSearch("");setPage(0);}}>Clear filters</Button>}
-      <p className="text-xs text-muted-foreground">Project → Wing / Building → Floor. Summary cards show the selected project or wing totals; the register below also follows floor and status filters.</p>
+      {(floor||status)&&<p className="text-[11px] text-muted-foreground">Summary: project / wing totals · List: selected floor and status.</p>}
     </div>
     <div role="tablist" aria-label="Sales sections" className="flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
       {([["inventory","Flat inventory"],["bookings","Bookings"],["receipts","Collections"],["reports","Project reports"]] as const)
@@ -388,7 +374,16 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
         <p className="text-xs text-muted-foreground">{total} matching records · {PAGE_SIZE} per page</p>
       </div>
       <div className="overflow-x-auto">
-        {tab==="inventory"&&<table className="w-full min-w-[850px] text-left text-sm">
+        {tab==="inventory"&&<div className="divide-y md:hidden" data-mobile-sales-inventory>
+          {(listing.data?.rows as Unit[]).map(u=><div key={u.id} className={"flex min-w-0 items-center gap-2 px-3 py-2.5 "+(u.ownership_type&&u.ownership_type!=="builder"?"bg-red-50 dark:bg-red-950/40":"")}>
+            <div className="min-w-0 flex-1"><p className="font-semibold">{u.unit_number} <span className="text-xs font-normal text-muted-foreground">{u.source_layout?.startsWith("1-RK")?"1 RK":UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]??u.unit_type}</span></p><p className="truncate text-[11px] text-muted-foreground">{buildingNames.get(u.building_id)} · {floors.find(f=>f.id===u.floor_id)?.name}</p><p className="text-xs tabular-nums">{money(num(u.total_agreement_value))}</p></div>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">{u.ownership_type&&u.ownership_type!=="builder"?<span className="rounded border border-red-300 bg-red-100 px-2 py-1 text-[11px] font-semibold text-red-800 dark:bg-red-950 dark:text-red-200">{u.ownership_type==="investor"?"Investor":"Landowner"}</span>:u.legacy_sale_status?<Status value={u.legacy_sale_status}/>:<Status value={["registered","possession_pending","possession_completed"].includes(u.status)?"sold":u.status}/>}
+             {u.status==="available"&&(!u.ownership_type||u.ownership_type==="builder")&&!u.legacy_sale_status&&<Button size="sm" className="h-9 px-2" onClick={()=>openBook(u)}>Book</Button>}
+             {manager&&u.status==="available"&&(!u.ownership_type||u.ownership_type==="builder")&&!u.legacy_sale_status&&<Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={()=>setCommercial({mode:"price",flat:u})}>Revise price</Button>}
+            </div>
+          </div>)}
+        </div>}
+        {tab==="inventory"&&<table className="hidden w-full min-w-[850px] text-left text-sm md:table">
           <thead className="bg-muted/40 text-xs text-muted-foreground"><tr>
             {["Project / Building","Flat / Floor","Type / Area","Rate / Agreement value","Status","Action"].map(x=>
               <th key={x} className="px-3 py-3 font-medium">{x}</th>)}
