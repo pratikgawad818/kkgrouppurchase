@@ -2410,7 +2410,7 @@ def test_scoped_sales_roles():
             c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,%s::app_role)",(uid,role))
             other=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,%s,'Unassigned sales QA') RETURNING id",(A,"QA-"+uid[:8].upper())).fetchone()[0]
             c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",(uid,PROJECT))
-            building=c.execute("INSERT INTO buildings(project_id,code,name) VALUES(%s,%s,'QA flat master') RETURNING id",(PROJECT,"FM-"+uid[:8].upper())).fetchone()[0]
+            building=c.execute("INSERT INTO buildings(project_id,code,name) VALUES(%s,%s,'QA flat master') RETURNING id",(PROJECT,"FM"+uid[:4].upper())).fetchone()[0]
             floor=c.execute("INSERT INTO floors(building_id,name,floor_number) VALUES(%s,'Floor 1',1) RETURNING id",(building,)).fetchone()[0]
             actor(c,uid)
             denied(c,lambda:c.execute("SELECT sales_add_flat(%s,'101','2bhk',500,600,700,2000)",(floor,)),"Only Director or Super Admin")
