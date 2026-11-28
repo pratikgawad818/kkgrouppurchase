@@ -2405,8 +2405,8 @@ def test_scoped_sales_roles():
         for role in ("ceo","senior_sales_executive"):
             c.execute("RESET ROLE")
             uid=str(uuid4())
-            c.execute("INSERT INTO auth.users(id,email) VALUES(%s,%s)",(uid,uid+"@example.test"))
-            c.execute("INSERT INTO profiles(id,company_id,full_name,is_active) VALUES(%s,%s,'QA sales',true)",(uid,A))
+            c.execute("INSERT INTO profiles(id,company_id,full_name,email,is_active) VALUES(%s,%s,'QA sales',%s,true)",(uid,A,uid+"@example.test"))
+            c.execute("INSERT INTO auth.users(id,email,email_confirmed_at) VALUES(%s,%s,now())",(uid,uid+"@example.test"))
             c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,%s::app_role)",(uid,role))
             other=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,%s,'Unassigned sales QA') RETURNING id",(A,"QA-"+uid[:8])).fetchone()[0]
             c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",(uid,PROJECT))
