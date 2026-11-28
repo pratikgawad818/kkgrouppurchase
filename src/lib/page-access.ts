@@ -37,8 +37,8 @@ const rules: readonly Rule[] = [
       "units.view",
     ],
   },
-  { pattern: /^\/sales\/?$/, roles: ["director", "super_admin", "senior_sales_executive"] },
-  { pattern: /^\/units\/?$/, roles: ["director", "super_admin", "senior_sales_executive"], any: ["units.view"] },
+  { pattern: /^\/sales\/?$/, roles: ["director", "super_admin", "ceo", "senior_sales_executive"] },
+  { pattern: /^\/units\/?$/, roles: ["director", "super_admin", "ceo", "senior_sales_executive"], any: ["units.view"] },
   {
     pattern: /^\/approvals\/?$/,
     any: ["purchase_order.approve", "payment.approve", "users.manage"],
@@ -87,6 +87,8 @@ const rules: readonly Rule[] = [
   { pattern: /^\/audit\/?$/, any: ["audit.view"] },
 ];
 
+export const isScopedSalesRole = (roles: readonly string[]) => roles.some(r=>r==="ceo"||r==="senior_sales_executive");
+
 export function canAccessPage(path: string, user: PageAccess): boolean {
   // Every signed-in staff member may manage their own profile.
   if (/^\/profile\/?$/.test(path)) return true;
@@ -107,6 +109,7 @@ export function canAccessPage(path: string, user: PageAccess): boolean {
     !VIEWER_NAV.has(path.replace(/\/$/, ""))
   )
     return false;
+  if (isScopedSalesRole(user.roles) && !["/sales","/units","/finance/small-expenses","/profile"].includes(path.replace(/\/$/,""))) return false;
   const rule = rules.find((entry) => entry.pattern.test(path));
   if (!rule) return false; // New routes fail closed until deliberately classified.
   if (rule.roles && !rule.roles.some((role) => user.roles.includes(role))) return false;
