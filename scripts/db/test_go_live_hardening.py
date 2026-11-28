@@ -2433,8 +2433,25 @@ def test_scoped_sales_roles():
     print("PASS CEO and senior sales project assignment, revocation, no company-wide financial permission")
 
 
+def test_unpriced_inventory():
+    with db() as c:
+        building=c.execute("INSERT INTO buildings(project_id,code,name) VALUES(%s,'UNP','QA unpriced') RETURNING id",(PROJECT,)).fetchone()[0]
+        floor=c.execute("INSERT INTO floors(building_id,name,floor_number) VALUES(%s,'Floor 1',1) RETURNING id",(building,)).fetchone()[0]
+        unit=c.execute("INSERT INTO units(project_id,building_id,floor_id,unit_number,unit_type,carpet_area,built_up_area,saleable_area,balcony_area,otla_area,pt_area,base_rate) VALUES(%s,%s,%s,'101','1bhk',322.059,NULL,543.905,0,0,221.846,NULL) RETURNING id",(PROJECT,building,floor)).fetchone()[0]
+        assert c.execute("SELECT carpet_area::text,saleable_area::text,pt_area::text,base_rate,built_up_area,total_agreement_value,status FROM units WHERE id=%s",(unit,)).fetchone()==("322.059","543.905","221.846",None,None,0,"available")
+        actor(c,ADMIN)
+        denied(c,lambda:c.execute("SELECT sales_book_flat(%s,'QA buyer','9999999999',500000,current_date)",(unit,)),"Set the list rate before booking")
+        c.execute("SELECT sales_reprice_flat(%s,1000,0,0,0,0,'QA initial approved rate')",(unit,))
+        assert c.execute("SELECT total_agreement_value FROM units WHERE id=%s",(unit,)).fetchone()[0]==543905
+        c.execute("SELECT sales_book_flat(%s,'QA buyer','9999999999',543905,current_date)",(unit,))
+        assert c.execute("SELECT status FROM units WHERE id=%s",(unit,)).fetchone()[0]=="booked"
+        c.rollback()
+    print("PASS precise unpriced inventory and booking rate guard")
+
+
 if __name__ == "__main__":
     setup()
+    test_unpriced_inventory()
     test_scoped_sales_roles()
     test_pr_seven_day_notice()
     test_lovable_security_reconciliation()
