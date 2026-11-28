@@ -27,7 +27,7 @@ type Building={id:string;name:string;project_id:string};
 type Props={
  mode:"import"|"price"|"buyer";project:string;buildings:Building[];
  flat?:CommercialFlat|null|undefined;booking?:CommercialBooking|null|undefined;
- manager:boolean;companyId:string;actorId:string;
+ manager:boolean;canImport?:boolean;companyId:string;actorId:string;
  onClose:()=>void;onSaved:()=>void;
 };
 async function rpc(name:string,args:Record<string,unknown>){
@@ -393,7 +393,7 @@ function BookingWorkspace({booking,manager,companyId,actorId,onSaved}:{
  </div>;
 }
 
-export function SalesCommercialDialog({mode,project,buildings,flat,booking,manager,
+export function SalesCommercialDialog({mode,project,buildings,flat,booking,manager,canImport=manager,
  companyId,actorId,onClose,onSaved}:Props){
  return <Dialog open onOpenChange={open=>{if(!open)onClose();}}>
   <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
@@ -406,7 +406,7 @@ export function SalesCommercialDialog({mode,project,buildings,flat,booking,manag
      "Keep buyer information, verified collections, instalment plans and legal records together."
     }</DialogDescription>
    </DialogHeader>
-   {mode==="import"&&manager&&<ImportFlats project={project} buildings={buildings}
+   {mode==="import"&&canImport&&<ImportFlats project={project} buildings={buildings}
     onSaved={onSaved} onClose={onClose}/>}
    {mode==="price"&&flat&&manager&&<PriceRevision flat={flat} onSaved={onSaved} onClose={onClose}/>}
    {mode==="buyer"&&booking&&<BookingWorkspace booking={booking}
