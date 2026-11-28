@@ -36,7 +36,7 @@ function Units() {
       .order("unit_number").order("id").range(start,end));
   } });
   const projects = useQuery({ queryKey: ["projects-lite"], queryFn: async () => (await supabase.from("projects").select("id,name").order("name")).data ?? [] });
-  const rows = useMemo(() => (units.data ?? []).filter((u) => (!project || u.project_id === project) && (!status || u.status === status) && matchesRecordSearch([u.unit_number,u.projects?.name,u.buildings?.name,u.floors?.name],search)), [units.data, project, status, search]);
+  const rows = useMemo(() => (units.data ?? []).filter((u) => (!project || u.project_id === project) && (!status || (u.ownership_type==="builder"&&!u.legacy_sale_status&&u.status === status)) && matchesRecordSearch([u.unit_number,u.projects?.name,u.buildings?.name,u.floors?.name],search)), [units.data, project, status, search]);
   if (units.isLoading) return <Loading />;
   const refresh = () => qc.invalidateQueries({ queryKey: ["units"] });
 
@@ -69,14 +69,14 @@ function Units() {
             <table className="w-full text-sm">
               <thead><tr className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">{["Unit", "Project", "Tower / Floor", "Type", "Carpet Area", "Final Price", "Status"].map((h) => <th key={h} className="px-5 py-3">{h}</th>)}</tr></thead>
               <tbody className="divide-y">{rows.map((u) => (
-                <tr key={u.id} className={canEditUnits ? "cursor-pointer hover:bg-muted/50" : ""} onClick={() => { if (canEditUnits) setEdit(u); }}>
+                <tr key={u.id} className={u.ownership_type!=="builder"?"bg-red-50 dark:bg-red-950/40":canEditUnits?"cursor-pointer hover:bg-muted/50":""} onClick={() => { if (canEditUnits) setEdit(u); }}>
                   <td className="px-5 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-5 py-3 text-muted-foreground">{u.projects?.name}</td>
                   <td className="px-5 py-3 text-muted-foreground">{u.buildings?.name} · {u.floors?.name}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{UNIT_TYPE_LABEL[u.unit_type]}</td>
+                  <td className="px-5 py-3 text-muted-foreground">{u.source_layout?.startsWith("1-RK")?"1 RK":UNIT_TYPE_LABEL[u.unit_type]}</td>
                   <td className="px-5 py-3 text-muted-foreground">{num(u.carpet_area)} sqft</td>
                   <td className="px-5 py-3 text-muted-foreground">{inr(u.total_agreement_value)}</td>
-                  <td className="px-5 py-3"><UnitStatusBadge status={u.status as UnitStatus} /></td>
+                  <td className="px-5 py-3">{u.ownership_type&&u.ownership_type!=="builder"?<span className="text-xs font-semibold text-red-700 dark:text-red-300">{u.ownership_type==="investor"?"Investor flat":"Landowner flat"}</span>:u.legacy_sale_status?<span className="text-xs font-semibold">{u.legacy_sale_status==="sold"?"Sold":"Booked"} · historical</span>:<UnitStatusBadge status={u.status as UnitStatus} />}</td>
                 </tr>))}</tbody>
             </table>)}
         </div>
@@ -102,7 +102,7 @@ function BuildingView({ rows, onPick }: { rows: any[]; onPick: (u: any) => void 
   return (
     <div className="space-y-5">
       {byBuilding.map((b) => {
-        const counts = Object.keys(UNIT_STATUS).map((s) => [s, [...b.floors.values()].flatMap((f) => f.units).filter((u) => u.status === s).length] as const).filter(([, c]) => c > 0);
+        const counts = Object.keys(UNIT_STATUS).map((s) => [s, [...b.floors.values()].flatMap((f) => f.units).filter((u) => u.ownership_type==="builder"&&!u.legacy_sale_status&&u.status === s).length] as const).filter(([, c]) => c > 0);
         return (
           <div key={b.name + b.project} className="rounded-xl border bg-card p-5 shadow-card">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -115,7 +115,7 @@ function BuildingView({ rows, onPick }: { rows: any[]; onPick: (u: any) => void 
                   <div className="w-24 shrink-0 text-xs font-medium uppercase text-muted-foreground">{f.name}</div>
                   <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                     {f.units.map((u) => (
-                      <button key={u.id} onClick={() => onPick(u)} className="rounded-md border p-2 text-left hover:bg-muted/50">
+                      <button key={u.id} onClick={() => onPick(u)} className={"rounded-md border p-2 text-left "+(u.ownership_type&&u.ownership_type!=="builder"?"border-red-300 bg-red-50 dark:bg-red-950/40":"hover:bg-muted/50")}>
                         <div className="text-sm font-medium">{u.unit_number}</div>
                         <div className="mb-1 text-[11px] text-muted-foreground">{UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]} · {num(u.carpet_area)} sqft</div>
                         <UnitStatusBadge status={u.status as UnitStatus} />

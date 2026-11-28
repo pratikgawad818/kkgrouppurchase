@@ -27,6 +27,7 @@ type Floor = { id: string; name: string; floor_number: number; building_id: stri
 type Unit = {
   id: string; project_id: string; building_id: string; floor_id: string;
   unit_number: string; unit_type: string; carpet_area: number; saleable_area: number;
+  ownership_type?:string; legacy_sale_status?:string|null; source_layout?:string|null; pricing_model?:string; stamp_duty_rate?:number; registration_fee?:number;
   status: string; base_rate: number; floor_rise_rate: number; parking_charges: number;
   other_charges: number; gst_rate: number; total_agreement_value: number;
 };
@@ -63,7 +64,7 @@ const today = () => new Date().toLocaleDateString("en-CA");
 const methods = ["upi","neft","rtgs","imps","cheque","cash","card","other"];
 const stages = ["booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"];
 const labels: Record<string,string> = {
-  available:"Available",hold:"On hold",booked:"Booked",agreement_pending:"Agreement pending",
+  third_party:"Landowner / investor",legacy_sold:"Sold (historical)",legacy_booked:"Booked (historical)",available:"Available",hold:"On hold",booked:"Booked",agreement_pending:"Agreement pending",
   agreement_done:"Agreement signed",registered:"Registered",possession_pending:"Possession pending",
   possession_completed:"Possession completed",cancelled:"Cancelled",reported:"Awaiting verification",
   verified:"Verified",rejected:"Rejected",
@@ -88,12 +89,14 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
   let query;
   if (tab === "inventory") {
     query = db.from("units")
-      .select("id,project_id,building_id,floor_id,unit_number,unit_type,carpet_area,saleable_area,status,base_rate,floor_rise_rate,parking_charges,other_charges,gst_rate,total_agreement_value",
+      .select("id,project_id,building_id,floor_id,unit_number,unit_type,carpet_area,saleable_area,status,ownership_type,legacy_sale_status,source_layout,pricing_model,stamp_duty_rate,registration_fee,base_rate,floor_rise_rate,parking_charges,other_charges,gst_rate,total_agreement_value",
         { count:"exact" }).eq("record_status","active");
     if (filter.project) query=query.eq("project_id",filter.project);
     if (filter.building) query=query.eq("building_id",filter.building);
     if (filter.floor) query=query.eq("floor_id",filter.floor);
-    if (filter.status) query=query.eq("status",filter.status);
+    if (filter.status==="third_party") query=query.neq("ownership_type","builder");
+    else if(filter.status==="legacy_sold"||filter.status==="legacy_booked") query=query.eq("legacy_sale_status",filter.status==="legacy_sold"?"sold":"booked");
+    else if(filter.status) query=query.eq("status",filter.status).eq("ownership_type","builder").is("legacy_sale_status",null);
     if (filter.search.trim()) query=query.ilike("unit_number","%"+filter.search.trim().replaceAll("%","\\%").replaceAll("_","\\_")+"%");
     query=query.order("unit_number",{ascending:true}).order("id");
   } else if (tab === "bookings") {
@@ -300,7 +303,7 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
       type==="cancel"?{reason:finances.get(item.id)?.pending_cancel_reason??"",fee:"0"}:{});
     setModal(type);
   }
-  const filteredStatus=tab==="inventory"?["available","hold","booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"]:
+  const filteredStatus=tab==="inventory"?["third_party","legacy_sold","legacy_booked","available","hold","booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"]:
     tab==="bookings"?[...stages,"cancelled"]:tab==="receipts"?["reported","verified","rejected"]:[];
   const financeReady=tab!=="bookings"||salesIds.length===0||financeQuery.isSuccess;
   const ready=tab!=="reports"&&meta.isSuccess&&listing.isSuccess&&financeReady;
@@ -387,17 +390,17 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
               <th key={x} className="px-3 py-3 font-medium">{x}</th>)}
           </tr></thead>
           <tbody className="divide-y">
-            {(listing.data?.rows as Unit[]).map(u=><tr key={u.id}>
+            {(listing.data?.rows as Unit[]).map(u=><tr key={u.id} className={u.ownership_type&&u.ownership_type!=="builder"?"bg-red-50 dark:bg-red-950/40":""}>
               <td className="px-3 py-3"><strong>{projectNames.get(u.project_id)??"—"}</strong>
                 <p className="text-xs text-muted-foreground">{buildingNames.get(u.building_id)??"—"}</p></td>
               <td className="px-3 py-3"><strong>{u.unit_number}</strong>
                 <p className="text-xs text-muted-foreground">{floors.find(f=>f.id===u.floor_id)?.name??"—"}</p></td>
-              <td className="px-3 py-3">{UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]??u.unit_type}
+              <td className="px-3 py-3">{u.source_layout?.startsWith("1-RK")?"1 RK":UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]??u.unit_type}
                 <p className="text-xs text-muted-foreground">{u.saleable_area} sqft</p></td>
               <td className="px-3 py-3 tabular-nums">{money(num(u.total_agreement_value))}
                 <p className="text-xs text-muted-foreground">{money(num(u.base_rate))}/sqft</p></td>
-              <td className="px-3 py-3"><Status value={u.status}/></td>
-              <td className="px-3 py-3"><div className="flex gap-2">{u.status==="available"&&<>
+              <td className="px-3 py-3">{u.ownership_type&&u.ownership_type!=="builder"?<span className="rounded-full border border-red-300 bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 dark:bg-red-950 dark:text-red-200">{u.ownership_type==="investor"?"Investor flat":"Landowner flat"}</span>:u.legacy_sale_status?<span className="text-xs font-semibold">{u.legacy_sale_status==="sold"?"Sold":"Booked"} · historical</span>:<Status value={u.status}/>}</td>
+              <td className="px-3 py-3"><div className="flex gap-2">{u.status==="available"&&(!u.ownership_type||u.ownership_type==="builder")&&!u.legacy_sale_status&&<>
                 <Button size="sm" onClick={()=>openBook(u)}>Book flat</Button>
                 {manager&&<Button size="sm" variant="outline"
                  onClick={()=>setCommercial({mode:"price",flat:u})}>Revise price</Button>}

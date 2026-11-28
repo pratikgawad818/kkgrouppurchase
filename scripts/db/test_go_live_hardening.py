@@ -2433,8 +2433,46 @@ def test_scoped_sales_roles():
     print("PASS CEO and senior sales project assignment, revocation, no company-wide financial permission")
 
 
+def test_city_centre_ownership_inventory():
+    with db() as c:
+        b=c.execute("INSERT INTO buildings(project_id,code,name) VALUES(%s,'CCQA','QA ownership') RETURNING id",(PROJECT,)).fetchone()[0]
+        fl=c.execute("INSERT INTO floors(building_id,name,floor_number) VALUES(%s,'Floor 1',1) RETURNING id",(b,)).fetchone()[0]
+        for number,owner,legacy,status in [('101','builder',None,'available'),('102','landowner',None,'hold'),('103','investor',None,'hold'),('104','builder','sold','hold'),('105','builder','booked','hold')]:
+            uid=c.execute("INSERT INTO units(project_id,building_id,floor_id,unit_number,unit_type,carpet_area,built_up_area,saleable_area,base_rate,other_charges,gst_rate,stamp_duty_rate,registration_fee,pricing_model,ownership_type,legacy_sale_status,status) VALUES(%s,%s,%s,%s,'2bhk',508.71,925.89,925.89,5500,350000,5,6,30000,'city_centre_workbook',%s,%s,%s::unit_status) RETURNING id",(PROJECT,b,fl,number,owner,legacy,status)).fetchone()[0]
+            assert c.execute("SELECT total_agreement_value FROM units WHERE id=%s",(uid,)).fetchone()[0]==6032558.45 or str(c.execute("SELECT total_agreement_value FROM units WHERE id=%s",(uid,)).fetchone()[0])=="6032558.45"
+            if status=='hold':
+                denied(c,lambda:c.execute("UPDATE units SET status='available' WHERE id=%s",(uid,)),"not available")
+        actor(c,ADMIN)
+        stats=c.execute("SELECT sales_overview(%s,%s)",(PROJECT,b)).fetchone()[0]
+        assert stats['total_flats']==5 and stats['available_flats']==1 and stats['third_party_flats']==2 and stats['legacy_sold_flats']==1 and stats['legacy_booked_flats']==1
+        assert stats['active_sales']==0
+        c.rollback()
+    print("PASS City Centre owner isolation, historical status, workbook price and available counts")
+
+
+def test_city_centre_full_import():
+    with db() as c:
+        p=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,'CC','City Centre') RETURNING id",(A,)).fetchone()[0]
+        for wing in 'ABC':
+            b=c.execute("INSERT INTO buildings(project_id,code,name,wing) VALUES(%s,%s,%s,%s) RETURNING id",(p,'CC'+wing,'City Centre - '+wing,wing)).fetchone()[0]
+            c.execute("INSERT INTO floors(building_id,floor_number,name) SELECT %s,n,'Floor '||n FROM generate_series(0,15) n ON CONFLICT (building_id,floor_number) DO NOTHING",(b,))
+        sql=(ROOT/'scripts/data/city-centre-inventory.sql').read_text()
+        # Keep the disposable fixture and import inside a rollback-only transaction.
+        sql=sql.replace('BEGIN;','',1).rsplit('COMMIT;',1)[0]
+        c.execute(sql)
+        assert c.execute("SELECT count(*) FILTER(WHERE status='available'),count(*) FILTER(WHERE ownership_type='landowner'),count(*) FILTER(WHERE legacy_sale_status='sold'),count(*) FILTER(WHERE legacy_sale_status='booked') FROM units WHERE project_id=%s",(p,)).fetchone()==(102,104,59,0)
+        assert c.execute("SELECT count(*) FROM units WHERE project_id=%s AND status='available' AND notes LIKE 'Updated workbook blank; confirmed available by management.%%'",(p,)).fetchone()[0]==4
+        assert c.execute("SELECT count(*) FROM property_sales WHERE project_id=%s",(p,)).fetchone()[0]==0
+        c.execute("DROP TABLE cc_source")
+        denied(c,lambda:c.execute(sql),"Existing City Centre inventory")
+        c.rollback()
+    print("PASS full 265-row City Centre import, exact price checks and duplicate protection")
+
+
 if __name__ == "__main__":
     setup()
+    test_city_centre_full_import()
+    test_city_centre_ownership_inventory()
     test_scoped_sales_roles()
     test_pr_seven_day_notice()
     test_lovable_security_reconciliation()

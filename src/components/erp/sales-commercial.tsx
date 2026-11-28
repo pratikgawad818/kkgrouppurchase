@@ -16,7 +16,7 @@ const today=()=>new Date().toLocaleDateString("en-CA");
 const err=(x:unknown)=>x instanceof Error?x.message:String(x);
 export type CommercialFlat={
  id:string;unit_number:string;project_id:string;building_id:string;
- status:string;saleable_area:number;base_rate:number;floor_rise_rate:number;
+ status:string;saleable_area:number;pricing_model?:string;stamp_duty_rate?:number;registration_fee?:number;base_rate:number;floor_rise_rate:number;
  parking_charges:number;other_charges:number;gst_rate:number;total_agreement_value:number;
 };
 export type CommercialBooking={
@@ -112,8 +112,9 @@ function PriceRevision({flat,onSaved,onClose}:{
  });
  const [busy,setBusy]=useState(false);
  const set=(key:keyof typeof form,v:string)=>setForm(p=>({...p,[key]:v}));
- const preview=((Number(form.base)+Number(form.rise))*flat.saleable_area+
-  Number(form.parking)+Number(form.other))*(1+Number(form.gst)/100);
+ const baseValue=Number(form.base)*flat.saleable_area;
+ const subtotal=baseValue+Number(form.rise)*flat.saleable_area+Number(form.parking)+Number(form.other);
+ const preview=flat.pricing_model==="city_centre_workbook"?subtotal+baseValue*(Number(form.gst)+Number(flat.stamp_duty_rate??0))/100+Number(flat.registration_fee??0):subtotal*(1+Number(form.gst)/100);
  const submit=async(e:React.FormEvent)=>{
   e.preventDefault();setBusy(true);
   try {

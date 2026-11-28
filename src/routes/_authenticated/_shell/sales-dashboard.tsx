@@ -35,7 +35,7 @@ export function SalesDashboard({initialView="overview"}:{initialView?:DashboardV
  const ids=selected.map(p=>p.id),projectValid=!project||ids.length===1;
  const inventory=useQuery({queryKey:["sales-dashboard-inventory",actor,company,ids],enabled:allowed&&scope.isSuccess&&projectValid,staleTime:0,queryFn:async()=>{
   if(!ids.length)return summarizeFlatInventory([],[]);
-  const rows=await loadCompleteRows<FlatInventoryRow>(async(start,end)=>await supabase.from("units").select("id,project_id,status",{count:"exact"}).in("project_id",ids).eq("record_status","active").order("id").range(start,end));
+  const rows=await loadCompleteRows<FlatInventoryRow>(async(start,end)=>await supabase.from("units").select("id,project_id,status,ownership_type,legacy_sale_status",{count:"exact"}).in("project_id",ids).eq("record_status","active").order("id").range(start,end));
   return summarizeFlatInventory(ids,rows);
  }});
  const report=useQuery({queryKey:["sales-dashboard",actor,company,ids,range.from,range.to],enabled:allowed&&scope.isSuccess&&valid&&projectValid,staleTime:0,queryFn:async()=>{
