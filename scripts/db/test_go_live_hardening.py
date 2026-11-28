@@ -2450,8 +2450,28 @@ def test_city_centre_ownership_inventory():
     print("PASS City Centre owner isolation, historical status, workbook price and available counts")
 
 
+def test_city_centre_full_import():
+    with db() as c:
+        p=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,'CC','City Centre') RETURNING id",(A,)).fetchone()[0]
+        for wing in 'ABC':
+            b=c.execute("INSERT INTO buildings(project_id,code,name,wing) VALUES(%s,%s,%s,%s) RETURNING id",(p,'CC'+wing,'City Centre - '+wing,wing)).fetchone()[0]
+            c.execute("INSERT INTO floors(building_id,floor_number,name) SELECT %s,n,'Floor '||n FROM generate_series(0,15) n",(b,))
+        sql=(ROOT/'scripts/data/city-centre-inventory.sql').read_text()
+        # Keep the disposable fixture and import inside a rollback-only transaction.
+        sql=sql.replace('BEGIN;','',1).rsplit('COMMIT;',1)[0]
+        c.execute(sql)
+        assert c.execute("SELECT count(*) FILTER(WHERE status='available'),count(*) FILTER(WHERE ownership_type='landowner'),count(*) FILTER(WHERE legacy_sale_status='sold'),count(*) FILTER(WHERE legacy_sale_status='booked') FROM units WHERE project_id=%s",(p,)).fetchone()==(98,104,61,2)
+        assert c.execute("SELECT count(*) FROM units WHERE project_id=%s AND notes LIKE 'Source conflict:%%'",(p,)).fetchone()[0]==4
+        assert c.execute("SELECT count(*) FROM property_sales WHERE project_id=%s",(p,)).fetchone()[0]==0
+        c.execute("DROP TABLE cc_source")
+        denied(c,lambda:c.execute(sql),"Existing City Centre inventory")
+        c.rollback()
+    print("PASS full 265-row City Centre import, exact price checks and duplicate protection")
+
+
 if __name__ == "__main__":
     setup()
+    test_city_centre_full_import()
     test_city_centre_ownership_inventory()
     test_scoped_sales_roles()
     test_pr_seven_day_notice()
