@@ -2400,8 +2400,36 @@ def test_pr_seven_day_notice():
     print("PASS seven-day PR notice: planned, late, direct submission, line dates, immutable first notice")
 
 
+def test_scoped_sales_roles():
+    with db() as c:
+        for role in ("ceo","senior_sales_executive"):
+            c.execute("RESET ROLE")
+            uid=str(uuid4())
+            c.execute("INSERT INTO auth.users(id,email) VALUES(%s,%s)",(uid,uid+"@example.test"))
+            c.execute("INSERT INTO profiles(id,company_id,full_name,is_active) VALUES(%s,%s,'QA sales',true)",(uid,A))
+            c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,%s::app_role)",(uid,role))
+            other=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,%s,'Unassigned sales QA') RETURNING id",(A,"QA-"+uid[:8])).fetchone()[0]
+            c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",(uid,PROJECT))
+            actor(c,uid)
+            assert c.execute("SELECT sales_allowed(),sales_manager(),can_access_project(auth.uid(),%s),can_access_project(auth.uid(),%s),has_permission(auth.uid(),'financial.view')",(PROJECT,other)).fetchone()==(True,False,True,False,False)
+            record="SELECT record_site_small_expense(%s,%s,NULL,(now() AT TIME ZONE 'Asia/Kolkata')::date,'marketing',100,'cash','QA vendor','QA marketing expense',NULL)"
+            expense=c.execute(record,(str(uuid4()),PROJECT)).fetchone()[0]
+            assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id=%s",(expense,)).fetchone()[0]==1
+            denied(c,lambda:c.execute(record,(str(uuid4()),other)))
+            denied(c,lambda:c.execute(record,(str(uuid4()),None)))
+            denied(c,lambda:c.execute(record,(str(uuid4()),OTHER_PROJECT)))
+            c.execute("RESET ROLE")
+            c.execute("DELETE FROM user_project_assignments WHERE user_id=%s",(uid,))
+            actor(c,uid)
+            assert c.execute("SELECT count(*) FROM site_small_expenses WHERE id=%s",(expense,)).fetchone()[0]==0
+            assert c.execute("SELECT sales_project_allowed(%s)",(PROJECT,)).fetchone()[0] is False
+        c.rollback()
+    print("PASS CEO and senior sales project assignment, revocation, no company-wide financial permission")
+
+
 if __name__ == "__main__":
     setup()
+    test_scoped_sales_roles()
     test_pr_seven_day_notice()
     test_lovable_security_reconciliation()
     test_finance_query_indexes()
