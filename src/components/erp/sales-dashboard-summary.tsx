@@ -1,4 +1,4 @@
-import { Building2, House, Wallet, ChartNoAxesColumnIncreasing, CalendarCheck, Clock3 } from "lucide-react";
+import { Building2, House, ChartNoAxesColumnIncreasing, CalendarCheck, Clock3 } from "lucide-react";
 import { inr } from "@/lib/format";
 import type { PeriodTotals, InventoryTotals } from "@/lib/sales-period-dashboard";
 import { SalesDashboardCharts } from "./sales-dashboard-charts";
