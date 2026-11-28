@@ -64,6 +64,7 @@ const today = () => new Date().toLocaleDateString("en-CA");
 const methods = ["upi","neft","rtgs","imps","cheque","cash","card","other"];
 const stages = ["booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"];
 const labels: Record<string,string> = {
+  sold:"Sold",landowner:"Landowner flat",investor:"Investor flat",
   third_party:"Landowner / investor",legacy_sold:"Sold (historical)",legacy_booked:"Booked (historical)",available:"Available",hold:"On hold",booked:"Booked",agreement_pending:"Agreement pending",
   agreement_done:"Agreement signed",registered:"Registered",possession_pending:"Possession pending",
   possession_completed:"Possession completed",cancelled:"Cancelled",reported:"Awaiting verification",
@@ -94,8 +95,9 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
     if (filter.project) query=query.eq("project_id",filter.project);
     if (filter.building) query=query.eq("building_id",filter.building);
     if (filter.floor) query=query.eq("floor_id",filter.floor);
-    if (filter.status==="third_party") query=query.neq("ownership_type","builder");
-    else if(filter.status==="legacy_sold"||filter.status==="legacy_booked") query=query.eq("legacy_sale_status",filter.status==="legacy_sold"?"sold":"booked");
+    if (filter.status==="landowner"||filter.status==="investor") query=query.eq("ownership_type",filter.status);
+    else if(filter.status==="sold") query=query.eq("ownership_type","builder").or("legacy_sale_status.eq.sold,and(legacy_sale_status.is.null,status.in.(registered,possession_pending,possession_completed))");
+    else if(filter.status==="booked") query=query.eq("ownership_type","builder").or("legacy_sale_status.eq.booked,and(legacy_sale_status.is.null,status.eq.booked)");
     else if(filter.status) query=query.eq("status",filter.status).eq("ownership_type","builder").is("legacy_sale_status",null);
     if (filter.search.trim()) query=query.ilike("unit_number","%"+filter.search.trim().replaceAll("%","\\%").replaceAll("_","\\_")+"%");
     query=query.order("unit_number",{ascending:true}).order("id");
@@ -242,8 +244,8 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
   const projectNames=useMemo(()=>new Map(meta.data?.projects.map(x=>[x.id,x.name])),[meta.data]);
   const buildingNames=useMemo(()=>new Map(meta.data?.buildings.map(x=>[x.id,x.name])),[meta.data]);
   const floors=meta.data?.floors??[];
-  const buildings=(meta.data?.buildings??[]).filter(x=>!project||x.project_id===project);
-  const floorOptions=floors.filter(x=>x.building_id===building);
+  const buildings=(meta.data?.buildings??[]).filter(x=>!project||x.project_id===project).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  const floorOptions=floors.filter(x=>x.building_id===building).sort((a,b)=>a.floor_number-b.floor_number);
   const creationBuildings=(meta.data?.buildings??[]).filter(x=>x.project_id===value("project_id"));
   const creationFloors=floors.filter(x=>x.building_id===value("building_id"))
     .sort((a,b)=>a.floor_number-b.floor_number);
@@ -303,7 +305,7 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
       type==="cancel"?{reason:finances.get(item.id)?.pending_cancel_reason??"",fee:"0"}:{});
     setModal(type);
   }
-  const filteredStatus=tab==="inventory"?["third_party","legacy_sold","legacy_booked","available","hold","booked","agreement_pending","agreement_done","registered","possession_pending","possession_completed"]:
+  const filteredStatus=tab==="inventory"?["available","sold","booked","landowner","investor","hold","agreement_pending","agreement_done","cancelled"]:
     tab==="bookings"?[...stages,"cancelled"]:tab==="receipts"?["reported","verified","rejected"]:[];
   const financeReady=tab!=="bookings"||salesIds.length===0||financeQuery.isSuccess;
   const ready=tab!=="reports"&&meta.isSuccess&&listing.isSuccess&&financeReady;
@@ -344,14 +346,14 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
           <option value="">All accessible projects</option>
           {meta.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
-        <select aria-label="Select building" className={input} value={building}
+        <select aria-label="Select wing or building" className={input} value={building}
           onChange={e=>{setBuilding(e.target.value);setFloor("");setPage(0);}}>
-          <option value="">All buildings</option>
+          <option value="">All wings / buildings</option>
           {buildings.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
         <select aria-label="Select floor" className={input} value={floor} disabled={!building}
           onChange={e=>{setFloor(e.target.value);setPage(0);}}>
-          <option value="">All floors</option>
+          <option value="">{building?"All floors":"Select wing first"}</option>
           {floorOptions.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
         <select aria-label="Filter by status" className={input} value={status}
@@ -363,6 +365,8 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
           placeholder={tab==="inventory"?"Search flat number":tab==="bookings"?"Buyer, mobile, booking or flat #":"Reference, buyer or booking #"}
           onChange={e=>{setSearch(e.target.value);setPage(0);}}/>
       </div>
+      {(project||building||floor||status||search)&&<Button size="sm" variant="outline" onClick={()=>{setProject("");setBuilding("");setFloor("");setStatus("");setSearch("");setPage(0);}}>Clear filters</Button>}
+      <p className="text-xs text-muted-foreground">Project → Wing / Building → Floor. Summary cards show the selected project or wing totals; the register below also follows floor and status filters.</p>
     </div>
     <div role="tablist" aria-label="Sales sections" className="flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
       {([["inventory","Flat inventory"],["bookings","Bookings"],["receipts","Collections"],["reports","Project reports"]] as const)
@@ -399,7 +403,7 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
                 <p className="text-xs text-muted-foreground">{u.saleable_area} sqft</p></td>
               <td className="px-3 py-3 tabular-nums">{money(num(u.total_agreement_value))}
                 <p className="text-xs text-muted-foreground">{money(num(u.base_rate))}/sqft</p></td>
-              <td className="px-3 py-3">{u.ownership_type&&u.ownership_type!=="builder"?<span className="rounded-full border border-red-300 bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 dark:bg-red-950 dark:text-red-200">{u.ownership_type==="investor"?"Investor flat":"Landowner flat"}</span>:u.legacy_sale_status?<span className="text-xs font-semibold">{u.legacy_sale_status==="sold"?"Sold":"Booked"} · historical</span>:<Status value={u.status}/>}</td>
+              <td className="px-3 py-3">{u.ownership_type&&u.ownership_type!=="builder"?<span className="rounded-full border border-red-300 bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 dark:bg-red-950 dark:text-red-200">{u.ownership_type==="investor"?"Investor flat":"Landowner flat"}</span>:u.legacy_sale_status?<span className="text-xs font-semibold">{u.legacy_sale_status==="sold"?"Sold":"Booked"}</span>:<Status value={["registered","possession_pending","possession_completed"].includes(u.status)?"sold":u.status}/>}</td>
               <td className="px-3 py-3"><div className="flex gap-2">{u.status==="available"&&(!u.ownership_type||u.ownership_type==="builder")&&!u.legacy_sale_status&&<>
                 <Button size="sm" onClick={()=>openBook(u)}>Book flat</Button>
                 {manager&&<Button size="sm" variant="outline"
