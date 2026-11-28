@@ -4834,6 +4834,14 @@ export type Database = {
           taxable_value: number
           terrace_area: number
           total_agreement_value: number
+          ownership_type: string
+          legacy_sale_status: string | null
+          source_layout: string | null
+          source_area_details: Json | null
+          pricing_model: string
+          stamp_duty_rate: number
+          stamp_duty_amount: number
+          registration_fee: number
           unit_number: string
           unit_type: Database["public"]["Enums"]["unit_type"]
           updated_at: string
