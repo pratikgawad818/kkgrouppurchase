@@ -63,7 +63,7 @@ test("all generated staff pages remain classified by the central permission boun
   for (const original of fullPaths) {
     const path = normalize(original);
     if (excluded.has(path) || path.startsWith("/api/") || path.startsWith("/lovable/")) continue;
-    const routeAccess = path === "/sales-dashboard" ? {...access, roles:["ceo"]} : access;
+    const routeAccess = ["/sales-dashboard","/sales-projects"].includes(path) ? {...access, roles:["ceo"]} : access;
     assert.ok(canAccessPage(path.replaceAll("$id", "sample-document"), routeAccess),
       "Unclassified staff route: " + original);
     count++;
