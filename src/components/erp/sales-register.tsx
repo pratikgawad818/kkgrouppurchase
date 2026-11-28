@@ -180,6 +180,7 @@ const emptySummary:Summary={
 export function SalesPage() {
   const me=useMe(),qc=useQueryClient();
   const manager=!!me.data?.roles.some(r=>r==="super_admin"||r==="director");
+  const scopedSales=!!me.data?.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
   const superAdmin=!!me.data?.roles.includes("super_admin");
   const [tab,setTab]=useState<Tab>("inventory");
   const [project,setProject]=useState("");
@@ -287,7 +288,7 @@ export function SalesPage() {
   const firstExample=firstSelected?`${firstSelected.floor_number}${value("separator")}${String(Number(value("start_at"))||0).padStart(Number(value("digits"))||2,"0")}`:"—";
 
   return <div className="min-w-0 space-y-4 pb-10">
-    <PageHeader title="Sales & Bookings"
+    <PageHeader title={me.data?.roles.includes("ceo")?"CEO Sales Portal":scopedSales?"Senior Sales Portal":"Sales & Bookings"}
       subtitle="Project-wise property inventory, customer bookings, collections and cancellations" />
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
       {([
@@ -300,14 +301,14 @@ export function SalesPage() {
       ] as const).map(([label,value,Icon])=>
         <section key={label} className="rounded-xl border bg-card p-3.5">
           <Icon className="mb-1 h-4 w-4 text-primary"/>
-          <p className="break-words text-lg font-bold tabular-nums">{value}</p>
+          <p className="break-words text-lg font-bold tabular-nums">{summary.isSuccess?value:"—"}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </section>)}
     </div>
     <div className="rounded-xl border bg-card p-3 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-semibold"><ListFilter className="h-4 w-4"/> Project and property filters</p>
-        {manager&&<div className="flex flex-wrap gap-2">
+        {(manager||scopedSales)&&<div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={()=>setCommercial({mode:"import"})}>Import Excel / CSV</Button>
           <Button size="sm" variant="outline" onClick={openBulk}><Layers3 className="mr-1 h-4 w-4"/>Bulk add flats</Button>
           <Button size="sm" onClick={openUnit}><Plus className="mr-1 h-4 w-4"/>Add one flat</Button>
