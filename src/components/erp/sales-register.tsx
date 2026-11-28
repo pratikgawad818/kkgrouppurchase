@@ -27,7 +27,7 @@ type Floor = { id: string; name: string; floor_number: number; building_id: stri
 type Unit = {
   id: string; project_id: string; building_id: string; floor_id: string;
   unit_number: string; unit_type: string; carpet_area: number; saleable_area: number;
-  status: string; base_rate: number; floor_rise_rate: number; parking_charges: number;
+  status: string; base_rate: number | null; floor_rise_rate: number; parking_charges: number;
   other_charges: number; gst_rate: number; total_agreement_value: number;
 };
 type Booking = {
@@ -291,7 +291,7 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
     setForm({project_id:project,building_id:building,type:"2bhk",per_floor:"4",start_at:"1",digits:"2",separator:"",parking:"0",other:"0",gst:"5"});
     setModal("bulk");
   }
-  function openBook(unit:Unit){setFlat(unit);setForm({price:String(unit.total_agreement_value),booked_on:today()});setModal("book");}
+  function openBook(unit:Unit){if(unit.base_rate==null){toast.error("Set the list rate before booking");return;}setFlat(unit);setForm({price:String(unit.total_agreement_value),booked_on:today()});setModal("book");}
   function openSale(item:Booking,type:Modal){
     setSale(item);
     setProof(null);receiptUpload.clear();
@@ -394,11 +394,11 @@ export function SalesPage({initialTab="inventory",initialProject=""}:{initialTab
                 <p className="text-xs text-muted-foreground">{floors.find(f=>f.id===u.floor_id)?.name??"—"}</p></td>
               <td className="px-3 py-3">{UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]??u.unit_type}
                 <p className="text-xs text-muted-foreground">{u.saleable_area} sqft</p></td>
-              <td className="px-3 py-3 tabular-nums">{money(num(u.total_agreement_value))}
-                <p className="text-xs text-muted-foreground">{money(num(u.base_rate))}/sqft</p></td>
+              <td className="px-3 py-3 tabular-nums">{u.base_rate==null?"Rate not set":money(num(u.total_agreement_value))}
+                <p className="text-xs text-muted-foreground">{u.base_rate==null?"Awaiting pricing":money(num(u.base_rate))+"/sqft"}</p></td>
               <td className="px-3 py-3"><Status value={u.status}/></td>
               <td className="px-3 py-3"><div className="flex gap-2">{u.status==="available"&&<>
-                <Button size="sm" onClick={()=>openBook(u)}>Book flat</Button>
+                <Button size="sm" disabled={u.base_rate==null} onClick={()=>openBook(u)}>{u.base_rate==null?"Rate pending":"Book flat"}</Button>
                 {manager&&<Button size="sm" variant="outline"
                  onClick={()=>setCommercial({mode:"price",flat:u})}>Revise price</Button>}
               </>}</div></td>

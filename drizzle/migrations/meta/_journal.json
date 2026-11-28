@@ -890,6 +890,13 @@
       "when": 1795884480000,
       "tag": "0126_restrict_flat_master_creation",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1795889999999,
+      "tag": "0127_unpriced_inventory",
+      "breakpoints": true
     }
   ]
 }

@@ -16,7 +16,7 @@ const today=()=>new Date().toLocaleDateString("en-CA");
 const err=(x:unknown)=>x instanceof Error?x.message:String(x);
 export type CommercialFlat={
  id:string;unit_number:string;project_id:string;building_id:string;
- status:string;saleable_area:number;base_rate:number;floor_rise_rate:number;
+ status:string;saleable_area:number;base_rate:number|null;floor_rise_rate:number;
  parking_charges:number;other_charges:number;gst_rate:number;total_agreement_value:number;
 };
 export type CommercialBooking={
@@ -107,7 +107,7 @@ function PriceRevision({flat,onSaved,onClose}:{
  flat:CommercialFlat;onSaved:()=>void;onClose:()=>void;
 }){
  const [form,setForm]=useState({
-  base:String(flat.base_rate),rise:String(flat.floor_rise_rate),parking:String(flat.parking_charges),
+  base:flat.base_rate==null?"":String(flat.base_rate),rise:String(flat.floor_rise_rate),parking:String(flat.parking_charges),
   other:String(flat.other_charges),gst:String(flat.gst_rate),reason:"",
  });
  const [busy,setBusy]=useState(false);
@@ -126,7 +126,7 @@ function PriceRevision({flat,onSaved,onClose}:{
  };
  return <form className="space-y-3" onSubmit={e=>void submit(e)}>
   <p className="rounded-lg bg-muted p-3 text-sm">
-   Flat <b>{flat.unit_number}</b> · Current listing {money(flat.total_agreement_value)}.
+   Flat <b>{flat.unit_number}</b> · Current listing {flat.base_rate==null?"Rate not set":money(flat.total_agreement_value)}.
    Only available flats can be repriced. Existing booking prices are never changed.
   </p>
   <div className="grid grid-cols-2 gap-3">
