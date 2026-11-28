@@ -6,7 +6,7 @@ const currency=(n:number)=>inr(n/100);
 function Donut({title,items,format,inventory=false}:{title:string;items:{label:string;value:number}[];format:(n:number)=>string;inventory?:boolean}){
  const total=items.reduce((n,x)=>n+x.value,0);
  let pos=0;
- const segments=items.map((x,i)=>{const start=pos;pos+=total?x.value/total*100:0;return {...x,color:colors[i%colors.length]!,start,end:pos};});
+ const segments=items.map((x,i)=>{const start=pos;pos+=total?x.value/total*100:0;return {...x,color:x.label==="Landowner / investor"?"#dc2626":colors[i%colors.length]!,start,end:pos};});
  const gradient=segments.filter(x=>x.value>0).map(x=>x.color+" "+x.start+"% "+x.end+"%").join(",");
  return <section className="min-w-0 rounded-2xl border bg-card p-3 sm:p-5 space-y-3">
   <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold sm:text-base">{title}</h2>{inventory&&<span className="shrink-0 text-xs">Total flats: <b>{total}</b></span>}</div>
