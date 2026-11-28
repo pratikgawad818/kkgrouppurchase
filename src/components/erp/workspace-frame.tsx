@@ -302,6 +302,7 @@ export function WorkspaceFrame({
   const isBottomActive = (item: (typeof bottom)[number]) => {
     // Both receiving shortcuts live in Inventory. Match their exact route
     // rather than activating Receive, Challan and Stock simultaneously.
+    if (home === "/sales-dashboard") return path === item.to || path.startsWith(item.to + "/");
     if (isSiteEngineer && ["receiving", "challans", "stock"].includes(item.key))
       return path === item.to || path.startsWith(item.to + "/");
     return location?.group.key === item.key;
