@@ -4807,10 +4807,10 @@ export type Database = {
         Row: {
           balcony_area: number
           base_price: number
-          base_rate: number
+          base_rate: number | null
           booking_amount: number
           building_id: string
-          built_up_area: number
+          built_up_area: number | null
           carpet_area: number
           created_at: string
           facing: string | null
@@ -4825,6 +4825,8 @@ export type Database = {
           notes: string | null
           other_charges: number
           parking_charges: number
+          otla_area: number | null
+          pt_area: number | null
           parking_count: number
           parking_details: string | null
           project_id: string
@@ -4841,10 +4843,10 @@ export type Database = {
         Insert: {
           balcony_area?: number
           base_price?: number
-          base_rate: number
+          base_rate: number | null
           booking_amount?: number
           building_id: string
-          built_up_area: number
+          built_up_area: number | null
           carpet_area: number
           created_at?: string
           facing?: string | null
@@ -4859,6 +4861,8 @@ export type Database = {
           notes?: string | null
           other_charges?: number
           parking_charges?: number
+          otla_area?: number | null
+          pt_area?: number | null
           parking_count?: number
           parking_details?: string | null
           project_id: string
@@ -4875,10 +4879,10 @@ export type Database = {
         Update: {
           balcony_area?: number
           base_price?: number
-          base_rate?: number
+          base_rate?: number | null
           booking_amount?: number
           building_id?: string
-          built_up_area?: number
+          built_up_area?: number | null
           carpet_area?: number
           created_at?: string
           facing?: string | null
@@ -4893,6 +4897,8 @@ export type Database = {
           notes?: string | null
           other_charges?: number
           parking_charges?: number
+          otla_area?: number | null
+          pt_area?: number | null
           parking_count?: number
           parking_details?: string | null
           project_id?: string
