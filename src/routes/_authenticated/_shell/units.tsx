@@ -16,28 +16,30 @@ import { useMe } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated/_shell/units")({
   head: () => ({ meta: [{ title: "Flats Inventory — KK Group ERP" }, { name: "description", content: "Flats, shops and offices across every KK Group project and building." }, { property: "og:title", content: "Flats Inventory — KK Group ERP" }, { property: "og:description", content: "Flats, shops and offices across every KK Group project and building." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  component: Units,
+  validateSearch: (search:Record<string,unknown>):{project?:string;building?:string}=>({...(typeof search["project"]==="string"?{project:search["project"]}:{}),...(typeof search["building"]==="string"?{building:search["building"]}:{})}),
+  component: ()=>{const search=Route.useSearch();return <Units key={(search["project"]??"")+"|"+(search["building"]??"")} initialProject={search["project"]??""} initialBuilding={search["building"]??""}/>;},
 });
 
 const sel = "h-9 w-full rounded-md border bg-card px-2 text-sm";
 const inp = "h-9 w-full rounded-md border bg-card px-3 text-sm";
 
-function Units() {
+function Units({initialProject="",initialBuilding=""}:{initialProject?:string;initialBuilding?:string}) {
   const qc = useQueryClient();
   const me = useMe();
   const canEditUnits = !!me.data?.roles.includes("super_admin") && !me.data.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
   const [tab, setTab] = useState<"units" | "building">("units");
   const [filtersOpen,setFiltersOpen]=useState(false);
-  const [project, setProject] = useState("");
-  const [building, setBuilding] = useState("");
+  const [mobileLimit,setMobileLimit]=useState(30);
+  const [project, setProject] = useState(initialProject);
+  const [building, setBuilding] = useState(initialBuilding);
   const [floor, setFloor] = useState("");
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [edit, setEdit] = useState<any | "new" | null>(null);
-  const units = useQuery({ queryKey: ["units"], queryFn: async () => {
+  const units = useQuery({ queryKey: ["units",me.data?.profile.id], enabled:!!me.data?.profile.id, queryFn: async () => {
     return loadCompleteRows(async(start,end)=>await supabase.from("units")
       .select("*, floors(name, floor_number), buildings(name), projects(name)",{count:"exact"})
-      .order("unit_number").order("id").range(start,end));
+      .eq("record_status","active").order("unit_number").order("id").range(start,end));
   } });
   const projects = useQuery({ queryKey: ["projects-lite"], queryFn: async () => (await supabase.from("projects").select("id,name").order("name")).data ?? [] });
   const options = useMemo(()=>inventoryLocationOptions(units.data??[],project,building),[units.data,project,building]);
@@ -46,7 +48,8 @@ function Units() {
   if(units.isError)return <div role="alert" className="rounded-lg border p-4">Could not load inventory. <Button variant="outline" onClick={()=>void units.refetch()}>Retry</Button></div>;
   const refresh = () => qc.invalidateQueries({ queryKey: ["units"] });
   const activeFilterCount=[project,building,floor,status].filter(Boolean).length;
-  const compactSelect="h-9 w-full min-w-0 rounded-md border bg-card px-2 text-xs lg:w-auto lg:max-w-[160px]";
+  const compactSelect="h-10 w-full min-w-0 rounded-md border bg-card px-2 text-base lg:h-9 lg:w-auto lg:max-w-[160px] lg:text-xs";
+  const counts=rows.reduce((m,u)=>{const k=inventoryDisplayStatus(u);m[k]=(m[k]??0)+1;return m;},{} as Record<string,number>);
 
   return (
     <>
@@ -55,7 +58,7 @@ function Units() {
         <div className="flex shrink-0 rounded-md bg-muted p-0.5">
           {(["units","building"] as const).map(t=><button key={t} onClick={()=>setTab(t)} className={cn("h-8 rounded px-2 text-xs font-medium",tab===t?"bg-card text-foreground shadow-sm":"text-muted-foreground")}>{t==="units"?"List":"Building"}</button>)}
         </div>
-        <input aria-label="Search unit number" className="h-9 min-w-[100px] flex-1 rounded-md border bg-card px-2 text-xs lg:max-w-[160px]" placeholder="Search flat no." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <input aria-label="Search unit number" className="h-10 min-w-[100px] flex-1 rounded-md border bg-card px-2 text-base lg:h-9 lg:max-w-[160px] lg:text-xs" placeholder="Search flat no." value={search} onChange={e=>setSearch(e.target.value)}/>
         <Button size="sm" variant="outline" className="h-9 shrink-0 px-2 text-xs lg:hidden" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(v=>!v)}><ListFilter className="mr-1 h-3.5 w-3.5"/>Filters{activeFilterCount>0?` (${activeFilterCount})`:""}</Button>
         <div className={cn("w-full grid-cols-2 gap-1.5 lg:flex lg:w-auto lg:flex-wrap lg:items-center",filtersOpen?"grid":"hidden")}>
           <select className={compactSelect} aria-label="Filter by project" value={project} onChange={e=>{setProject(e.target.value);setBuilding("");setFloor("");}}>
@@ -69,8 +72,10 @@ function Units() {
         {canEditUnits&&<Button size="sm" className="ml-auto h-9 shrink-0 px-2 text-xs" onClick={()=>setEdit("new")}><Plus className="mr-1 h-3.5 w-3.5"/>Add flat</Button>}
       </div>
 
+      <div className="mb-2 flex flex-wrap gap-1.5 text-xs" aria-label="Filtered inventory counts">{[["Available",counts["available"]??0,"text-emerald-700 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-200"],["Sold",counts["sold"]??0,"text-slate-700 bg-slate-100 dark:bg-slate-800 dark:text-slate-200"],["Landowner / investor",(counts["landowner"]??0)+(counts["investor"]??0),"text-red-700 bg-red-50 dark:bg-red-950 dark:text-red-200"]].map(([label,n,tone])=><span key={label} className={"rounded px-2 py-1 font-medium "+tone}>{label} {n}</span>)}</div>
+      {tab==="units"&&<div className="overflow-hidden rounded-xl border bg-card md:hidden" data-mobile-flat-list>{rows.length===0?<p className="p-4 text-center text-sm text-muted-foreground">No matching flats.</p>:<><div className="divide-y">{rows.slice(0,mobileLimit).map(u=><button type="button" key={u.id} disabled={!canEditUnits} onClick={()=>setEdit(u)} className={cn("flex min-w-0 w-full items-center justify-between gap-2 px-3 py-2.5 text-left",["landowner","investor"].includes(inventoryDisplayStatus(u))&&"bg-red-50 dark:bg-red-950/40")}><span className="min-w-0 flex-1"><span className="block font-semibold">{u.unit_number} <span className="text-xs font-normal text-muted-foreground">{u.source_layout?.startsWith("1-RK")?"1 RK":UNIT_TYPE_LABEL[u.unit_type]}</span></span><span className="block truncate text-[11px] text-muted-foreground">{u.buildings?.name} · {u.floors?.name}</span><span className="block text-xs tabular-nums">{num(u.carpet_area)} sqft · {inr(u.total_agreement_value)}</span></span><InventoryBadge unit={u}/></button>)}</div>{mobileLimit<rows.length&&<Button variant="ghost" className="w-full" onClick={()=>setMobileLimit(v=>v+30)}>Show more · {Math.min(mobileLimit,rows.length)} of {rows.length}</Button>}</>}</div>}
       {tab === "units" ? (
-        <div className="doc-table overflow-x-auto rounded-xl border bg-card shadow-card">
+        <div className="doc-table hidden overflow-x-auto rounded-xl border bg-card shadow-card md:block">
           {rows.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">No units match these filters.</div> : (
             <table className="w-full text-sm">
               <thead><tr className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">{["Unit", "Project", "Tower / Floor", "Type", "Carpet Area", "Final Price", "Status"].map((h) => <th key={h} className="px-5 py-3">{h}</th>)}</tr></thead>
