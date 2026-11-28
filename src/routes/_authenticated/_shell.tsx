@@ -7,7 +7,7 @@ import { disablePush, ensureDirectorPush } from "@/lib/web-push";
 import { toast } from "sonner";
 import { useAvatarUrl } from "@/lib/avatar";
 import { ROLE_LABEL } from "@/lib/format";
-import { canAccessPage } from "@/lib/page-access";
+import { canAccessPage, isScopedSalesRole } from "@/lib/page-access";
 import { workspaceNavigation } from "@/lib/workspace-navigation";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/erp/common";
@@ -39,10 +39,12 @@ function Shell() {
     return () => window.clearTimeout(timer);
   }, [navigating]);
   const managementViewer = me.data?.roles.length === 1 && me.data.roles[0] === "auditor";
+  const scopedSales = isScopedSalesRole(me.data?.roles ?? []);
   useEffect(() => {
-    if (path === "/dashboard" && managementViewer)
+    if(path === "/dashboard" && scopedSales) void navigate({to:"/sales",replace:true});
+    else if (path === "/dashboard" && managementViewer)
       void navigate({ to: "/management", replace: true });
-  }, [path, managementViewer, navigate]);
+  }, [path, managementViewer, scopedSales, navigate]);
   const isDirector = me.data?.roles.includes("director") ?? false;
   useEffect(() => {
     if (me.data?.profile.is_active) void ensureDirectorPush(isDirector).catch(() => {});
@@ -99,7 +101,7 @@ function Shell() {
     );
   const { profile, roles, permissions } = me.data;
   const access = { roles, permissions };
-  const home = managementViewer ? "/management" : "/dashboard";
+  const home = scopedSales ? "/sales" : managementViewer ? "/management" : "/dashboard";
   const blocked = !profile.is_active
     ? "Your account has been deactivated. Contact your administrator."
     : roles.length === 0

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader, Loading } from "@/components/erp/common";
 import { UNIT_TYPE_LABEL } from "@/lib/format";
+import { createDraftUpload } from "@/lib/draft-upload";
+import { showDocument } from "@/components/erp/document-viewer";
 import { SalesCommercialDialog } from "@/components/erp/sales-commercial";
 import { SalesProjectReports } from "@/components/erp/sales-performance";
 
@@ -36,7 +38,7 @@ type Booking = {
 };
 type Receipt = {
   id: string; sale_id: string; amount: number; paid_on: string; method: string;
-  reference: string | null; status: string; reviewer_note: string | null;
+  reference: string | null; status: string; reviewer_note: string | null; proof_path:string|null; proof_filename:string|null;
   property_sales: { buyer_name: string; sale_number: string; project_id: string;
     units: { unit_number: string; building_id: string; floor_id: string } | null } | null;
 };
@@ -120,7 +122,7 @@ async function listPage<T>(tab: Tab, filter: Filters): Promise<Page<T>> {
     query=query.order("booked_on",{ascending:false}).order("id",{ascending:false});
   } else {
     query=db.from("property_sale_receipts")
-      .select("id,sale_id,amount,paid_on,method,reference,status,reviewer_note,property_sales!inner(buyer_name,sale_number,project_id,units!inner(unit_number,building_id,floor_id))",
+      .select("id,sale_id,amount,paid_on,method,reference,status,reviewer_note,proof_path,proof_filename,property_sales!inner(buyer_name,sale_number,project_id,units!inner(unit_number,building_id,floor_id))",
         {count:"exact"});
     if (filter.project) query=query.eq("property_sales.project_id",filter.project);
     if (filter.building) query=query.eq("property_sales.units.building_id",filter.building);
@@ -180,6 +182,7 @@ const emptySummary:Summary={
 export function SalesPage() {
   const me=useMe(),qc=useQueryClient();
   const manager=!!me.data?.roles.some(r=>r==="super_admin"||r==="director");
+  const scopedSales=!!me.data?.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
   const superAdmin=!!me.data?.roles.includes("super_admin");
   const [tab,setTab]=useState<Tab>("inventory");
   const [project,setProject]=useState("");
@@ -195,6 +198,8 @@ export function SalesPage() {
   const [selectedFloors,setSelectedFloors]=useState<string[]>([]);
   const [form,setForm]=useState<Record<string,string>>({});
   const [busy,setBusy]=useState(false);
+  const [proof,setProof]=useState<File|null>(null);
+  const [receiptUpload]=useState(()=>createDraftUpload<File>());
   const value=(key:string)=>form[key]??"";
   const put=(key:string,v:string)=>setForm(x=>({...x,[key]:v}));
   const filter={project,building,floor,status,search,page};
@@ -244,7 +249,22 @@ export function SalesPage() {
     if(busy)return;
     setBusy(true);
     try {
+      if(name==="sales_report_receipt_with_proof"){
+        const actor=me.data?.profile.id,company=me.data?.profile.company_id;
+        if(!proof||!sale||!actor||!company)throw new Error("Attach payment proof before recording.");
+        const ext=proof.name.toLowerCase().split(".").pop()??"";
+        const types:Record<string,string>={pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png"};
+        if(!types[ext]||proof.type!==types[ext]||proof.size<1||proof.size>10*1024*1024)throw new Error("Select a PDF, JPG or PNG up to 10 MB.");
+        const path=await receiptUpload.get(proof,JSON.stringify([actor,company,sale.id]),async file=>{
+          const key=company+"/"+sale.id+"/"+actor+"/"+crypto.randomUUID()+"."+ext;
+          const r=await supabase.storage.from("sales-documents").upload(key,file,{contentType:file.type,upsert:false});
+          if(r.error)throw r.error;
+          return key;
+        });
+        args={...args,_proof_path:path,_filename:proof.name.slice(0,150)};
+      }
       const result=await call(name,args);
+      receiptUpload.clear();setProof(null);
       toast.success(message);
       setModal(null);
       setSale(null);
@@ -273,6 +293,7 @@ export function SalesPage() {
   function openBook(unit:Unit){setFlat(unit);setForm({price:String(unit.total_agreement_value),booked_on:today()});setModal("book");}
   function openSale(item:Booking,type:Modal){
     setSale(item);
+    setProof(null);receiptUpload.clear();
     setForm(type==="receipt"?{method:"upi",paid_on:today()}:
       type==="refund"?{method:"upi",refunded_on:today()}:
       type==="cancel"?{reason:finances.get(item.id)?.pending_cancel_reason??"",fee:"0"}:{});
@@ -287,27 +308,27 @@ export function SalesPage() {
   const firstExample=firstSelected?`${firstSelected.floor_number}${value("separator")}${String(Number(value("start_at"))||0).padStart(Number(value("digits"))||2,"0")}`:"—";
 
   return <div className="min-w-0 space-y-4 pb-10">
-    <PageHeader title="Sales & Bookings"
+    <PageHeader title={me.data?.roles.includes("ceo")?"CEO Sales Portal":scopedSales?"Senior Sales Portal":"Sales & Bookings"}
       subtitle="Project-wise property inventory, customer bookings, collections and cancellations" />
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
       {([
         ["Total flats",String(summaryData.total_flats),Layers3],
-        ["Available",String(summaryData.available_flats),Home],
-        ["Active bookings",String(summaryData.active_sales),Building2],
+        ["Available / unsold",String(summaryData.available_flats),Home],
+        ["Booked / sales in progress",String(summaryData.active_sales),Building2],
         ["Verified collections",money(summaryData.verified_collections),CreditCard],
         ["Buyer outstanding",money(summaryData.outstanding),Wallet],
         ["Refunds pending",money(summaryData.refund_pending),RotateCcw],
       ] as const).map(([label,value,Icon])=>
         <section key={label} className="rounded-xl border bg-card p-3.5">
           <Icon className="mb-1 h-4 w-4 text-primary"/>
-          <p className="break-words text-lg font-bold tabular-nums">{value}</p>
+          <p className="break-words text-lg font-bold tabular-nums">{summary.isSuccess?value:"—"}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </section>)}
     </div>
     <div className="rounded-xl border bg-card p-3 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-semibold"><ListFilter className="h-4 w-4"/> Project and property filters</p>
-        {manager&&<div className="flex flex-wrap gap-2">
+        {(manager||scopedSales)&&<div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={()=>setCommercial({mode:"import"})}>Import Excel / CSV</Button>
           <Button size="sm" variant="outline" onClick={openBulk}><Layers3 className="mr-1 h-4 w-4"/>Bulk add flats</Button>
           <Button size="sm" onClick={openUnit}><Plus className="mr-1 h-4 w-4"/>Add one flat</Button>
@@ -450,7 +471,7 @@ export function SalesPage() {
                 <p className="text-xs text-muted-foreground">{r.reference??"—"}</p></td>
               <td className="px-3 py-3"><Status value={r.status}/>
                 {r.reviewer_note&&<p className="text-xs text-muted-foreground">{r.reviewer_note}</p>}</td>
-              <td className="px-3 py-3">{manager&&r.status==="reported"&&<div className="flex gap-2">
+              <td className="px-3 py-3">{r.proof_path?<Button size="sm" variant="outline" onClick={async()=>{try{const result=await supabase.storage.from("sales-documents").download(r.proof_path!);if(result.error)throw result.error;showDocument({url:URL.createObjectURL(result.data),type:result.data.type||"application/pdf",name:r.proof_filename||"Payment proof"});}catch(e){toast.error(e instanceof Error?e.message:String(e));}}}>View proof</Button>:<span className="text-xs text-muted-foreground">Legacy / no proof</span>}{manager&&r.status==="reported"&&<div className="flex gap-2">
                 <Button disabled={busy} size="sm" onClick={()=>void update("sales_review_receipt",
                   {_receipt_id:r.id,_approve:true},"Receipt verified")}>Verify</Button>
                 <Button disabled={busy} size="sm" variant="outline" onClick={()=>{
@@ -470,7 +491,7 @@ export function SalesPage() {
     </section>}
     {commercial&&<SalesCommercialDialog key={commercial.mode+(commercial.booking?.id??commercial.flat?.id??"")}
       mode={commercial.mode} project={project} buildings={meta.data?.buildings??[]}
-      flat={commercial.flat} booking={commercial.booking} manager={manager}
+      flat={commercial.flat} booking={commercial.booking} manager={manager} canImport={manager||scopedSales}
       companyId={me.data?.profile.company_id??""} actorId={me.data?.profile.id??""}
       onClose={()=>setCommercial(null)} onSaved={()=>{
         for(const key of ["sales-register","sales-overview","sales-project-commercial-report",
@@ -572,10 +593,12 @@ export function SalesPage() {
           <Button type="submit" disabled={busy||(modal==="bulk"&&(candidateCount<1||candidateCount>1200))}
             className="w-full">{busy?"Saving…":modal==="bulk"?`Create ${candidateCount} flats`:"Create flat"}</Button>
         </form>}
-        {modal==="book"&&flat&&<form className="space-y-3" onSubmit={e=>submit(e,"sales_book_flat",{
+        {modal==="book"&&flat&&<form className="space-y-3" onSubmit={e=>submit(e,"sales_book_flat_with_terms",{
           _unit_id:flat.id,_name:value("buyer_name"),_mobile:value("buyer_mobile"),
           _price:Number(value("price")),_booked_on:value("booked_on"),_email:value("buyer_email")||null,
           _co_buyer:value("co_buyer")||null,_notes:value("notes")||null,
+          _rate:value("agreed_rate")?Number(value("agreed_rate")):null,_basis:value("agreed_rate")?value("rate_basis")||"saleable":null,
+          _amenities:value("amenities"),_bonus:value("bonus"),_referral:value("referral"),
         },"Booking recorded")}>
           <p className="rounded-lg bg-muted p-3 text-sm">List price <b>{money(num(flat.total_agreement_value))}</b></p>
           {([["buyer_name","Buyer name","text",true],["buyer_mobile","Mobile","tel",true],
@@ -587,9 +610,12 @@ export function SalesPage() {
               value={value(key)} onChange={e=>put(key,e.target.value)}/></Field>)}
           <Field label="Notes"><textarea className={input+" min-h-20 py-2"} value={value("notes")}
             onChange={e=>put("notes",e.target.value)}/></Field>
+          <Field label="Agreed rate (₹/sqft)"><input type="number" min=".01" step=".01" className={input} value={value("agreed_rate")} onChange={e=>put("agreed_rate",e.target.value)}/></Field>
+          <Field label="Rate area basis"><select className={input} value={value("rate_basis")||"saleable"} onChange={e=>put("rate_basis",e.target.value)}><option value="saleable">Saleable</option><option value="carpet">Carpet</option><option value="built_up">Built-up</option></select></Field>
+          {([["amenities","Amenities granted"],["bonus","Complimentary items / bonus"],["referral","Referral details"]] as const).map(([key,label])=><Field key={key} label={label}><textarea maxLength={2000} className={input+" min-h-20 py-2"} value={value(key)} onChange={e=>put(key,e.target.value)}/></Field>)}
           <Button className="w-full" disabled={busy} type="submit">Confirm booking</Button>
         </form>}
-        {modal==="receipt"&&sale&&<form className="space-y-3" onSubmit={e=>submit(e,"sales_report_receipt",{
+        {modal==="receipt"&&sale&&<form className="space-y-3" onSubmit={e=>submit(e,"sales_report_receipt_with_proof",{
           _sale_id:sale.id,_amount:Number(value("amount")),_paid_on:value("paid_on"),
           _method:value("method"),_reference:value("reference")||null,
           _payer:value("payer")||null,_notes:value("notes")||null,
@@ -607,7 +633,8 @@ export function SalesPage() {
           <Field label="Payer"><input className={input} value={value("payer")} onChange={e=>put("payer",e.target.value)}/></Field>
           <Field label="Notes"><textarea className={input+" min-h-20 py-2"} value={value("notes")}
             onChange={e=>put("notes",e.target.value)}/></Field>
-          <Button type="submit" disabled={busy} className="w-full">Record for verification</Button>
+          <Field label="Payment receipt / proof *"><input type="file" accept="application/pdf,image/jpeg,image/png" required disabled={busy} onChange={e=>{receiptUpload.clear();setProof(e.target.files?.[0]??null);}}/></Field>
+          <Button type="submit" disabled={busy||!proof} className="w-full">{busy?"Uploading and saving…":"Record for verification"}</Button>
         </form>}
         {modal==="stage"&&sale&&<div className="space-y-3">
           <p className="rounded-lg bg-muted p-3 text-sm">{sale.buyer_name} · {labels[sale.status]}</p>

@@ -48,7 +48,7 @@ test("No expense ownership or project permissions changed when restyling",()=>{
   assert.match(page,/if \(isSiteEngineer\) query=query\.eq\("created_by",me\.data!\.profile\.id\)/);
   assert.match(page,/\.from\("user_project_assignments"\)/);
   assert.match(page,/\.eq\("user_id",me\.data!\.profile\.id\)/);
-  assert.match(page,/if\(isSiteEngineer && !context\.data\?\.projects\.some\(/);
+  assert.match(page,/if\(assignedOnly && !context\.data\?\.projects\.some\(/);
   assert.match(page,/public\.site_small_expenses|site_small_expenses/);
   assert.match(page,/const canEdit=/);
   assert.match(page,/const canCreate=canEdit \|\|/);

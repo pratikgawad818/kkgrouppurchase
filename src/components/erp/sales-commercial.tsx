@@ -27,7 +27,7 @@ type Building={id:string;name:string;project_id:string};
 type Props={
  mode:"import"|"price"|"buyer";project:string;buildings:Building[];
  flat?:CommercialFlat|null|undefined;booking?:CommercialBooking|null|undefined;
- manager:boolean;companyId:string;actorId:string;
+ manager:boolean;canImport?:boolean;companyId:string;actorId:string;
  onClose:()=>void;onSaved:()=>void;
 };
 async function rpc(name:string,args:Record<string,unknown>){
@@ -163,9 +163,12 @@ function BookingWorkspace({booking,manager,companyId,actorId,onSaved}:{
  booking:CommercialBooking;manager:boolean;companyId:string;actorId:string;onSaved:()=>void;
 }){
  const qc=useQueryClient();
- const [section,setSection]=useState<"buyer"|"plan"|"legal"|"documents">("buyer");
+ const [section,setSection]=useState<"buyer"|"terms"|"plan"|"legal"|"documents">("buyer");
  const [busy,setBusy]=useState(false);
  const [buyer,setBuyer]=useState<Record<string,string>>({});
+ const [terms,setTerms]=useState<Record<string,string>>({});
+ const termsQ=useQuery({queryKey:["sales-deal-terms",booking.id],enabled:section==="terms",queryFn:async()=>{const r=await db.from("property_sales").select("agreed_rate_per_sqft,agreed_rate_basis,granted_amenities,bonus_items,referral_details").eq("id",booking.id).single();if(r.error)throw r.error;return r.data as Record<string,string|number|null>;}});
+ const tval=(key:string)=>terms[key]??String(termsQ.data?.[key]??"");
  const [legal,setLegal]=useState<Record<string,string>>({});
  const [plan,setPlan]=useState<{label:string;due_on:string;amount:string}[]>([
   {label:"Booking",due_on:today(),amount:String(booking.final_sale_price)},
@@ -249,11 +252,18 @@ function BookingWorkspace({booking,manager,companyId,actorId,onSaved}:{
    <p className="mt-1 text-xs text-muted-foreground">{money(booking.final_sale_price)} agreed · {booking.status.replaceAll("_"," ")}</p>
   </div>
   <div role="tablist" aria-label="Buyer booking details" className="flex gap-1 overflow-x-auto rounded-lg bg-muted p-1">
-   {([["buyer","Buyer"],["plan","Payment plan"],["legal","Agreement"],["documents","Files"]] as const)
+   {([["buyer","Buyer"],["terms","Deal terms"],["plan","Payment plan"],["legal","Agreement"],["documents","Files"]] as const)
     .map(([key,title])=><button key={key} role="tab" aria-selected={section===key}
      onClick={()=>setSection(key)} className={"shrink-0 rounded-md px-3 py-2 text-xs "+(section===key?"bg-background font-semibold":"")}>
      {title}</button>)}
   </div>
+  {section==="terms"&&(termsQ.isLoading?<p>Loading deal terms…</p>:termsQ.error?<p role="alert" className="text-destructive">{err(termsQ.error)}</p>:termsQ.isSuccess&&<form className="space-y-3" onSubmit={e=>{e.preventDefault();void run("sales_save_deal_terms",{_sale_id:booking.id,_rate:tval("agreed_rate_per_sqft")?Number(tval("agreed_rate_per_sqft")):null,_basis:tval("agreed_rate_per_sqft")?tval("agreed_rate_basis")||"saleable":null,_amenities:tval("granted_amenities"),_bonus:tval("bonus_items"),_referral:tval("referral_details")},"Deal terms saved",["sales-deal-terms"]);}}>
+    <Field label="Agreed rate (₹/sqft)"><input className={input} type="number" min=".01" step=".01" value={tval("agreed_rate_per_sqft")} onChange={e=>patch("agreed_rate_per_sqft",e.target.value,setTerms)}/></Field>
+    <Field label="Area basis"><select className={input} value={tval("agreed_rate_basis")||"saleable"} onChange={e=>patch("agreed_rate_basis",e.target.value,setTerms)}><option value="saleable">Saleable</option><option value="carpet">Carpet</option><option value="built_up">Built-up</option></select></Field>
+    {([["granted_amenities","Amenities granted"],["bonus_items","Complimentary items / bonus"],["referral_details","Referral details"]] as const).map(([key,label])=><Field key={key} label={label}><textarea maxLength={2000} className={input+" min-h-20 py-2"} value={tval(key)} onChange={e=>patch(key,e.target.value,setTerms)}/></Field>)}
+    <p className="text-xs text-muted-foreground">These are documented deal terms. They do not modify the agreed sale price or verified collections.</p>
+    <Button disabled={busy||booking.status==="cancelled"} type="submit">Save deal terms</Button>
+  </form>)}
   {section==="buyer"&&<form className="space-y-3" onSubmit={e=>{
    e.preventDefault();void run("sales_save_buyer_details",{
     _sale_id:booking.id,_address:info("address"),_city:info("city"),
@@ -383,7 +393,7 @@ function BookingWorkspace({booking,manager,companyId,actorId,onSaved}:{
  </div>;
 }
 
-export function SalesCommercialDialog({mode,project,buildings,flat,booking,manager,
+export function SalesCommercialDialog({mode,project,buildings,flat,booking,manager,canImport=manager,
  companyId,actorId,onClose,onSaved}:Props){
  return <Dialog open onOpenChange={open=>{if(!open)onClose();}}>
   <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
@@ -396,7 +406,7 @@ export function SalesCommercialDialog({mode,project,buildings,flat,booking,manag
      "Keep buyer information, verified collections, instalment plans and legal records together."
     }</DialogDescription>
    </DialogHeader>
-   {mode==="import"&&manager&&<ImportFlats project={project} buildings={buildings}
+   {mode==="import"&&canImport&&<ImportFlats project={project} buildings={buildings}
     onSaved={onSaved} onClose={onClose}/>}
    {mode==="price"&&flat&&manager&&<PriceRevision flat={flat} onSaved={onSaved} onClose={onClose}/>}
    {mode==="buyer"&&booking&&<BookingWorkspace booking={booking}

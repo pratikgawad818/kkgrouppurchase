@@ -55,7 +55,9 @@ function SmallExpenses() {
   // Site Engineers need only this narrow permission, NOT broad financial.view.
   const isSiteEngineer=!!me.data?.roles.includes("site_engineer") &&
     !isSuperAdmin && !isAccountsManager && !isDirector;
-  const canCreateOwn=!!me.data?.permissions.has("small_expense.create") && isSiteEngineer;
+  const scopedSales=!!me.data?.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
+  const assignedOnly=isSiteEngineer||scopedSales;
+  const canCreateOwn=!!me.data?.permissions.has("small_expense.create") && assignedOnly;
   const permitted=!!companyId && (
     !!me.data?.permissions.has("financial.view") || canCreateOwn
   );
@@ -86,7 +88,7 @@ function SmallExpenses() {
   const [mobileFiltersOpen,setMobileFiltersOpen]=useState(false);
 
   const register=useQuery({
-    queryKey:["small-expenses",companyId,me.data?.profile.id,isSiteEngineer],enabled:permitted,staleTime:30_000,
+    queryKey:["small-expenses",companyId,me.data?.profile.id,isSiteEngineer,scopedSales],enabled:permitted,staleTime:30_000,
     queryFn:()=>loadCompleteRows<any>(async (start,end)=>{
       let query=untypedDb.from("site_small_expenses")
         .select("id,spent_on,project_id,building_id,created_by,category,other_category_detail,amount,payment_method,paid_to,description,receipt_reference,status,created_at,updated_at,projects(name),buildings(name)",{count:"exact"})
@@ -107,7 +109,7 @@ function SmallExpenses() {
       // Fetch ONLY the signed-in engineer's explicit assignments. Company-wide
       // project visibility alone must never authorize an expense allocation.
       let assignedIds:string[]=[];
-      if(isSiteEngineer){
+      if(assignedOnly){
         const {data,error}=await supabase.from("user_project_assignments")
           .select("project_id").eq("user_id",me.data!.profile.id);
         if(error)throw error; // Fail closed; never fall back to all projects.
@@ -117,7 +119,7 @@ function SmallExpenses() {
       let projectQuery=supabase.from("projects")
         .select("id,name,company_id").eq("company_id",companyId!);
       let buildingQuery=supabase.from("buildings").select("id,name,project_id");
-      if(isSiteEngineer){
+      if(assignedOnly){
         projectQuery=projectQuery.in("id",assignedIds);
         buildingQuery=buildingQuery.in("project_id",assignedIds);
       }
@@ -129,7 +131,7 @@ function SmallExpenses() {
       if(buildings.error)throw buildings.error;
       // Defense-in-depth: remove any leaked project/building rows before
       // populating selectors or validating submissions.
-      return scopeSmallExpenseProjectOptions(projects.data??[],buildings.data??[],assignedIds,isSiteEngineer);
+      return scopeSmallExpenseProjectOptions(projects.data??[],buildings.data??[],assignedIds,assignedOnly);
     },
   });
 
@@ -170,9 +172,9 @@ function SmallExpenses() {
       if(otherCategoryDetail&&(otherCategoryDetail.length<2||otherCategoryDetail.length>120))
         throw new Error("Other category details must be 2–120 characters.");
       if(form.buildingId&&!form.projectId)throw new Error("Select a project for this building.");
-      if(isSiteEngineer&&!form.projectId)
+      if(assignedOnly&&!form.projectId)
         throw new Error("Select your assigned project for this expense.");
-      if(isSiteEngineer && !context.data?.projects.some(project=>project.id===form.projectId))
+      if(assignedOnly && !context.data?.projects.some(project=>project.id===form.projectId))
         throw new Error("You are not assigned to this project.");
       if(form.buildingId && !context.data?.buildings.some(building=>
         building.id===form.buildingId && building.project_id===form.projectId))
@@ -299,7 +301,7 @@ function SmallExpenses() {
     save.mutate(continueEntry);
   };
   return <div className="min-w-0 pb-20 sm:pb-16">
-    <PageHeader title={isSiteEngineer?"My Small Expenses":"Small Expenses"}
+    <PageHeader title={scopedSales?"Assigned Project Expenses":isSiteEngineer?"My Small Expenses":"Small Expenses"}
       subtitle={isSiteEngineer
         ?"Your expenses only · Assigned projects"
         :"Record actual petty expenses paid for your sites and office. Project/building breakdown, receipts and correction history."}
@@ -360,7 +362,7 @@ function SmallExpenses() {
           :"mb-3 flex flex-wrap gap-2"}>
         <select aria-label="Project filter" className={isSiteEngineer?selectCls+" min-w-0 w-full md:w-auto":selectCls} value={projectFilter} onChange={e=>{setProjectFilter(e.target.value);setBuildingFilter("");setPage(0);}}>
           <option value="">{isSiteEngineer?"All my projects":"All projects and office"}</option>
-          {!isSiteEngineer&&<option value="office">General office (no project)</option>}
+          {!assignedOnly&&<option value="office">General office (no project)</option>}
           {[...new Map(all.filter(x=>x.project_id).map(x=>[x.project_id!,{id:x.project_id!,name:x.projects?.name??"Project"}])).values()]
             .map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
@@ -574,8 +576,8 @@ function SmallExpenses() {
           }
           <div><label htmlFor="small-expense-payment-method" className="text-sm font-medium">Paid through *</label><select id="small-expense-payment-method" className={selectCls} value={form.method} onChange={e=>setField("method",e.target.value as SmallExpensePayment)}>
             {Object.entries(SMALL_EXPENSE_PAYMENTS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
-          <div><label htmlFor="small-expense-project" className="text-sm font-medium">Project {isSiteEngineer?"*":""}</label><select id="small-expense-project" className={selectCls} value={form.projectId} onChange={e=>{setForm(v=>({...v,projectId:e.target.value,buildingId:""}));}}>
-            <option value="">{isSiteEngineer?"Choose assigned project":"General office / no project"}</option>{context.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+          <div><label htmlFor="small-expense-project" className="text-sm font-medium">Project {assignedOnly?"*":""}</label><select id="small-expense-project" className={selectCls} value={form.projectId} onChange={e=>{setForm(v=>({...v,projectId:e.target.value,buildingId:""}));}}>
+            <option value="">{assignedOnly?"Choose assigned project":"General office / no project"}</option>{context.data?.projects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
           <div><label htmlFor="small-expense-building" className="text-sm font-medium">Building / wing</label><select id="small-expense-building" className={selectCls} disabled={!form.projectId} value={form.buildingId} onChange={e=>setField("buildingId",e.target.value)}>
             <option value="">General project expense</option>{context.data?.buildings.filter(x=>x.project_id===form.projectId).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
           <div><label htmlFor="small-expense-paid-to" className="text-sm font-medium">Paid to *</label><Input id="small-expense-paid-to" maxLength={120} placeholder="Shop / worker / service provider" list="expense-entry-payees" value={form.paidTo} onChange={e=>setField("paidTo",e.target.value)}/><datalist id="expense-entry-payees">{vendorSuggestions.map(name=><option key={name} value={name}/>)}</datalist></div>
@@ -590,7 +592,7 @@ function SmallExpenses() {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Add JPG, PNG, WebP or PDF receipts (10 MB each, up to 8 per expense).
-            Only authorized reviewers and the original Site Engineer can open these private bills.
+            Only authorized project staff and reviewers can open these private bills.
           </p>
           {editingId&&editBills.isLoading&&<p className="mt-2 text-xs">Loading existing bills…</p>}
           {editingId&&editBills.error&&<p role="alert" className="text-xs text-destructive">{errMsg(editBills.error)}</p>}
@@ -634,7 +636,7 @@ function SmallExpenses() {
         <DialogFooter className={isSiteEngineer?"site-expense-form-actions":undefined}><Button variant="outline" onClick={closeEditor} disabled={save.isPending}>Cancel</Button>
           {canEdit&&!editingId&&<Button variant="outline" onClick={()=>submitExpense(true)} disabled={!formReady||save.isPending||context.isLoading||!!context.error}>Save & add another</Button>}
           <Button onClick={()=>submitExpense(false)} disabled={!formReady||save.isPending||context.isLoading||!!context.error||
-            (isSiteEngineer&&(!form.projectId||!context.data?.projects.some(project=>project.id===form.projectId)))||
+            (assignedOnly&&(!form.projectId||!context.data?.projects.some(project=>project.id===form.projectId)))||
             (!!editingId&&(editBills.isLoading||!!editBills.error))}>
             <ReceiptText className="mr-1 h-4 w-4"/>{save.isPending?"Saving…":editingId?"Save changes":"Record paid expense"}</Button></DialogFooter>
       </DialogContent>
