@@ -19,3 +19,12 @@ test("database requires explicit sales assignment, proof ownership, and separate
  const ui=read("src/components/erp/sales-register.tsx");
  for(const snippet of ["sales_book_flat_with_terms","sales_report_receipt_with_proof","Payment receipt / proof","View proof","Amenities granted","Referral details"])assert.ok(ui.includes(snippet),snippet);
 });
+
+test("CEO and senior sales cannot add individual, bulk or imported flat masters",()=>{
+ const sql=read("drizzle/migrations/0126_restrict_flat_master_creation.sql");
+ assert.equal((sql.match(/IF NOT public\.sales_manager\(\) OR public\.is_project_sales_staff\(auth\.uid\(\)\)/g)??[]).length,3);
+ const ui=read("src/components/erp/sales-register.tsx");
+ assert.ok(ui.includes("const canCreateFlats=manager&&!scopedSales"));
+ assert.ok(ui.includes("canImport={canCreateFlats}"));
+ assert.ok(ui.includes("sales_book_flat_with_terms"));
+});
