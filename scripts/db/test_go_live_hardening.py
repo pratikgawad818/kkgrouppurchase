@@ -2455,7 +2455,7 @@ def test_city_centre_full_import():
         p=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,'CC','City Centre') RETURNING id",(A,)).fetchone()[0]
         for wing in 'ABC':
             b=c.execute("INSERT INTO buildings(project_id,code,name,wing) VALUES(%s,%s,%s,%s) RETURNING id",(p,'CC'+wing,'City Centre - '+wing,wing)).fetchone()[0]
-            c.execute("INSERT INTO floors(building_id,floor_number,name) SELECT %s,n,'Floor '||n FROM generate_series(0,15) n",(b,))
+            c.execute("INSERT INTO floors(building_id,floor_number,name) SELECT %s,n,'Floor '||n FROM generate_series(0,15) n ON CONFLICT (building_id,floor_number) DO NOTHING",(b,))
         sql=(ROOT/'scripts/data/city-centre-inventory.sql').read_text()
         # Keep the disposable fixture and import inside a rollback-only transaction.
         sql=sql.replace('BEGIN;','',1).rsplit('COMMIT;',1)[0]
