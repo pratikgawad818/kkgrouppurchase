@@ -81,8 +81,13 @@ def exercise_commercial(db,actor,denied,project,admin,site,foreign_director,comp
         assert c.execute("SELECT count(*) FROM property_sale_payment_plans WHERE sale_id=%s",
                          (booking,)).fetchone()[0]==2
         actor(c,site)
-        receipt=c.execute("SELECT sales_report_receipt(%s,10000,current_date,'upi','COMM-REC-01')",
-                          (booking,)).fetchone()[0]
+        denied(c,lambda:c.execute("SELECT sales_report_receipt(%s,10000,current_date,'upi','COMM-REC-01')",(booking,)),"proof is required")
+        proof_company=c.execute("SELECT company_id FROM property_sales WHERE id=%s",(booking,)).fetchone()[0]
+        proof_path=f"{proof_company}/{booking}/{site}/{uuid4()}.pdf"
+        c.execute("INSERT INTO storage.objects(bucket_id,name,owner_id) VALUES('sales-documents',%s,%s)",(proof_path,site))
+        receipt_args=(booking,"COMM-REC-01",proof_path)
+        receipt=c.execute("SELECT sales_report_receipt_with_proof(%s,10000,current_date,'upi',%s,NULL,NULL,%s,'proof.pdf')",receipt_args).fetchone()[0]
+        assert c.execute("SELECT sales_report_receipt_with_proof(%s,10000,current_date,'upi',%s,NULL,NULL,%s,'proof.pdf')",receipt_args).fetchone()[0]==receipt
         actor(c,admin)
         c.execute("SELECT sales_review_receipt(%s,true)",(receipt,))
         credited=c.execute("SELECT credited FROM sales_current_milestones(%s) ORDER BY sequence LIMIT 1",
