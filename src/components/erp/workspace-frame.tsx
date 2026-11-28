@@ -80,6 +80,7 @@ const icons = {
   approvals: ShieldCheck,
   projects: Building2,
   sales: HandCoins,
+  flats: Building2,
   settings: Settings,
 };
 
