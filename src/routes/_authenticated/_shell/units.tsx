@@ -24,7 +24,7 @@ const inp = "h-9 w-full rounded-md border bg-card px-3 text-sm";
 function Units() {
   const qc = useQueryClient();
   const me = useMe();
-  const canEditUnits = !!me.data?.roles.includes("super_admin");
+  const canEditUnits = !!me.data?.roles.includes("super_admin") && !me.data.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
   const [tab, setTab] = useState<"units" | "building">("units");
   const [project, setProject] = useState("");
   const [status, setStatus] = useState("");

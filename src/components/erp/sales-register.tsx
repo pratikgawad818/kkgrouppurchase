@@ -183,6 +183,7 @@ export function SalesPage() {
   const me=useMe(),qc=useQueryClient();
   const manager=!!me.data?.roles.some(r=>r==="super_admin"||r==="director");
   const scopedSales=!!me.data?.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
+  const canCreateFlats=manager&&!scopedSales;
   const superAdmin=!!me.data?.roles.includes("super_admin");
   const [tab,setTab]=useState<Tab>("inventory");
   const [project,setProject]=useState("");
@@ -328,7 +329,7 @@ export function SalesPage() {
     <div className="rounded-xl border bg-card p-3 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-semibold"><ListFilter className="h-4 w-4"/> Project and property filters</p>
-        {(manager||scopedSales)&&<div className="flex flex-wrap gap-2">
+        {canCreateFlats&&<div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={()=>setCommercial({mode:"import"})}>Import Excel / CSV</Button>
           <Button size="sm" variant="outline" onClick={openBulk}><Layers3 className="mr-1 h-4 w-4"/>Bulk add flats</Button>
           <Button size="sm" onClick={openUnit}><Plus className="mr-1 h-4 w-4"/>Add one flat</Button>
@@ -491,7 +492,7 @@ export function SalesPage() {
     </section>}
     {commercial&&<SalesCommercialDialog key={commercial.mode+(commercial.booking?.id??commercial.flat?.id??"")}
       mode={commercial.mode} project={project} buildings={meta.data?.buildings??[]}
-      flat={commercial.flat} booking={commercial.booking} manager={manager} canImport={manager||scopedSales}
+      flat={commercial.flat} booking={commercial.booking} manager={manager} canImport={canCreateFlats}
       companyId={me.data?.profile.company_id??""} actorId={me.data?.profile.id??""}
       onClose={()=>setCommercial(null)} onSaved={()=>{
         for(const key of ["sales-register","sales-overview","sales-project-commercial-report",
@@ -516,7 +517,7 @@ export function SalesPage() {
             "Actions are checked against company, project and role permissions."
           }</DialogDescription>
         </DialogHeader>
-        {(modal==="flat"||modal==="bulk")&&<form className="space-y-3" onSubmit={e=>submit(e,modal==="flat"?"sales_add_flat":"sales_bulk_add_flats",
+        {canCreateFlats&&(modal==="flat"||modal==="bulk")&&<form className="space-y-3" onSubmit={e=>submit(e,modal==="flat"?"sales_add_flat":"sales_bulk_add_flats",
           modal==="flat"?{
             _floor_id:value("floor_id"),_number:value("number").trim(),_type:value("type"),
             _carpet:Number(value("carpet")),_built_up:Number(value("built_up")),_saleable:Number(value("saleable")),
