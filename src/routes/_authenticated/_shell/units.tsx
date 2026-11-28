@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { matchesRecordSearch } from "@/lib/erp-search";
+import { inventoryDisplayStatus, inventoryStatusLabels, matchesInventoryStatus, inventoryLocationOptions, type InventoryIdentity } from "@/lib/inventory-filters";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,8 @@ function Units() {
   const canEditUnits = !!me.data?.roles.includes("super_admin") && !me.data.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
   const [tab, setTab] = useState<"units" | "building">("units");
   const [project, setProject] = useState("");
+  const [building, setBuilding] = useState("");
+  const [floor, setFloor] = useState("");
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [edit, setEdit] = useState<any | "new" | null>(null);
@@ -36,8 +39,10 @@ function Units() {
       .order("unit_number").order("id").range(start,end));
   } });
   const projects = useQuery({ queryKey: ["projects-lite"], queryFn: async () => (await supabase.from("projects").select("id,name").order("name")).data ?? [] });
-  const rows = useMemo(() => (units.data ?? []).filter((u) => (!project || u.project_id === project) && (!status || (u.ownership_type==="builder"&&!u.legacy_sale_status&&u.status === status)) && matchesRecordSearch([u.unit_number,u.projects?.name,u.buildings?.name,u.floors?.name],search)), [units.data, project, status, search]);
+  const options = useMemo(()=>inventoryLocationOptions(units.data??[],project,building),[units.data,project,building]);
+  const rows = useMemo(() => (units.data ?? []).filter((u) => (!project || u.project_id === project) && (!building||u.building_id===building) && (!floor||u.floor_id===floor) && matchesInventoryStatus(u,status) && matchesRecordSearch([u.unit_number,u.projects?.name,u.buildings?.name,u.floors?.name],search)), [units.data, project, building, floor, status, search]);
   if (units.isLoading) return <Loading />;
+  if(units.isError)return <div role="alert" className="rounded-lg border p-4">Could not load inventory. <Button variant="outline" onClick={()=>void units.refetch()}>Retry</Button></div>;
   const refresh = () => qc.invalidateQueries({ queryKey: ["units"] });
 
   return (
@@ -50,15 +55,18 @@ function Units() {
               <button key={t} onClick={() => setTab(t)} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{t === "units" ? "Units" : "Building view"}</button>
             ))}
           </div>
-          <select className="h-9 max-w-[220px] rounded-md border bg-card px-2 text-sm" value={project} onChange={(e) => setProject(e.target.value)}>
+          <select className="h-9 max-w-[220px] rounded-md border bg-card px-2 text-sm" aria-label="Filter by project" value={project} onChange={(e) => {setProject(e.target.value);setBuilding("");setFloor("");}}>
             <option value="">All projects</option>
             {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <select className="h-9 rounded-md border bg-card px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select aria-label="Filter by wing" className="h-9 max-w-[220px] rounded-md border bg-card px-2 text-sm" value={building} onChange={e=>{setBuilding(e.target.value);setFloor("");}}><option value="">All wings / buildings</option>{options.wings.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
+          <select aria-label="Filter by floor" className="h-9 rounded-md border bg-card px-2 text-sm" disabled={!building} value={floor} onChange={e=>setFloor(e.target.value)}><option value="">{building?"All floors":"Select wing first"}</option>{options.floors.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
+          <select aria-label="Filter by availability" className="h-9 rounded-md border bg-card px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
-            {Object.entries(UNIT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            {Object.entries(inventoryStatusLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}
           </select>
           <input aria-label="Search unit number" className="h-11 w-full rounded-lg border bg-card px-3 text-sm sm:h-9 sm:w-40" placeholder="Flat no., project, building or floor" value={search} onChange={(e) => setSearch(e.target.value)} />
+          {(project||building||floor||status||search)&&<Button variant="outline" size="sm" onClick={()=>{setProject("");setBuilding("");setFloor("");setStatus("");setSearch("");}}>Clear filters</Button>}
         </div>
         {canEditUnits && <Button onClick={() => setEdit("new")}><Plus className="h-4 w-4" /> Add Flat</Button>}
       </div>
@@ -69,14 +77,14 @@ function Units() {
             <table className="w-full text-sm">
               <thead><tr className="border-b text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">{["Unit", "Project", "Tower / Floor", "Type", "Carpet Area", "Final Price", "Status"].map((h) => <th key={h} className="px-5 py-3">{h}</th>)}</tr></thead>
               <tbody className="divide-y">{rows.map((u) => (
-                <tr key={u.id} className={u.ownership_type!=="builder"?"bg-red-50 dark:bg-red-950/40":canEditUnits?"cursor-pointer hover:bg-muted/50":""} onClick={() => { if (canEditUnits) setEdit(u); }}>
+                <tr key={u.id} className={["landowner","investor"].includes(inventoryDisplayStatus(u))?"bg-red-50 dark:bg-red-950/40":canEditUnits?"cursor-pointer hover:bg-muted/50":""} onClick={() => { if (canEditUnits) setEdit(u); }}>
                   <td className="px-5 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-5 py-3 text-muted-foreground">{u.projects?.name}</td>
                   <td className="px-5 py-3 text-muted-foreground">{u.buildings?.name} · {u.floors?.name}</td>
                   <td className="px-5 py-3 text-muted-foreground">{u.source_layout?.startsWith("1-RK")?"1 RK":UNIT_TYPE_LABEL[u.unit_type]}</td>
                   <td className="px-5 py-3 text-muted-foreground">{num(u.carpet_area)} sqft</td>
                   <td className="px-5 py-3 text-muted-foreground">{inr(u.total_agreement_value)}</td>
-                  <td className="px-5 py-3">{u.ownership_type&&u.ownership_type!=="builder"?<span className="text-xs font-semibold text-red-700 dark:text-red-300">{u.ownership_type==="investor"?"Investor flat":"Landowner flat"}</span>:u.legacy_sale_status?<span className="text-xs font-semibold">{u.legacy_sale_status==="sold"?"Sold":"Booked"} · historical</span>:<UnitStatusBadge status={u.status as UnitStatus} />}</td>
+                  <td className="px-5 py-3"><InventoryBadge unit={u}/></td>
                 </tr>))}</tbody>
             </table>)}
         </div>
@@ -85,6 +93,12 @@ function Units() {
       {canEditUnits && edit && <UnitModal unit={edit === "new" ? null : edit} projects={projects.data ?? []} onClose={() => setEdit(null)} onSaved={() => { refresh(); setEdit(null); }} />}
     </>
   );
+}
+
+function InventoryBadge({unit}:{unit:InventoryIdentity}){
+ const status=inventoryDisplayStatus(unit);
+ if(["landowner","investor","sold"].includes(status))return <span className={cn("inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold",status==="sold"?"border-slate-300 bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100":"border-red-300 bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200")}>{inventoryStatusLabels[status]}</span>;
+ return <UnitStatusBadge status={status as UnitStatus}/>;
 }
 
 function BuildingView({ rows, onPick }: { rows: any[]; onPick: (u: any) => void }) {
@@ -102,12 +116,12 @@ function BuildingView({ rows, onPick }: { rows: any[]; onPick: (u: any) => void 
   return (
     <div className="space-y-5">
       {byBuilding.map((b) => {
-        const counts = Object.keys(UNIT_STATUS).map((s) => [s, [...b.floors.values()].flatMap((f) => f.units).filter((u) => u.ownership_type==="builder"&&!u.legacy_sale_status&&u.status === s).length] as const).filter(([, c]) => c > 0);
+        const counts = [...b.floors.values()].flatMap(f=>f.units).reduce((m,u)=>{const key=inventoryDisplayStatus(u);m.set(key,(m.get(key)??0)+1);return m;},new Map<string,number>());
         return (
           <div key={b.name + b.project} className="rounded-xl border bg-card p-5 shadow-card">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div><div className="font-semibold">{b.name}</div><div className="text-xs text-muted-foreground">{b.project}</div></div>
-              <div className="flex flex-wrap gap-2">{counts.map(([s, c]) => <span key={s} className="flex items-center gap-1 text-xs"><UnitStatusBadge status={s as UnitStatus} /> {c}</span>)}</div>
+              <div className="flex flex-wrap gap-2">{[...counts].map(([s,c])=><span key={s} className="flex items-center gap-1 text-xs"><InventoryBadge unit={{status:s}}/> {c}</span>)}</div>
             </div>
             <div className="space-y-2">
               {[...b.floors.entries()].sort((a, z) => z[0] - a[0]).map(([n, f]) => (
@@ -117,8 +131,8 @@ function BuildingView({ rows, onPick }: { rows: any[]; onPick: (u: any) => void 
                     {f.units.map((u) => (
                       <button key={u.id} onClick={() => onPick(u)} className={"rounded-md border p-2 text-left "+(u.ownership_type&&u.ownership_type!=="builder"?"border-red-300 bg-red-50 dark:bg-red-950/40":"hover:bg-muted/50")}>
                         <div className="text-sm font-medium">{u.unit_number}</div>
-                        <div className="mb-1 text-[11px] text-muted-foreground">{UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]} · {num(u.carpet_area)} sqft</div>
-                        <UnitStatusBadge status={u.status as UnitStatus} />
+                        <div className="mb-1 text-[11px] text-muted-foreground">{u.source_layout?.startsWith("1-RK")?"1 RK":UNIT_TYPE_LABEL[u.unit_type as keyof typeof UNIT_TYPE_LABEL]} · {num(u.carpet_area)} sqft</div>
+                        <InventoryBadge unit={u}/>
                       </button>))}
                   </div>
                 </div>))}
@@ -138,6 +152,7 @@ function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; pro
     carpet_area: unit?.carpet_area?.toString() ?? "", built_up_area: unit?.built_up_area?.toString() ?? "", saleable_area: unit?.saleable_area?.toString() ?? "",
     base_rate: unit?.base_rate?.toString() ?? "", parking_count: unit?.parking_count?.toString() ?? "0", parking_charges: unit?.parking_charges?.toString() ?? "0", other_charges: unit?.other_charges?.toString() ?? "0", gst_rate: unit?.gst_rate?.toString() ?? "5", notes: unit?.notes ?? "",
   });
+  const restricted=!!unit&&(unit.ownership_type!=="builder"||!!unit.legacy_sale_status);
   const [newStatus, setNewStatus] = useState<string>(unit?.status ?? "available");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -177,7 +192,8 @@ function UnitModal({ unit, projects, onClose, onSaved }: { unit: any | null; pro
             <L label="Parking price (₹)"><input className={inp} type="number" min={0} step="0.01" value={f.parking_charges} onChange={(e) => set("parking_charges", e.target.value)} /></L>
             <L label="Other charges (₹)"><input className={inp} type="number" min={0} step="0.01" value={f.other_charges} onChange={(e) => set("other_charges", e.target.value)} /></L>
             <L label="GST (%)"><input className={inp} type="number" min={0} max={28} step="0.01" value={f.gst_rate} onChange={(e) => set("gst_rate", e.target.value)} /></L>
-            {unit && <L label="Status"><select className={sel} value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>{["available", "hold", "cancelled", unit.status].filter((v, i, a) => a.indexOf(v) === i).map((k) => <option key={k} value={k}>{UNIT_STATUS[k as UnitStatus].label}</option>)}</select></L>}
+            {restricted&&<L label="Inventory status"><InventoryBadge unit={unit}/></L>}
+            {unit && !restricted && <L label="Status"><select className={sel} value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>{["available", "hold", "cancelled", unit.status].filter((v, i, a) => a.indexOf(v) === i).map((k) => <option key={k} value={k}>{UNIT_STATUS[k as UnitStatus].label}</option>)}</select></L>}
           </div>
           {unit && newStatus !== unit.status && <L label="Reason for status change *"><input className={inp} required value={reason} onChange={(e) => setReason(e.target.value)} /></L>}
           <L label="Notes"><textarea className="min-h-16 w-full rounded-md border bg-card px-3 py-2 text-sm" value={f.notes} onChange={(e) => set("notes", e.target.value)} /></L>
