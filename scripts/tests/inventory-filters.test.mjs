@@ -21,3 +21,12 @@ test("wing and floor selectors cascade by project and sort numerically",()=>{
  assert.deepEqual(inventoryLocationOptions(rows,"p","").floors,[]);
  assert.deepEqual(inventoryLocationOptions(rows,"q","a").floors,[]);
 });
+
+import { summarizeFlatInventory } from "../../src/lib/sales-period-dashboard.ts";
+test("wing overview reconciles real inventory classifications and never includes third-party flats as available",()=>{
+ const rows=[{id:"1",project_id:"p",building_id:"a",buildings:{name:"Wing A"},status:"available"},{id:"2",project_id:"p",building_id:"a",buildings:{name:"Wing A"},status:"hold",legacy_sale_status:"sold",ownership_type:"builder"},{id:"3",project_id:"p",building_id:"b",buildings:{name:"Wing B"},status:"hold",ownership_type:"landowner"}];
+ const result=summarizeFlatInventory(["p"],rows);
+ assert.equal(result.total.available,1);assert.equal(result.total.sold,1);assert.equal(result.total.thirdParty,1);
+ assert.equal(result.wings.length,2);assert.equal(result.wings[0].stock.total,2);assert.equal(result.wings[1].stock.unsold,0);
+ assert.throws(()=>summarizeFlatInventory(["other"],rows),/unassigned/);
+});
