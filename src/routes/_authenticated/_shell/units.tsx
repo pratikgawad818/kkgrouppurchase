@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { loadCompleteRows } from "@/lib/complete-register";
 import { matchesRecordSearch } from "@/lib/erp-search";
 import { inventoryDisplayStatus, inventoryStatusLabels, matchesInventoryStatus, inventoryLocationOptions, type InventoryIdentity } from "@/lib/inventory-filters";
-import { Plus } from "lucide-react";
+import { Plus, ListFilter } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Loading, UnitStatusBadge } from "@/components/erp/common";
@@ -27,6 +27,7 @@ function Units() {
   const me = useMe();
   const canEditUnits = !!me.data?.roles.includes("super_admin") && !me.data.roles.some(r=>r==="ceo"||r==="senior_sales_executive");
   const [tab, setTab] = useState<"units" | "building">("units");
+  const [filtersOpen,setFiltersOpen]=useState(false);
   const [project, setProject] = useState("");
   const [building, setBuilding] = useState("");
   const [floor, setFloor] = useState("");
@@ -44,31 +45,28 @@ function Units() {
   if (units.isLoading) return <Loading />;
   if(units.isError)return <div role="alert" className="rounded-lg border p-4">Could not load inventory. <Button variant="outline" onClick={()=>void units.refetch()}>Retry</Button></div>;
   const refresh = () => qc.invalidateQueries({ queryKey: ["units"] });
+  const activeFilterCount=[project,building,floor,status].filter(Boolean).length;
+  const compactSelect="h-9 w-full min-w-0 rounded-md border bg-card px-2 text-xs lg:w-auto lg:max-w-[160px]";
 
   return (
     <>
       <PageHeader title="Flat Inventory" subtitle={`${rows.length} units — Sales`} />
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-lg bg-muted p-1">
-            {(["units", "building"] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)} className={cn("rounded-md px-4 py-1.5 text-sm font-medium transition-colors", tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{t === "units" ? "Units" : "Building view"}</button>
-            ))}
-          </div>
-          <select className="h-9 max-w-[220px] rounded-md border bg-card px-2 text-sm" aria-label="Filter by project" value={project} onChange={(e) => {setProject(e.target.value);setBuilding("");setFloor("");}}>
-            <option value="">All projects</option>
-            {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <select aria-label="Filter by wing" className="h-9 max-w-[220px] rounded-md border bg-card px-2 text-sm" value={building} onChange={e=>{setBuilding(e.target.value);setFloor("");}}><option value="">All wings / buildings</option>{options.wings.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
-          <select aria-label="Filter by floor" className="h-9 rounded-md border bg-card px-2 text-sm" disabled={!building} value={floor} onChange={e=>setFloor(e.target.value)}><option value="">{building?"All floors":"Select wing first"}</option>{options.floors.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
-          <select aria-label="Filter by availability" className="h-9 rounded-md border bg-card px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">All statuses</option>
-            {Object.entries(inventoryStatusLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-          </select>
-          <input aria-label="Search unit number" className="h-11 w-full rounded-lg border bg-card px-3 text-sm sm:h-9 sm:w-40" placeholder="Flat no., project, building or floor" value={search} onChange={(e) => setSearch(e.target.value)} />
-          {(project||building||floor||status||search)&&<Button variant="outline" size="sm" onClick={()=>{setProject("");setBuilding("");setFloor("");setStatus("");setSearch("");}}>Clear filters</Button>}
+      <div className="mb-2 flex min-w-0 flex-wrap items-center gap-1.5">
+        <div className="flex shrink-0 rounded-md bg-muted p-0.5">
+          {(["units","building"] as const).map(t=><button key={t} onClick={()=>setTab(t)} className={cn("h-8 rounded px-2 text-xs font-medium",tab===t?"bg-card text-foreground shadow-sm":"text-muted-foreground")}>{t==="units"?"List":"Building"}</button>)}
         </div>
-        {canEditUnits && <Button onClick={() => setEdit("new")}><Plus className="h-4 w-4" /> Add Flat</Button>}
+        <input aria-label="Search unit number" className="h-9 min-w-[100px] flex-1 rounded-md border bg-card px-2 text-xs lg:max-w-[160px]" placeholder="Search flat no." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <Button size="sm" variant="outline" className="h-9 shrink-0 px-2 text-xs lg:hidden" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(v=>!v)}><ListFilter className="mr-1 h-3.5 w-3.5"/>Filters{activeFilterCount>0?` (${activeFilterCount})`:""}</Button>
+        <div className={cn("w-full grid-cols-2 gap-1.5 lg:flex lg:w-auto lg:flex-wrap lg:items-center",filtersOpen?"grid":"hidden")}>
+          <select className={compactSelect} aria-label="Filter by project" value={project} onChange={e=>{setProject(e.target.value);setBuilding("");setFloor("");}}>
+            <option value="">All projects</option>{projects.data?.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select aria-label="Filter by wing" className={compactSelect} value={building} onChange={e=>{setBuilding(e.target.value);setFloor("");}}><option value="">All wings</option>{options.wings.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
+          <select aria-label="Filter by floor" className={compactSelect} disabled={!building} value={floor} onChange={e=>setFloor(e.target.value)}><option value="">{building?"All floors":"Select wing"}</option>{options.floors.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
+          <select aria-label="Filter by availability" className={compactSelect} value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{Object.entries(inventoryStatusLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select>
+        </div>
+        {(activeFilterCount>0||search)&&<Button variant="ghost" size="sm" className="h-9 shrink-0 px-2 text-xs" aria-label="Clear filters" onClick={()=>{setProject("");setBuilding("");setFloor("");setStatus("");setSearch("");}}>Clear</Button>}
+        {canEditUnits&&<Button size="sm" className="ml-auto h-9 shrink-0 px-2 text-xs" onClick={()=>setEdit("new")}><Plus className="mr-1 h-3.5 w-3.5"/>Add flat</Button>}
       </div>
 
       {tab === "units" ? (
