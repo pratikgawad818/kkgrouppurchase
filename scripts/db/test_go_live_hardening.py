@@ -2410,7 +2410,13 @@ def test_scoped_sales_roles():
             c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,%s::app_role)",(uid,role))
             other=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,%s,'Unassigned sales QA') RETURNING id",(A,"QA-"+uid[:8].upper())).fetchone()[0]
             c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",(uid,PROJECT))
+            building=c.execute("INSERT INTO buildings(project_id,code,name) VALUES(%s,%s,'QA flat master') RETURNING id",(PROJECT,"FM-"+uid[:8].upper())).fetchone()[0]
+            floor=c.execute("INSERT INTO floors(building_id,name,floor_number) VALUES(%s,'Floor 1',1) RETURNING id",(building,)).fetchone()[0]
             actor(c,uid)
+            denied(c,lambda:c.execute("SELECT sales_add_flat(%s,'101','2bhk',500,600,700,2000)",(floor,)),"Only Director or Super Admin")
+            denied(c,lambda:c.execute("SELECT sales_bulk_add_flats(%s,%s::uuid[],2,1,2,'','2bhk',500,600,700,2000)",(building,[floor])),"Only Director or Super Admin")
+            denied(c,lambda:c.execute("SELECT sales_import_flat_rows(%s,'[]'::jsonb,true)",(building,)),"Only Director or Super Admin")
+            assert c.execute("SELECT count(*) FROM units WHERE building_id=%s",(building,)).fetchone()[0]==0
             assert c.execute("SELECT sales_allowed(),sales_manager(),can_access_project(auth.uid(),%s),can_access_project(auth.uid(),%s),has_permission(auth.uid(),'financial.view')",(PROJECT,other)).fetchone()==(True,False,True,False,False)
             record="SELECT record_site_small_expense(%s,%s,NULL,(now() AT TIME ZONE 'Asia/Kolkata')::date,'marketing',100,'cash','QA vendor','QA marketing expense',NULL)"
             expense=c.execute(record,(str(uuid4()),PROJECT)).fetchone()[0]
