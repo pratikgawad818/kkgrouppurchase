@@ -35,7 +35,7 @@ test("new permission is narrow: no financial.view or editing granted to Site Eng
 });
 
 test("Site Engineers see own rows, own totals, own events and own bills only",()=>{
-  assert.match(ui, /queryKey:\["small-expenses",companyId,me\.data\?\.profile\.id,isSiteEngineer\]/);
+  assert.match(ui, /queryKey:\["small-expenses",companyId,me\.data\?\.profile\.id,isSiteEngineer,scopedSales\]/);
   assert.match(ui, /if \(isSiteEngineer\) query=query\.eq\("created_by",me\.data!\.profile\.id\)/);
   assert.match(ui, /const total=summarizeSmallExpenses\(rows\)/);
   assert.match(ui, /smallExpenseVendorSuggestions\(all\)/);
@@ -53,7 +53,7 @@ test("bill uploads and management are restricted to the engineer's own record",(
   assert.match(migration, /site_only AND \(\s*expense\.created_by IS DISTINCT FROM actor/);
   assert.match(migration, /site_only AND bill\.created_by IS DISTINCT FROM actor/);
   assert.match(migration, /storage\.foldername\(name\)\)\[2\] = auth\.uid\(\)::text/);
-  assert.match(ui, /isSiteEngineer&&!form\.projectId/);
+  assert.match(ui, /assignedOnly&&!form\.projectId/);
 });
 
 test("engineer expense project dropdown intersects explicit assignments (including buildings)",()=>{
