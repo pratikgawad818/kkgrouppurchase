@@ -42,6 +42,7 @@ AS $function$
    WHERE b.storage_path=_path AND b.is_active
      AND b.company_id=e.company_id
      AND public.actor_in_company(e.company_id)
+     AND (NOT public.is_project_sales_staff(auth.uid()) OR (e.project_id IS NOT NULL AND public.can_access_project(auth.uid(),e.project_id)))
      AND (
        (public.is_project_sales_staff(auth.uid()) AND public.has_permission(auth.uid(),'small_expense.create') AND e.project_id IS NOT NULL AND public.can_access_project(auth.uid(),e.project_id))
        OR (
@@ -167,10 +168,7 @@ BEGIN
   END IF;
   -- Field staff must always allocate expenses to a currently assigned site.
   -- They cannot create general office expenses or charge another project.
-  IF (public.has_role(auth.uid(),'site_engineer') OR public.is_project_sales_staff(auth.uid()))
-     AND NOT public.has_role(auth.uid(),'super_admin')
-     AND NOT public.has_role(auth.uid(),'accounts_manager')
-     AND _project_id IS NULL THEN
+  IF _project_id IS NULL AND (public.is_project_sales_staff(auth.uid()) OR (public.has_role(auth.uid(),'site_engineer') AND NOT public.has_role(auth.uid(),'super_admin') AND NOT public.has_role(auth.uid(),'accounts_manager'))) THEN
     RAISE EXCEPTION 'Select your assigned project for this expense';
   END IF;
   -- Use the business operating date in India, regardless of the
@@ -469,3 +467,38 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sales_save_deal_terms(uuid,numeric,text,text,text,text), public.sales_book_flat_with_terms(uuid,text,text,numeric,date,text,text,text,numeric,text,text,text,text), public.sales_report_receipt_with_proof(uuid,numeric,date,text,text,text,text,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.sales_save_deal_terms(uuid,numeric,text,text,text,text), public.sales_book_flat_with_terms(uuid,text,text,numeric,date,text,text,text,numeric,text,text,text,text), public.sales_report_receipt_with_proof(uuid,numeric,date,text,text,text,text,text,text) TO authenticated;
+
+-- Keep the legacy receipt endpoint for existing Director/Super Admin callers only.
+CREATE OR REPLACE FUNCTION public.sales_report_receipt(_sale_id uuid, _amount numeric, _paid_on date, _method text, _reference text DEFAULT NULL::text, _payer text DEFAULT NULL::text, _notes text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE v_sale public.property_sales%ROWTYPE;v_id uuid;
+BEGIN
+ IF public.is_project_sales_staff(auth.uid()) THEN RAISE EXCEPTION 'Payment receipt proof is required'; END IF;
+ IF NOT public.sales_allowed() THEN RAISE EXCEPTION 'Sales access denied';END IF;
+ SELECT * INTO v_sale FROM public.property_sales WHERE id=_sale_id FOR UPDATE;
+ IF NOT FOUND OR NOT public.sales_project_allowed(v_sale.project_id) THEN
+   RAISE EXCEPTION 'Sale not accessible';END IF;
+ IF v_sale.status='cancelled' THEN RAISE EXCEPTION 'Cancelled booking';END IF;
+ IF _amount IS NULL OR _amount<=0 OR _amount>v_sale.final_sale_price THEN
+   RAISE EXCEPTION 'Invalid receipt amount';END IF;
+ IF _paid_on IS NULL OR _paid_on>current_date THEN
+   RAISE EXCEPTION 'Receipt date cannot be in the future';END IF;
+ IF _method NOT IN ('cash','upi','neft','rtgs','imps','cheque','card','other') THEN
+   RAISE EXCEPTION 'Invalid payment method';END IF;
+ IF _method<>'cash' AND length(btrim(coalesce(_reference,'')))<3 THEN
+   RAISE EXCEPTION 'Payment reference is required for non-cash payments';END IF;
+ INSERT INTO public.property_sale_receipts(sale_id,amount,paid_on,method,
+  reference,payer_name,notes,created_by)
+ VALUES(_sale_id,round(_amount,2),_paid_on,_method,
+  nullif(btrim(coalesce(_reference,'')),''),
+  nullif(btrim(coalesce(_payer,'')),''),
+  nullif(btrim(coalesce(_notes,'')),''),auth.uid()) RETURNING id INTO v_id;
+ INSERT INTO public.property_sale_events(sale_id,action,details,actor_id)
+ VALUES(_sale_id,'receipt_reported',jsonb_build_object('receipt_id',v_id,
+        'amount',round(_amount,2)),auth.uid());
+ RETURN v_id;
+END $function$;
