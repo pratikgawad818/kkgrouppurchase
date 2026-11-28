@@ -403,3 +403,69 @@ WITH CHECK(bucket_id='small-expense-bills' AND public.is_project_sales_staff(aut
  AND (storage.foldername(name))[1]=(SELECT company_id::text FROM public.profiles WHERE id=auth.uid() AND is_active)
  AND (storage.foldername(name))[2]=auth.uid()::text
  AND storage.filename(name) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png|webp)$');
+
+-- Record actual sale terms separately from list-price and payment accounting.
+ALTER TABLE public.property_sales
+ ADD COLUMN IF NOT EXISTS agreed_rate_per_sqft numeric(16,2),
+ ADD COLUMN IF NOT EXISTS agreed_rate_basis text,
+ ADD COLUMN IF NOT EXISTS granted_amenities text,
+ ADD COLUMN IF NOT EXISTS bonus_items text,
+ ADD COLUMN IF NOT EXISTS referral_details text;
+ALTER TABLE public.property_sale_receipts
+ ADD COLUMN IF NOT EXISTS proof_path text,
+ ADD COLUMN IF NOT EXISTS proof_filename text;
+CREATE UNIQUE INDEX IF NOT EXISTS property_receipt_unique_proof ON public.property_sale_receipts(proof_path) WHERE proof_path IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.sales_save_deal_terms(_sale_id uuid,_rate numeric,_basis text,_amenities text,_bonus text,_referral text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp' AS $$
+DECLARE sale public.property_sales%ROWTYPE;
+BEGIN
+ SELECT * INTO sale FROM public.property_sales WHERE id=_sale_id FOR UPDATE;
+ IF NOT FOUND OR NOT public.sales_project_allowed(sale.project_id) OR NOT public.actor_in_company(sale.company_id) THEN RAISE EXCEPTION 'Sale not accessible'; END IF;
+ IF sale.status='cancelled' THEN RAISE EXCEPTION 'Cancelled booking'; END IF;
+ IF (_rate IS NOT NULL AND (_rate<=0 OR _rate>100000000 OR round(_rate,2)<>_rate OR _basis IS NULL OR _basis NOT IN ('carpet','built_up','saleable')))
+    OR (_rate IS NULL AND _basis IS NOT NULL)
+    OR length(coalesce(_amenities,''))>2000 OR length(coalesce(_bonus,''))>2000 OR length(coalesce(_referral,''))>2000 THEN RAISE EXCEPTION 'Invalid rate or deal terms'; END IF;
+ UPDATE public.property_sales SET agreed_rate_per_sqft=_rate,agreed_rate_basis=_basis,
+ granted_amenities=nullif(btrim(coalesce(_amenities,'')),''),
+ bonus_items=nullif(btrim(coalesce(_bonus,'')),''),
+ referral_details=nullif(btrim(coalesce(_referral,'')),'') WHERE id=_sale_id;
+ INSERT INTO public.property_sale_events(sale_id,action,details,actor_id) VALUES(_sale_id,'deal_terms_updated',
+ jsonb_build_object('previous_rate',sale.agreed_rate_per_sqft,'previous_basis',sale.agreed_rate_basis,'previous_amenities',sale.granted_amenities,'previous_bonus',sale.bonus_items,'previous_referral',sale.referral_details,
+ 'rate',_rate,'basis',_basis,'amenities',_amenities,'bonus',_bonus,'referral',_referral),auth.uid());
+END $$;
+CREATE OR REPLACE FUNCTION public.sales_book_flat_with_terms(_unit_id uuid,_name text,_mobile text,_price numeric,_booked_on date,_email text,_co_buyer text,_notes text,
+ _rate numeric,_basis text,_amenities text,_bonus text,_referral text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp' AS $$
+DECLARE sale_id uuid;
+BEGIN
+ sale_id:=public.sales_book_flat(_unit_id,_name,_mobile,_price,_booked_on,_email,_co_buyer,_notes);
+ PERFORM public.sales_save_deal_terms(sale_id,_rate,_basis,_amenities,_bonus,_referral);
+ RETURN sale_id;
+END $$;
+CREATE OR REPLACE FUNCTION public.sales_report_receipt_with_proof(_sale_id uuid,_amount numeric,_paid_on date,_method text,_reference text,_payer text,_notes text,_proof_path text,_filename text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','storage','pg_temp' AS $$
+DECLARE sale public.property_sales%ROWTYPE; prior public.property_sale_receipts%ROWTYPE; result uuid;
+BEGIN
+ SELECT * INTO sale FROM public.property_sales WHERE id=_sale_id FOR UPDATE;
+ IF NOT FOUND OR NOT public.sales_project_allowed(sale.project_id) OR NOT public.actor_in_company(sale.company_id) THEN RAISE EXCEPTION 'Sale not accessible'; END IF;
+ IF _proof_path IS NULL OR split_part(_proof_path,'/',2)<>_sale_id::text OR NOT public.sales_doc_access(_proof_path,true)
+   OR length(btrim(coalesce(_filename,''))) NOT BETWEEN 1 AND 150
+   OR NOT EXISTS(SELECT 1 FROM storage.objects o WHERE o.bucket_id='sales-documents' AND o.name=_proof_path AND o.owner_id=auth.uid()::text)
+ THEN RAISE EXCEPTION 'Upload your receipt proof before recording payment'; END IF;
+ SELECT * INTO prior FROM public.property_sale_receipts WHERE proof_path=_proof_path;
+ IF FOUND THEN
+   IF prior.sale_id<>_sale_id OR prior.created_by<>auth.uid() OR prior.amount IS DISTINCT FROM _amount OR prior.paid_on IS DISTINCT FROM _paid_on OR prior.method IS DISTINCT FROM _method OR prior.reference IS DISTINCT FROM nullif(btrim(coalesce(_reference,'')),'') OR prior.payer_name IS DISTINCT FROM nullif(btrim(coalesce(_payer,'')),'') OR prior.notes IS DISTINCT FROM nullif(btrim(coalesce(_notes,'')),'') THEN RAISE EXCEPTION 'Receipt proof already used with different payment details'; END IF;
+   RETURN prior.id;
+ END IF;
+ IF sale.status='cancelled' OR _amount IS NULL OR _amount<=0 OR _amount>sale.final_sale_price OR round(_amount,2)<>_amount OR _paid_on IS NULL OR _paid_on>(now() AT TIME ZONE 'Asia/Kolkata')::date OR _method IS NULL OR _method NOT IN ('cash','upi','neft','rtgs','imps','cheque','card','other') OR (_method<>'cash' AND length(btrim(coalesce(_reference,'')))<3) THEN RAISE EXCEPTION 'Invalid receipt amount, date or payment details'; END IF;
+ IF coalesce((SELECT sum(amount) FROM public.property_sale_receipts WHERE sale_id=_sale_id AND status IN ('reported','verified')),0)+_amount>sale.final_sale_price THEN RAISE EXCEPTION 'Payment exceeds remaining amount including reported receipts'; END IF;
+ IF _method<>'cash' AND EXISTS(SELECT 1 FROM public.property_sale_receipts WHERE sale_id=_sale_id AND status IN ('reported','verified') AND lower(btrim(reference))=lower(btrim(_reference))) THEN RAISE EXCEPTION 'Payment reference already recorded'; END IF;
+ INSERT INTO public.property_sale_receipts(sale_id,amount,paid_on,method,reference,payer_name,notes,created_by,proof_path,proof_filename)
+ VALUES(_sale_id,_amount,_paid_on,_method,nullif(btrim(coalesce(_reference,'')),''),nullif(btrim(coalesce(_payer,'')),''),nullif(btrim(coalesce(_notes,'')),''),auth.uid(),_proof_path,btrim(_filename)) RETURNING id INTO result;
+ PERFORM public.sales_link_document(_sale_id,'payment_proof',_proof_path,_filename);
+ INSERT INTO public.property_sale_events(sale_id,action,details,actor_id) VALUES(_sale_id,'receipt_reported',jsonb_build_object('receipt_id',result,'amount',_amount,'proof_path',_proof_path),auth.uid());
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.sales_save_deal_terms(uuid,numeric,text,text,text,text), public.sales_book_flat_with_terms(uuid,text,text,numeric,date,text,text,text,numeric,text,text,text,text), public.sales_report_receipt_with_proof(uuid,numeric,date,text,text,text,text,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.sales_save_deal_terms(uuid,numeric,text,text,text,text), public.sales_book_flat_with_terms(uuid,text,text,numeric,date,text,text,text,numeric,text,text,text,text), public.sales_report_receipt_with_proof(uuid,numeric,date,text,text,text,text,text,text) TO authenticated;
