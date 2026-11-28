@@ -41,7 +41,7 @@ function Shell() {
   const managementViewer = me.data?.roles.length === 1 && me.data.roles[0] === "auditor";
   const scopedSales = isScopedSalesRole(me.data?.roles ?? []);
   useEffect(() => {
-    if(path === "/dashboard" && scopedSales) void navigate({to:"/sales",replace:true});
+    if(path === "/dashboard" && scopedSales) void navigate({to:"/sales-dashboard",replace:true});
     else if (path === "/dashboard" && managementViewer)
       void navigate({ to: "/management", replace: true });
   }, [path, managementViewer, scopedSales, navigate]);
@@ -101,7 +101,7 @@ function Shell() {
     );
   const { profile, roles, permissions } = me.data;
   const access = { roles, permissions };
-  const home = scopedSales ? "/sales" : managementViewer ? "/management" : "/dashboard";
+  const home = scopedSales ? "/sales-dashboard" : managementViewer ? "/management" : "/dashboard";
   const blocked = !profile.is_active
     ? "Your account has been deactivated. Contact your administrator."
     : roles.length === 0
