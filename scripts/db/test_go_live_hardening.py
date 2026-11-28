@@ -2408,7 +2408,7 @@ def test_scoped_sales_roles():
             c.execute("INSERT INTO profiles(id,company_id,full_name,email,is_active) VALUES(%s,%s,'QA sales',%s,true)",(uid,A,uid+"@example.test"))
             c.execute("INSERT INTO auth.users(id,email,email_confirmed_at) VALUES(%s,%s,now())",(uid,uid+"@example.test"))
             c.execute("INSERT INTO user_roles(user_id,role) VALUES(%s,%s::app_role)",(uid,role))
-            other=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,%s,'Unassigned sales QA') RETURNING id",(A,"QA-"+uid[:8])).fetchone()[0]
+            other=c.execute("INSERT INTO projects(company_id,code,name) VALUES(%s,%s,'Unassigned sales QA') RETURNING id",(A,"QA-"+uid[:8].upper())).fetchone()[0]
             c.execute("INSERT INTO user_project_assignments(user_id,project_id) VALUES(%s,%s)",(uid,PROJECT))
             actor(c,uid)
             assert c.execute("SELECT sales_allowed(),sales_manager(),can_access_project(auth.uid(),%s),can_access_project(auth.uid(),%s),has_permission(auth.uid(),'financial.view')",(PROJECT,other)).fetchone()==(True,False,True,False,False)
