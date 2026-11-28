@@ -2460,8 +2460,8 @@ def test_city_centre_full_import():
         # Keep the disposable fixture and import inside a rollback-only transaction.
         sql=sql.replace('BEGIN;','',1).rsplit('COMMIT;',1)[0]
         c.execute(sql)
-        assert c.execute("SELECT count(*) FILTER(WHERE status='available'),count(*) FILTER(WHERE ownership_type='landowner'),count(*) FILTER(WHERE legacy_sale_status='sold'),count(*) FILTER(WHERE legacy_sale_status='booked') FROM units WHERE project_id=%s",(p,)).fetchone()==(98,104,61,2)
-        assert c.execute("SELECT count(*) FROM units WHERE project_id=%s AND notes LIKE 'Source conflict:%%'",(p,)).fetchone()[0]==4
+        assert c.execute("SELECT count(*) FILTER(WHERE status='available'),count(*) FILTER(WHERE ownership_type='landowner'),count(*) FILTER(WHERE legacy_sale_status='sold'),count(*) FILTER(WHERE legacy_sale_status='booked') FROM units WHERE project_id=%s",(p,)).fetchone()==(102,104,59,0)
+        assert c.execute("SELECT count(*) FROM units WHERE project_id=%s AND status='available' AND notes LIKE 'Updated workbook blank; confirmed available by management.%%'",(p,)).fetchone()[0]==4
         assert c.execute("SELECT count(*) FROM property_sales WHERE project_id=%s",(p,)).fetchone()[0]==0
         c.execute("DROP TABLE cc_source")
         denied(c,lambda:c.execute(sql),"Existing City Centre inventory")
